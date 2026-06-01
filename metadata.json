@@ -1,0 +1,6 @@
+{
+  "name": "CV Beton Agung Admin Dashboard",
+  "description": "UI Prototype Dashboard Admin Internal ERP untuk CV Beton Agung - Sales, Inventory, Project Management & QR System.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

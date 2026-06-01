@@ -1,0 +1,331 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from 'lucide-react';
+import { Supplier } from '../types';
+
+interface SuppliersViewProps {
+  suppliers: Supplier[];
+  onAddSupplier: (newSupplier: Supplier) => void;
+  onTriggerNotification: (message: string) => void;
+}
+
+export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotification }: SuppliersViewProps) {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form states
+  const [name, setName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
+  const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+
+  // Filter & Search
+  const filteredSuppliers = suppliers.filter((supp) => {
+    const matchesSearch =
+      supp.name.toLowerCase().includes(search.toLowerCase()) ||
+      supp.code.toLowerCase().includes(search.toLowerCase()) ||
+      supp.contactName.toLowerCase().includes(search.toLowerCase()) ||
+      supp.city.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || supp.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !contactName || !phone || !city) {
+      onTriggerNotification('Gagal menambahkan: Lengkapi kolom wajib isi!');
+      return;
+    }
+
+    const nextCode = `SPL-00${suppliers.length + 1}`;
+    const newSupp: Supplier = {
+      id: `s${suppliers.length + 1}`,
+      code: nextCode,
+      name,
+      contactName,
+      phone,
+      city,
+      address: address || 'Alamat Belum Diatur',
+      status,
+    };
+
+    onAddSupplier(newSupp);
+    onTriggerNotification(`Sukses mendaftarkan Supplier: ${name} (${nextCode})`);
+
+    // reset states
+    setName('');
+    setContactName('');
+    setPhone('');
+    setCity('');
+    setAddress('');
+    setStatus('Aktif');
+    setShowAddModal(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Search & Action bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-1 items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari kode supplier, nama perusahaan, PIC, atau kota..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+            <Filter size={13} className="text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-[11px] font-sans text-slate-600 bg-transparent py-1 focus:outline-none focus:ring-0 cursor-pointer"
+            >
+              <option value="All">Semua Supplier</option>
+              <option value="Aktif">Status: Aktif</option>
+              <option value="Nonaktif">Status: Nonaktif</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
+        >
+          <Plus size={16} />
+          <span>Tambah Supplier</span>
+        </button>
+      </div>
+
+      {/* Main Table card */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
+            Buku Rekanan Vendor / Supplier Material ({filteredSuppliers.length} Item)
+          </h3>
+          <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-sans text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                <th className="p-3.5 pl-5">Kode Vendor</th>
+                <th className="p-3.5">Nama Perusahaan / Unit Usaha</th>
+                <th className="p-3.5">PIC / Kontak Utama</th>
+                <th className="p-3.5">Kontak Desk</th>
+                <th className="p-3.5">Kota Asal</th>
+                <th className="p-3.5">Alamat Gudang Vendor</th>
+                <th className="p-3.5">Status Polisi PO</th>
+                <th className="p-3.5 pr-5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredSuppliers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
+                    Tidak ada data supplier yang beraliansi dengan kriteria tersebut.
+                  </td>
+                </tr>
+              ) : (
+                filteredSuppliers.map((supp) => (
+                  <tr key={supp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
+                      {supp.code}
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-800">
+                      {supp.name}
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1.5 text-slate-700">
+                        <User size={12} className="text-slate-400" />
+                        <span className="font-medium">{supp.contactName}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-600">
+                      <div className="flex items-center gap-1.5">
+                        <Phone size={12} className="text-slate-400" />
+                        <span>{supp.phone}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1 text-slate-700">
+                        <MapPin size={12} className="text-cyan-500" />
+                        <span>{supp.city}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5 text-slate-500 max-w-[200px] truncate" title={supp.address}>
+                      {supp.address}
+                    </td>
+                    <td className="p-3.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                        supp.status === 'Aktif' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {supp.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 pr-5 text-right">
+                      <button
+                        onClick={() => onTriggerNotification(`Melihat log PO dikirim ke ${supp.name}`)}
+                        className="px-2 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
+                      >
+                        Rekonsil
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer Pagination */}
+        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+          <span>Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length} item</span>
+          <div className="flex gap-1">
+            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
+            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal Add Supplier */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Handshake size={18} className="text-cyan-400" />
+                <h3 className="font-sans font-bold text-sm">Registrasi Pemasok Baru</h3>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Nama Badan Usaha / Toko</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: PT Baja Jaya Abadi"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nama Kontak PIC</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Pak Danang"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Kota Pabrik Vendor</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Tuban"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor Telepon Kantor/Sales</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: 0811XXXXXXXX atau (031) XXX"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Alamat Kantor/Pabrik Utama</label>
+                <textarea
+                  rows={2}
+                  placeholder="Kawasan Industri Manyar Kav 12, Gresik"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Status Kelayakan PO</label>
+                <div className="flex gap-4 mt-1.5">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                    <input
+                      type="radio"
+                      name="supp_status"
+                      checked={status === 'Aktif'}
+                      onChange={() => setStatus('Aktif')}
+                      className="text-cyan-600 focus:ring-cyan-500"
+                    />
+                    <span>Aktif (Dapat dikirim PO otomatis)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                    <input
+                      type="radio"
+                      name="supp_status"
+                      checked={status === 'Nonaktif'}
+                      onChange={() => setStatus('Nonaktif')}
+                      className="text-cyan-600 focus:ring-cyan-500"
+                    />
+                    <span>Dibekukan sementara (Hold PO)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors"
+                >
+                  Simpan Vendor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
