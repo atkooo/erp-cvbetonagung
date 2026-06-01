@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, HardHat, LogOut } from 'lucide-react';
-import { NAVIGATION_SECTIONS, NavigationItem } from '../config/navigation';
-import { ViewType } from '../types';
+import { NAVIGATION_SECTIONS } from '../config/navigation';
+import type { NavigationItem } from '../config/navigation';
+import type { ViewType } from '../types';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -19,7 +20,7 @@ const activeClass = 'bg-cyan-600 text-white font-medium shadow-md shadow-cyan-90
 const inactiveClass = 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-100 transition-all duration-150';
 
 const isItemActive = (item: NavigationItem, currentView: ViewType) => {
-  return item.view === currentView || item.activeViews?.includes(currentView);
+  return item.view === currentView || Boolean(item.activeViews?.includes(currentView));
 };
 
 export default function Sidebar({ currentView, onViewChange, onLogout, userRole }: SidebarProps) {

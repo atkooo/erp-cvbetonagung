@@ -16,7 +16,7 @@ import {
   initialPurchaseOrders,
   initialKubahProjects
 } from './dummyData';
-import { Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, KubahProject, ViewType } from './types';
+import type { Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, KubahProject, ViewType } from './types';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -51,7 +51,7 @@ import {
   ReturnsView,
   RolePermissionView,
   StockOpnameView,
-} from './components/PriorityPrototypeViews';
+} from './features/prototypes';
 
 import { CheckCircle2 } from 'lucide-react';
 

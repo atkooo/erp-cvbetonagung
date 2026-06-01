@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Bell, Search, User, Globe, AlertTriangle, ChevronDown } from 'lucide-react';
 import { VIEW_TITLES } from '../config/navigation';
-import { ViewType } from '../types';
+import type { ViewType } from '../types';
 
 interface TopbarProps {
   currentView: ViewType;

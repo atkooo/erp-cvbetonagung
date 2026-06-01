@@ -22,7 +22,6 @@ import {
   History,
   Layers,
   LayoutDashboard,
-  LucideIcon,
   Package,
   PackageCheck,
   QrCode,
@@ -38,6 +37,7 @@ import {
   WalletCards,
   Warehouse,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { ViewType } from '../types';
 
 export interface NavigationItem {
