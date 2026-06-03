@@ -56,7 +56,7 @@ export default function InventoryView({
   const [outSku, setOutSku] = useState(products[0]?.sku || '');
   const [outQty, setOutQty] = useState(0);
   const [outDoc, setOutDoc] = useState('');
-  const [outHandler, setOutHandler] = useState('Gudang - Joko');
+  const [outHandler, setOutHandler] = useState('Admin Gudang');
   const [outNotes, setOutNotes] = useState('');
 
   const categories = ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'];

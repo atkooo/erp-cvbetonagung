@@ -296,7 +296,7 @@ export const initialStockMovements: StockMovement[] = [
     quantity: 1,
     referenceDoc: 'PO-2026-05-001',
     date: '2026-05-29 11:00',
-    handler: 'Gudang - Joko',
+    handler: 'Admin Gudang',
     notes: 'Kubah GRC masjid Baiturrahman selesai precast workshop.',
   },
   {
@@ -318,7 +318,7 @@ export const initialStockMovements: StockMovement[] = [
     quantity: 50,
     referenceDoc: 'RCV-2026-05-031',
     date: '2026-05-30 08:30',
-    handler: 'Gudang - Joko',
+    handler: 'Admin Gudang',
     notes: 'Datang bibit baru dari supplier Batu.',
   },
 ];
