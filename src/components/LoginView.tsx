@@ -133,7 +133,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
       {/* Trust Badge and legal info */}
       <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest mt-6">
-        CV. BETON AGUNG SURABAYA SIDOARJO INDONESIA © 2026
+        CV. BETON AGUNG © 2026
       </span>
     </div>
   );
