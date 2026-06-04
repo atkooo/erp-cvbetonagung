@@ -303,12 +303,107 @@ export function StockOpnameView({ onTriggerNotification }: PrototypeViewProps) {
   );
 }
 
+export function EmployeeMasterView({ onTriggerNotification }: PrototypeViewProps) {
+  const employees = [
+    ['EMP-001', 'Pak Slamet', 'Tukang Cetak', 'Workshop', 'Borongan', 350, 115, 'Aktif'],
+    ['EMP-002', 'Pak Budi', 'Tukang Cetak', 'Workshop', 'Borongan', 305, 93, 'Aktif'],
+    ['EMP-003', 'Pak Roni', 'Finishing', 'Workshop', 'Harian', 80, 80, 'Aktif'],
+    ['EMP-004', 'Ibu Rina', 'Admin Gudang', 'Gudang', 'Tetap', 0, 0, 'Aktif'],
+    ['EMP-005', 'Mas Fajar', 'Driver', 'Logistik', 'Kontrak', 0, 0, 'Nonaktif'],
+  ] as const;
+  const activeCount = employees.filter((row) => row[7] === 'Aktif').length;
+  const workshopCount = employees.filter((row) => row[3] === 'Workshop').length;
+  const totalOutput = employees.reduce((sum, row) => sum + Number(row[5]), 0);
+  const totalOk = employees.reduce((sum, row) => sum + Number(row[6]), 0);
+
+  return (
+    <div className="space-y-6 text-xs">
+      <Header
+        icon={<UserCog size={20} />}
+        title="Master Data Karyawan"
+        desc="Prototype data karyawan, tukang borongan, role kerja, dan produktivitas produksi."
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          ['Total Karyawan', employees.length.toString(), 'slate'],
+          ['Aktif', activeCount.toString(), 'emerald'],
+          ['Tim Workshop', workshopCount.toString(), 'cyan'],
+          ['Output OK Hari Ini', `${totalOk}/${totalOutput} pcs`, 'amber'],
+        ].map(([label, value, tone]) => (
+          <Panel key={label} className="p-4">
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">{label}</span>
+            <h4 className={`mt-1 text-base font-black ${
+              tone === 'emerald' ? 'text-emerald-600' : tone === 'cyan' ? 'text-cyan-600' : tone === 'amber' ? 'text-amber-600' : 'text-slate-900'
+            }`}>{value}</h4>
+          </Panel>
+        ))}
+      </div>
+
+      <Panel className="overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h4 className="font-bold text-sm text-slate-850">Daftar Karyawan Operasional</h4>
+            <p className="text-[10px] text-slate-400 mt-0.5">Data ini bisa dipakai untuk assignment work order, pencatatan output, payroll borongan, dan audit QC.</p>
+          </div>
+          <button
+            onClick={() => onTriggerNotification('Prototype: membuka form tambah karyawan baru')}
+            className="px-3 py-2 bg-slate-900 text-white rounded-lg text-[10px] font-bold hover:bg-slate-800"
+          >
+            Tambah Karyawan
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[820px]">
+            <thead>
+              <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                <th className="p-3.5 pl-5">Kode</th>
+                <th className="p-3.5">Nama</th>
+                <th className="p-3.5">Jabatan</th>
+                <th className="p-3.5">Divisi</th>
+                <th className="p-3.5">Tipe</th>
+                <th className="p-3.5 text-right">Dibuat Hari Ini</th>
+                <th className="p-3.5 text-right">OK QC</th>
+                <th className="p-3.5">Status</th>
+                <th className="p-3.5 pr-5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {employees.map(([code, name, role, division, type, made, ok, status]) => (
+                <tr key={code} className="hover:bg-slate-50/60">
+                  <td className="p-3.5 pl-5 font-mono font-bold text-cyan-700">{code}</td>
+                  <td className="p-3.5 font-bold text-slate-800">{name}</td>
+                  <td className="p-3.5 text-slate-600">{role}</td>
+                  <td className="p-3.5 text-slate-500">{division}</td>
+                  <td className="p-3.5"><StatusPill tone={type === 'Borongan' ? 'amber' : type === 'Harian' ? 'cyan' : 'slate'}>{type}</StatusPill></td>
+                  <td className="p-3.5 text-right font-mono">{Number(made) > 0 ? `${made} pcs` : '-'}</td>
+                  <td className="p-3.5 text-right font-mono font-bold text-emerald-700">{Number(ok) > 0 ? `${ok} pcs` : '-'}</td>
+                  <td className="p-3.5"><StatusPill tone={status === 'Aktif' ? 'emerald' : 'rose'}>{status}</StatusPill></td>
+                  <td className="p-3.5 pr-5 text-right">
+                    <button
+                      onClick={() => onTriggerNotification(`Prototype: membuka profil karyawan ${code}`)}
+                      className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600"
+                    >
+                      Detail
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 export function AuditLogView({ onTriggerNotification }: PrototypeViewProps) {
   const logs = [
     ['2026-06-01 09:12', 'Owner', 'APPROVE', 'APR-2026-0604', 'PO supplier disetujui'],
     ['2026-06-01 08:45', 'Gudang', 'UPDATE', 'SKU RST-001', 'Stok 1850 menjadi 1760'],
     ['2026-05-31 16:20', 'Finance', 'VERIFY', 'PAY-2026-05-021', 'Pembayaran invoice diverifikasi'],
-    ['2026-05-31 13:05', 'Sales', 'CREATE', 'QT-2026-05-011', 'Quotation proyek kubah dibuat'],
+    ['2026-05-31 13:05', 'Sales', 'CREATE', 'QT-2026-05-011', 'Quotation proyek dibuat'],
     ['2026-05-30 10:18', 'Admin', 'EXPORT', 'Laporan Inventory', 'Export XLSX stok gudang'],
   ];
 
@@ -367,6 +462,26 @@ export function ProductionWorkOrderView({ onTriggerNotification }: PrototypeView
     ['WO-2026-0602', 'Roster Motif Kotak', 'Stok Gudang', 'Curing', '70%', '2026-06-04'],
     ['WO-2026-0603', 'Lisplang Beton M20', 'SO-2026-05-033', 'Finishing', '85%', '2026-06-03'],
   ];
+  const workerLogs = [
+    ['2026-06-04', 'Pak Slamet', 'Cetak', 120, 5, 115, 'Cetakan A'],
+    ['2026-06-04', 'Pak Budi', 'Cetak', 95, 2, 93, 'Cetakan B'],
+    ['2026-06-04', 'Pak Roni', 'Finishing', 80, 0, 80, 'Amplas tepi'],
+    ['2026-06-03', 'Pak Slamet', 'Cetak', 130, 4, 126, 'Batch pagi'],
+    ['2026-06-03', 'Pak Budi', 'Cetak', 110, 3, 107, 'Batch sore'],
+  ] as const;
+  const targetQty = 1000;
+  const totalMade = workerLogs.reduce((sum, row) => sum + row[3], 0);
+  const totalReject = workerLogs.reduce((sum, row) => sum + row[4], 0);
+  const totalOk = workerLogs.reduce((sum, row) => sum + row[5], 0);
+  const progress = Math.round((totalOk / targetQty) * 100);
+  const workerSummary = workerLogs.reduce<Record<string, { made: number; ok: number; reject: number }>>((acc, row) => {
+    const worker = row[1];
+    acc[worker] = acc[worker] || { made: 0, ok: 0, reject: 0 };
+    acc[worker].made += row[3];
+    acc[worker].reject += row[4];
+    acc[worker].ok += row[5];
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6 text-xs">
@@ -425,6 +540,116 @@ export function ProductionWorkOrderView({ onTriggerNotification }: PrototypeView
           </tbody>
         </table>
       </Panel>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <Panel className="xl:col-span-8 overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">WO-2026-0602</span>
+                <StatusPill tone="amber">Monitoring Tukang</StatusPill>
+              </div>
+              <h4 className="font-bold text-sm text-slate-850 mt-2">Roster Motif Kotak - Output Produksi Harian</h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Target 1.000 pcs untuk stok gudang, dihitung dari qty OK setelah reject.</p>
+            </div>
+            <button
+              onClick={() => onTriggerNotification('Prototype: membuka form input hasil produksi tukang untuk WO-2026-0602')}
+              className="px-3 py-2 bg-slate-900 text-white rounded-lg text-[10px] font-bold hover:bg-slate-800"
+            >
+              Input Hasil Harian
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-100">
+            {[
+              ['Target', `${targetQty.toLocaleString('id-ID')} pcs`, 'slate'],
+              ['Dibuat', `${totalMade.toLocaleString('id-ID')} pcs`, 'cyan'],
+              ['OK QC', `${totalOk.toLocaleString('id-ID')} pcs`, 'emerald'],
+              ['Reject', `${totalReject.toLocaleString('id-ID')} pcs`, 'rose'],
+            ].map(([label, value, tone]) => (
+              <div key={label} className="p-4 border-r last:border-r-0 border-slate-100">
+                <span className="text-[10px] uppercase font-mono font-bold text-slate-400">{label}</span>
+                <p className={`mt-1 text-base font-black ${
+                  tone === 'emerald' ? 'text-emerald-600' : tone === 'rose' ? 'text-rose-600' : tone === 'cyan' ? 'text-cyan-600' : 'text-slate-900'
+                }`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Progress WO Berbasis Qty OK</span>
+              <span className="font-mono font-black text-amber-600">{progress}%</span>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-5">
+              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${progress}%` }} />
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[760px]">
+                <thead>
+                  <tr className="bg-slate-50 border-y text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                    <th className="p-3">Tanggal</th>
+                    <th className="p-3">Tukang</th>
+                    <th className="p-3">Tahap</th>
+                    <th className="p-3 text-right">Dibuat</th>
+                    <th className="p-3 text-right">Reject</th>
+                    <th className="p-3 text-right">OK</th>
+                    <th className="p-3">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {workerLogs.map(([date, worker, stage, made, reject, ok, notes]) => (
+                    <tr key={`${date}-${worker}-${stage}`} className="hover:bg-slate-50/60">
+                      <td className="p-3 font-mono text-slate-500">{date}</td>
+                      <td className="p-3 font-bold text-slate-800">{worker}</td>
+                      <td className="p-3"><StatusPill tone={stage === 'Cetak' ? 'cyan' : 'indigo'}>{stage}</StatusPill></td>
+                      <td className="p-3 text-right font-mono">{made} pcs</td>
+                      <td className="p-3 text-right font-mono text-rose-600">{reject} pcs</td>
+                      <td className="p-3 text-right font-mono font-bold text-emerald-700">{ok} pcs</td>
+                      <td className="p-3 text-slate-500">{notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel className="xl:col-span-4 p-5">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+            <UserCog size={16} className="text-cyan-600" />
+            <h4 className="font-bold text-sm text-slate-850">Rekap Per Tukang</h4>
+          </div>
+          <div className="space-y-3">
+            {Object.entries(workerSummary).map(([worker, summary]) => {
+              const rejectRate = summary.made ? Math.round((summary.reject / summary.made) * 100) : 0;
+              return (
+                <div key={worker} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-slate-800">{worker}</strong>
+                    <StatusPill tone={rejectRate > 4 ? 'rose' : 'emerald'}>{rejectRate}% reject</StatusPill>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                    <div>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 font-bold">Dibuat</span>
+                      <p className="font-mono font-black text-slate-800">{summary.made}</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 font-bold">OK</span>
+                      <p className="font-mono font-black text-emerald-700">{summary.ok}</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 font-bold">Reject</span>
+                      <p className="font-mono font-black text-rose-600">{summary.reject}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -737,7 +962,7 @@ export function ProjectBudgetingView({ onTriggerNotification }: PrototypeViewPro
 
   return (
     <div className="space-y-6 text-xs">
-      <Header icon={<Calculator size={20} />} title="Project Budgeting" desc="Prototype estimasi vs realisasi biaya proyek kubah dan pekerjaan custom." />
+      <Header icon={<Calculator size={20} />} title="Project Budgeting" desc="Prototype estimasi vs realisasi biaya proyek dan pekerjaan custom." />
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {[
           ['Nilai Kontrak', formatIDR(185000000), 'indigo'],
@@ -785,7 +1010,7 @@ export function RemindersView({ onTriggerNotification }: PrototypeViewProps) {
     ['Invoice overdue', 'INV-2026-05-106', 'Finance', 'Hari ini 15:00', 'Tinggi', 'rose'],
     ['Stok minimum', 'Lisplang M20', 'Gudang', 'Besok 08:00', 'Sedang', 'amber'],
     ['PO belum diterima', 'PO-2026-05-014', 'Purchasing', '2026-06-03', 'Sedang', 'amber'],
-    ['Deadline proyek', 'Kubah Baiturrahman', 'Produksi', '2026-06-05', 'Tinggi', 'rose'],
+    ['Deadline proyek', 'Proyek Baiturrahman', 'Produksi', '2026-06-05', 'Tinggi', 'rose'],
   ];
 
   return (

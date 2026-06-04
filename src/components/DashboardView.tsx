@@ -18,7 +18,7 @@ import {
   CheckCircle,
   Truck
 } from 'lucide-react';
-import { Customer, Supplier, Product, SalesOrder, Invoice, KubahProject, ViewType } from '../types';
+import { Customer, Supplier, Product, SalesOrder, Invoice, Project, ViewType } from '../types';
 
 interface DashboardViewProps {
   customers: Customer[];
@@ -26,7 +26,7 @@ interface DashboardViewProps {
   products: Product[];
   salesOrders: SalesOrder[];
   invoices: Invoice[];
-  kubahProjects: KubahProject[];
+  projects: Project[];
   onNavigate: (view: ViewType) => void;
   onNavigateToProject: (view: ViewType, projectId: string) => void;
   onTriggerNotification: (message: string) => void;
@@ -38,7 +38,7 @@ export default function DashboardView({
   products,
   salesOrders,
   invoices,
-  kubahProjects,
+  projects,
   onNavigate,
   onNavigateToProject,
   onTriggerNotification,
@@ -56,7 +56,7 @@ export default function DashboardView({
   const salesThisMonth = currentMonthSO.reduce((acc, so) => acc + so.total, 0);
 
   const unpaidInvoices = invoices.filter(inv => inv.status === 'Belum Lunas' || inv.status === 'Sebagian Dibayar' || inv.status === 'Overdue');
-  const activeProjects = kubahProjects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan');
+  const activeProjects = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan');
 
   // Format currency helpers
   const formatIDR = (num: number) => {
@@ -88,7 +88,7 @@ export default function DashboardView({
               Kembali Bekerja, Tim CV Beton Agung
             </h1>
             <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
-              Platform ERP mengintegrasikan produksi workshop beton, manajemen kubah masjid, logistik stok material, dan rekapitulasi pembayaran secara realtime.
+              Platform ERP mengintegrasikan produksi workshop beton, manajemen proyek custom, logistik stok material, dan rekapitulasi pembayaran secara realtime.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -99,10 +99,10 @@ export default function DashboardView({
               Simulasi Scan QR
             </button>
             <button
-              onClick={() => onNavigate('kubah-projects')}
+              onClick={() => onNavigate('projects')}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-200 font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-2"
             >
-              Lihat Proyek Kubah
+              Lihat Proyek
             </button>
           </div>
         </div>
@@ -142,9 +142,9 @@ export default function DashboardView({
         {/* Metric 3: Active projects */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Proyek Kubah Aktif</span>
+            <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Proyek Aktif</span>
             <h3 className="text-xl font-bold font-sans text-slate-800 mt-1">{activeProjects.length} Proyek</h3>
-            <button onClick={() => onNavigate('kubah-projects')} className="text-[10px] hover:underline text-amber-600 flex items-center gap-1 mt-2.5 font-bold">
+            <button onClick={() => onNavigate('projects')} className="text-[10px] hover:underline text-amber-600 flex items-center gap-1 mt-2.5 font-bold">
               Monitoring Workshop &rarr;
             </button>
           </div>
@@ -225,7 +225,7 @@ export default function DashboardView({
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
             <div>
               <h3 className="font-sans font-bold text-sm text-slate-800">Analisis Proyek & Penjualan Bulanan (Semester i 2026)</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Pendapatan kotor realisasi penjualan kubah dan beton pracetak</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Pendapatan kotor realisasi proyek custom dan beton pracetak</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">
               Periode: Jan - Jun
@@ -237,7 +237,7 @@ export default function DashboardView({
             <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono border-b border-slate-200/50 pb-1 mb-2">
               <span>Rp Milyar</span>
               <div className="flex gap-4">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-1 bg-cyan-500 rounded" />Kubah & GRC</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-1 bg-cyan-500 rounded" />Proyek Custom</span>
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-indigo-500 rounded-sm" />Roster & Lisplang</span>
               </div>
             </div>
@@ -254,12 +254,12 @@ export default function DashboardView({
 
               {/* Data points mapping */}
               {[
-                { month: 'Januari', domes: 40, pieces: 15, tag: 'Rp 55M' },
-                { month: 'Februari', domes: 50, pieces: 22, tag: 'Rp 72M' },
-                { month: 'Maret', domes: 35, pieces: 30, tag: 'Rp 65M' },
-                { month: 'April', domes: 80, pieces: 45, tag: 'Rp 125M' },
-                { month: 'Mei', domes: 75, pieces: 35, tag: 'Rp 110M' },
-                { month: 'Juni (Frc)', domes: 90, pieces: 60, tag: 'Rp 150M' }
+                { month: 'Januari', custom: 40, pieces: 15, tag: 'Rp 55M' },
+                { month: 'Februari', custom: 50, pieces: 22, tag: 'Rp 72M' },
+                { month: 'Maret', custom: 35, pieces: 30, tag: 'Rp 65M' },
+                { month: 'April', custom: 80, pieces: 45, tag: 'Rp 125M' },
+                { month: 'Mei', custom: 75, pieces: 35, tag: 'Rp 110M' },
+                { month: 'Juni (Frc)', custom: 90, pieces: 60, tag: 'Rp 150M' }
               ].map((dt, idx) => (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 group z-10">
                   <div className="w-full flex items-end justify-center gap-1 h-32 relative">
@@ -268,7 +268,7 @@ export default function DashboardView({
                     </div>
                     {/* Domes Bar */}
                     <div 
-                      style={{ height: `${dt.domes}%` }}
+                      style={{ height: `${dt.custom}%` }}
                       className="w-4 bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t-sm shadow-inner transition-all group-hover:brightness-105"
                     />
                     {/* Pieces Bar */}
@@ -388,11 +388,11 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Right Side: Tracking Project Kubah Aktif */}
+        {/* Right Side: Active project tracking */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-            <h3 className="font-sans font-bold text-sm text-slate-800">Proyek Kubah & Rekayasa Workshop</h3>
-            <span onClick={() => onNavigate('kubah-projects')} className="text-[10px] text-cyan-600 font-bold hover:underline cursor-pointer">
+            <h3 className="font-sans font-bold text-sm text-slate-800">Proyek & Rekayasa Workshop</h3>
+            <span onClick={() => onNavigate('projects')} className="text-[10px] text-cyan-600 font-bold hover:underline cursor-pointer">
               Kelola Semua &rarr;
             </span>
           </div>
@@ -413,7 +413,7 @@ export default function DashboardView({
               return (
                 <div 
                   key={proj.id} 
-                  onClick={() => onNavigateToProject('kubah-project-detail', proj.id)}
+                  onClick={() => onNavigateToProject('project-detail', proj.id)}
                   className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/60 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
@@ -428,10 +428,10 @@ export default function DashboardView({
                       </span>
                     </div>
                     <h4 className="text-xs font-bold text-slate-800 mt-1">
-                      {proj.mosqueName}
+                      {proj.projectName}
                     </h4>
                     <p className="text-[10px] text-slate-500">
-                      Spesifikasi: <strong>{proj.domeDiameter}</strong> | Lokasi: {proj.location}
+                      Jenis: <strong>{proj.projectType}</strong> | Spesifikasi: <strong>{proj.projectSpec}</strong> | Lokasi: {proj.location}
                     </p>
                   </div>
 
@@ -524,7 +524,7 @@ export default function DashboardView({
               </div>
               <div className="relative">
                 <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" />
-                <p className="text-[11px] font-bold text-slate-700">GRC Kubah Masjid Baiturrahman selesai cor</p>
+                <p className="text-[11px] font-bold text-slate-700">Modul proyek Baiturrahman selesai produksi</p>
                 <p className="text-[9px] text-slate-400 font-mono mt-0.5">29 Mei 2026, 11:00 | Lokasi: Lab Cetaka A</p>
               </div>
             </div>

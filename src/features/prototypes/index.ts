@@ -9,6 +9,7 @@ export {
   BomCostingView,
   DeliveryOrdersView,
   DocumentExportsView,
+  EmployeeMasterView,
   MultiWarehouseView,
   ProductionWorkOrderView,
   ProjectBudgetingView,

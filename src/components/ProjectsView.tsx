@@ -27,10 +27,10 @@ import {
   X,
   Plus
 } from 'lucide-react';
-import { KubahProject, ViewType } from '../types';
+import { Project, ViewType } from '../types';
 
 interface ProjectsViewProps {
-  kubahProjects: KubahProject[];
+  projects: Project[];
   selectedProjectId: string | null;
   onSelectProjectId: (id: string | null) => void;
   onNavigate: (view: ViewType) => void;
@@ -39,7 +39,7 @@ interface ProjectsViewProps {
 }
 
 export default function ProjectsView({
-  kubahProjects,
+  projects,
   selectedProjectId,
   onSelectProjectId,
   onNavigate,
@@ -74,7 +74,7 @@ export default function ProjectsView({
   };
 
   // Find selected project
-  const project = kubahProjects.find((p) => p.id === selectedProjectId);
+  const project = projects.find((p) => p.id === selectedProjectId);
 
   const handleAddTimeline = (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,9 +117,9 @@ export default function ProjectsView({
                 </span>
                 <span className="text-xs text-slate-400 font-mono">{project.location}</span>
               </div>
-              <h2 className="text-lg md:text-xl font-sans font-black tracking-tight mt-1.5">{project.mosqueName}</h2>
+              <h2 className="text-lg md:text-xl font-sans font-black tracking-tight mt-1.5">{project.projectName}</h2>
               <p className="text-xs text-slate-350 leading-relaxed max-w-xl">
-                Mitra Pemesan: <strong>{project.customerName}</strong> | Spesifikasi Dimensi: <strong>{project.domeDiameter}</strong>
+                Mitra Pemesan: <strong>{project.customerName}</strong> | Jenis Proyek: <strong>{project.projectType}</strong> | Spesifikasi: <strong>{project.projectSpec}</strong>
               </p>
             </div>
 
@@ -243,10 +243,10 @@ export default function ProjectsView({
                     className="w-full px-2 py-1.5 border hover:bg-slate-50 rounded text-xs bg-transparent"
                   >
                     <option value="Survey Lokasi">Survey Lokasi</option>
-                    <option value="Produksi Cetak GRC">Produksi Cetak GRC</option>
-                    <option value="Pengiriman Material Atap">Pengiriman Material Atap</option>
+                    <option value="Produksi Workshop">Produksi Workshop</option>
+                    <option value="Pengiriman Material">Pengiriman Material</option>
                     <option value="Pemasangan Scaffolding">Pemasangan Scaffolding</option>
-                    <option value="Penyelesaian Ornamen">Penyelesaian Ornamen</option>
+                    <option value="Penyelesaian Pekerjaan">Penyelesaian Pekerjaan</option>
                     <option value="Selesai & Serah Terima">Selesai & Serah Terima</option>
                   </select>
                 </div>
@@ -258,7 +258,7 @@ export default function ProjectsView({
                     required
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    placeholder="Contoh: Rangka baja kupel telah dilapisi cat anti karat. Proses pembasahan beton GRC harian dilakukan."
+                    placeholder="Contoh: Produksi modul selesai 60%. Material utama sudah masuk QC dan siap dikirim ke lokasi."
                     className="w-full px-2.5 py-1.5 border rounded resize-none"
                   />
                 </div>
@@ -281,12 +281,12 @@ export default function ProjectsView({
       {/* Visual Top block */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="font-sans font-bold text-sm text-slate-850 uppercase tracking-tight">Portofolio Pelaksanaan Proyek Kubah GRC</h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">Sistem pelacakan rekayasa struktur, survey perkuatan beban ring, serta penarikan termin pembayaran.</p>
+          <h3 className="font-sans font-bold text-sm text-slate-850 uppercase tracking-tight">Portofolio Pelaksanaan Proyek</h3>
+          <p className="text-[10px] text-slate-500 mt-0.5">Sistem pelacakan pekerjaan workshop, pengiriman material, progres lapangan, serta penarikan termin pembayaran.</p>
         </div>
         <button
           onClick={() => {
-            onTriggerNotification('Fungsi registrasi pengerjaan proyek kubah baru. Membuka form borongan...');
+            onTriggerNotification('Fungsi registrasi pengerjaan proyek baru. Membuka form kontrak...');
           }}
           className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center gap-1.5 shrink-0"
         >
@@ -297,7 +297,7 @@ export default function ProjectsView({
 
       {/* Main projects grid listings */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {kubahProjects.map((proj) => {
+        {projects.map((proj) => {
           // Compute status colors
           const statusColors: any = {
             Survey: 'bg-indigo-100 text-indigo-700 border-indigo-205',
@@ -330,8 +330,8 @@ export default function ProjectsView({
 
                 {/* Main titles */}
                 <div>
-                  <h4 className="font-sans font-bold text-sm text-slate-800 leading-snug truncate" title={proj.mosqueName}>
-                    {proj.mosqueName}
+                  <h4 className="font-sans font-bold text-sm text-slate-800 leading-snug truncate" title={proj.projectName}>
+                    {proj.projectName}
                   </h4>
                   <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
                     <MapPin size={12} className="text-slate-400 shrink-0" />
@@ -342,8 +342,12 @@ export default function ProjectsView({
                 {/* Spec and contracts */}
                 <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150/50 text-[11px] leading-relaxed">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Diameter:</span>
-                    <strong className="text-slate-700">{proj.domeDiameter}</strong>
+                    <span className="text-slate-400">Jenis:</span>
+                    <strong className="text-slate-700">{proj.projectType}</strong>
+                  </div>
+                  <div className="flex justify-between mt-1 gap-3">
+                    <span className="text-slate-400">Spesifikasi:</span>
+                    <strong className="text-slate-700 text-right">{proj.projectSpec}</strong>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-slate-400">Nilai Kontrak:</span>
@@ -354,7 +358,7 @@ export default function ProjectsView({
                 {/* Progress bar */}
                 <div className="space-y-1.5 text-[11px]">
                   <div className="flex justify-between font-bold text-slate-550 text-slate-650">
-                    <span>Progres Pembangunan GRC</span>
+                    <span>Progres Pekerjaan</span>
                     <span className="text-amber-600 font-mono">{proj.progress}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">

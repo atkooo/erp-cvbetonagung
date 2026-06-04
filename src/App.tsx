@@ -14,9 +14,9 @@ import {
   initialInvoices,
   initialPayments,
   initialPurchaseOrders,
-  initialKubahProjects
+  initialProjects
 } from './dummyData';
-import type { Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, KubahProject, ViewType } from './types';
+import type { Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -43,6 +43,7 @@ import {
   BomCostingView,
   DeliveryOrdersView,
   DocumentExportsView,
+  EmployeeMasterView,
   MultiWarehouseView,
   ProductionWorkOrderView,
   ProjectBudgetingView,
@@ -71,7 +72,7 @@ export default function App() {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
-  const [kubahProjects, setKubahProjects] = useState<KubahProject[]>(initialKubahProjects);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
 
   // Focus detail page state modifiers
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -177,7 +178,7 @@ export default function App() {
   };
 
   const handleAddTimelineEvent = (projectId: string, date: string, stage: string, desc: string) => {
-    setKubahProjects((prev) =>
+    setProjects((prev) =>
       prev.map((proj) => {
         if (proj.id === projectId) {
           const nextEvent = {
@@ -193,10 +194,17 @@ export default function App() {
           else if (stage.includes('Pengiriman')) nextProgress = 70;
           else if (stage.includes('Produksi')) nextProgress = 45;
 
+          let nextStatus: Project['status'] = proj.status;
+          if (stage.includes('Selesai')) nextStatus = 'Selesai';
+          else if (stage.includes('Pemasangan')) nextStatus = 'Pemasangan';
+          else if (stage.includes('Pengiriman')) nextStatus = 'Pengiriman';
+          else if (stage.includes('Produksi')) nextStatus = 'Produksi';
+          else if (stage.includes('Survey')) nextStatus = 'Survey';
+
           return {
             ...proj,
             progress: nextProgress,
-            status: stage as any,
+            status: nextStatus,
             timeline: [...proj.timeline, nextEvent],
           };
         }
@@ -250,10 +258,10 @@ export default function App() {
             products={products}
             salesOrders={salesOrders}
             invoices={invoices}
-            kubahProjects={kubahProjects}
+            projects={projects}
             onNavigate={(v) => {
               setCurrentView(v);
-              if (v === 'kubah-project-detail') {
+              if (v === 'project-detail') {
                 setSelectedProjectId('proj1');
               }
             }}
@@ -272,6 +280,8 @@ export default function App() {
             onTriggerNotification={triggerNotification}
           />
         );
+      case 'employees':
+        return <EmployeeMasterView onTriggerNotification={triggerNotification} />;
       case 'suppliers':
         return (
           <SuppliersView
@@ -423,12 +433,12 @@ export default function App() {
       case 'bom-costing':
         return <BomCostingView onTriggerNotification={triggerNotification} />;
 
-      // Dome GRC projects tracker
-      case 'kubah-projects':
-      case 'kubah-project-detail':
+      // Project tracker
+      case 'projects':
+      case 'project-detail':
         return (
           <ProjectsView
-            kubahProjects={kubahProjects}
+            projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProjectId={setSelectedProjectId}
             onNavigate={setCurrentView}
@@ -513,7 +523,7 @@ export default function App() {
         onViewChange={(v) => {
           setCurrentView(v);
           // Auto-reset filters
-          if (v === 'kubah-projects') {
+          if (v === 'projects') {
             setSelectedProjectId(null);
           }
         }}

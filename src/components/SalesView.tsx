@@ -126,7 +126,7 @@ export default function SalesView({
               {isQuotation ? 'Siklus Penawaran (Quotation Platform)' : 'Manajemen Kontrak Sales Order (SO)'}
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen & kubah ke panitia pembangunan' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
+              {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
             </p>
           </div>
         </div>

@@ -116,13 +116,14 @@ export interface PurchaseOrder {
   }[];
 }
 
-export interface KubahProject {
+export interface Project {
   id: string;
   code: string;
   customerName: string;
-  mosqueName: string;
+  projectName: string;
   location: string;
-  domeDiameter: string; // e.g. "D 6 Meter"
+  projectType: string;
+  projectSpec: string;
   contractValue: number;
   deadline: string;
   progress: number; // 0 - 100
@@ -158,6 +159,7 @@ export type ViewType =
   | 'login'
   | 'dashboard'
   | 'customers'
+  | 'employees'
   | 'suppliers'
   | 'products'
   | 'categories'
@@ -183,8 +185,8 @@ export type ViewType =
   | 'audit-logs'
   | 'production-work-orders'
   | 'bom-costing'
-  | 'kubah-projects'
-  | 'kubah-project-detail'
+  | 'projects'
+  | 'project-detail'
   | 'qr-products'
   | 'scan-qr-product'
   | 'scanned-product-detail'

@@ -13,7 +13,7 @@ import {
   Invoice,
   Payment,
   PurchaseOrder,
-  KubahProject,
+  Project,
 } from './types';
 
 export const initialCustomers: Customer[] = [
@@ -519,14 +519,15 @@ export const initialPurchaseOrders: PurchaseOrder[] = [
   },
 ];
 
-export const initialKubahProjects: KubahProject[] = [
+export const initialProjects: Project[] = [
   {
     id: 'proj1',
-    code: 'PRJ-KBH-001',
+    code: 'PRJ-2026-001',
     customerName: 'Takmir Masjid Baiturrahman',
-    mosqueName: 'Masjid Jami Baiturrahman',
+    projectName: 'Kubah Masjid Jami Baiturrahman',
     location: 'Mojokerto, Jawa Timur',
-    domeDiameter: 'D 6 Meter (Tinggi 4.5 Meter)',
+    projectType: 'Kubah GRC',
+    projectSpec: 'D 6 Meter (Tinggi 4.5 Meter)',
     contractValue: 75000000,
     deadline: '2026-08-15',
     progress: 45,
@@ -535,7 +536,7 @@ export const initialKubahProjects: KubahProject[] = [
       {
         date: '2026-05-05',
         stage: 'Survey Lokasi',
-        description: 'Pengukuran dudukan kubah dialpangan (ring beam) selesai dilakukan oleh tim survey.',
+        description: 'Pengukuran dudukan struktur di lapangan selesai dilakukan oleh tim survey.',
         icon: 'Compass',
       },
       {
@@ -553,14 +554,14 @@ export const initialKubahProjects: KubahProject[] = [
       {
         date: '2026-05-24',
         stage: 'Produksi Precast GRC',
-        description: 'Pembuatan cetakan kubah motif Madinah. Pengelasan rangka baja primer di workshop CV Beton Agung.',
+        description: 'Pembuatan cetakan motif Madinah. Pengelasan rangka baja primer di workshop CV Beton Agung.',
         icon: 'Cpu',
       },
     ],
     termin: [
       { phase: 'Termin 1 (DP 30% - Desain & Rangka Baja)', amount: 22500000, dueDate: '2026-05-18', status: 'Lunas' },
       { phase: 'Termin 2 (Production Progress GRC 50%)', amount: 22500000, dueDate: '2026-06-25', status: 'Belum Bayar' },
-      { phase: 'Termin 3 (Pelunasan - Kubah Finish / Serah Terima)', amount: 30000000, dueDate: '2026-08-15', status: 'Belum Bayar' },
+      { phase: 'Termin 3 (Pelunasan - Finish / Serah Terima)', amount: 30000000, dueDate: '2026-08-15', status: 'Belum Bayar' },
     ],
     documentation: [
       {
@@ -579,11 +580,12 @@ export const initialKubahProjects: KubahProject[] = [
   },
   {
     id: 'proj2',
-    code: 'PRJ-KBH-002',
-    customerName: 'Yayasan Al-Ikhlas',
-    mosqueName: 'Masjid Al-Muthmainnah',
+    code: 'PRJ-2026-002',
+    customerName: 'PT Maju Konstruksi Utama',
+    projectName: 'Roster Fasad Kawasan Industri Gresik',
     location: 'Sidoarjo, Jawa Timur',
-    domeDiameter: 'D 8 Meter (Tinggi 6 Meter)',
+    projectType: 'Roster Beton',
+    projectSpec: 'Roster motif kotak silang, 1.850 pcs',
     contractValue: 125000000,
     deadline: '2026-07-10',
     progress: 85,
@@ -592,7 +594,7 @@ export const initialKubahProjects: KubahProject[] = [
       {
         date: '2026-04-01',
         stage: 'Survey',
-        description: 'Survey kelayakan dan kekuatan struktur beton penopang kubah.',
+        description: 'Survey area fasad, titik pemasangan, dan kebutuhan rangka pendukung.',
         icon: 'Compass',
       },
       {
@@ -604,19 +606,19 @@ export const initialKubahProjects: KubahProject[] = [
       {
         date: '2026-05-02',
         stage: 'Produksi Selesai',
-        description: 'Segmen-segmen ornamen kubah GRC selesai dicor dan dikeringkan di workshop.',
+        description: 'Batch roster beton selesai dicetak dan masuk proses curing di workshop.',
         icon: 'Cpu',
       },
       {
         date: '2026-05-15',
         stage: 'Pengiriman',
-        description: 'Material kubah diberangkatkan menggunakan armada truk tronton CV Beton Agung.',
+        description: 'Material proyek diberangkatkan menggunakan armada truk tronton CV Beton Agung.',
         icon: 'Truck',
       },
       {
         date: '2026-05-20',
         stage: 'Pemasangan Scaffold & Panel GRC',
-        description: 'Proses pemasangan rangka kubah di atap masjid Sidoarjo.',
+        description: 'Proses pemasangan modul roster pada area fasad utama.',
         icon: 'Wrench',
       },
     ],
@@ -634,7 +636,7 @@ export const initialKubahProjects: KubahProject[] = [
       },
       {
         id: 'doc4',
-        title: 'Ereksi Rangka GRC Masjid Sidoarjo',
+        title: 'Pemasangan Modul Roster Fasad',
         imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=400',
         date: '2026-05-22',
       },
@@ -642,11 +644,12 @@ export const initialKubahProjects: KubahProject[] = [
   },
   {
     id: 'proj3',
-    code: 'PRJ-KBH-003',
+    code: 'PRJ-2026-003',
     customerName: 'H. Ahmad Syukur',
-    mosqueName: 'Musholla Ar-Rayyan',
+    projectName: 'Lisplang Beton Musholla Ar-Rayyan',
     location: 'Surabaya, Jawa Timur',
-    domeDiameter: 'D 3 Meter (Kubah Stainless Enamel)',
+    projectType: 'Lisplang Beton',
+    projectSpec: 'Lisplang klasik 30 cm, estimasi 120 meter',
     contractValue: 45000000,
     deadline: '2026-09-30',
     progress: 15,
@@ -655,13 +658,13 @@ export const initialKubahProjects: KubahProject[] = [
       {
         date: '2026-05-20',
         stage: 'Survey Lokasi',
-        description: 'Pengukuran atap ruko yang akan didirikan kubah musholla.',
+        description: 'Pengukuran perimeter atap ruko dan detail sambungan lisplang.',
         icon: 'Compass',
       },
       {
         date: '2026-05-28',
         stage: 'Pengiriman Penawaran',
-        description: 'Penawaran harga kubah enamel stainless D3 terkirim ke Bapak H. Ahmad Syukur.',
+        description: 'Penawaran harga lisplang beton terkirim ke Bapak H. Ahmad Syukur.',
         icon: 'FileText',
       },
     ],

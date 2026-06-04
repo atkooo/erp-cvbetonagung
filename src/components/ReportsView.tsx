@@ -134,7 +134,7 @@ export default function ReportsView({ onTriggerNotification }: ReportsViewProps)
             <div className="flex justify-between items-center pb-3.5 border-b mb-4">
               <div className="space-y-0.5">
                 <h4 className="font-sans font-bold text-slate-800 text-xs uppercase tracking-wider">Tren Pendapatan Bulanan (2026)</h4>
-                <p className="text-[10px] text-slate-400">Omset penjualan terekam dari invoice lunas & serah terima termin kubah.</p>
+                <p className="text-[10px] text-slate-400">Omset penjualan terekam dari invoice lunas & serah terima termin proyek.</p>
               </div>
               <div className="flex items-center gap-3 text-[10px] font-bold">
                 <div className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-cyan-550 bg-cyan-500 rounded" /><span>Target Kontrak</span></div>

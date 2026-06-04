@@ -23,7 +23,7 @@ export default function Topbar({ currentView, userRole, onRoleChange, onTriggerN
     { id: 1, text: 'Stok menipis: Lisplang Beton Minimalis M20 sisa 45 Meter!', type: 'warning' },
     { id: 2, text: 'Pembayaran Termin 1 Masjid Baiturrahman lunas divalidasi.', type: 'info' },
     { id: 3, text: 'Invoice INV-2026-05-106 (H. Ahmad Syukur) melewati jatuh tempo!', type: 'danger' },
-    { id: 4, text: 'Proyek Kubah Masjid Jami Baiturrahman memasuki tahap Produksi GRC.', type: 'project' },
+    { id: 4, text: 'Proyek workshop Baiturrahman memasuki tahap produksi.', type: 'project' },
   ];
 
   return (
