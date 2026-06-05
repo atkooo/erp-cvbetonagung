@@ -3,9 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck } from 'lucide-react';
-import { PurchaseOrder } from '../types';
+import { PurchaseOrder, Supplier, Product } from '../types';
+import { authStorage } from '../services/api';
+import { purchasingApi } from '../features/purchasing/api';
+import { suppliersApi } from '../features/suppliers/api';
+import { productsApi } from '../features/products/api';
 
 interface PurchaseViewProps {
   purchaseOrders: PurchaseOrder[];
@@ -25,17 +29,55 @@ export default function PurchaseView({
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
 
+  // API states
+  const [apiPurchaseOrders, setApiPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [apiSuppliers, setApiSuppliers] = useState<Supplier[]>([]);
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const hasBackendSession = Boolean(authStorage.getToken());
+  const activePurchaseOrders = hasBackendSession ? apiPurchaseOrders : purchaseOrders;
+
   // New PO States
-  const [supplierName, setSupplierName] = useState('PT Semen Indonesia Group');
-  const [itemName, setItemName] = useState('Semen Portland OPC 50Kg');
+  const [supplierId, setSupplierId] = useState('');
+  const [productId, setProductId] = useState('');
   const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState(65000);
+  const [price, setPrice] = useState(0);
+
+  const loadData = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    try {
+      const [pos, sups, prods] = await Promise.all([
+        purchasingApi.getPurchaseOrders(),
+        suppliersApi.getSuppliers(),
+        productsApi.getProducts()
+      ]);
+      setApiPurchaseOrders(pos);
+      setApiSuppliers(sups);
+      setApiProducts(prods);
+
+      if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
+      if (prods.length > 0 && !productId) {
+        setProductId(prods[0].id);
+        setPrice(prods[0].costPrice || 0); // usually we use cost price for PO
+      }
+    } catch (err) {
+      console.error('Failed to load purchasing data', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [hasBackendSession]);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const filteredPOs = purchaseOrders.filter((po) => {
+  const filteredPOs = activePurchaseOrders.filter((po) => {
     const matchesSearch =
       po.poNumber.toLowerCase().includes(search.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(search.toLowerCase());
@@ -43,27 +85,89 @@ export default function PurchaseView({
     return matchesSearch && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (qty <= 0 || price <= 0) {
-      onTriggerNotification('Gagal: Kuantitas dan harga bahan baku harus diisi!');
+      onTriggerNotification('Gagal: Kuantitas dan harga bahan baku harus positif!');
       return;
     }
 
-    const nextPoNum = `PO-2026-05-01${purchaseOrders.length + 4}`;
-    const newPo: PurchaseOrder = {
-      id: `po${purchaseOrders.length + 4}`,
-      poNumber: nextPoNum,
-      supplierName,
-      date: new Date().toISOString().split('T')[0],
-      total: qty * price,
-      status: 'Draft',
-      items: [{ productName: itemName, quantity: qty, price }],
-    };
+    if (hasBackendSession) {
+      try {
+        const d = new Date();
+        const todayStr = d.toISOString().split('T')[0];
+        const expectedDate = new Date(d);
+        expectedDate.setDate(d.getDate() + 7); // assume 7 days delivery
 
-    onAddPurchaseOrder(newPo);
-    onTriggerNotification(`Sukses menerbitkan Draft PO: ${nextPoNum} kepada ${supplierName}`);
+        await purchasingApi.createPurchaseOrder({
+          supplier_id: supplierId,
+          order_date: todayStr,
+          expected_date: expectedDate.toISOString().split('T')[0],
+          items: [
+            {
+              product_id: productId,
+              quantity: qty,
+              unit_price: price,
+            }
+          ]
+        });
+        onTriggerNotification(`Sukses menerbitkan PO via API`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen PO');
+      }
+    } else {
+      const selectedSup = apiSuppliers.find(s => s.id === supplierId) || { name: 'Dummy Supplier' };
+      const selectedProd = apiProducts.find(p => p.id === productId) || { name: 'Dummy Product' };
+
+      const nextPoNum = `PO-2026-05-01${purchaseOrders.length + 4}`;
+      const newPo: PurchaseOrder = {
+        id: `po${purchaseOrders.length + 4}`,
+        poNumber: nextPoNum,
+        supplierName: selectedSup.name,
+        date: new Date().toISOString().split('T')[0],
+        total: qty * price,
+        status: 'Draft',
+        items: [{ productName: selectedProd.name, quantity: qty, price }],
+      };
+
+      onAddPurchaseOrder(newPo);
+      onTriggerNotification(`Sukses menerbitkan Draft PO: ${nextPoNum}`);
+    }
+
     setShowAddModal(false);
+  };
+
+  const handleReceiveGoods = async (poId: string, poNum: string, items: any[]) => {
+    if (hasBackendSession) {
+      try {
+        const d = new Date();
+        const todayStr = d.toISOString().split('T')[0];
+        
+        // Build items payload assuming full receive for simplicity
+        const receiveItems = items.filter(it => it.id).map(it => ({
+          id: it.id,
+          received_quantity: it.quantity
+        }));
+
+        if (receiveItems.length === 0) {
+          onTriggerNotification('Tidak ada item ID valid untuk konfirmasi penerimaan via API.');
+          return;
+        }
+
+        await purchasingApi.receivePurchaseOrder(poId, {
+          received_date: todayStr,
+          items: receiveItems
+        });
+        
+        onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
+      }
+    } else {
+      onTriggerNotification(`Konfirmasi fisik semen/baja masuk untuk PO ${poNum}`);
+    }
   };
 
   return (
@@ -75,8 +179,15 @@ export default function PurchaseView({
             <ShoppingCart size={20} />
           </div>
           <div>
-            <h3 className="font-sans font-bold text-sm text-slate-800">Siklus Pembelian & Restock Bahan Cor (Purchase Order)</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik, dan pasir lumajang super.</p>
+            <h3 className="font-sans font-bold text-sm text-slate-800">
+              Siklus Pembelian & Restock Bahan Cor (Purchase Order)
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik, dan pasir lumajang super.
+              <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
+                {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+              </span>
+            </p>
           </div>
         </div>
         <button
@@ -153,7 +264,11 @@ export default function PurchaseView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredPOs.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">Memuat data dari backend...</td>
+                </tr>
+              ) : filteredPOs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
                     Tidak ditemukan data Purchase Order yang terekam.
@@ -224,10 +339,7 @@ export default function PurchaseView({
                               {po.status === 'Dipesan' && (
                                 <div className="pt-3 border-t flex justify-end">
                                   <button
-                                    onClick={() => {
-                                      onTriggerNotification(`Konfirmasi fisik semen/baja masuk untuk PO ${po.poNumber}`);
-                                      // Note: Normally we'd transition status
-                                    }}
+                                    onClick={() => handleReceiveGoods(po.id, po.poNumber, po.items)}
                                     className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-bold flex items-center gap-1 shadow transition-colors"
                                   >
                                     <PackageCheck size={11} className="stroke-[2.5]" />
@@ -267,38 +379,47 @@ export default function PurchaseView({
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier</label>
-                <select
-                  value={supplierName}
-                  onChange={(e) => {
-                    setSupplierName(e.target.value);
-                    if (e.target.value.includes('Semen')) {
-                      setItemName('Semen Portland OPC 50Kg');
-                      setPrice(65000);
-                    } else if (e.target.value.includes('Baja')) {
-                      setItemName('Besi Wiremesh M8');
-                      setPrice(380000);
-                    } else {
-                      setItemName('Pasir Lumajang - Truk Colt Diesel');
-                      setPrice(1550000);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded"
-                >
-                  <option value="PT Semen Indonesia Group">PT Semen Indonesia Group (Semen)</option>
-                  <option value="CV Baja Abadi Sejahtera">CV Baja Abadi Sejahtera (Baja/Besi)</option>
-                  <option value="UD Pasir Lumajang Super">UD Pasir Lumajang Super (Pasir)</option>
-                </select>
+                {apiSuppliers.length > 0 ? (
+                  <select
+                    value={supplierId}
+                    onChange={(e) => setSupplierId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
+                  >
+                    {apiSuppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
+                    <option>Memuat Supplier...</option>
+                  </select>
+                )}
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Komponen Produk Penunjang</label>
-                <input
-                  type="text"
-                  required
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  className="w-full px-3 py-2 border"
-                />
+                {apiProducts.length > 0 ? (
+                  <select
+                    value={productId}
+                    onChange={(e) => {
+                      setProductId(e.target.value);
+                      const prod = apiProducts.find(p => p.id === e.target.value);
+                      if (prod) {
+                        setPrice(prod.costPrice || 0);
+                        setQty(1);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
+                  >
+                    {apiProducts.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} (HPP: {formatIDR(p.costPrice || 0)})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
+                    <option>Memuat Item...</option>
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">

@@ -7,13 +7,15 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, HardHat, LogOut } from 'lucide-react';
 import { NAVIGATION_SECTIONS } from '../config/navigation';
 import type { NavigationItem } from '../config/navigation';
-import type { ViewType } from '../types';
+import type { ViewType, AuthPermission } from '../types';
 
 interface SidebarProps {
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
   onLogout: () => void;
-  userRole: string;
+  userRoleName: string;
+  userRoleCode: string;
+  userPermissions?: AuthPermission[];
 }
 
 const activeClass = 'bg-sky-700 text-white font-medium';
@@ -23,7 +25,7 @@ const isItemActive = (item: NavigationItem, currentView: ViewType) => {
   return item.view === currentView || Boolean(item.activeViews?.includes(currentView));
 };
 
-export default function Sidebar({ currentView, onViewChange, onLogout, userRole }: SidebarProps) {
+export default function Sidebar({ currentView, onViewChange, onLogout, userRoleName, userRoleCode, userPermissions }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     NAVIGATION_SECTIONS.reduce<Record<string, boolean>>((acc, section) => {
       acc[section.id] = true;
@@ -38,7 +40,23 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRole 
     }));
   };
 
+  const hasAccessToModule = (requiredModule?: string) => {
+    if (!requiredModule) return true; // public / global module
+    if (userRoleCode === 'admin') return true; // Admin has full access fallback
+
+    if (!userPermissions || userPermissions.length === 0) {
+      return false; // No permissions loaded, deny access
+    }
+
+    // Check if the user has any permission for the required module
+    return userPermissions.some(p => p.module === requiredModule || p.module === '*');
+  };
+
   const renderNavItem = (item: NavigationItem) => {
+    if (!hasAccessToModule(item.requiredModule)) {
+      return null;
+    }
+
     const Icon = item.icon;
     const active = isItemActive(item, currentView);
 
@@ -71,12 +89,12 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRole 
       <div className="p-4 mx-3 my-3 bg-slate-900/60 rounded-xl border border-slate-800/50 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full bg-slate-800 border border-sky-500/30 flex items-center justify-center font-bold text-sky-300 text-sm">
-            {userRole.substring(0, 2).toUpperCase()}
+            {userRoleName.substring(0, 2).toUpperCase()}
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-200">Akun Aktif</p>
-            <p className="text-[10px] font-mono text-slate-400 mt-0.5 bg-slate-800 rounded px-1.5 py-0.5 inline-block">
-              {userRole}
+            <p className="text-[10px] font-mono text-slate-400 mt-0.5 bg-slate-800 rounded px-1.5 py-0.5 inline-block" title={`Role Code: ${userRoleCode}`}>
+              {userRoleName}
             </p>
           </div>
         </div>
@@ -92,6 +110,13 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRole 
       <div className="flex-1 px-3 space-y-1.5 pb-6">
         {NAVIGATION_SECTIONS.map((section) => {
           const isExpanded = expandedSections[section.id];
+          
+          // Pre-filter items to check if section has any visible items
+          const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule));
+          
+          if (visibleItems.length === 0) {
+             return null;
+          }
 
           return (
             <div key={section.id} className={section.separator ? 'pt-4 border-t border-slate-800/60 mt-4 space-y-1.5' : 'space-y-1'}>
@@ -113,7 +138,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRole 
 
               {(!section.collapsible || isExpanded) && (
                 <div className={section.title ? 'pl-1.5 space-y-1 border-l border-slate-800/60 ml-2 mt-1' : 'space-y-1.5'}>
-                  {section.items.map(renderNavItem)}
+                  {visibleItems.map(renderNavItem)}
                 </div>
               )}
             </div>

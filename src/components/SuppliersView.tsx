@@ -6,6 +6,8 @@
 import React, { useState } from 'react';
 import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from 'lucide-react';
 import { Supplier } from '../types';
+import { authStorage } from '../services/api';
+import { suppliersApi } from '../features/suppliers/api';
 
 interface SuppliersViewProps {
   suppliers: Supplier[];
@@ -17,6 +19,11 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [apiSuppliers, setApiSuppliers] = useState<Supplier[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasBackendSession = Boolean(authStorage.getToken());
 
   // Form states
   const [name, setName] = useState('');
@@ -26,8 +33,37 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
 
+  const activeSuppliers = hasBackendSession ? apiSuppliers : suppliers;
+
+  React.useEffect(() => {
+    if (!hasBackendSession) return;
+
+    let isMounted = true;
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    suppliersApi
+      .getSuppliers()
+      .then((data) => {
+        if (isMounted) setApiSuppliers(data);
+      })
+      .catch((err: Error) => {
+        if (isMounted) {
+          setErrorMessage(err.message);
+          onTriggerNotification(err.message);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasBackendSession]);
+
   // Filter & Search
-  const filteredSuppliers = suppliers.filter((supp) => {
+  const filteredSuppliers = activeSuppliers.filter((supp) => {
     const matchesSearch =
       supp.name.toLowerCase().includes(search.toLowerCase()) ||
       supp.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,14 +73,49 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
     return matchesSearch && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactName || !phone || !city) {
       onTriggerNotification('Gagal menambahkan: Lengkapi kolom wajib isi!');
       return;
     }
 
-    const nextCode = `SPL-00${suppliers.length + 1}`;
+    const nextCode = `SPL-00${activeSuppliers.length + 1}`;
+
+    if (hasBackendSession) {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      try {
+        const newSupp = await suppliersApi.createSupplier({
+          code: nextCode,
+          name,
+          contact_name: contactName,
+          phone,
+          city,
+          address,
+          status: status === 'Aktif' ? 'active' : 'inactive',
+        });
+        setApiSuppliers((prev) => [newSupp, ...prev]);
+        onAddSupplier(newSupp);
+        onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
+        
+        setName('');
+        setContactName('');
+        setPhone('');
+        setCity('');
+        setAddress('');
+        setStatus('Aktif');
+        setShowAddModal(false);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Gagal menyimpan supplier';
+        setErrorMessage(msg);
+        onTriggerNotification(msg);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     const newSupp: Supplier = {
       id: `s${suppliers.length + 1}`,
       code: nextCode,
@@ -116,8 +187,16 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
           <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
             Buku Rekanan Vendor / Supplier Material ({filteredSuppliers.length} Item)
           </h3>
-          <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung</span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            {hasBackendSession ? 'Backend API' : 'Demo Lokal'}
+          </span>
         </div>
+
+        {errorMessage && (
+          <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-[11px] font-semibold text-rose-700">
+            {errorMessage}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left font-sans text-xs border-collapse">
@@ -134,7 +213,13 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredSuppliers.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
+                    Memuat data supplier dari backend...
+                  </td>
+                </tr>
+              ) : filteredSuppliers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-10 text-slate-400">
                     Tidak ada data supplier yang beraliansi dengan kriteria tersebut.
@@ -196,7 +281,7 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
 
         {/* Footer Pagination */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length} item</span>
+          <span>Menampilkan 1-{filteredSuppliers.length} dari {activeSuppliers.length} item</span>
           <div className="flex gap-1">
             <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
             <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
@@ -317,9 +402,10 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  Simpan Vendor
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Vendor'}
                 </button>
               </div>
             </form>

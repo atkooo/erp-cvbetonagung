@@ -1,0 +1,532 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { UserCog, Plus, Search, Trash2, Edit, X, Save, AlertCircle } from 'lucide-react';
+import { authStorage } from '../services/api';
+import { employeesApi } from '../features/employees/api';
+import { Employee } from '../types';
+
+interface EmployeeMasterViewProps {
+  onTriggerNotification: (message: string) => void;
+}
+
+// Initial dummy data for Demo Mode
+const dummyEmployees: Employee[] = [
+  { id: 'emp1', employeeNumber: 'EMP-001', name: 'Pak Slamet', roleName: 'Tukang Cetak', department: 'Workshop', employeeType: 'Borongan', dailyRate: 0, pieceRate: 350, status: 'Aktif', address: 'Jl. Raya Agung', phone: '08123456789', joinDate: '2025-01-15' },
+  { id: 'emp2', employeeNumber: 'EMP-002', name: 'Pak Budi', roleName: 'Tukang Cetak', department: 'Workshop', employeeType: 'Borongan', dailyRate: 0, pieceRate: 300, status: 'Aktif', address: 'Jl. Melati', phone: '08123456790', joinDate: '2025-02-10' },
+  { id: 'emp3', employeeNumber: 'EMP-003', name: 'Pak Roni', roleName: 'Finishing', department: 'Workshop', employeeType: 'Harian', dailyRate: 80000, pieceRate: 0, status: 'Aktif', address: 'Jl. Mawar', phone: '08123456791', joinDate: '2025-03-01' },
+  { id: 'emp4', employeeNumber: 'EMP-004', name: 'Ibu Rina', roleName: 'Admin Gudang', department: 'Gudang', employeeType: 'Tetap', dailyRate: 150000, pieceRate: 0, status: 'Aktif', address: 'Jl. Kamboja', phone: '08123456792', joinDate: '2024-06-20' },
+  { id: 'emp5', employeeNumber: 'EMP-005', name: 'Mas Fajar', roleName: 'Driver', department: 'Logistik', employeeType: 'Kontrak', dailyRate: 100000, pieceRate: 0, status: 'Nonaktif', address: 'Jl. Dahlia', phone: '08123456793', joinDate: '2025-04-12' },
+];
+
+export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMasterViewProps) {
+  const [employees, setEmployees] = useState<Employee[]>(dummyEmployees);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
+  // Form states
+  const [employeeNumber, setEmployeeNumber] = useState('');
+  const [name, setName] = useState('');
+  const [roleName, setRoleName] = useState('');
+  const [department, setDepartment] = useState('');
+  const [employeeType, setEmployeeType] = useState<'Tetap' | 'Kontrak' | 'Borongan' | 'Harian'>('Harian');
+  const [dailyRate, setDailyRate] = useState(0);
+  const [pieceRate, setPieceRate] = useState(0);
+  const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [joinDate, setJoinDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const hasBackendSession = Boolean(authStorage.getToken());
+
+  const fetchEmployees = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    try {
+      const data = await employeesApi.getEmployees();
+      setEmployees(data);
+    } catch (err) {
+      console.error('Failed to load employees', err);
+      onTriggerNotification('Gagal mengambil data karyawan.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [hasBackendSession]);
+
+  const handleOpenAddModal = () => {
+    setEditingEmployee(null);
+    setEmployeeNumber(`EMP-00${employees.length + 1}`);
+    setName('');
+    setRoleName('');
+    setDepartment('');
+    setEmployeeType('Harian');
+    setDailyRate(0);
+    setPieceRate(0);
+    setStatus('Aktif');
+    setAddress('');
+    setPhone('');
+    setJoinDate(new Date().toISOString().split('T')[0]);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (emp: Employee) => {
+    setEditingEmployee(emp);
+    setEmployeeNumber(emp.employeeNumber);
+    setName(emp.name);
+    setRoleName(emp.roleName);
+    setDepartment(emp.department);
+    setEmployeeType(emp.employeeType);
+    setDailyRate(emp.dailyRate);
+    setPieceRate(emp.pieceRate);
+    setStatus(emp.status);
+    setAddress(emp.address);
+    setPhone(emp.phone);
+    setJoinDate(emp.joinDate);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !employeeNumber || !roleName || !department) {
+      onTriggerNotification('Lengkapi formulir data wajib!');
+      return;
+    }
+
+    const payload: Omit<Employee, 'id'> = {
+      employeeNumber,
+      name,
+      roleName,
+      department,
+      employeeType,
+      dailyRate: Number(dailyRate),
+      pieceRate: Number(pieceRate),
+      status,
+      address,
+      phone,
+      joinDate
+    };
+
+    try {
+      if (editingEmployee) {
+        if (hasBackendSession) {
+          const updated = await employeesApi.updateEmployee(editingEmployee.id, payload);
+          setEmployees(prev => prev.map(item => item.id === editingEmployee.id ? updated : item));
+        } else {
+          setEmployees(prev => prev.map(item => item.id === editingEmployee.id ? { ...item, ...payload } : item));
+        }
+        onTriggerNotification(`Berhasil memperbarui data karyawan ${name}`);
+      } else {
+        if (hasBackendSession) {
+          const created = await employeesApi.createEmployee(payload);
+          setEmployees(prev => [created, ...prev]);
+        } else {
+          const mockNew: Employee = {
+            id: `emp-${Date.now()}`,
+            ...payload
+          };
+          setEmployees(prev => [mockNew, ...prev]);
+        }
+        onTriggerNotification(`Karyawan baru ${name} ditambahkan`);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save employee', err);
+      onTriggerNotification('Gagal menyimpan data karyawan.');
+    }
+  };
+
+  const handleDelete = async (id: string, empName: string) => {
+    if (!window.confirm(`Hapus data karyawan ${empName}?`)) return;
+    try {
+      if (hasBackendSession) {
+        await employeesApi.deleteEmployee(id);
+      }
+      setEmployees(prev => prev.filter(item => item.id !== id));
+      onTriggerNotification(`Berhasil menghapus karyawan ${empName}`);
+    } catch (err) {
+      console.error('Failed to delete employee', err);
+      onTriggerNotification('Gagal menghapus data karyawan.');
+    }
+  };
+
+  // Calculations for KPI Cards
+  const totalEmployees = employees.length;
+  const activeCount = employees.filter(e => e.status === 'Aktif').length;
+  const workshopCount = employees.filter(e => e.department.toLowerCase() === 'workshop').length;
+  const boronganCount = employees.filter(e => e.employeeType === 'Borongan').length;
+
+  const filteredEmployees = employees.filter(e =>
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.employeeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.roleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.department.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatIDR = (num: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+  };
+
+  return (
+    <div className="space-y-6 font-sans text-xs">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 rounded-2xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] font-mono tracking-wider text-indigo-400 font-bold uppercase bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-800/50">
+              MODUL ADMINISTRASI SDM
+            </span>
+            <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
+              Master Data Karyawan & Tukang
+              {hasBackendSession && (
+                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-indigo-400/35 bg-indigo-950/50 text-indigo-400 rounded px-1.5 py-0.5 ml-2">
+                  API MODE
+                </span>
+              )}
+            </h1>
+            <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
+              Manajemen komprehensif data staf internal, supir logistik, tenaga harian, serta tim borongan workshop cetakan beton.
+            </p>
+          </div>
+          <button
+            onClick={handleOpenAddModal}
+            className="px-4 py-2 bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 active:scale-95 text-xs text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 shrink-0"
+          >
+            <Plus size={14} />
+            <span>Tambah Karyawan</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Anggota Tim</span>
+            <h4 className="text-lg font-black text-slate-800 mt-1">{totalEmployees} Orang</h4>
+          </div>
+          <div className="p-2.5 bg-slate-50 text-slate-500 rounded-lg">
+            <UserCog size={18} />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Status Aktif</span>
+            <h4 className="text-lg font-black text-emerald-650 text-emerald-600 mt-1">{activeCount} Orang</h4>
+          </div>
+          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
+            <UserCog size={18} />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tim Workshop Cetak</span>
+            <h4 className="text-lg font-black text-indigo-600 mt-1">{workshopCount} Orang</h4>
+          </div>
+          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
+            <UserCog size={18} />
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tenaga Borongan</span>
+            <h4 className="text-lg font-black text-amber-600 mt-1">{boronganCount} Orang</h4>
+          </div>
+          <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
+            <UserCog size={18} />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table Panel */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Search Filter Panel */}
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+            <input
+              type="text"
+              placeholder="Cari nama, kode, jabatan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+            />
+          </div>
+          <div className="text-[10px] text-slate-400 font-mono">
+            Menampilkan {filteredEmployees.length} dari {totalEmployees} entri
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-12 text-center text-slate-400 font-sans">
+            Memuat data karyawan dari backend...
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[900px]">
+              <thead>
+                <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                  <th className="p-3.5 pl-5">Kode Karyawan</th>
+                  <th className="p-3.5">Nama</th>
+                  <th className="p-3.5">Jabatan & Divisi</th>
+                  <th className="p-3.5">Tipe Kontrak</th>
+                  <th className="p-3.5">Tarif Harian</th>
+                  <th className="p-3.5">Tarif Borongan</th>
+                  <th className="p-3.5">No. Telepon</th>
+                  <th className="p-3.5">Tanggal Gabung</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredEmployees.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3.5 pl-5 font-mono font-bold text-indigo-650 text-indigo-600">{emp.employeeNumber}</td>
+                    <td className="p-3.5 font-bold text-slate-800">{emp.name}</td>
+                    <td className="p-3.5">
+                      <div className="font-semibold text-slate-700">{emp.roleName}</div>
+                      <div className="text-[10px] text-slate-400">{emp.department}</div>
+                    </td>
+                    <td className="p-3.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        emp.employeeType === 'Borongan' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        emp.employeeType === 'Harian' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                        emp.employeeType === 'Tetap' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        {emp.employeeType}
+                      </span>
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-600">
+                      {emp.dailyRate > 0 ? formatIDR(emp.dailyRate) : '-'}
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-600">
+                      {emp.pieceRate > 0 ? `${formatIDR(emp.pieceRate)} /pcs` : '-'}
+                    </td>
+                    <td className="p-3.5 text-slate-500 font-mono">{emp.phone || '-'}</td>
+                    <td className="p-3.5 text-slate-500 font-mono">{emp.joinDate || '-'}</td>
+                    <td className="p-3.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        emp.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>
+                        {emp.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 pr-5 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditModal(emp)}
+                          className="p-1 hover:bg-slate-100 border text-slate-500 hover:text-slate-800 rounded transition-all"
+                          title="Edit"
+                        >
+                          <Edit size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp.id, emp.name)}
+                          className="p-1 hover:bg-rose-50 border border-slate-200 hover:border-rose-100 text-slate-400 hover:text-rose-600 rounded transition-all"
+                          title="Hapus"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredEmployees.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="p-8 text-center text-slate-400 font-medium">
+                      Tidak ada data karyawan yang cocok dengan kriteria pencarian.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Dialog Form */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserCog size={16} className="text-indigo-400" />
+                <h3 className="font-bold text-sm">{editingEmployee ? 'Edit Data Karyawan' : 'Tambah Karyawan Baru'}</h3>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleSave} className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Kode Karyawan *</label>
+                  <input
+                    type="text"
+                    required
+                    value={employeeNumber}
+                    onChange={(e) => setEmployeeNumber(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Nama Lengkap *</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Jabatan Pekerjaan *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Tukang Cetak"
+                    value={roleName}
+                    onChange={(e) => setRoleName(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Divisi Departemen *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Workshop"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Tipe Anggota Karyawan</label>
+                  <select
+                    value={employeeType}
+                    onChange={(e: any) => setEmployeeType(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                  >
+                    <option value="Tetap">Tetap (Permanent)</option>
+                    <option value="Kontrak">Kontrak (Contract)</option>
+                    <option value="Harian">Harian (Daily)</option>
+                    <option value="Borongan">Borongan (Piece-rate)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Status Aktivitas</label>
+                  <select
+                    value={status}
+                    onChange={(e: any) => setStatus(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                  >
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Tarif Gaji Harian (Rp)</label>
+                  <input
+                    type="number"
+                    value={dailyRate}
+                    onChange={(e) => setDailyRate(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Tarif Borongan per Pcs (Rp)</label>
+                  <input
+                    type="number"
+                    value={pieceRate}
+                    onChange={(e) => setPieceRate(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">No. Telepon / WA</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-650 text-slate-700">Tanggal Gabung</label>
+                  <input
+                    type="date"
+                    value={joinDate}
+                    onChange={(e) => setJoinDate(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-650 text-slate-700">Alamat Rumah</label>
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 resize-none"
+                />
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 active:scale-95 text-white font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                >
+                  <Save size={14} />
+                  <span>Simpan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

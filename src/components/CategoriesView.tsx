@@ -5,7 +5,9 @@
 
 import React, { useState } from 'react';
 import { FolderTree, Sparkles, LayoutGrid, Plus, Compass, BrickWall, Flower, FileCode, CheckCircle2 } from 'lucide-react';
-import { Product } from '../types';
+import { Product, Category } from '../types';
+import { authStorage } from '../services/api';
+import { productsApi } from '../features/products/api';
 
 interface CategoriesViewProps {
   products: Product[];
@@ -13,6 +15,21 @@ interface CategoriesViewProps {
 }
 
 export default function CategoriesView({ products, onTriggerNotification }: CategoriesViewProps) {
+  const [apiCategories, setApiCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasBackendSession = Boolean(authStorage.getToken());
+
+  React.useEffect(() => {
+    if (!hasBackendSession) return;
+    let isMounted = true;
+    setIsLoading(true);
+    productsApi.getCategories()
+      .then(data => { if (isMounted) setApiCategories(data); })
+      .catch(err => { if (isMounted) onTriggerNotification(err.message); })
+      .finally(() => { if (isMounted) setIsLoading(false); });
+    return () => { isMounted = false; };
+  }, [hasBackendSession]);
+
   // Static categories definition
   const staticCategories = [
     {
@@ -59,6 +76,8 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
     },
   ];
 
+  const activeCategories = hasBackendSession ? apiCategories : staticCategories;
+
   return (
     <div className="space-y-6">
       {/* Visual Banner introduction */}
@@ -83,9 +102,10 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
       </div>
 
       {/* Grid of categories cards */}
+      {isLoading && <p className="text-sm text-slate-500">Memuat kategori dari backend...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {staticCategories.map((cat, idx) => {
-          const IconComponent = cat.icon;
+        {activeCategories.map((cat, idx) => {
+          const IconComponent = (cat as any).icon || FolderTree;
           // Count active products in this category
           const productCount = products.filter((p) => p.category === cat.name).length;
 
@@ -97,11 +117,11 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
               <div className="p-5">
                 {/* Header card info */}
                 <div className="flex items-start justify-between">
-                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${cat.color} text-white shadow`}>
+                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${(cat as any).color || 'from-slate-500 to-slate-600'} text-white shadow`}>
                     <IconComponent size={20} />
                   </div>
                   <span className="text-[10px] font-mono tracking-wider font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                    {cat.tag}
+                    {(cat as any).tag || 'Kategori Baru'}
                   </span>
                 </div>
 

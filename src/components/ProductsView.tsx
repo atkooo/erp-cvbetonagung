@@ -5,7 +5,10 @@
 
 import React, { useState } from 'react';
 import { Package, Search, Plus, Filter, DollarSign, Archive, Eye, Wrench, X, Tag } from 'lucide-react';
-import { Product } from '../types';
+import { Product, Category } from '../types';
+import { authStorage } from '../services/api';
+import { productsApi } from '../features/products/api';
+import { UnitDto } from '../features/products/types';
 
 interface ProductsViewProps {
   products: Product[];
@@ -30,21 +33,55 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
   const [location, setLocation] = useState('Gudang Utama');
   const [minStock, setMinStock] = useState(10);
 
-  const categories = [
-    'Kubah Masjid',
-    'Lisplang',
-    'Roster',
-    'Ornamen Beton',
-    'Tanaman',
-    'Produk Custom',
-  ];
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<UnitDto[]>([]);
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasBackendSession = Boolean(authStorage.getToken());
+
+  const activeProducts = hasBackendSession ? apiProducts : products;
+
+  React.useEffect(() => {
+    if (!hasBackendSession) return;
+    let isMounted = true;
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    Promise.all([productsApi.getProducts(), productsApi.getCategories(), productsApi.getUnits()])
+      .then(([productsData, catsData, unitsData]) => {
+        if (isMounted) {
+          setApiProducts(productsData);
+          setCategories(catsData);
+          setUnits(unitsData);
+          if (catsData.length > 0) {
+            setCategory(catsData[0].id); // Select first category by default for new product
+          }
+          if (unitsData.length > 0) {
+            setUnit(unitsData[0].id); // Select first unit by default
+          }
+        }
+      })
+      .catch((err: Error) => {
+        if (isMounted) {
+          setErrorMessage(err.message);
+          onTriggerNotification(err.message);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [hasBackendSession]);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
   // Filter products
-  const filteredProducts = products.filter((prod) => {
+  const filteredProducts = activeProducts.filter((prod) => {
     const matchesSearch =
       prod.name.toLowerCase().includes(search.toLowerCase()) ||
       prod.sku.toLowerCase().includes(search.toLowerCase());
@@ -58,10 +95,38 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sku || !name || !costPrice || !sellingPrice) {
       onTriggerNotification('Gagal menyimpan: Harap lengkapi semua kolom produk!');
+      return;
+    }
+
+    if (hasBackendSession) {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      try {
+        const newProd = await productsApi.createProduct({
+          sku,
+          name,
+          category_id: category, // The category select now holds the ID when backend is active
+          unit_id: hasBackendSession ? unit : 'default',
+          cost_price: costPrice,
+          selling_price: sellingPrice,
+          min_stock: minStock,
+          status: 'active',
+        });
+        setApiProducts((prev) => [newProd, ...prev]);
+        onAddProduct(newProd);
+        onTriggerNotification(`Sukses menambahkan Produk Baru: ${name} SKU [${sku}]`);
+        setShowAddModal(false);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Gagal menyimpan produk';
+        setErrorMessage(msg);
+        onTriggerNotification(msg);
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -127,9 +192,11 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
                 className="text-[11px] font-sans text-slate-600 bg-transparent py-1 focus:outline-none focus:ring-0 cursor-pointer"
               >
                 <option value="All">Semua Kategori</option>
-                {categories.map((cat, idx) => (
-                  <option key={idx} value={cat}>{cat}</option>
-                ))}
+                {hasBackendSession 
+                  ? categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)
+                  : ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'].map((cat, idx) => (
+                    <option key={idx} value={cat}>{cat}</option>
+                  ))}
               </select>
             </div>
 
@@ -164,8 +231,16 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
           <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
             Katalog Umum & Daftar Item Pabrik CV Beton Agung ({filteredProducts.length} Item)
           </h3>
-          <span className="text-[10px] text-slate-400 font-mono">Real-time Catalog</span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            {hasBackendSession ? 'Backend API' : 'Demo Lokal'}
+          </span>
         </div>
+
+        {errorMessage && (
+          <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-[11px] font-semibold text-rose-700">
+            {errorMessage}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left font-sans text-xs border-collapse">
@@ -183,7 +258,13 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredProducts.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-slate-400 font-medium">
+                    Memuat data produk dari backend...
+                  </td>
+                </tr>
+              ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-slate-400 font-medium">
                     Tidak ditemukan kecocokan produk untuk kata kunci pencarian tersebut.
@@ -245,7 +326,7 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
 
         {/* Catalog pagination summary */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[11px]">
-          <span>Menampilkan {filteredProducts.length} dari total {products.length} SKU katalog terdaftar</span>
+          <span>Menampilkan {filteredProducts.length} dari total {activeProducts.length} SKU katalog terdaftar</span>
           <span className="font-medium text-slate-400">CV Beton Agung Admin Desk</span>
         </div>
       </div>
@@ -286,9 +367,11 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
                   >
-                    {categories.map((cat, idx) => (
-                      <option key={idx} value={cat}>{cat}</option>
-                    ))}
+                    {hasBackendSession
+                      ? categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)
+                      : ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'].map((cat, idx) => (
+                        <option key={idx} value={cat}>{cat}</option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -340,14 +423,24 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Satuan</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Pcs/Set/Meter"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
+                  {hasBackendSession ? (
+                    <select
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    >
+                      {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Pcs/Set/Meter"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    />
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Batas Minim Alaram</label>
@@ -381,9 +474,10 @@ export default function ProductsView({ products, onAddProduct, onTriggerNotifica
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  Simpan SKU Baru
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan SKU Baru'}
                 </button>
               </div>
             </form>

@@ -17,6 +17,9 @@ import {
   X
 } from 'lucide-react';
 import { Product, StockMovement } from '../types';
+import { authStorage } from '../services/api';
+import { productsApi } from '../features/products/api';
+import { inventoryApi } from '../features/inventory/api';
 
 interface InventoryViewProps {
   products: Product[];
@@ -61,6 +64,51 @@ export default function InventoryView({
 
   const categories = ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'];
 
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [apiMovements, setApiMovements] = useState<StockMovement[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasBackendSession = Boolean(authStorage.getToken());
+
+  const activeProducts = hasBackendSession ? apiProducts : products;
+  const activeMovements = hasBackendSession ? apiMovements : stockMovements;
+
+  const loadData = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const [prods, stocks, movs] = await Promise.all([
+        productsApi.getProducts(),
+        inventoryApi.getProductStocks(),
+        inventoryApi.getStockMovements(),
+      ]);
+
+      const combinedProds = prods.map(p => {
+        const stockData = stocks.find(s => s.product?.sku === p.sku);
+        return {
+          ...p,
+          stock: stockData ? Number(stockData.quantity) : 0,
+          location: stockData?.location?.name || 'Gudang Utama',
+        };
+      });
+
+      setApiProducts(combinedProds);
+      setApiMovements(movs);
+      
+      if (combinedProds.length > 0 && !inSku) setInSku(combinedProds[0].sku);
+      if (combinedProds.length > 0 && !outSku) setOutSku(combinedProds[0].sku);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal memuat data inventory');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadData();
+  }, [hasBackendSession]);
+
   // Timestamps helper
   const getFormattedDateTime = () => {
     const d = new Date();
@@ -68,31 +116,47 @@ export default function InventoryView({
   };
 
   // Submit Incoming Goods
-  const handleInwardSubmit = (e: React.FormEvent) => {
+  const handleInwardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inSku || inQty <= 0 || !inDoc) {
       onTriggerNotification('Gagal: Kolom SKU, Jumlah, dan Dokumen Referensi harus diisi!');
       return;
     }
 
-    const matchedProd = products.find(p => p.sku === inSku);
+    const matchedProd = activeProducts.find(p => p.sku === inSku);
     if (!matchedProd) return;
 
-    const newMov: StockMovement = {
-      id: `m-in-${Date.now()}`,
-      sku: inSku,
-      productName: matchedProd.name,
-      type: 'Masuk',
-      quantity: inQty,
-      referenceDoc: inDoc,
-      date: getFormattedDateTime(),
-      handler: inHandler,
-      notes: inNotes || 'Penerimaan bahan masuk gudang',
-    };
-
-    onAddStockMovement(newMov);
-    onUpdateProductStock(inSku, inQty);
-    onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}]`);
+    if (hasBackendSession) {
+      try {
+        await inventoryApi.receiveGoods({
+          product_id: matchedProd.id,
+          quantity: inQty,
+          location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+          reference_type: 'PO',
+          reference_number: inDoc,
+          notes: inNotes,
+        });
+        onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}] via API`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerima barang');
+      }
+    } else {
+      const newMov: StockMovement = {
+        id: `m-in-${Date.now()}`,
+        sku: inSku,
+        productName: matchedProd.name,
+        type: 'Masuk',
+        quantity: inQty,
+        referenceDoc: inDoc,
+        date: getFormattedDateTime(),
+        handler: inHandler,
+        notes: inNotes || 'Penerimaan bahan masuk gudang',
+      };
+      onAddStockMovement(newMov);
+      onUpdateProductStock(inSku, inQty);
+      onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}]`);
+    }
 
     // Reset Form
     setInQty(0);
@@ -102,14 +166,14 @@ export default function InventoryView({
   };
 
   // Submit Outgoing Goods
-  const handleOutwardSubmit = (e: React.FormEvent) => {
+  const handleOutwardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!outSku || outQty <= 0 || !outDoc) {
       onTriggerNotification('Gagal: Kolom SKU, Jumlah, dan Dokumen Referensi harus diisi!');
       return;
     }
 
-    const matchedProd = products.find(p => p.sku === outSku);
+    const matchedProd = activeProducts.find(p => p.sku === outSku);
     if (!matchedProd) return;
 
     if (matchedProd.stock < outQty) {
@@ -117,21 +181,37 @@ export default function InventoryView({
       return;
     }
 
-    const newMov: StockMovement = {
-      id: `m-out-${Date.now()}`,
-      sku: outSku,
-      productName: matchedProd.name,
-      type: 'Keluar',
-      quantity: outQty,
-      referenceDoc: outDoc,
-      date: getFormattedDateTime(),
-      handler: outHandler,
-      notes: outNotes || 'Pengeluaran logistik proyek',
-    };
-
-    onAddStockMovement(newMov);
-    onUpdateProductStock(outSku, -outQty);
-    onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}]`);
+    if (hasBackendSession) {
+      try {
+        await inventoryApi.issueGoods({
+          product_id: matchedProd.id,
+          quantity: outQty,
+          location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+          reference_type: 'SO',
+          reference_number: outDoc,
+          notes: outNotes,
+        });
+        onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}] via API`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal mengeluarkan barang');
+      }
+    } else {
+      const newMov: StockMovement = {
+        id: `m-out-${Date.now()}`,
+        sku: outSku,
+        productName: matchedProd.name,
+        type: 'Keluar',
+        quantity: outQty,
+        referenceDoc: outDoc,
+        date: getFormattedDateTime(),
+        handler: outHandler,
+        notes: outNotes || 'Pengeluaran logistik proyek',
+      };
+      onAddStockMovement(newMov);
+      onUpdateProductStock(outSku, -outQty);
+      onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}]`);
+    }
 
     // Reset Form
     setOutQty(0);
@@ -196,10 +276,16 @@ export default function InventoryView({
         )}
         {activeTab === 'stok' && (
           <div className="text-[10px] font-mono text-slate-400 bg-slate-100 p-2 rounded-lg border border-slate-200 text-center truncate max-w-[250px]">
-            Total Katalog: <strong className="text-slate-700">{products.length} SKU</strong>
+            {hasBackendSession ? 'API Mode' : 'Lokal Mode'} | Total Katalog: <strong className="text-slate-700">{activeProducts.length} SKU</strong>
           </div>
         )}
       </div>
+
+      {errorMessage && (
+        <div className="p-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold">
+          {errorMessage}
+        </div>
+      )}
 
       {/* CONTENT SWITCHER CARD */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -220,7 +306,9 @@ export default function InventoryView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {products
+                {isLoading ? (
+                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
+                ) : activeProducts
                   .filter((p) => {
                     const matchSrc = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
                     const matchStt = stockStatusFilter === 'All' || p.status === stockStatusFilter;
@@ -290,7 +378,9 @@ export default function InventoryView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {stockMovements
+                {isLoading ? (
+                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
+                ) : activeMovements
                   .filter(m => m.type === 'Masuk' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
                   .map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50/40">
@@ -331,7 +421,9 @@ export default function InventoryView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {stockMovements
+                {isLoading ? (
+                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
+                ) : activeMovements
                   .filter(m => m.type === 'Keluar' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
                   .map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50/40">
@@ -364,7 +456,9 @@ export default function InventoryView({
             </h4>
 
             <div className="relative border-l border-slate-200 pl-6 ml-3 space-y-6">
-              {stockMovements
+              {isLoading ? (
+                <p className="text-slate-400 text-sm py-4">Memuat riwayat dari backend...</p>
+              ) : activeMovements
                 .filter(m => m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()))
                 .map((m, idx) => (
                   <div key={idx} className="relative text-xs">
@@ -431,7 +525,7 @@ export default function InventoryView({
                   onChange={(e) => setInSku(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
-                  {products.map((p, idx) => (
+                  {activeProducts.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name}</option>
                   ))}
                 </select>
@@ -515,7 +609,7 @@ export default function InventoryView({
                   onChange={(e) => setOutSku(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
-                  {products.map((p, idx) => (
+                  {activeProducts.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name} (Sisa: {p.stock})</option>
                   ))}
                 </select>

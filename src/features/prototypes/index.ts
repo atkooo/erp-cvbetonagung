@@ -6,12 +6,8 @@
 export {
   ApprovalWorkflowView,
   AuditLogView,
-  BomCostingView,
-  DeliveryOrdersView,
   DocumentExportsView,
-  EmployeeMasterView,
   MultiWarehouseView,
-  ProductionWorkOrderView,
   ProjectBudgetingView,
   ReceivablesPayablesView,
   RemindersView,

@@ -125,6 +125,18 @@ export const apiClient = {
 
     return (await response.json()) as T;
   },
+  async get<T>(path: string, options?: RequestInit) {
+    return apiClient.request<T>(path, { ...options, method: 'GET' });
+  },
+  async post<T>(path: string, body?: any, options?: RequestInit) {
+    return apiClient.request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body) });
+  },
+  async put<T>(path: string, body?: any, options?: RequestInit) {
+    return apiClient.request<T>(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
+  },
+  async delete<T>(path: string, options?: RequestInit) {
+    return apiClient.request<T>(path, { ...options, method: 'DELETE' });
+  },
 };
 
 export const authApi = {

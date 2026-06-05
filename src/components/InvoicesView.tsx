@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign } from 'lucide-react';
 import { Invoice, ViewType } from '../types';
+import { authStorage } from '../services/api';
+import { financeApi } from '../features/finance/api';
 
 interface InvoicesViewProps {
   invoices: Invoice[];
@@ -18,11 +20,35 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
+  // API states
+  const [apiInvoices, setApiInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const hasBackendSession = Boolean(authStorage.getToken());
+  const activeInvoices = hasBackendSession ? apiInvoices : invoices;
+
+  const loadData = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    try {
+      const data = await financeApi.getInvoices();
+      setApiInvoices(data);
+    } catch (err) {
+      console.error('Failed to load invoices', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [hasBackendSession]);
+
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const filteredInvoices = invoices.filter((inv) => {
+  const filteredInvoices = activeInvoices.filter((inv) => {
     const matchesSearch =
       inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
       inv.customerName.toLowerCase().includes(search.toLowerCase());
@@ -35,7 +61,12 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
       {/* Overview Banner */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex-1">
-          <h3 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight">E-Faktur / Invoice Penjualan</h3>
+          <h3 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
+            E-Faktur / Invoice Penjualan
+            <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
+              {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+            </span>
+          </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa piutang, dan status jatuh tempo.</p>
         </div>
         <button
@@ -60,7 +91,7 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari invoice saku atau nama pembeli..."
+            placeholder="Cari invoice atau nama pembeli..."
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs"
           />
         </div>
@@ -98,7 +129,13 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredInvoices.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                    Memuat data faktur dari backend...
+                  </td>
+                </tr>
+              ) : filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-slate-400">
                     Tidak ditemukan kecocokan dokumen invoice.
@@ -216,7 +253,7 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
                 onClick={() => {
                   onTriggerNotification(`Mencetak invoice slip ${selectedInvoice.invoiceNumber}...`);
                 }}
-                className="px-3.5 py-1.5 border hover:bg-slate-100 rounded-lg flex items-center gap-1.5 text-slate-600"
+                className="px-3.5 py-1.5 border hover:bg-slate-100 rounded-lg flex items-center gap-1.5 text-slate-650"
               >
                 <Printer size={13} />
                 <span>Cetak / Cetak PDF</span>

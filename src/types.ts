@@ -37,6 +37,15 @@ export interface Product {
   location: string;
   minStock: number;
   status: 'Aman' | 'Menipis' | 'Habis';
+  qrValue?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  itemCount: number;
+  status: 'active' | 'inactive';
 }
 
 export interface StockMovement {
@@ -110,6 +119,7 @@ export interface PurchaseOrder {
   total: number;
   status: 'Draft' | 'Dipesan' | 'Diterima Sebagian' | 'Diterima Penuh' | 'Dibatalkan';
   items: {
+    id?: string;
     productName: string;
     quantity: number;
     price: number;
@@ -148,6 +158,21 @@ export interface Project {
   }[];
 }
 
+export interface Employee {
+  id: string;
+  employeeNumber: string;
+  name: string;
+  roleName: string;
+  department: string;
+  phone: string;
+  address: string;
+  joinDate: string;
+  employeeType: 'Tetap' | 'Kontrak' | 'Borongan' | 'Harian';
+  dailyRate: number;
+  pieceRate: number;
+  status: 'Aktif' | 'Nonaktif';
+}
+
 export interface QrProduct {
   sku: string;
   name: string;
@@ -155,10 +180,102 @@ export interface QrProduct {
   qrValue: string;
 }
 
+export interface AuthPermission {
+  id: string;
+  module: string;
+  action: string;
+  pivot?: {
+    access_level: string;
+  };
+}
+
+export interface DeliveryOrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSku: string;
+  quantity: number;
+}
+
+export interface DeliveryOrder {
+  id: string;
+  deliveryNumber: string;
+  salesOrderId: string;
+  salesOrderNumber?: string;
+  customerId: string;
+  customerName?: string;
+  deliveryDate: string;
+  receivedAt?: string;
+  receiverName?: string;
+  status: 'Siap Muat' | 'Dikirim' | 'Diterima' | 'Dibatalkan';
+  notes?: string;
+  items?: DeliveryOrderItem[];
+}
+
+export interface ProductionWorkLog {
+  id: string;
+  workOrderId: string;
+  employeeId?: string;
+  employeeName?: string;
+  workDate: string;
+  stage: string;
+  madeQty: number;
+  rejectQty: number;
+  okQty: number;
+  pieceRate: number;
+  notes?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+}
+
+export interface ProductionWorkOrder {
+  id: string;
+  workOrderNumber: string;
+  productId: string;
+  productName?: string;
+  productSku?: string;
+  salesOrderId?: string;
+  salesOrderNumber?: string;
+  projectId?: string;
+  projectName?: string;
+  sourceLabel?: string;
+  stage: string;
+  targetQty: number;
+  completedQty: number;
+  progress: number;
+  dueDate?: string;
+  logs?: ProductionWorkLog[];
+}
+
+export interface BomItem {
+  id: string;
+  bomId: string;
+  componentProductId?: string;
+  componentSku?: string;
+  componentName?: string;
+  quantity: number;
+  unitCode?: string;
+  unitCost: number;
+  subtotal: number;
+}
+
+export interface Bom {
+  id: string;
+  productId: string;
+  productName?: string;
+  productSku?: string;
+  version: string;
+  effectiveFrom?: string;
+  status: 'active' | 'inactive';
+  totalCost: number;
+  items?: BomItem[];
+}
+
 export interface AuthRole {
   id: string;
   code: string;
   name: string;
+  permissions?: AuthPermission[];
 }
 
 export interface AuthUser {

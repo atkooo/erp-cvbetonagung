@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileSpreadsheet,
   FileCheck,
@@ -19,12 +19,16 @@ import {
   Building2,
   Calendar
 } from 'lucide-react';
-import { Quotation, SalesOrder, ViewType } from '../types';
+import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
+import { authStorage } from '../services/api';
+import { salesApi } from '../features/sales/api';
+import { customersApi } from '../features/customers/api';
+import { productsApi } from '../features/products/api';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
-  quotations: Quotation[];
-  salesOrders: SalesOrder[];
+  quotations: Quotation[]; // fallback dummy
+  salesOrders: SalesOrder[]; // fallback dummy
   onAddQuotation: (q: Quotation) => void;
   onAddSalesOrder: (so: SalesOrder) => void;
   onTriggerNotification: (message: string) => void;
@@ -42,23 +46,66 @@ export default function SalesView({
 }: SalesViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [selectedDoc, setSelectedDoc] = useState<any>(null); // For detail view drawer
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
+  // API states
+  const [apiQuotations, setApiQuotations] = useState<Quotation[]>([]);
+  const [apiSalesOrders, setApiSalesOrders] = useState<SalesOrder[]>([]);
+  const [apiCustomers, setApiCustomers] = useState<Customer[]>([]);
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const hasBackendSession = Boolean(authStorage.getToken());
+
+  // Active data sources
+  const activeQuotations = hasBackendSession ? apiQuotations : quotations;
+  const activeSalesOrders = hasBackendSession ? apiSalesOrders : salesOrders;
+  const isQuotation = type === 'quotation';
+  const dataList = isQuotation ? activeQuotations : activeSalesOrders;
+
   // Form states to create a quick document
-  const [custName, setCustName] = useState('Yayasan Al-Ikhlas');
-  const [itemName, setItemName] = useState('Roster Beton Minimalis Motif Kotak Silang');
+  const [custId, setCustId] = useState('');
+  const [productId, setProductId] = useState('');
   const [itemQty, setItemQty] = useState(1);
-  const [itemPrice, setItemPrice] = useState(15000);
+  const [itemPrice, setItemPrice] = useState(0);
+
+  const loadData = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    try {
+      const [qs, sos, custsRes, prods] = await Promise.all([
+        salesApi.getQuotations(),
+        salesApi.getSalesOrders(),
+        customersApi.listCustomers(),
+        productsApi.getProducts()
+      ]);
+      setApiQuotations(qs);
+      setApiSalesOrders(sos);
+      setApiCustomers(custsRes.customers);
+      setApiProducts(prods);
+
+      if (custsRes.customers.length > 0 && !custId) setCustId(custsRes.customers[0].id);
+      if (prods.length > 0 && !productId) {
+        setProductId(prods[0].id);
+        setItemPrice(prods[0].sellingPrice || 0);
+      }
+    } catch (err) {
+      console.error('Failed to load sales data', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [hasBackendSession, type]);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
   // Filter logic
-  const isQuotation = type === 'quotation';
-  const dataList = isQuotation ? quotations : salesOrders;
-
   const filteredDocs = dataList.filter((doc: any) => {
     const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
     const matchesSearch =
@@ -69,48 +116,107 @@ export default function SalesView({
     return matchesSearch && matchesStatus;
   });
 
-  // Handle mock create document
-  const handleCreateDocument = (e: React.FormEvent) => {
+  // Handle create document
+  const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (itemQty <= 0 || itemPrice <= 0) {
       onTriggerNotification('Gagal: Kuantitas dan harga produk harus positif!');
       return;
     }
 
-    const totalDoc = itemQty * itemPrice;
-    const d = new Date();
-    const todayStr = d.toISOString().split('T')[0];
+    if (hasBackendSession) {
+      try {
+        const d = new Date();
+        const todayStr = d.toISOString().split('T')[0];
+        const validUntil = new Date(d);
+        validUntil.setDate(d.getDate() + 14); // 14 days valid
 
-    if (isQuotation) {
-      const nextQuoteNum = `Q-2026-05-00${quotations.length + 4}`;
-      const newQuote: Quotation = {
-        id: `q${quotations.length + 4}`,
-        quoteNumber: nextQuoteNum,
-        customerName: custName,
-        date: todayStr,
-        validUntil: '2026-06-30',
-        total: totalDoc,
-        status: 'Draft',
-        items: [{ productName: itemName, quantity: itemQty, price: itemPrice }],
-      };
-      onAddQuotation(newQuote);
-      onTriggerNotification(`Sukses menerbitkan Draft Quotation ${nextQuoteNum}`);
+        if (isQuotation) {
+          await salesApi.createQuotation({
+            customer_id: custId,
+            quotation_date: todayStr,
+            valid_until: validUntil.toISOString().split('T')[0],
+            items: [
+              {
+                product_id: productId,
+                quantity: itemQty,
+                unit_price: itemPrice,
+              }
+            ]
+          });
+          onTriggerNotification(`Sukses menerbitkan Quotation via API`);
+        } else {
+          await salesApi.createSalesOrder({
+            customer_id: custId,
+            order_date: todayStr,
+            items: [
+              {
+                product_id: productId,
+                quantity: itemQty,
+                unit_price: itemPrice,
+              }
+            ]
+          });
+          onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
+        }
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
+      }
     } else {
-      const nextSONum = `SO-2026-05-0${salesOrders.length + 91}`;
-      const newSO: SalesOrder = {
-        id: `so${salesOrders.length + 91}`,
-        orderNumber: nextSONum,
-        customerName: custName,
-        date: todayStr,
-        total: totalDoc,
-        status: 'Draft',
-        items: [{ productName: itemName, quantity: itemQty, price: itemPrice }],
-      };
-      onAddSalesOrder(newSO);
-      onTriggerNotification(`Sukses menerbitkan Draft Sales Order ${nextSONum}`);
+      // Dummy logic
+      const selectedProd = apiProducts.find(p => p.id === productId) || { name: 'Dummy Product' };
+      const selectedCust = apiCustomers.find(c => c.id === custId) || { name: 'Dummy Customer' };
+      const totalDoc = itemQty * itemPrice;
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      if (isQuotation) {
+        const nextQuoteNum = `Q-2026-05-00${quotations.length + 4}`;
+        const newQuote: Quotation = {
+          id: `q${quotations.length + 4}`,
+          quoteNumber: nextQuoteNum,
+          customerName: selectedCust.name,
+          date: todayStr,
+          validUntil: '2026-06-30',
+          total: totalDoc,
+          status: 'Draft',
+          items: [{ productName: selectedProd.name, quantity: itemQty, price: itemPrice }],
+        };
+        onAddQuotation(newQuote);
+        onTriggerNotification(`Sukses menerbitkan Draft Quotation ${nextQuoteNum}`);
+      } else {
+        const nextSONum = `SO-2026-05-0${salesOrders.length + 91}`;
+        const newSO: SalesOrder = {
+          id: `so${salesOrders.length + 91}`,
+          orderNumber: nextSONum,
+          customerName: selectedCust.name,
+          date: todayStr,
+          total: totalDoc,
+          status: 'Draft',
+          items: [{ productName: selectedProd.name, quantity: itemQty, price: itemPrice }],
+        };
+        onAddSalesOrder(newSO);
+        onTriggerNotification(`Sukses menerbitkan Draft Sales Order ${nextSONum}`);
+      }
     }
 
     setShowAddForm(false);
+  };
+
+  const handleApproveQuotation = async (docId: string, quoteNum: string) => {
+    if (hasBackendSession) {
+      try {
+        await salesApi.approveQuotation(docId);
+        onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO)`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve quotation');
+      }
+    } else {
+      onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO) terekam`);
+    }
+    onNavigate('sales-orders');
+    setSelectedDoc(null);
   };
 
   return (
@@ -127,6 +233,9 @@ export default function SalesView({
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
               {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
+              <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
+                {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+              </span>
             </p>
           </div>
         </div>
@@ -198,7 +307,11 @@ export default function SalesView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredDocs.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-slate-400 font-medium">Memuat data dari backend...</td>
+                </tr>
+              ) : filteredDocs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400 font-medium">
                     Tidak ada dokumen transaksi terekam saat ini.
@@ -326,13 +439,9 @@ export default function SalesView({
                   <span>Cetak PDF</span>
                 </button>
 
-                {isQuotation && selectedDoc.status === 'Terkirim' ? (
+                {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
                   <button
-                    onClick={() => {
-                      onNavigate('sales-orders');
-                      onTriggerNotification(`Sukses mengonversi Quotation ${selectedDoc.quoteNumber} menjadi Sales Order (SO) terekam`);
-                      setSelectedDoc(null);
-                    }}
+                    onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber)}
                     className="w-full py-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 hover:opacity-90 text-slate-950 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5"
                   >
                     <FileCheck size={13} className="text-slate-950" />
@@ -381,42 +490,47 @@ export default function SalesView({
             <form onSubmit={handleCreateDocument} className="p-5 space-y-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
-                <select
-                  value={custName}
-                  onChange={(e) => setCustName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                >
-                  <option value="Yayasan Al-Ikhlas">Yayasan Al-Ikhlas (Sidoarjo)</option>
-                  <option value="Takmir Masjid Baiturrahman">Takmir Masjid Baiturrahman (Mojokerto)</option>
-                  <option value="PT Maju Konstruksi Utama">PT Maju Konstruksi Utama (Gresik)</option>
-                  <option value="Bapak Hermawan">Bapak Hermawan (Malang)</option>
-                </select>
+                {apiCustomers.length > 0 ? (
+                  <select
+                    value={custId}
+                    onChange={(e) => setCustId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
+                  >
+                    {apiCustomers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
+                    <option>Memuat Customer...</option>
+                  </select>
+                )}
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk Borongan</label>
-                <select
-                  value={itemName}
-                  onChange={(e) => {
-                    setItemName(e.target.value);
-                    if (e.target.value.includes('Kubah')) {
-                      setItemPrice(75000000);
-                      setItemQty(1);
-                    } else if (e.target.value.includes('Lisplang')) {
-                      setItemPrice(75000);
-                      setItemQty(100);
-                    } else {
-                      setItemPrice(15000);
-                      setItemQty(500);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded"
-                >
-                  <option value="Kubah Masjid GRC Motif Madinah D-6m">Kubah Masjid GRC Motif Madinah D-6m (Rp 75,000,000)</option>
-                  <option value="Lisplang Beton Klasik Lebar 30cm">Lisplang Beton Klasik Lebar 30cm (Rp 75,000)</option>
-                  <option value="Roster Beton Minimalis Motif Kotak Silang">Roster Beton Minimalis Motif Kotak (Rp 15,000)</option>
-                  <option value="Ornamen Mihrab Kaligrafi GRC">Ornamen Mihrab Kaligrafi GRC (Rp 14,000,000)</option>
-                </select>
+                {apiProducts.length > 0 ? (
+                  <select
+                    value={productId}
+                    onChange={(e) => {
+                      setProductId(e.target.value);
+                      const selProd = apiProducts.find(p => p.id === e.target.value);
+                      if (selProd) {
+                        setItemPrice(selProd.sellingPrice || 0);
+                        setItemQty(1);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded"
+                  >
+                    {apiProducts.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({formatIDR(p.sellingPrice)})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
+                    <option>Memuat Produk...</option>
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">

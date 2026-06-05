@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreditCard, Search, Filter, Check, ShieldCheck, HelpCircle, XCircle, DollarSign } from 'lucide-react';
 import { Payment } from '../types';
+import { authStorage } from '../services/api';
+import { financeApi } from '../features/finance/api';
 
 interface PaymentsViewProps {
   payments: Payment[];
@@ -17,11 +19,35 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('All');
 
+  // API states
+  const [apiPayments, setApiPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const hasBackendSession = Boolean(authStorage.getToken());
+  const activePayments = hasBackendSession ? apiPayments : payments;
+
+  const loadData = async () => {
+    if (!hasBackendSession) return;
+    setIsLoading(true);
+    try {
+      const data = await financeApi.getPayments();
+      setApiPayments(data);
+    } catch (err) {
+      console.error('Failed to load payments', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [hasBackendSession]);
+
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const filteredPayments = payments.filter((pay) => {
+  const filteredPayments = activePayments.filter((pay) => {
     const matchesSearch =
       pay.paymentNumber.toLowerCase().includes(search.toLowerCase()) ||
       pay.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -29,6 +55,21 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
     const matchesMethod = methodFilter === 'All' || pay.method === methodFilter;
     return matchesSearch && matchesMethod;
   });
+
+  const handleVerify = async (payId: string, payNum: string, customer: string, amount: number) => {
+    if (hasBackendSession) {
+      try {
+        await financeApi.verifyPayment(payId);
+        onTriggerNotification(`Berhasil memverifikasi setoran BANK dari ${customer} sebesar ${formatIDR(amount)}`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal verifikasi pembayaran');
+      }
+    } else {
+      onVerifyPayment(payId);
+      onTriggerNotification(`Berhasil memverifikasi setoran BANK dari ${customer} sebesar ${formatIDR(amount)}`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -38,7 +79,7 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
         <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
           <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Nominal Cash (Tunai)</span>
           <h4 className="text-base font-black text-slate-800 font-mono mt-1.5">
-            {formatIDR(payments.filter(p => p.method === 'Cash' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
+            {formatIDR(activePayments.filter(p => p.method === 'Cash' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
           </h4>
           <span className="text-[9px] text-slate-400 block mt-2">Logistik pembayaran manual di workshop</span>
         </div>
@@ -47,7 +88,7 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
         <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
           <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Transfer Rek Bank</span>
           <h4 className="text-base font-black text-cyan-705 font-mono mt-1.5 text-cyan-600">
-            {formatIDR(payments.filter(p => p.method === 'Transfer' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
+            {formatIDR(activePayments.filter(p => p.method === 'Transfer' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
           </h4>
           <span className="text-[9px] text-slate-400 block mt-2">BCA Rekening Giro CV Beton Agung</span>
         </div>
@@ -56,7 +97,7 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
         <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
           <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total E-Wallet QRIS Digital</span>
           <h4 className="text-base font-black text-indigo-750 font-mono mt-1.5 text-indigo-600">
-            {formatIDR(payments.filter(p => p.method === 'QRIS' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
+            {formatIDR(activePayments.filter(p => p.method === 'QRIS' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
           </h4>
           <span className="text-[9px] text-slate-400 block mt-2">QRIS Standar Merchant Bank Mandiri</span>
         </div>
@@ -95,8 +136,11 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
       {/* Main Payment receipts list Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
+          <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-2">
             Log Inventaris Kas Masuk / Penerimaan Termin ({filteredPayments.length} Pembayaran)
+            <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
+              {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+            </span>
           </h3>
           <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung Audited Cash</span>
         </div>
@@ -116,7 +160,13 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredPayments.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                    Memuat log kas masuk dari backend...
+                  </td>
+                </tr>
+              ) : filteredPayments.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-slate-400">
                     Tidak ditemukan data setoran tunai atau pemindahbukuan.
@@ -152,10 +202,7 @@ export default function PaymentsView({ payments, onVerifyPayment, onTriggerNotif
                     <td className="p-3.5 pr-5 text-right">
                       {pay.status === 'Pending' ? (
                         <button
-                          onClick={() => {
-                            onVerifyPayment(pay.id);
-                            onTriggerNotification(`Berhasil memverifikasi setoran BANK dari ${pay.customerName} sebesar ${formatIDR(pay.amount)}`);
-                          }}
+                          onClick={() => handleVerify(pay.id, pay.paymentNumber, pay.customerName, pay.amount)}
                           className="px-2.5 py-1 text-[10px] bg-slate-900 hover:bg-slate-800 text-white font-bold rounded flex items-center gap-1 ml-auto"
                         >
                           <Check size={11} />

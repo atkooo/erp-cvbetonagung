@@ -46,6 +46,7 @@ export interface NavigationItem {
   label: string;
   icon: LucideIcon;
   activeViews?: ViewType[];
+  requiredModule?: string;
 }
 
 export interface NavigationSection {
@@ -95,6 +96,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   settings: 'Pengaturan Sistem ERP',
 };
 
+// Dynamic RBAC: Backend Modules -> users, roles, employees, customers, suppliers, products, inventory, sales, purchasing, projects, finance, production, approvals, reports, settings
 export const NAVIGATION_SECTIONS: NavigationSection[] = [
   {
     id: 'core',
@@ -107,11 +109,11 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Master Data',
     collapsible: true,
     items: [
-      { view: 'customers', label: 'Customer', icon: Users },
-      { view: 'employees', label: 'Karyawan', icon: UserCog },
-      { view: 'suppliers', label: 'Supplier', icon: Handshake },
-      { view: 'products', label: 'Produk', icon: Package },
-      { view: 'categories', label: 'Kategori Produk', icon: FolderTree },
+      { view: 'customers', label: 'Customer', icon: Users, requiredModule: 'customers' },
+      { view: 'employees', label: 'Karyawan', icon: UserCog, requiredModule: 'employees' },
+      { view: 'suppliers', label: 'Supplier', icon: Handshake, requiredModule: 'suppliers' },
+      { view: 'products', label: 'Produk', icon: Package, requiredModule: 'products' },
+      { view: 'categories', label: 'Kategori Produk', icon: FolderTree, requiredModule: 'products' },
     ],
   },
   {
@@ -119,12 +121,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Inventory',
     collapsible: true,
     items: [
-      { view: 'stock-management', label: 'Stok Produk', icon: Boxes },
-      { view: 'incoming-goods', label: 'Barang Masuk', icon: Download },
-      { view: 'outgoing-goods', label: 'Barang Keluar', icon: Upload },
-      { view: 'stock-movement-history', label: 'Riwayat Stok', icon: History },
-      { view: 'stock-opname', label: 'Stock Opname', icon: PackageCheck },
-      { view: 'multi-warehouse', label: 'Multi Warehouse', icon: Warehouse },
+      { view: 'stock-management', label: 'Stok Produk', icon: Boxes, requiredModule: 'inventory' },
+      { view: 'incoming-goods', label: 'Barang Masuk', icon: Download, requiredModule: 'inventory' },
+      { view: 'outgoing-goods', label: 'Barang Keluar', icon: Upload, requiredModule: 'inventory' },
+      { view: 'stock-movement-history', label: 'Riwayat Stok', icon: History, requiredModule: 'inventory' },
+      { view: 'stock-opname', label: 'Stock Opname', icon: PackageCheck, requiredModule: 'inventory' },
+      { view: 'multi-warehouse', label: 'Multi Warehouse', icon: Warehouse, requiredModule: 'inventory' },
     ],
   },
   {
@@ -132,10 +134,10 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Sales & Orders',
     collapsible: true,
     items: [
-      { view: 'quotations', label: 'Quotation', icon: FileSpreadsheet },
-      { view: 'sales-orders', label: 'Sales Order', icon: FileCheck },
-      { view: 'delivery-orders', label: 'Surat Jalan', icon: Truck },
-      { view: 'returns', label: 'Retur Barang', icon: RotateCcw },
+      { view: 'quotations', label: 'Quotation', icon: FileSpreadsheet, requiredModule: 'sales' },
+      { view: 'sales-orders', label: 'Sales Order', icon: FileCheck, requiredModule: 'sales' },
+      { view: 'delivery-orders', label: 'Surat Jalan', icon: Truck, requiredModule: 'sales' },
+      { view: 'returns', label: 'Retur Barang', icon: RotateCcw, requiredModule: 'sales' },
     ],
   },
   {
@@ -143,16 +145,16 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Billing & Payment',
     collapsible: true,
     items: [
-      { view: 'invoices', label: 'Invoice', icon: Receipt },
-      { view: 'payments', label: 'Payment', icon: CreditCard },
-      { view: 'receivables-payables', label: 'Piutang & Hutang', icon: WalletCards },
+      { view: 'invoices', label: 'Invoice', icon: Receipt, requiredModule: 'finance' },
+      { view: 'payments', label: 'Payment', icon: CreditCard, requiredModule: 'finance' },
+      { view: 'receivables-payables', label: 'Piutang & Hutang', icon: WalletCards, requiredModule: 'finance' },
     ],
   },
   {
     id: 'purchasing',
     title: 'Purchasing',
     items: [
-      { view: 'purchase-orders', label: 'Purchase Order', icon: ShoppingCart },
+      { view: 'purchase-orders', label: 'Purchase Order', icon: ShoppingCart, requiredModule: 'purchasing' },
     ],
   },
   {
@@ -160,15 +162,10 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Workshop & Proyek',
     collapsible: true,
     items: [
-      { view: 'production-work-orders', label: 'Work Order Produksi', icon: Factory },
-      { view: 'bom-costing', label: 'BOM & HPP', icon: Layers },
-      {
-        view: 'projects',
-        label: 'Proyek',
-        icon: Compass,
-        activeViews: ['project-detail'],
-      },
-      { view: 'project-budgeting', label: 'Budget Proyek', icon: Calculator },
+      { view: 'production-work-orders', label: 'Work Order Produksi', icon: Factory, requiredModule: 'production' },
+      { view: 'bom-costing', label: 'BOM & HPP', icon: Layers, requiredModule: 'production' },
+      { view: 'projects', label: 'Proyek', icon: Compass, activeViews: ['project-detail'], requiredModule: 'projects' },
+      { view: 'project-budgeting', label: 'Budget Proyek', icon: Calculator, requiredModule: 'projects' },
     ],
   },
   {
@@ -176,9 +173,9 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Kontrol Sistem',
     collapsible: true,
     items: [
-      { view: 'role-permissions', label: 'Role & Permission', icon: ShieldCheck },
-      { view: 'approval-workflows', label: 'Approval Center', icon: ClipboardCheck },
-      { view: 'audit-logs', label: 'Audit Log', icon: FileSearch },
+      { view: 'role-permissions', label: 'Role & Permission', icon: ShieldCheck, requiredModule: 'roles' },
+      { view: 'approval-workflows', label: 'Approval Center', icon: ClipboardCheck, requiredModule: 'approvals' },
+      { view: 'audit-logs', label: 'Audit Log', icon: FileSearch, requiredModule: 'settings' }, // or audit log module
       { view: 'reminders', label: 'Reminder Center', icon: BellRing },
       { view: 'document-exports', label: 'Export Dokumen', icon: FileDown },
     ],
@@ -188,21 +185,16 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'QR Code Utility',
     collapsible: true,
     items: [
-      { view: 'qr-products', label: 'Daftar QR Produk', icon: QrCode },
-      {
-        view: 'scan-qr-product',
-        label: 'Scan QR Produk',
-        icon: Scan,
-        activeViews: ['scanned-product-detail'],
-      },
+      { view: 'qr-products', label: 'Daftar QR Produk', icon: QrCode, requiredModule: 'inventory' },
+      { view: 'scan-qr-product', label: 'Scan QR Produk', icon: Scan, activeViews: ['scanned-product-detail'], requiredModule: 'inventory' },
     ],
   },
   {
     id: 'system',
     separator: true,
     items: [
-      { view: 'reports', label: 'Laporan', icon: BarChart3 },
-      { view: 'settings', label: 'Pengaturan', icon: Settings },
+      { view: 'reports', label: 'Laporan', icon: BarChart3, requiredModule: 'reports' },
+      { view: 'settings', label: 'Pengaturan', icon: Settings, requiredModule: 'settings' },
     ],
   },
 ];

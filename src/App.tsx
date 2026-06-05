@@ -38,15 +38,15 @@ import QrView from './components/QrView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
 import LoginView from './components/LoginView';
+import EmployeeMasterView from './components/EmployeeMasterView';
+import DeliveryOrdersView from './components/DeliveryOrdersView';
+import ProductionWorkOrderView from './components/ProductionWorkOrderView';
+import BomCostingView from './components/BomCostingView';
 import {
   ApprovalWorkflowView,
   AuditLogView,
-  BomCostingView,
-  DeliveryOrdersView,
   DocumentExportsView,
-  EmployeeMasterView,
   MultiWarehouseView,
-  ProductionWorkOrderView,
   ProjectBudgetingView,
   ReceivablesPayablesView,
   RemindersView,
@@ -61,7 +61,8 @@ export default function App() {
   // Authentication & Security state
   const storedUser = authStorage.getUser();
   const [currentView, setCurrentView] = useState<ViewType>(storedUser ? 'dashboard' : 'login');
-  const [userRole, setUserRole] = useState(storedUser?.role?.name || storedUser?.role?.code || 'User');
+  const [userRole, setUserRole] = useState(storedUser?.role?.name || 'User');
+  const [userRoleCode, setUserRoleCode] = useState(storedUser?.role?.code || 'admin');
   const [userEmail, setUserEmail] = useState(storedUser?.email || '');
   const [authUser, setAuthUser] = useState<AuthUser | null>(storedUser);
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedUser && authStorage.getToken()));
@@ -108,7 +109,8 @@ export default function App() {
       .then((user) => {
         setAuthUser(user);
         setUserEmail(user.email);
-        setUserRole(user.role?.name || user.role?.code || 'User');
+        setUserRole(user.role?.name || 'User');
+        setUserRoleCode(user.role?.code || 'admin');
         setCurrentView((view) => (view === 'login' ? 'dashboard' : view));
       })
       .catch((error: Error) => {
@@ -260,8 +262,8 @@ export default function App() {
 
   const applyAuthUser = (user: AuthUser) => {
     setAuthUser(user);
-    setUserEmail(user.email);
-    setUserRole(user.role?.name || user.role?.code || 'User');
+    setUserRole(user.role?.name || 'User');
+    setUserRoleCode(user.role?.code || 'admin');
   };
 
   const handleLoginSuccess = (session: AuthSession) => {
@@ -581,7 +583,9 @@ export default function App() {
           }
         }}
         onLogout={handleLogout}
-        userRole={userRole}
+        userRoleName={userRole}
+        userRoleCode={userRoleCode}
+        userPermissions={authUser?.role?.permissions}
       />
 
       {/* 2. Main content block viewport container */}
