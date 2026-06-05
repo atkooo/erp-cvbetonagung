@@ -4,26 +4,43 @@
  */
 
 import React, { useState } from 'react';
-import { Compass, ShieldAlert, KeyRound, Mail, ArrowRight, CornerDownRight, Landmark } from 'lucide-react';
+import { Compass, KeyRound, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { authApi } from '../services/api';
+import type { AuthSession } from '../types';
 
 interface LoginViewProps {
-  onLoginSuccess: (email: string, role: string) => void;
+  onLoginSuccess: (session: AuthSession) => void;
+  onDemoLogin: (email: string, role: string) => void;
   onTriggerNotification: (message: string) => void;
 }
 
-export default function LoginView({ onLoginSuccess, onTriggerNotification }: LoginViewProps) {
-  const [email, setEmail] = useState('admin@betonagung.co.id');
-  const [password, setPassword] = useState('••••••••');
-  const [role, setRole] = useState('Super Admin');
+export default function LoginView({ onLoginSuccess, onDemoLogin, onTriggerNotification }: LoginViewProps) {
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('password');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       onTriggerNotification('Gagal masuk: Harap isi alamat email!');
       return;
     }
-    onLoginSuccess(email, role);
-    onTriggerNotification(`Selamat Datang kembali! Masuk sebagai ${role}`);
+
+    setErrorMessage('');
+    setIsSubmitting(true);
+
+    try {
+      const session = await authApi.login(email, password);
+      onLoginSuccess(session);
+      onTriggerNotification(`Selamat datang kembali, ${session.user.name}!`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Login gagal.';
+      setErrorMessage(message);
+      onTriggerNotification(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -34,7 +51,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
       {/* Main card box container */}
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 relative z-10 space-y-6">
-        
+
         {/* Logo and company headers */}
         <div className="text-center space-y-2">
           <div className="mx-auto w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
@@ -83,23 +100,24 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hak Otoritas Akun</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-lg py-2 pl-3 pr-4 text-white text-xs cursor-pointer focus:outline-none"
-            >
-              <option value="Super Admin">Super Admin (Otoritas Penuh)</option>
-              <option value="Manager Operasional">Manager Operasional (Workshop)</option>
-              <option value="Supervisor Lapangan">Supervisor Lapangan (Survey & GRC)</option>
-            </select>
+            <div className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-white text-xs">
+              Ditentukan oleh RBAC backend setelah login
+            </div>
           </div>
+
+          {errorMessage && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-200 rounded-lg px-3 py-2 text-[11px] leading-relaxed">
+              {errorMessage}
+            </div>
+          )}
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 font-bold text-slate-950 rounded-lg text-xs hover:opacity-90 flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+            disabled={isSubmitting}
+            className="w-full py-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 font-bold text-slate-950 rounded-lg text-xs hover:opacity-90 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
           >
-            <span>Masuk ke Dashboard</span>
-            <ArrowRight size={14} className="stroke-[2.5]" />
+            <span>{isSubmitting ? 'Memvalidasi akun' : 'Masuk ke Dashboard'}</span>
+            {isSubmitting ? <Loader2 size={14} className="animate-spin stroke-[2.5]" /> : <ArrowRight size={14} className="stroke-[2.5]" />}
           </button>
         </form>
 
@@ -109,7 +127,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <button
               onClick={() => {
-                onLoginSuccess('kasir@betonagung.co.id', 'Super Admin');
+                onDemoLogin('kasir@betonagung.co.id', 'Super Admin');
                 onTriggerNotification('Simulasi masuk: Bypass berhasil!');
               }}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-850 rounded text-left transition-colors text-slate-300"
@@ -119,7 +137,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
             </button>
             <button
               onClick={() => {
-                onLoginSuccess('wh-supervisor@betonagung.co.id', 'Manager Operasional');
+                onDemoLogin('wh-supervisor@betonagung.co.id', 'Manager Operasional');
                 onTriggerNotification('Simulasi masuk: Bypass berhasil!');
               }}
               className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-850 rounded text-left transition-colors text-slate-300"

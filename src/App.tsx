@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   initialCustomers,
   initialSuppliers,
@@ -16,7 +16,8 @@ import {
   initialPurchaseOrders,
   initialProjects
 } from './dummyData';
-import type { Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
+import type { AuthSession, AuthUser, Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
+import { authApi, authStorage } from './services/api';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -58,9 +59,12 @@ import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   // Authentication & Security state
-  const [currentView, setCurrentView] = useState<ViewType>('login');
+  const storedUser = authStorage.getUser();
+  const [currentView, setCurrentView] = useState<ViewType>(storedUser ? 'dashboard' : 'login');
   const [userRole, setUserRole] = useState('Super Admin');
-  const [userEmail, setUserEmail] = useState('');
+  const [userEmail, setUserEmail] = useState(storedUser?.email || '');
+  const [authUser, setAuthUser] = useState<AuthUser | null>(storedUser);
+  const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedUser && authStorage.getToken()));
 
   // Global Mock Database States
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
@@ -92,6 +96,29 @@ export default function App() {
     }, 4000);
     setToastTimeout(timeout);
   };
+
+  useEffect(() => {
+    if (!authStorage.getToken()) {
+      setIsRestoringSession(false);
+      return;
+    }
+
+    authApi
+      .me()
+      .then((user) => {
+        setAuthUser(user);
+        setUserEmail(user.email);
+        setUserRole(user.role?.name || user.role?.code || 'User');
+        setCurrentView((view) => (view === 'login' ? 'dashboard' : view));
+      })
+      .catch((error: Error) => {
+        setAuthUser(null);
+        setUserEmail('');
+        setCurrentView('login');
+        triggerNotification(error.message);
+      })
+      .finally(() => setIsRestoringSession(false));
+  }, []);
 
   // -------------------------------------------------------------
   // DATA MANIPULATION HANDLERS (Simulated CRUD operations)
@@ -231,14 +258,37 @@ export default function App() {
     );
   };
 
-  // Bypass accounts delegation
-  const handleLoginSuccess = (email: string, role: string) => {
+  const applyAuthUser = (user: AuthUser) => {
+    setAuthUser(user);
+    setUserEmail(user.email);
+    setUserRole(user.role?.name || user.role?.code || 'User');
+  };
+
+  const handleLoginSuccess = (session: AuthSession) => {
+    applyAuthUser(session.user);
+    setCurrentView('dashboard');
+  };
+
+  const handleDemoLogin = (email: string, role: string) => {
+    authStorage.clear();
+    setAuthUser(null);
     setUserEmail(email);
     setUserRole(role);
     setCurrentView('dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (authStorage.getToken()) {
+      try {
+        await authApi.logout();
+      } catch (error) {
+        triggerNotification(error instanceof Error ? error.message : 'Logout backend gagal.');
+      }
+    } else {
+      authStorage.clear();
+    }
+
+    setAuthUser(null);
     setUserEmail('');
     setCurrentView('login');
     triggerNotification('Sampai jumpa! Anda berhasil logout.');
@@ -509,8 +559,20 @@ export default function App() {
     return (
       <LoginView
         onLoginSuccess={handleLoginSuccess}
+        onDemoLogin={handleDemoLogin}
         onTriggerNotification={triggerNotification}
       />
+    );
+  }
+
+  if (isRestoringSession) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center font-sans">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 mx-auto border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-mono uppercase tracking-widest text-slate-400">Memulihkan sesi ERP</p>
+        </div>
+      </div>
     );
   }
 
@@ -539,6 +601,8 @@ export default function App() {
           userRole={userRole}
           onRoleChange={setUserRole}
           onTriggerNotification={triggerNotification}
+          userEmail={userEmail}
+          userName={authUser?.name}
         />
 
         {/* Dynamic viewport scroll canvas container */}

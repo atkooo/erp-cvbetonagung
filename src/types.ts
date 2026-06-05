@@ -155,6 +155,25 @@ export interface QrProduct {
   qrValue: string;
 }
 
+export interface AuthRole {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  role?: AuthRole | null;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+}
+
 export type ViewType =
   | 'login'
   | 'dashboard'

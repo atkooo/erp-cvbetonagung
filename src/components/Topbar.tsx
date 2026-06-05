@@ -13,9 +13,11 @@ interface TopbarProps {
   userRole: string;
   onRoleChange: (role: string) => void;
   onTriggerNotification: (message: string) => void;
+  userEmail: string;
+  userName?: string;
 }
 
-export default function Topbar({ currentView, userRole, onRoleChange, onTriggerNotification }: TopbarProps) {
+export default function Topbar({ currentView, userRole, onRoleChange, onTriggerNotification, userEmail, userName }: TopbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
 
@@ -153,8 +155,8 @@ export default function Topbar({ currentView, userRole, onRoleChange, onTriggerN
             <User size={16} />
           </div>
           <div className="hidden sm:block text-left text-xs">
-            <p className="font-bold text-slate-800 leading-none">Internal Team</p>
-            <p className="text-[10px] text-slate-400 font-mono leading-none mt-1">CV Beton Agung</p>
+            <p className="font-bold text-slate-800 leading-none">{userName || 'Internal Team'}</p>
+            <p className="text-[10px] text-slate-400 font-mono leading-none mt-1">{userEmail || 'CV Beton Agung'}</p>
           </div>
         </div>
       </div>
