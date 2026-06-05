@@ -1,5 +1,5 @@
 import { PurchaseOrder } from '../../types';
-import { PurchaseOrderDto } from './types';
+import { PurchaseOrderDto, ReturnItemDto, ReturnItem, ReturnDto, Return } from './types';
 
 export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder => ({
   id: dto.id,
@@ -25,3 +25,25 @@ const mapPurchaseOrderStatus = (status: string): PurchaseOrder['status'] => {
   if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
   return 'Draft'; // fallback
 };
+
+export const mapReturnItemFromDto = (dto: ReturnItemDto): ReturnItem => ({
+  id: dto.id,
+  productId: dto.product_id,
+  productName: dto.product?.name || 'Produk Tidak Dikenal',
+  productSku: dto.product?.sku || '-',
+  quantity: Number(dto.quantity),
+  notes: dto.notes || '-',
+});
+
+export const mapReturnFromDto = (dto: ReturnDto): Return => ({
+  id: dto.id,
+  returnNumber: dto.return_number,
+  type: dto.type as 'customer' | 'supplier',
+  partnerName: dto.type === 'customer' ? (dto.customer?.name || '-') : (dto.supplier?.name || '-'),
+  referenceNumber: dto.type === 'customer' ? (dto.sales_order?.order_number || '-') : (dto.purchase_order?.purchase_number || '-'),
+  reason: dto.reason,
+  qcStatus: dto.qc_status,
+  createdAt: dto.created_at ? dto.created_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '',
+  items: (dto.items || []).map(mapReturnItemFromDto),
+});
+

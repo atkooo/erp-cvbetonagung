@@ -53,3 +53,71 @@ export interface ReceivePurchaseOrderDto {
     received_quantity: number;
   }[];
 }
+
+export interface ReturnItemDto {
+  id: string;
+  return_id: string;
+  product_id: string;
+  quantity: number;
+  notes: string | null;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+  };
+}
+
+export interface ReturnDto {
+  id: string;
+  return_number: string;
+  type: string;
+  customer_id: string | null;
+  supplier_id: string | null;
+  sales_order_id: string | null;
+  purchase_order_id: string | null;
+  reason: string;
+  qc_status: string;
+  created_at: string;
+  customer?: { id: string; name: string };
+  supplier?: { id: string; name: string };
+  sales_order?: { id: string; order_number: string };
+  purchase_order?: { id: string; purchase_number: string };
+  items?: ReturnItemDto[];
+}
+
+export interface CreateReturnDto {
+  type: 'customer' | 'supplier';
+  customer_id?: string | null;
+  supplier_id?: string | null;
+  sales_order_id?: string | null;
+  purchase_order_id?: string | null;
+  reason: string;
+  qc_status: string;
+  items: {
+    product_id: string;
+    quantity: number;
+    notes?: string;
+  }[];
+}
+
+export interface ReturnItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSku: string;
+  quantity: number;
+  notes: string;
+}
+
+export interface Return {
+  id: string;
+  returnNumber: string;
+  type: 'customer' | 'supplier';
+  partnerName: string;
+  referenceNumber: string;
+  reason: string;
+  qcStatus: string;
+  createdAt: string;
+  items: ReturnItem[];
+}
+

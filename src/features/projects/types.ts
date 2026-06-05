@@ -58,3 +58,37 @@ export interface CreateProjectTimelineDto {
   description: string;
   icon?: string;
 }
+
+export interface ProjectBudgetItemDto {
+  id: string;
+  project_id: string;
+  component: string;
+  budget_amount: number | string;
+  actual_amount: number | string;
+  notes: string | null;
+  created_at: string;
+  project?: {
+    id: string;
+    project_name: string;
+    code: string;
+  };
+}
+
+export interface ProjectBudgetItem {
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  component: string;
+  budgetAmount: number;
+  actualAmount: number;
+  notes: string;
+}
+
+export interface CreateProjectBudgetItemDto {
+  project_id: string;
+  component: string;
+  budget_amount: number;
+  notes?: string;
+}
+

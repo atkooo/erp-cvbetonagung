@@ -38,3 +38,35 @@ export interface PaymentDto {
     };
   };
 }
+
+export interface SupplierPayableDto {
+  id: string;
+  purchase_order_id: string | null;
+  supplier_id: string;
+  payable_number: string;
+  due_date: string | null;
+  amount: number | string;
+  paid_amount: number | string;
+  status: string;
+  created_at: string;
+  supplier?: {
+    id: string;
+    name: string;
+  };
+  purchase_order?: {
+    id: string;
+    po_number: string;
+  };
+}
+
+export interface SupplierPayable {
+  id: string;
+  payableNumber: string;
+  supplierName: string;
+  poNumber: string;
+  dueDate: string;
+  amount: number;
+  paidAmount: number;
+  status: 'Open' | 'Lunas';
+}
+

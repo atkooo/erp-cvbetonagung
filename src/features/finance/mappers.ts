@@ -1,5 +1,5 @@
 import { Invoice, Payment } from '../../types';
-import { InvoiceDto, PaymentDto } from './types';
+import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable } from './types';
 
 export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   id: dto.id,
@@ -23,6 +23,17 @@ export const mapPaymentFromDto = (dto: PaymentDto): Payment => ({
   status: mapPaymentStatus(dto.status),
 });
 
+export const mapSupplierPayableFromDto = (dto: SupplierPayableDto): SupplierPayable => ({
+  id: dto.id,
+  payableNumber: dto.payable_number,
+  supplierName: dto.supplier?.name || 'Pemasok Tidak Dikenal',
+  poNumber: dto.purchase_order?.po_number || 'Tanpa PO',
+  dueDate: dto.due_date || '-',
+  amount: Number(dto.amount),
+  paidAmount: Number(dto.paid_amount),
+  status: dto.status.toLowerCase() === 'paid' ? 'Lunas' : 'Open',
+});
+
 const mapInvoiceStatus = (status: string): Invoice['status'] => {
   const s = status.toLowerCase();
   if (s === 'unpaid' || s === 'belum lunas') return 'Belum Lunas';
@@ -39,3 +50,4 @@ const mapPaymentStatus = (status: string): Payment['status'] => {
   if (s === 'failed' || s === 'gagal') return 'Gagal';
   return 'Pending'; // fallback
 };
+

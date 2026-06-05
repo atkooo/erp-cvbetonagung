@@ -42,18 +42,16 @@ import EmployeeMasterView from './components/EmployeeMasterView';
 import DeliveryOrdersView from './components/DeliveryOrdersView';
 import ProductionWorkOrderView from './components/ProductionWorkOrderView';
 import BomCostingView from './components/BomCostingView';
-import {
-  ApprovalWorkflowView,
-  AuditLogView,
-  DocumentExportsView,
-  MultiWarehouseView,
-  ProjectBudgetingView,
-  ReceivablesPayablesView,
-  RemindersView,
-  ReturnsView,
-  RolePermissionView,
-  StockOpnameView,
-} from './features/prototypes';
+import StockOpnameView from './components/StockOpnameView';
+import ApprovalWorkflowView from './components/ApprovalWorkflowView';
+import AuditLogView from './components/AuditLogView';
+import RemindersView from './components/RemindersView';
+import DocumentExportsView from './components/DocumentExportsView';
+import ReturnsView from './components/ReturnsView';
+import ProjectBudgetingView from './components/ProjectBudgetingView';
+import MultiWarehouseView from './components/MultiWarehouseView';
+import ReceivablesPayablesView from './components/ReceivablesPayablesView';
+import RolePermissionView from './components/RolePermissionView';
 
 import { CheckCircle2 } from 'lucide-react';
 

@@ -1,5 +1,5 @@
 import { Project } from '../../types';
-import { ProjectDto } from './types';
+import { ProjectDto, ProjectBudgetItemDto, ProjectBudgetItem } from './types';
 
 export const mapProjectFromDto = (dto: ProjectDto): Project => ({
   id: dto.id,
@@ -51,3 +51,15 @@ const mapTerminStatus = (status: string): 'Belum Bayar' | 'Lunas' => {
   if (s === 'lunas' || s === 'paid') return 'Lunas';
   return 'Belum Bayar';
 };
+
+export const mapProjectBudgetItemFromDto = (dto: ProjectBudgetItemDto): ProjectBudgetItem => ({
+  id: dto.id,
+  projectId: dto.project_id,
+  projectName: dto.project?.project_name || 'Proyek Tidak Dikenal',
+  projectCode: dto.project?.code || '-',
+  component: dto.component,
+  budgetAmount: Number(dto.budget_amount),
+  actualAmount: Number(dto.actual_amount),
+  notes: dto.notes || '-',
+});
+
