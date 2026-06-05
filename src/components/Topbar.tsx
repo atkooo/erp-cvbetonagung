@@ -4,22 +4,20 @@
  */
 
 import React, { useState } from 'react';
-import { Bell, Search, User, Globe, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Bell, User, Globe, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { VIEW_TITLES } from '../config/navigation';
 import type { ViewType } from '../types';
 
 interface TopbarProps {
   currentView: ViewType;
   userRole: string;
-  onRoleChange: (role: string) => void;
   onTriggerNotification: (message: string) => void;
   userEmail: string;
   userName?: string;
 }
 
-export default function Topbar({ currentView, userRole, onRoleChange, onTriggerNotification, userEmail, userName }: TopbarProps) {
+export default function Topbar({ currentView, userRole, onTriggerNotification, userEmail, userName }: TopbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
 
   const notifications = [
     { id: 1, text: 'Stok menipis: Lisplang Beton Minimalis M20 sisa 45 Meter!', type: 'warning' },
@@ -35,8 +33,8 @@ export default function Topbar({ currentView, userRole, onRoleChange, onTriggerN
         <h2 className="font-sans font-bold text-slate-800 text-lg uppercase tracking-tight">
           {VIEW_TITLES[currentView] || 'CV Beton Agung'}
         </h2>
-        <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono bg-slate-100 text-slate-500 rounded border border-slate-200">
-          PROTOTYPE VIEW
+        <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono bg-sky-50 text-sky-700 rounded border border-sky-100">
+          LIVE SYSTEM
         </span>
       </div>
 
@@ -48,40 +46,11 @@ export default function Topbar({ currentView, userRole, onRoleChange, onTriggerN
           <span>http://cvbetonagung.com</span>
         </div>
 
-        {/* Role Quick Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleSelector(!showRoleSelector)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200 transition-colors"
-          >
-            <span className="text-[10px] uppercase font-mono text-slate-400">Hak Akses:</span>
-            <span className="text-cyan-600 font-bold">{userRole}</span>
-            <ChevronDown size={14} className="text-slate-400" />
-          </button>
-
-          {showRoleSelector && (
-            <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1.5 z-30 font-sans text-xs">
-              <div className="px-3 py-1.5 font-bold text-[10px] text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                Pilih Role Simulasi
-              </div>
-              {['Owner', 'Admin', 'Sales', 'Gudang', 'Finance', 'Produksi'].map((role) => (
-                <button
-                  key={role}
-                  onClick={() => {
-                    onRoleChange(role);
-                    setShowRoleSelector(false);
-                    onTriggerNotification(`Berhasil berpindah role simulasi sebagai: ${role}`);
-                  }}
-                  className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                    userRole === role ? 'font-bold text-cyan-600 bg-cyan-50/40' : 'text-slate-600'
-                  }`}
-                >
-                  <span>{role}</span>
-                  {userRole === role && <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Role display */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-xs font-semibold text-slate-700 rounded-lg border border-sky-100">
+          <ShieldCheck size={14} className="text-sky-600" />
+          <span className="text-[10px] uppercase font-mono text-slate-400">Hak Akses:</span>
+          <span className="text-sky-700 font-bold">{userRole}</span>
         </div>
 
         {/* Notifications Toggle */}

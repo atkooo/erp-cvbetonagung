@@ -61,7 +61,7 @@ export default function App() {
   // Authentication & Security state
   const storedUser = authStorage.getUser();
   const [currentView, setCurrentView] = useState<ViewType>(storedUser ? 'dashboard' : 'login');
-  const [userRole, setUserRole] = useState('Super Admin');
+  const [userRole, setUserRole] = useState(storedUser?.role?.name || storedUser?.role?.code || 'User');
   const [userEmail, setUserEmail] = useState(storedUser?.email || '');
   const [authUser, setAuthUser] = useState<AuthUser | null>(storedUser);
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedUser && authStorage.getToken()));
@@ -269,20 +269,12 @@ export default function App() {
     setCurrentView('dashboard');
   };
 
-  const handleDemoLogin = (email: string, role: string) => {
-    authStorage.clear();
-    setAuthUser(null);
-    setUserEmail(email);
-    setUserRole(role);
-    setCurrentView('dashboard');
-  };
-
   const handleLogout = async () => {
     if (authStorage.getToken()) {
       try {
         await authApi.logout();
       } catch (error) {
-        triggerNotification(error instanceof Error ? error.message : 'Logout backend gagal.');
+        triggerNotification(error instanceof Error ? error.message : 'Logout gagal. Silakan coba lagi.');
       }
     } else {
       authStorage.clear();
@@ -559,7 +551,6 @@ export default function App() {
     return (
       <LoginView
         onLoginSuccess={handleLoginSuccess}
-        onDemoLogin={handleDemoLogin}
         onTriggerNotification={triggerNotification}
       />
     );
@@ -599,7 +590,6 @@ export default function App() {
         <Topbar
           currentView={currentView}
           userRole={userRole}
-          onRoleChange={setUserRole}
           onTriggerNotification={triggerNotification}
           userEmail={userEmail}
           userName={authUser?.name}

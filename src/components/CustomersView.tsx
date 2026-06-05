@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X } from 'lucide-react';
 import { Customer } from '../types';
+import { authStorage } from '../services/api';
+import { customersApi } from '../features/customers/api';
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -17,6 +19,11 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [apiCustomers, setApiCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasBackendSession = Boolean(authStorage.getToken());
 
   // Form states
   const [name, setName] = useState('');
@@ -25,9 +32,43 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+  const activeCustomers = hasBackendSession ? apiCustomers : customers;
+
+  useEffect(() => {
+    if (!hasBackendSession) {
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    customersApi
+      .listCustomers()
+      .then(({ customers }) => {
+        if (isMounted) {
+          setApiCustomers(customers);
+        }
+      })
+      .catch((error: Error) => {
+        if (isMounted) {
+          setErrorMessage(error.message);
+          onTriggerNotification(error.message);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasBackendSession]);
 
   // Filter & Search
-  const filteredCustomers = customers.filter((cust) => {
+  const filteredCustomers = activeCustomers.filter((cust) => {
     const matchesSearch =
       cust.name.toLowerCase().includes(search.toLowerCase()) ||
       cust.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,17 +78,63 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
     return matchesSearch && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setName('');
+    setPhone('');
+    setEmail('');
+    setCity('');
+    setAddress('');
+    setStatus('Aktif');
+  };
+
+  const generateCustomerCode = () => {
+    const timestamp = Date.now().toString().slice(-8);
+    return `CUST-${timestamp}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone || !city) {
       onTriggerNotification('Gagal menambahkan: Harap isi Nama, No HP, dan Kota!');
       return;
     }
 
-    const nextCode = `CST-00${customers.length + 1}`;
+    const nextCode = generateCustomerCode();
+
+    if (hasBackendSession) {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      try {
+        const newCustomer = await customersApi.createCustomer({
+          code: nextCode,
+          name,
+          phone,
+          email,
+          city,
+          address,
+          status,
+        });
+
+        setApiCustomers((prev) => [newCustomer, ...prev]);
+        onAddCustomer(newCustomer);
+        onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
+        resetForm();
+        setShowAddModal(false);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Gagal menyimpan customer ke backend.';
+        setErrorMessage(message);
+        onTriggerNotification(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
+
     const newCust: Customer = {
       id: `c${customers.length + 1}`,
-      code: nextCode,
+      code: `CST-00${customers.length + 1}`,
       name,
       phone,
       email: email || `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
@@ -57,15 +144,8 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
     };
 
     onAddCustomer(newCust);
-    onTriggerNotification(`Sukses menambahkan Customer: ${name} (${nextCode})`);
-    
-    // reset form
-    setName('');
-    setPhone('');
-    setEmail('');
-    setCity('');
-    setAddress('');
-    setStatus('Aktif');
+    onTriggerNotification(`Sukses menambahkan Customer: ${name} (${newCust.code})`);
+    resetForm();
     setShowAddModal(false);
   };
 
@@ -116,8 +196,16 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
           <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
             Refferal Buku Alamat Pelanggan ({filteredCustomers.length} Item)
           </h3>
-          <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung</span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            {hasBackendSession ? 'Backend API' : 'Demo Lokal'}
+          </span>
         </div>
+
+        {errorMessage && (
+          <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-[11px] font-semibold text-rose-700">
+            {errorMessage}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left font-sans text-xs border-collapse">
@@ -134,7 +222,13 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredCustomers.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
+                    Memuat data customer dari backend...
+                  </td>
+                </tr>
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-10 text-slate-400">
                     Tidak ada data customer yang cocok dengan pencarian Anda.
@@ -197,7 +291,7 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
         
         {/* Pagination UI */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Menampilkan 1-{filteredCustomers.length} dari {customers.length} item</span>
+          <span>Menampilkan 1-{filteredCustomers.length} dari {activeCustomers.length} item</span>
           <div className="flex gap-1">
             <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
             <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
@@ -314,15 +408,17 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
+                  disabled={isSubmitting}
                   className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Simpan Registrasi
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Registrasi'}
                 </button>
               </div>
             </form>

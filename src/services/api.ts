@@ -4,8 +4,18 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 const TOKEN_STORAGE_KEY = 'cvba_api_token';
 const USER_STORAGE_KEY = 'cvba_api_user';
 
-interface ApiEnvelope<T> {
+export interface ApiEnvelope<T> {
   data: T;
+}
+
+export interface ApiListEnvelope<T> {
+  data: T[];
+  meta?: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 interface LoginResponse {
@@ -16,14 +26,35 @@ interface LoginResponse {
 
 interface ApiErrorBody {
   message?: string;
+  errors?: Record<string, string[]>;
+}
+
+export class ApiRequestError extends Error {
+  status: number;
+  errors?: Record<string, string[]>;
+
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.errors = errors;
+  }
 }
 
 const readErrorMessage = async (response: Response) => {
   try {
     const body = (await response.json()) as ApiErrorBody;
-    return body.message || 'Permintaan API gagal.';
+    const firstFieldError = body.errors ? Object.values(body.errors)[0]?.[0] : undefined;
+
+    return {
+      message: firstFieldError || body.message || 'Permintaan API gagal.',
+      errors: body.errors,
+    };
   } catch {
-    return 'Permintaan API gagal.';
+    return {
+      message: 'Permintaan API gagal.',
+      errors: undefined,
+    };
   }
 };
 
@@ -76,15 +107,16 @@ export const apiClient = {
 
     if (response.status === 401) {
       authStorage.clear();
-      throw new Error('Sesi berakhir. Silakan masuk ulang.');
+      throw new ApiRequestError('Sesi berakhir. Silakan masuk ulang.', response.status);
     }
 
     if (response.status === 403) {
-      throw new Error('Akses ditolak untuk role akun ini.');
+      throw new ApiRequestError('Akses ditolak untuk role akun ini.', response.status);
     }
 
     if (!response.ok) {
-      throw new Error(await readErrorMessage(response));
+      const error = await readErrorMessage(response);
+      throw new ApiRequestError(error.message, response.status, error.errors);
     }
 
     if (response.status === 204) {
