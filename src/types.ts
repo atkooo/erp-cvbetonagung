@@ -171,6 +171,18 @@ export interface Employee {
   dailyRate: number;
   pieceRate: number;
   status: 'Aktif' | 'Nonaktif';
+  
+  // HRD Fields
+  gender?: string;
+  placeOfBirth?: string;
+  dateOfBirth?: string;
+  maritalStatus?: string;
+  religion?: string;
+  bloodType?: string;
+  idCardNumber?: string;
+  taxIdNumber?: string;
+  bankName?: string;
+  bankAccount?: string;
 }
 
 export interface QrProduct {
@@ -284,6 +296,7 @@ export interface AuthUser {
   email: string;
   status: string;
   role?: AuthRole | null;
+  employee_id?: string;
 }
 
 export interface AuthSession {
@@ -328,4 +341,9 @@ export type ViewType =
   | 'scan-qr-product'
   | 'scanned-product-detail'
   | 'reports'
+  | 'attendance-dashboard'
+  | 'leave-management'
+  | 'payroll-management'
+  | 'employee-loans'
+  | 'attendance-scanner'
   | 'settings';

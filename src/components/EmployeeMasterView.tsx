@@ -35,6 +35,21 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
   const [phone, setPhone] = useState('');
   const [joinDate, setJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // HRD fields
+  const [gender, setGender] = useState('Laki-laki');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('Lajang');
+  const [religion, setReligion] = useState('Islam');
+  const [bloodType, setBloodType] = useState('-');
+  const [idCardNumber, setIdCardNumber] = useState('');
+  const [taxIdNumber, setTaxIdNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+
+  // UI State
+  const [activeTab, setActiveTab] = useState<'utama' | 'pribadi' | 'bank'>('utama');
+
   const fetchEmployees = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -68,6 +83,17 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
     setAddress('');
     setPhone('');
     setJoinDate(new Date().toISOString().split('T')[0]);
+    setGender('Laki-laki');
+    setPlaceOfBirth('');
+    setDateOfBirth('');
+    setMaritalStatus('Lajang');
+    setReligion('Islam');
+    setBloodType('-');
+    setIdCardNumber('');
+    setTaxIdNumber('');
+    setBankName('');
+    setBankAccount('');
+    setActiveTab('utama');
     setIsModalOpen(true);
   };
 
@@ -81,9 +107,20 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
     setDailyRate(emp.dailyRate);
     setPieceRate(emp.pieceRate);
     setStatus(emp.status);
-    setAddress(emp.address);
-    setPhone(emp.phone);
-    setJoinDate(emp.joinDate);
+    setAddress(emp.address || '');
+    setPhone(emp.phone || '');
+    setJoinDate(emp.joinDate || '');
+    setGender(emp.gender || 'Laki-laki');
+    setPlaceOfBirth(emp.placeOfBirth || '');
+    setDateOfBirth(emp.dateOfBirth || '');
+    setMaritalStatus(emp.maritalStatus || 'Lajang');
+    setReligion(emp.religion || 'Islam');
+    setBloodType(emp.bloodType || '-');
+    setIdCardNumber(emp.idCardNumber || '');
+    setTaxIdNumber(emp.taxIdNumber || '');
+    setBankName(emp.bankName || '');
+    setBankAccount(emp.bankAccount || '');
+    setActiveTab('utama');
     setIsModalOpen(true);
   };
 
@@ -105,7 +142,17 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
       status,
       address,
       phone,
-      joinDate
+      joinDate,
+      gender,
+      placeOfBirth,
+      dateOfBirth,
+      maritalStatus,
+      religion,
+      bloodType,
+      idCardNumber,
+      taxIdNumber,
+      bankName,
+      bankAccount
     };
 
     try {
@@ -350,10 +397,20 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
             </div>
 
             {/* Modal Body / Form */}
-            <form onSubmit={handleSave} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-650 text-slate-700">Kode Karyawan *</label>
+            <form onSubmit={handleSave} className="flex flex-col h-[70vh]">
+              {/* Tabs */}
+              <div className="flex border-b border-slate-200 px-5 pt-3 gap-6 shrink-0">
+                <button type="button" onClick={() => setActiveTab('utama')} className={`pb-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'utama' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Data Utama</button>
+                <button type="button" onClick={() => setActiveTab('pribadi')} className={`pb-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'pribadi' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Data Pribadi</button>
+                <button type="button" onClick={() => setActiveTab('bank')} className={`pb-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'bank' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Informasi Bank & NIK</button>
+              </div>
+
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                {activeTab === 'utama' && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700">Kode Karyawan *</label>
                   <input
                     type="text"
                     required
@@ -474,17 +531,103 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
               </div>
 
               <div className="space-y-1">
-                <label className="block font-bold text-slate-650 text-slate-700">Alamat Rumah</label>
-                <textarea
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 resize-none"
-                />
+                  <label className="block font-bold text-slate-700">Alamat Rumah</label>
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400 resize-none"
+                  />
+                </div>
               </div>
+            )}
 
-              {/* Modal Footer Actions */}
-              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+            {activeTab === 'pribadi' && (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Jenis Kelamin</label>
+                    <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Status Pernikahan</label>
+                    <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+                      <option value="Lajang">Lajang</option>
+                      <option value="Menikah">Menikah</option>
+                      <option value="Duda/Janda">Duda/Janda</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Tempat Lahir</label>
+                    <input type="text" value={placeOfBirth} onChange={(e) => setPlaceOfBirth(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Tanggal Lahir</label>
+                    <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Agama</label>
+                    <select value={religion} onChange={(e) => setReligion(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+                      <option value="Islam">Islam</option>
+                      <option value="Kristen">Kristen</option>
+                      <option value="Katolik">Katolik</option>
+                      <option value="Hindu">Hindu</option>
+                      <option value="Buddha">Buddha</option>
+                      <option value="Konghucu">Konghucu</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Golongan Darah</label>
+                    <select value={bloodType} onChange={(e) => setBloodType(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white">
+                      <option value="-">-</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="AB">AB</option>
+                      <option value="O">O</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bank' && (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">NIK (KTP)</label>
+                    <input type="text" value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">NPWP</label>
+                    <input type="text" value={taxIdNumber} onChange={(e) => setTaxIdNumber(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Nama Bank</label>
+                    <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Contoh: BCA, Mandiri" className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">No. Rekening</label>
+                    <input type="text" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer Actions */}
+          <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

@@ -29,6 +29,11 @@ const QrView = React.lazy(() => import('./components/QrView'));
 const ReportsView = React.lazy(() => import('./components/ReportsView'));
 const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
+const AttendanceDashboardView = React.lazy(() => import('./components/AttendanceDashboardView'));
+const LeaveManagementView = React.lazy(() => import('./components/LeaveManagementView'));
+const PayrollManagementView = React.lazy(() => import('./components/PayrollManagementView'));
+const EmployeeLoanView = React.lazy(() => import('./components/EmployeeLoanView'));
+const AttendanceScannerView = React.lazy(() => import('./components/AttendanceScannerView'));
 const DeliveryOrdersView = React.lazy(() => import('./components/DeliveryOrdersView'));
 const ProductionWorkOrderView = React.lazy(() => import('./components/ProductionWorkOrderView'));
 const BomCostingView = React.lazy(() => import('./components/BomCostingView'));
@@ -186,6 +191,16 @@ export default function App() {
         );
       case 'employees':
         return <EmployeeMasterView onTriggerNotification={triggerNotification} />;
+      case 'attendance-dashboard':
+        return <AttendanceDashboardView onTriggerNotification={triggerNotification} />;
+      case 'leave-management':
+        return <LeaveManagementView onTriggerNotification={triggerNotification} />;
+      case 'payroll-management':
+        return <PayrollManagementView onTriggerNotification={triggerNotification} />;
+      case 'employee-loans':
+        return <EmployeeLoanView onTriggerNotification={triggerNotification} />;
+      case 'attendance-scanner':
+        return <AttendanceScannerView onTriggerNotification={triggerNotification} />;
       case 'suppliers':
         return (
           <SuppliersView

@@ -43,6 +43,11 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
   const hasAccessToModule = (requiredModule?: string) => {
     if (!requiredModule) return true; // public / global module
     if (userRoleCode === 'admin') return true; // Admin has full access fallback
+    
+    if (userRoleCode === 'employee') {
+      // Karyawan hanya bisa akses modul HRD/Personalia
+      return requiredModule === 'employees';
+    }
 
     if (!userPermissions || userPermissions.length === 0) {
       return false; // No permissions loaded, deny access

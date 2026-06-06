@@ -9,6 +9,7 @@ import {
   Boxes,
   Calculator,
   ClipboardCheck,
+  CalendarCheck,
   Compass,
   CreditCard,
   Download,
@@ -32,6 +33,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Truck,
+  TrendingUp,
   Upload,
   Users,
   UserCog,
@@ -94,6 +96,11 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "scan-qr-product": "Scanner QR Produk (Simulasi Kamera)",
   "scanned-product-detail": "Detail Produk Hasil Scan QR",
   reports: "Analisis & Laporan Operasional",
+  "attendance-dashboard": "Dashboard Absensi",
+  "leave-management": "Pengajuan & Approval Cuti",
+  "attendance-scanner": "Scan Absensi (QR)",
+  "payroll-management": "Sistem Penggajian Dasar",
+  "employee-loans": "Kasbon & Pinjaman Karyawan",
   settings: "Pengaturan Sistem ERP",
 };
 
@@ -171,6 +178,49 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Purchase Order",
         icon: ShoppingCart,
         requiredModule: "purchasing",
+      },
+    ],
+  },
+  {
+    id: "hrd",
+    title: "HRD & Personalia",
+    collapsible: true,
+    items: [
+      {
+        view: "employees",
+        label: "Master Karyawan",
+        icon: UserCog,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-dashboard",
+        label: "Dashboard Absensi",
+        icon: CalendarCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-scanner",
+        label: "Scan Absensi (QR)",
+        icon: Scan,
+        requiredModule: "employees",
+      },
+      {
+        view: "leave-management",
+        label: "Pengajuan Cuti",
+        icon: FileCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "payroll-management",
+        label: "Payroll",
+        icon: Calculator,
+        requiredModule: "finance",
+      },
+      {
+        view: "employee-loans",
+        label: "Pinjaman Karyawan",
+        icon: Handshake,
+        requiredModule: "finance",
       },
     ],
   },
@@ -281,12 +331,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "customers",
       },
       {
-        view: "employees",
-        label: "Karyawan",
-        icon: UserCog,
-        requiredModule: "employees",
-      },
-      {
         view: "suppliers",
         label: "Supplier",
         icon: Handshake,
@@ -345,8 +389,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     items: [
       {
         view: "reports",
-        label: "Laporan",
-        icon: BarChart3,
+        label: "Laporan Analytics",
+        icon: TrendingUp,
         requiredModule: "reports",
       },
       {
