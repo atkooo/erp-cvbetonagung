@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck } from 'lucide-react';
+import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck } from '@/src/components/icons';
 import { PurchaseOrder, Supplier, Product } from '../types';
 import { authStorage } from '../services/api';
 import { purchasingApi } from '../features/purchasing/api';

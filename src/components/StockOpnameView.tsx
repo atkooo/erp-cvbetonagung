@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import {
   PackageCheck, Plus, CheckCircle2, AlertCircle, X, Search,
   Warehouse, Eye, Clock, Check, RefreshCw, AlertTriangle
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { inventoryApi } from '../features/inventory/api';
 import { productsApi } from '../features/products/api';

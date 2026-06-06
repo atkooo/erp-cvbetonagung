@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Search, Filter, Check, ShieldCheck, HelpCircle, XCircle, DollarSign } from 'lucide-react';
+import { CreditCard, Search, Filter, Check, ShieldCheck, HelpCircle, XCircle, DollarSign } from '@/src/components/icons';
 import { Payment } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';

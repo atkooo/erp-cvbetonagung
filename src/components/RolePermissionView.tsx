@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, UserCog, BadgeCheck, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { identityApi } from '../features/identity/api';
 import { Role, Permission } from '../features/identity/types';

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   RotateCcw, Plus, Search, RefreshCw, AlertTriangle, CheckCircle2, XCircle, Truck, Eye, Trash2, X
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { purchasingApi } from '../features/purchasing/api';
 import { Return, ReturnItem, CreateReturnDto } from '../features/purchasing/types';

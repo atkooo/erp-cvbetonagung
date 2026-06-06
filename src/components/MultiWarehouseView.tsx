@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Warehouse, ArrowRightLeft, RefreshCw, AlertTriangle, Plus, X, Box, Tag, Layers
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { apiClient } from '../services/api';
 import { inventoryApi } from '../features/inventory/api';

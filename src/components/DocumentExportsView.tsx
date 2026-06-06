@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileDown, Plus, CheckCircle2, AlertTriangle, FileText, X, RefreshCw
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { supportApi } from '../features/support/api';
 import { DocumentExport } from '../features/support/types';

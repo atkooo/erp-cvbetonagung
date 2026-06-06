@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Layers, Plus, Search, CheckCircle2, X, AlertTriangle, 
   Trash2, Clipboard, Edit2, LockKeyhole, DollarSign, ArrowRight 
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { authStorage } from '../services/api';
 import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';

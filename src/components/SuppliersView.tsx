@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from 'lucide-react';
+import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from '@/src/components/icons';
 import { Supplier } from '../types';
 import { authStorage } from '../services/api';
 import { suppliersApi } from '../features/suppliers/api';

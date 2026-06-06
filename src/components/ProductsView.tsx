@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Package, Search, Plus, Filter, DollarSign, Archive, Eye, Wrench, X, Tag } from 'lucide-react';
+import { Package, Search, Plus, Filter, DollarSign, Archive, Eye, Wrench, X, Tag } from '@/src/components/icons';
 import { Product, Category } from '../types';
 import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';

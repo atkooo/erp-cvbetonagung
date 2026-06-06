@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from '@/src/components/icons';
 
 export function Skeleton({ className = '' }: { className?: string }) {
   return (

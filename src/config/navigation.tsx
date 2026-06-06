@@ -37,8 +37,8 @@ import {
   UserCog,
   WalletCards,
   Warehouse,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+} from '@/src/components/icons';
+import type { LucideIcon } from '@/src/components/icons';
 import { ViewType } from '../types';
 
 export interface NavigationItem {

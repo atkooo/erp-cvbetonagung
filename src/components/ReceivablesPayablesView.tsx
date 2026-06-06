@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   WalletCards, RefreshCw, AlertTriangle, Coins, CheckCircle, HandCoins
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { financeApi } from '../features/finance/api';
 import { Invoice } from '../types';

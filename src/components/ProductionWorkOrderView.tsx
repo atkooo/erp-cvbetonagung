@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Factory, Plus, Search, CheckCircle2, X, Clock, HelpCircle, 
   FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2 
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { authStorage } from '../services/api';
 import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';

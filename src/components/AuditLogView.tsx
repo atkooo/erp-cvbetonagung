@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileSearch, FileClock, Search, FileDown, RefreshCw, AlertTriangle
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { supportApi } from '../features/support/api';
 import { AuditLog } from '../features/support/types';
 

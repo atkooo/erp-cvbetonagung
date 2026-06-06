@@ -23,7 +23,7 @@ import {
   Tag,
   Boxes,
   Compass
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { Product, ViewType, StockMovement } from '../types';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';

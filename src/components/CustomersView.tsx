@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X } from 'lucide-react';
+import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X } from '@/src/components/icons';
 import { Customer } from '../types';
 import { authStorage } from '../services/api';
 import { customersApi } from '../features/customers/api';

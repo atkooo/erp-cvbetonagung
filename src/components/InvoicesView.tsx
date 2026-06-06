@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign } from 'lucide-react';
+import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign } from '@/src/components/icons';
 import { Invoice, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';

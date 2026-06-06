@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck } from 'lucide-react';
+import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck } from '@/src/components/icons';
 
 interface SettingsViewProps {
   onTriggerNotification: (message: string) => void;

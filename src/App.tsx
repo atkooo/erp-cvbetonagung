@@ -42,7 +42,7 @@ const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseV
 const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 
-import { CheckCircle2, WifiOff } from 'lucide-react';
+import { CheckCircle2, WifiOff } from '@/src/components/icons';
 
 export default function App() {
   // Authentication & Security state

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserCog, Plus, Search, Trash2, Edit, X, Save, AlertCircle } from 'lucide-react';
+import { UserCog, Plus, Search, Trash2, Edit, X, Save, AlertCircle } from '@/src/components/icons';
 import { authStorage } from '../services/api';
 import { employeesApi } from '../features/employees/api';
 import { Employee } from '../types';

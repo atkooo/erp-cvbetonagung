@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Bell, User, Globe, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Bell, User, Globe, AlertTriangle, ShieldCheck } from '@/src/components/icons';
 import { VIEW_TITLES } from '../config/navigation';
 import type { ViewType } from '../types';
 

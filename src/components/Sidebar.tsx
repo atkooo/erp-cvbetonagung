@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, HardHat, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronRight, HardHat, LogOut } from '@/src/components/icons';
 import { NAVIGATION_SECTIONS } from '../config/navigation';
 import type { NavigationItem } from '../config/navigation';
 import type { ViewType, AuthPermission } from '../types';

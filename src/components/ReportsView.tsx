@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, BarChart2, PieChart, Calendar, FileDown, ArrowUpRight, ArrowDownRight, Printer, Sheet } from 'lucide-react';
+import { TrendingUp, BarChart2, PieChart, Calendar, FileDown, ArrowUpRight, ArrowDownRight, Printer, Sheet } from '@/src/components/icons';
 import { authStorage } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { purchasingApi } from '../features/purchasing/api';

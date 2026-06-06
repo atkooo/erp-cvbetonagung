@@ -18,7 +18,7 @@ import {
   CreditCard,
   Building2,
   Calendar
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage } from '../services/api';
 import { salesApi } from '../features/sales/api';

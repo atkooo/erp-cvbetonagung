@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   BellRing, Clock, CheckCircle2, AlertTriangle, Eye, Check, RefreshCw
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { supportApi } from '../features/support/api';
 import { Reminder } from '../features/support/types';

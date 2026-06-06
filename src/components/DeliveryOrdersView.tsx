@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Search, CheckCircle2, ChevronRight, X, Clock, HelpCircle, FileText, Send, Check } from 'lucide-react';
+import { Truck, Plus, Search, CheckCircle2, ChevronRight, X, Clock, HelpCircle, FileText, Send, Check } from '@/src/components/icons';
 import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { DeliveryOrder, SalesOrder } from '../types';

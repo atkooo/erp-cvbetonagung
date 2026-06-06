@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calculator, Plus, Trash2, RefreshCw, AlertTriangle, X, CheckCircle2
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { projectsApi } from '../features/projects/api';
 import { ProjectBudgetItem, ProjectDto } from '../features/projects/types';

@@ -26,7 +26,7 @@ import {
   Wrench,
   X,
   Plus
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { Project, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { projectsApi } from '../features/projects/api';

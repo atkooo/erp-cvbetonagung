@@ -17,7 +17,7 @@ import {
   Bell,
   CheckCircle,
   Truck
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { Customer, Supplier, Product, SalesOrder, Invoice, Project, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';

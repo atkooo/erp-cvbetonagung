@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Clock, CheckCircle2, XCircle, AlertTriangle, Eye, X, RefreshCw, Search
-} from 'lucide-react';
+} from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { inventoryApi } from '../features/inventory/api';
 import { ApprovalRequest } from '../features/inventory/types';

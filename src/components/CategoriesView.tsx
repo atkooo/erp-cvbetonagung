@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { FolderTree, Sparkles, LayoutGrid, Plus, Compass, BrickWall, Flower, FileCode } from 'lucide-react';
+import { FolderTree, Sparkles, LayoutGrid, Plus, Compass, BrickWall, Flower, FileCode } from '@/src/components/icons';
 import { Product, Category } from '../types';
 import { productsApi } from '../features/products/api';
 

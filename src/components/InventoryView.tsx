@@ -15,7 +15,7 @@ import {
   CheckCircle,
   AlertCircle,
   X
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { Product, StockMovement } from '../types';
 import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';

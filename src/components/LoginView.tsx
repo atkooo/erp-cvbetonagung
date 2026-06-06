@@ -15,7 +15,7 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
-} from 'lucide-react';
+} from '@/src/components/icons';
 import { authApi } from '../services/api';
 import type { AuthSession } from '../types';
 
