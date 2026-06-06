@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Bell, User, Globe, AlertTriangle, ShieldCheck } from '@/src/components/icons';
+import { Bell, User, AlertTriangle, ShieldCheck } from '@/src/components/icons';
 import { VIEW_TITLES } from '../config/navigation';
 import type { ViewType } from '../types';
 
@@ -33,19 +33,10 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
         <h2 className="font-sans font-bold text-slate-800 text-lg uppercase tracking-tight">
           {VIEW_TITLES[currentView] || 'CV Beton Agung'}
         </h2>
-        <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono bg-slate-50 text-slate-600 rounded border border-slate-200">
-          LIVE SYSTEM
-        </span>
       </div>
 
       {/* Utilities */}
       <div className="flex items-center gap-4">
-        {/* Quick Website link */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
-          <Globe size={14} className="text-slate-400" />
-          <span>http://cvbetonagung.com</span>
-        </div>
-
         {/* Role display */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200">
           <ShieldCheck size={14} className="text-slate-500" />

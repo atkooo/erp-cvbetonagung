@@ -57,7 +57,7 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
-    setEmployeeNumber(`EMP-00${employees.length + 1}`);
+    setEmployeeNumber(`EMP00${employees.length + 1}`);
     setName('');
     setRoleName('');
     setDepartment('');
@@ -157,26 +157,26 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
   return (
     <div className="space-y-6 font-sans text-xs">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-indigo-950 rounded-2xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-slate-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-mono tracking-wider text-indigo-400 font-bold uppercase bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-800/50">
+            <span className="text-[10px] font-mono tracking-wider text-slate-500 font-bold uppercase bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
               MODUL ADMINISTRASI SDM
             </span>
-            <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
+            <h1 className="font-sans font-black tracking-tight text-xl mt-3 text-slate-800 flex items-center gap-2">
               Master Data Karyawan & Tukang
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-indigo-400/35 bg-indigo-950/50 text-indigo-400 rounded px-1.5 py-0.5 ml-2">
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-slate-200 bg-slate-50 text-slate-500 rounded px-1.5 py-0.5 ml-2">
                 API MODE
               </span>
             </h1>
-            <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
               Manajemen komprehensif data staf internal, supir logistik, tenaga harian, serta tim borongan workshop cetakan beton.
             </p>
           </div>
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2 bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 active:scale-95 text-xs text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 shrink-0"
+            className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-xl text-xs font-bold transition-all shadow flex items-center justify-center gap-2 shrink-0 cursor-pointer"
           >
             <Plus size={14} />
             <span>Tambah Karyawan</span>
@@ -497,7 +497,7 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 active:scale-95 text-white font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Save size={14} />
                   <span>Simpan</span>

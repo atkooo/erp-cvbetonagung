@@ -299,6 +299,7 @@ export type ViewType =
   | 'suppliers'
   | 'products'
   | 'categories'
+  | 'warehouses'
   | 'stock-management'
   | 'incoming-goods'
   | 'outgoing-goods'

@@ -9,12 +9,12 @@ import { mapRoleFromDto, mapPermissionFromDto } from './mappers';
 
 export const identityApi = {
   async getRoles(): Promise<Role[]> {
-    const response = await apiClient.get<{ data: RoleDto[] }>('/identity/roles?include=permissions');
+    const response = await apiClient.get<{ data: RoleDto[] }>('/identity/roles?include=permissions&per_page=100');
     return response.data.map(mapRoleFromDto);
   },
 
   async getPermissions(): Promise<Permission[]> {
-    const response = await apiClient.get<{ data: PermissionDto[] }>('/identity/permissions');
+    const response = await apiClient.get<{ data: PermissionDto[] }>('/identity/permissions?per_page=100');
     return response.data.map(mapPermissionFromDto);
   },
 

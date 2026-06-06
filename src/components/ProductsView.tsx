@@ -4,11 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { Package, Search, Plus, Filter, DollarSign, Archive, Eye, Wrench, X, Tag } from '@/src/components/icons';
+import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag } from '@/src/components/icons';
 import { Product, Category } from '../types';
-import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';
 import { UnitDto } from '../features/products/types';
+import { inventoryApi } from '../features/inventory/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface ProductsViewProps {
@@ -38,14 +38,50 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const fetchData = () => {
     setIsLoading(true);
     setErrorMessage(null);
 
-    Promise.all([productsApi.getProducts(), productsApi.getCategories(), productsApi.getUnits()])
-      .then(([productsData, catsData, unitsData]) => {
-        setProducts(productsData);
+    Promise.all([
+      productsApi.getProducts(),
+      productsApi.getCategories(),
+      productsApi.getUnits(),
+      inventoryApi.getProductStocks(),
+    ])
+      .then(([productsData, catsData, unitsData, stockData]) => {
+        const productsWithStock = productsData.map((product) => {
+          const productStocks = stockData.filter((stockRow) => (
+            stockRow.product_id === product.id || stockRow.product?.sku === product.sku
+          ));
+          const totalStock = productStocks.reduce((sum, stockRow) => sum + Number(stockRow.quantity || 0), 0);
+          const locationNames = Array.from(new Set(
+            productStocks
+              .filter((stockRow) => Number(stockRow.quantity || 0) > 0)
+              .map((stockRow) => stockRow.location?.name)
+              .filter(Boolean)
+          ));
+          const stockStatus: Product['status'] = totalStock <= 0
+            ? 'Habis'
+            : totalStock <= product.minStock
+              ? 'Menipis'
+              : 'Aman';
+
+          return {
+            ...product,
+            stock: totalStock,
+            location:
+              locationNames.length === 0
+                ? 'Belum ada stok'
+                : locationNames.length === 1
+                  ? locationNames[0]
+                  : `${locationNames.length} lokasi`,
+            status: stockStatus,
+          };
+        });
+
+        setProducts(productsWithStock);
         setCategories(catsData);
         setUnits(unitsData);
         if (catsData.length > 0) {
@@ -70,6 +106,41 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+  };
+
+  const resetForm = () => {
+    setSku('');
+    setName('');
+    setCategory(categories[0]?.id || '');
+    setCostPrice(0);
+    setSellingPrice(0);
+    setStock(0);
+    setUnit(units[0]?.id || '');
+    setLocation('Gudang Utama');
+    setMinStock(10);
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingProduct(null);
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (product: Product) => {
+    const selectedCategory = categories.find((cat) => cat.name === product.category);
+    const selectedUnit = units.find((u) => u.code === product.unit || u.name === product.unit);
+
+    setEditingProduct(product);
+    setSku(product.sku);
+    setName(product.name);
+    setCategory(selectedCategory?.id || categories[0]?.id || '');
+    setCostPrice(product.costPrice);
+    setSellingPrice(product.sellingPrice);
+    setStock(product.stock);
+    setUnit(selectedUnit?.id || units[0]?.id || '');
+    setLocation(product.location);
+    setMinStock(product.minStock);
+    setShowAddModal(true);
   };
 
   // Filter products
@@ -97,7 +168,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      const newProd = await productsApi.createProduct({
+      const payload = {
         sku,
         name,
         category_id: category, // The category select holds the ID
@@ -106,23 +177,41 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         selling_price: sellingPrice,
         min_stock: minStock,
         status: 'active',
-      });
-      setProducts((prev) => [newProd, ...prev]);
-      onTriggerNotification(`Sukses menambahkan Produk Baru: ${name} SKU [${sku}]`);
+      } as const;
+
+      if (editingProduct) {
+        const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
+        setProducts((prev) => prev.map((prod) => (prod.id === editingProduct.id ? updatedProduct : prod)));
+        onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name} SKU [${updatedProduct.sku}]`);
+      } else {
+        const newProd = await productsApi.createProduct(payload);
+        setProducts((prev) => [newProd, ...prev]);
+        onTriggerNotification(`Sukses menambahkan Produk Baru: ${name} SKU [${sku}]`);
+      }
       setShowAddModal(false);
-      // Reset Form
-      setSku('');
-      setName('');
-      setCostPrice(0);
-      setSellingPrice(0);
-      setStock(0);
-      setMinStock(10);
+      setEditingProduct(null);
+      resetForm();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyimpan produk';
       setErrorMessage(msg);
       onTriggerNotification(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (product: Product) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus produk ${product.name} (${product.sku})?`)) return;
+
+    onTriggerNotification(`Menghapus produk ${product.sku}...`);
+    try {
+      await productsApi.deleteProduct(product.id);
+      setProducts((prev) => prev.filter((prod) => prod.id !== product.id));
+      onTriggerNotification(`Sukses menghapus Produk: ${product.name}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus produk';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     }
   };
 
@@ -174,7 +263,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2 shrink-0"
         >
           <Plus size={16} />
@@ -259,13 +348,22 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
-                        <button
-                          onClick={() => onTriggerNotification(`Melihat log detail audit item ${p.sku}`)}
-                          className="p-1 text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
-                          title="Audit Log"
-                        >
-                          <Eye size={15} />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditModal(p)}
+                            className="p-1.5 text-slate-500 hover:text-cyan-700 hover:bg-cyan-50 rounded transition-colors"
+                            title="Edit Produk"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p)}
+                            className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                            title="Hapus Produk"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -290,9 +388,18 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Package size={18} className="text-cyan-400" />
-                <h3 className="font-sans font-bold text-sm">Entri SKU & Desain Produk Baru</h3>
+                <h3 className="font-sans font-bold text-sm">
+                  {editingProduct ? 'Edit SKU & Desain Produk' : 'Entri SKU & Desain Produk Baru'}
+                </h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingProduct(null);
+                  resetForm();
+                }}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -403,7 +510,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingProduct(null);
+                    resetForm();
+                  }}
                   className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Batal
@@ -413,7 +524,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   disabled={isSubmitting}
                   className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan SKU Baru'}
+                  {isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan SKU Baru'}
                 </button>
               </div>
             </form>

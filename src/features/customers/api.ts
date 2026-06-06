@@ -30,4 +30,20 @@ export const customersApi = {
 
     return mapCustomerDtoToCustomer(response.data);
   },
+
+  async updateCustomer(id: string, input: Parameters<typeof createCustomerPayload>[0]): Promise<Customer> {
+    const payload: CreateCustomerPayload = createCustomerPayload(input);
+    const response = await resourceClient.update<CustomerDto, CreateCustomerPayload>(
+      MODULE,
+      RESOURCE,
+      id,
+      payload
+    );
+
+    return mapCustomerDtoToCustomer(response.data);
+  },
+
+  async deleteCustomer(id: string): Promise<void> {
+    await resourceClient.delete(MODULE, RESOURCE, id);
+  },
 };

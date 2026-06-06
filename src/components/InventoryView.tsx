@@ -17,18 +17,21 @@ import {
   X
 } from '@/src/components/icons';
 import { Product, StockMovement } from '../types';
-import { authStorage } from '../services/api';
+import { apiClient } from '../services/api';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
+import { LocationDto, ProductStockDto } from '../features/inventory/types';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface InventoryViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: 'incoming-goods' | 'outgoing-goods' | 'stock-movement-history' | 'stock-opname' | 'multi-warehouse') => void;
   initialTab?: 'stok' | 'masuk' | 'keluar' | 'riwayat';
 }
 
 export default function InventoryView({
   onTriggerNotification,
+  onNavigate,
   initialTab = 'stok',
 }: InventoryViewProps) {
   const activeTab = initialTab;
@@ -40,11 +43,15 @@ export default function InventoryView({
   // Modal forms
   const [showInwardModal, setShowInwardModal] = useState(false);
   const [showOutwardModal, setShowOutwardModal] = useState(false);
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [showStockDetailModal, setShowStockDetailModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Form states - Barang Masuk
   const [inSku, setInSku] = useState('');
   const [inQty, setInQty] = useState(0);
   const [inDoc, setInDoc] = useState('');
+  const [inLocationId, setInLocationId] = useState('');
   const [inHandler, setInHandler] = useState('Gudang - Wahyu');
   const [inNotes, setInNotes] = useState('');
 
@@ -52,12 +59,18 @@ export default function InventoryView({
   const [outSku, setOutSku] = useState('');
   const [outQty, setOutQty] = useState(0);
   const [outDoc, setOutDoc] = useState('');
+  const [outLocationId, setOutLocationId] = useState('');
   const [outHandler, setOutHandler] = useState('Admin Gudang');
   const [outNotes, setOutNotes] = useState('');
+  const [correctionLocationId, setCorrectionLocationId] = useState('');
+  const [correctionQty, setCorrectionQty] = useState(0);
+  const [correctionNotes, setCorrectionNotes] = useState('');
 
   const categories = ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'];
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [productStocks, setProductStocks] = useState<ProductStockDto[]>([]);
+  const [locations, setLocations] = useState<LocationDto[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -66,27 +79,47 @@ export default function InventoryView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [prods, stocks, movs] = await Promise.all([
+      const [prods, stocks, movs, locRes] = await Promise.all([
         productsApi.getProducts(),
         inventoryApi.getProductStocks(),
         inventoryApi.getStockMovements(),
+        apiClient.get<{ data: LocationDto[] }>('/master-data/storage-locations'),
       ]);
 
       const combinedProds = prods.map(p => {
-        const stockData = stocks.find(s => s.product?.sku === p.sku);
+        const stockRows = stocks.filter(s => s.product_id === p.id || s.product?.sku === p.sku);
+        const totalStock = stockRows.reduce((sum, s) => sum + Number(s.quantity || 0), 0);
+        const stockStatus: Product['status'] = totalStock <= 0 ? 'Habis' : totalStock <= p.minStock ? 'Menipis' : 'Aman';
+        const locationNames = stockRows
+          .filter(s => Number(s.quantity || 0) > 0)
+          .map(s => s.location?.name)
+          .filter(Boolean);
+        const uniqueLocationNames = Array.from(new Set(locationNames));
+
         return {
           ...p,
-          stock: stockData ? Number(stockData.quantity) : 0,
-          location: stockData?.location?.name || 'Gudang Utama',
+          stock: totalStock,
+          location:
+            uniqueLocationNames.length === 0
+              ? 'Belum ada stok'
+              : uniqueLocationNames.length === 1
+                ? uniqueLocationNames[0]
+                : `${uniqueLocationNames.length} lokasi`,
+          status: stockStatus,
         };
       });
 
       setProducts(combinedProds);
+      setProductStocks(stocks);
+      setLocations(locRes.data);
       setStockMovements(movs);
       
       if (combinedProds.length > 0) {
         setInSku(prev => prev || combinedProds[0].sku);
         setOutSku(prev => prev || combinedProds[0].sku);
+      }
+      if (locRes.data.length > 0) {
+        setInLocationId(prev => prev || locRes.data[0].id);
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Gagal memuat data inventory');
@@ -99,6 +132,67 @@ export default function InventoryView({
     loadData();
   }, []);
 
+  const getProductStocks = (product: Product | null) => {
+    if (!product) return [];
+    return productStocks.filter(s => s.product_id === product.id || s.product?.sku === product.sku);
+  };
+
+  const getProductStock = (product: Product | null) => {
+    if (!product) return undefined;
+    return getProductStocks(product)[0];
+  };
+
+  const getProductBySku = (sku: string) => products.find(p => p.sku === sku) || null;
+
+  const getLocationName = (locationId: string) => {
+    return locations.find(loc => loc.id === locationId)?.name || 'Lokasi tidak dikenal';
+  };
+
+  const getIncomingLocationOptions = () => locations;
+
+  const getStockLocationOptions = (product: Product | null) => {
+    return getProductStocks(product).filter(stock => Number(stock.quantity || 0) > 0);
+  };
+
+  const getDefaultIncomingLocationId = (product: Product | null) => {
+    return getProductStock(product)?.location_id || locations[0]?.id || '';
+  };
+
+  const getDefaultStockLocationId = (product: Product | null) => {
+    return getStockLocationOptions(product)[0]?.location_id || getDefaultIncomingLocationId(product);
+  };
+
+  const openInwardModal = (product?: Product) => {
+    const target = product || selectedProduct || products[0] || null;
+    setSelectedProduct(target);
+    if (target) setInSku(target.sku);
+    setInLocationId(getDefaultIncomingLocationId(target));
+    setShowInwardModal(true);
+  };
+
+  const openOutwardModal = (product?: Product) => {
+    const target = product || selectedProduct || products[0] || null;
+    setSelectedProduct(target);
+    if (target) setOutSku(target.sku);
+    setOutLocationId(getDefaultStockLocationId(target));
+    setShowOutwardModal(true);
+  };
+
+  const openCorrectionModal = (product: Product) => {
+    setSelectedProduct(product);
+    const locationId = getDefaultStockLocationId(product);
+    const stock = getProductStocks(product).find(s => s.location_id === locationId);
+    setCorrectionLocationId(locationId);
+    setCorrectionQty(stock ? Number(stock.quantity || 0) : 0);
+    setCorrectionNotes('');
+    setShowCorrectionModal(true);
+  };
+
+  const openStockDetailModal = (product: Product) => {
+    setSelectedProduct(product);
+    setShowStockDetailModal(true);
+  };
+
   // Submit Incoming Goods
   const handleInwardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,12 +203,16 @@ export default function InventoryView({
 
     const matchedProd = products.find(p => p.sku === inSku);
     if (!matchedProd) return;
+    if (!inLocationId) {
+      onTriggerNotification('Gagal: Lokasi gudang belum tersedia. Tambahkan storage location terlebih dahulu.');
+      return;
+    }
 
     try {
       await inventoryApi.receiveGoods({
         product_id: matchedProd.id,
         quantity: inQty,
-        location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+        location_id: inLocationId,
         reference_type: 'PO',
         reference_number: inDoc,
         notes: inNotes,
@@ -142,9 +240,15 @@ export default function InventoryView({
 
     const matchedProd = products.find(p => p.sku === outSku);
     if (!matchedProd) return;
+    if (!outLocationId) {
+      onTriggerNotification('Gagal: Lokasi gudang belum tersedia. Tambahkan storage location terlebih dahulu.');
+      return;
+    }
 
-    if (matchedProd.stock < outQty) {
-      onTriggerNotification(`Gagal: Stok tidak mencukupi! Stok saat ini: ${matchedProd.stock} ${matchedProd.unit}`);
+    const selectedStock = getProductStocks(matchedProd).find(s => s.location_id === outLocationId);
+    const selectedStockQty = selectedStock ? Number(selectedStock.quantity || 0) : 0;
+    if (selectedStockQty < outQty) {
+      onTriggerNotification(`Gagal: Stok di ${getLocationName(outLocationId)} tidak mencukupi! Stok lokasi: ${selectedStockQty} ${matchedProd.unit}`);
       return;
     }
 
@@ -152,7 +256,7 @@ export default function InventoryView({
       await inventoryApi.issueGoods({
         product_id: matchedProd.id,
         quantity: outQty,
-        location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+        location_id: outLocationId,
         reference_type: 'SO',
         reference_number: outDoc,
         notes: outNotes,
@@ -168,6 +272,32 @@ export default function InventoryView({
     setOutDoc('');
     setOutNotes('');
     setShowOutwardModal(false);
+  };
+
+  const handleCorrectionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    if (correctionQty < 0) {
+      onTriggerNotification('Gagal: Jumlah koreksi tidak boleh minus.');
+      return;
+    }
+
+    if (!correctionLocationId) {
+      onTriggerNotification('Gagal: Lokasi gudang belum tersedia. Tambahkan storage location terlebih dahulu.');
+      return;
+    }
+
+    try {
+      await inventoryApi.updateProductStock(selectedProduct.id, correctionLocationId, correctionQty);
+      onTriggerNotification(`Stok ${selectedProduct.sku} di ${getLocationName(correctionLocationId)} dikoreksi menjadi ${correctionQty} ${selectedProduct.unit}.`);
+      setShowCorrectionModal(false);
+      setCorrectionLocationId('');
+      setCorrectionQty(0);
+      setCorrectionNotes('');
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal mengoreksi stok');
+    }
   };
 
   return (
@@ -208,7 +338,7 @@ export default function InventoryView({
         {/* Dynamic primary action based on active tab */}
         {activeTab === 'masuk' && (
           <button
-            onClick={() => setShowInwardModal(true)}
+            onClick={() => openInwardModal()}
             className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-blue-600 hover:opacity-90 text-slate-950 hover:text-slate-950 rounded-lg text-xs font-bold transition-all shadow flex items-center gap-2 shrink-0"
           >
             <Plus size={16} className="text-slate-950" />
@@ -217,7 +347,7 @@ export default function InventoryView({
         )}
         {activeTab === 'keluar' && (
           <button
-            onClick={() => setShowOutwardModal(true)}
+            onClick={() => openOutwardModal()}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center gap-2 shrink-0"
           >
             <Plus size={16} />
@@ -253,11 +383,11 @@ export default function InventoryView({
                     <th className="p-3.5 pl-5">SKU No.</th>
                     <th className="p-3.5">Nama Item Produk</th>
                     <th className="p-3.5">Kategori</th>
-                    <th className="p-3.5">Lokasi Rak</th>
-                    <th className="p-3.5 text-center">Stok Saat Ini</th>
+                    <th className="p-3.5">Sebaran Lokasi</th>
+                    <th className="p-3.5 text-center">Total Stok</th>
                     <th className="p-3.5 text-center">Minimum Stok</th>
                     <th className="p-3.5">Status Alaram</th>
-                    <th className="p-3.5 pr-5 text-right">Aksi Manual</th>
+                    <th className="p-3.5 pr-5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -290,14 +420,32 @@ export default function InventoryView({
                           </span>
                         </td>
                         <td className="p-3.5 pr-5 text-right">
-                          <button
-                            onClick={() => {
-                              onTriggerNotification('Koreksi stok manual dinonaktifkan. Silakan gunakan modul Stock Opname.');
-                            }}
-                            className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 bg-slate-50 rounded text-[10px]"
-                          >
-                            Koreksi
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openStockDetailModal(p)}
+                              className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-700 bg-white rounded text-[10px] font-bold"
+                            >
+                              Detail
+                            </button>
+                            <button
+                              onClick={() => onNavigate?.('stock-movement-history')}
+                              className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 bg-white rounded text-[10px] font-bold"
+                            >
+                              Mutasi
+                            </button>
+                            <button
+                              onClick={() => onNavigate?.('multi-warehouse')}
+                              className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 bg-white rounded text-[10px] font-bold"
+                            >
+                              Transfer
+                            </button>
+                            <button
+                              onClick={() => onNavigate?.('stock-opname')}
+                              className="px-2 py-1 border border-amber-200 hover:border-amber-300 text-amber-700 bg-amber-50 rounded text-[10px] font-bold"
+                            >
+                              Opname
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -443,6 +591,91 @@ export default function InventoryView({
         </div>
       )}
 
+      {/* MODAL DETAIL SEBARAN STOK */}
+      {showStockDetailModal && selectedProduct && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-sans font-bold text-sm">Detail Sebaran Stok</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">{selectedProduct.sku} | {selectedProduct.name}</p>
+              </div>
+              <button onClick={() => setShowStockDetailModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Stok</span>
+                  <p className="text-lg font-mono font-black text-slate-900 mt-1">
+                    {selectedProduct.stock} <span className="text-[10px] font-normal text-slate-500">{selectedProduct.unit}</span>
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Minimum</span>
+                  <p className="text-lg font-mono font-black text-slate-900 mt-1">
+                    {selectedProduct.minStock} <span className="text-[10px] font-normal text-slate-500">{selectedProduct.unit}</span>
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Status</span>
+                  <p className="text-sm font-bold text-slate-800 mt-2">{selectedProduct.status}</p>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-widest font-mono text-[10px]">
+                    <tr>
+                      <th className="p-3">Lokasi</th>
+                      <th className="p-3">Kode</th>
+                      <th className="p-3 text-right">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {getProductStocks(selectedProduct).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="p-5 text-center text-slate-400">Belum ada stok tercatat di lokasi mana pun.</td>
+                      </tr>
+                    ) : (
+                      getProductStocks(selectedProduct).map((stock) => (
+                        <tr key={stock.id || stock.location_id}>
+                          <td className="p-3 font-bold text-slate-800">{stock.location?.name || getLocationName(stock.location_id)}</td>
+                          <td className="p-3 font-mono text-slate-500">{stock.location?.code || '-'}</td>
+                          <td className="p-3 text-right font-mono font-black text-slate-900">{Number(stock.quantity || 0).toLocaleString('id-ID')}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="pt-2 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowStockDetailModal(false)}
+                  className="px-3 py-2 border rounded-lg font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStockDetailModal(false);
+                    onNavigate?.('multi-warehouse');
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg"
+                >
+                  Kelola Sebaran
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL BARANG MASUK */}
       {showInwardModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -462,11 +695,32 @@ export default function InventoryView({
                 <label className="text-[11px] font-bold text-slate-600">Pilih Item SKU</label>
                 <select
                   value={inSku}
-                  onChange={(e) => setInSku(e.target.value)}
+                  onChange={(e) => {
+                    const nextSku = e.target.value;
+                    const nextProduct = getProductBySku(nextSku);
+                    setInSku(nextSku);
+                    setSelectedProduct(nextProduct);
+                    setInLocationId(getDefaultIncomingLocationId(nextProduct));
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
                   {products.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Lokasi Tujuan Gudang / Rak</label>
+                <select
+                  value={inLocationId}
+                  onChange={(e) => setInLocationId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
+                  required
+                >
+                  <option value="">-- Pilih Lokasi --</option>
+                  {getIncomingLocationOptions().map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
                   ))}
                 </select>
               </div>
@@ -527,6 +781,89 @@ export default function InventoryView({
         </div>
       )}
 
+      {/* MODAL KOREKSI STOK */}
+      {showCorrectionModal && selectedProduct && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-sans font-bold text-sm">Koreksi Stok Manual</h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">{selectedProduct.sku} | {selectedProduct.name}</p>
+              </div>
+              <button onClick={() => setShowCorrectionModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCorrectionSubmit} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Stok Sistem</span>
+                  <p className="text-lg font-mono font-black text-slate-900 mt-1">
+                    {selectedProduct.stock} <span className="text-[10px] font-normal text-slate-500">{selectedProduct.unit}</span>
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600">Stok Fisik Baru</label>
+                  <input
+                    type="number"
+                    min={0}
+                    required
+                    value={correctionQty}
+                    onChange={(e) => setCorrectionQty(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Lokasi Koreksi</label>
+                <select
+                  value={correctionLocationId}
+                  onChange={(e) => {
+                    const locationId = e.target.value;
+                    const stock = getProductStocks(selectedProduct).find(s => s.location_id === locationId);
+                    setCorrectionLocationId(locationId);
+                    setCorrectionQty(stock ? Number(stock.quantity || 0) : 0);
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
+                  required
+                >
+                  <option value="">-- Pilih Lokasi --</option>
+                  {getProductStocks(selectedProduct).length > 0 ? (
+                    getProductStocks(selectedProduct).map((stock) => (
+                      <option key={stock.location_id} value={stock.location_id}>
+                        {stock.location?.name || getLocationName(stock.location_id)} - Stok: {Number(stock.quantity || 0)}
+                      </option>
+                    ))
+                  ) : (
+                    locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name} ({loc.code}) - Stok: 0</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Catatan Koreksi</label>
+                <textarea
+                  rows={2}
+                  value={correctionNotes}
+                  onChange={(e) => setCorrectionNotes(e.target.value)}
+                  placeholder="Contoh: Penyesuaian setelah hitung fisik rak gudang."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg resize-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button type="button" onClick={() => setShowCorrectionModal(false)} className="px-3 py-2 border rounded-lg">Batal</button>
+                <button type="submit" className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg">Simpan Koreksi</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL BARANG KELUAR */}
       {showOutwardModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -546,11 +883,34 @@ export default function InventoryView({
                 <label className="text-[11px] font-bold text-slate-600">Pilih Item SKU</label>
                 <select
                   value={outSku}
-                  onChange={(e) => setOutSku(e.target.value)}
+                  onChange={(e) => {
+                    const nextSku = e.target.value;
+                    const nextProduct = getProductBySku(nextSku);
+                    setOutSku(nextSku);
+                    setSelectedProduct(nextProduct);
+                    setOutLocationId(getDefaultStockLocationId(nextProduct));
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
                   {products.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name} (Sisa: {p.stock})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Lokasi Sumber Gudang / Rak</label>
+                <select
+                  value={outLocationId}
+                  onChange={(e) => setOutLocationId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
+                  required
+                >
+                  <option value="">-- Pilih Lokasi Stok --</option>
+                  {getStockLocationOptions(getProductBySku(outSku)).map((stock) => (
+                    <option key={stock.location_id} value={stock.location_id}>
+                      {stock.location?.name || getLocationName(stock.location_id)} - Stok: {Number(stock.quantity || 0)}
+                    </option>
                   ))}
                 </select>
               </div>

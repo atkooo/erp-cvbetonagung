@@ -18,6 +18,7 @@ const CustomersView = React.lazy(() => import('./components/CustomersView'));
 const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
 const ProductsView = React.lazy(() => import('./components/ProductsView'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
+const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
 const SalesView = React.lazy(() => import('./components/SalesView'));
 const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
@@ -203,6 +204,8 @@ export default function App() {
             onTriggerNotification={triggerNotification}
           />
         );
+      case 'warehouses':
+        return <WarehouseMasterView onTriggerNotification={triggerNotification} />;
 
       // Inventory Views mapping to direct tabs
       case 'stock-management':
@@ -210,6 +213,7 @@ export default function App() {
           <InventoryView
             initialTab="stok"
             onTriggerNotification={triggerNotification}
+            onNavigate={setCurrentView}
           />
         );
       case 'incoming-goods':
@@ -217,6 +221,7 @@ export default function App() {
           <InventoryView
             initialTab="masuk"
             onTriggerNotification={triggerNotification}
+            onNavigate={setCurrentView}
           />
         );
       case 'outgoing-goods':
@@ -224,6 +229,7 @@ export default function App() {
           <InventoryView
             initialTab="keluar"
             onTriggerNotification={triggerNotification}
+            onNavigate={setCurrentView}
           />
         );
       case 'stock-movement-history':
@@ -231,6 +237,7 @@ export default function App() {
           <InventoryView
             initialTab="riwayat"
             onTriggerNotification={triggerNotification}
+            onNavigate={setCurrentView}
           />
         );
 
@@ -281,7 +288,7 @@ export default function App() {
       case 'returns':
         return <ReturnsView onTriggerNotification={triggerNotification} />;
       case 'multi-warehouse':
-        return <MultiWarehouseView onTriggerNotification={triggerNotification} />;
+        return <MultiWarehouseView onTriggerNotification={triggerNotification} onNavigate={setCurrentView} />;
       case 'project-budgeting':
         return <ProjectBudgetingView onTriggerNotification={triggerNotification} />;
       case 'reminders':

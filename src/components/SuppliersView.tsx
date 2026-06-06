@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from '@/src/components/icons';
+import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X, Edit, Trash2, Save } from '@/src/components/icons';
 import { Supplier } from '../types';
 import { authStorage } from '../services/api';
 import { suppliersApi } from '../features/suppliers/api';
@@ -18,6 +18,7 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,36 +65,83 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
     return matchesSearch && matchesStatus;
   });
 
+  const resetForm = () => {
+    setName('');
+    setContactName('');
+    setPhone('');
+    setCity('');
+    setAddress('');
+    setStatus('Aktif');
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingSupplier(null);
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (supp: Supplier) => {
+    setEditingSupplier(supp);
+    setName(supp.name);
+    setContactName(supp.contactName === '-' ? '' : supp.contactName);
+    setPhone(supp.phone === '-' ? '' : supp.phone);
+    setCity(supp.city === '-' ? '' : supp.city);
+    setAddress(supp.address === '-' ? '' : supp.address);
+    setStatus(supp.status);
+    setShowAddModal(true);
+  };
+
+  const handleDelete = async (id: string, suppName: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus supplier ${suppName}?`)) return;
+
+    onTriggerNotification(`Menghapus supplier ${suppName}...`);
+    try {
+      await suppliersApi.deleteSupplier(id);
+      setSuppliers((prev) => prev.filter((s) => s.id !== id));
+      onTriggerNotification(`Sukses menghapus supplier: ${suppName}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal menghapus supplier dari backend.';
+      onTriggerNotification(message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactName || !phone || !city) {
-      onTriggerNotification('Gagal menambahkan: Lengkapi kolom wajib isi!');
+      onTriggerNotification('Gagal menyimpan: Lengkapi kolom wajib isi!');
       return;
     }
-
-    const nextCode = `SPL-00${suppliers.length + 1}`;
 
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      const newSupp = await suppliersApi.createSupplier({
-        code: nextCode,
-        name,
-        contact_name: contactName,
-        phone,
-        city,
-        address,
-        status: status === 'Aktif' ? 'active' : 'inactive',
-      });
-      setSuppliers((prev) => [newSupp, ...prev]);
-      onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
-      
-      setName('');
-      setContactName('');
-      setPhone('');
-      setCity('');
-      setAddress('');
-      setStatus('Aktif');
+      if (editingSupplier) {
+        const updated = await suppliersApi.updateSupplier(editingSupplier.id, {
+          code: editingSupplier.code,
+          name,
+          contact_name: contactName,
+          phone,
+          city,
+          address,
+          status: status === 'Aktif' ? 'active' : 'inactive',
+        });
+        setSuppliers((prev) => prev.map((s) => (s.id === editingSupplier.id ? updated : s)));
+        onTriggerNotification(`Sukses memperbarui Supplier: ${updated.name}`);
+      } else {
+        const nextCode = `SPL00${suppliers.length + 1}`;
+        const newSupp = await suppliersApi.createSupplier({
+          code: nextCode,
+          name,
+          contact_name: contactName,
+          phone,
+          city,
+          address,
+          status: status === 'Aktif' ? 'active' : 'inactive',
+        });
+        setSuppliers((prev) => [newSupp, ...prev]);
+        onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
+      }
+      resetForm();
       setShowAddModal(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyimpan supplier';
@@ -137,7 +185,7 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
         >
           <Plus size={16} />
@@ -221,12 +269,22 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
-                        <button
-                          onClick={() => onTriggerNotification(`Melihat log PO dikirim ke ${supp.name}`)}
-                          className="px-2 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
-                        >
-                          Rekonsil
-                        </button>
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditModal(supp)}
+                            className="p-1 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 rounded transition-all"
+                            title="Edit"
+                          >
+                            <Edit size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(supp.id, supp.name)}
+                            className="p-1 hover:bg-rose-50 border border-slate-200 hover:border-rose-100 text-slate-400 hover:text-rose-600 rounded transition-all"
+                            title="Hapus"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -254,7 +312,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Handshake size={18} className="text-cyan-400" />
-                <h3 className="font-sans font-bold text-sm">Registrasi Pemasok Baru</h3>
+                <h3 className="font-sans font-bold text-sm">
+                  {editingSupplier ? `Edit Data Supplier: ${editingSupplier.code}` : 'Registrasi Pemasok Baru'}
+                </h3>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white transition-colors">
                 <X size={18} />
@@ -360,9 +420,10 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 flex items-center gap-1.5"
                 >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Vendor'}
+                  <Save size={13} />
+                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
                 </button>
               </div>
             </form>

@@ -16,6 +16,7 @@ import { Product } from '../types';
 
 interface MultiWarehouseViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: 'warehouses') => void;
 }
 
 const Panel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -61,7 +62,7 @@ const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; t
   );
 };
 
-export default function MultiWarehouseView({ onTriggerNotification }: MultiWarehouseViewProps) {
+export default function MultiWarehouseView({ onTriggerNotification, onNavigate }: MultiWarehouseViewProps) {
   const [warehouses, setWarehouses] = useState<{ id: string; name: string; code: string; type?: string; address?: string }[]>([]);
   const [locations, setLocations] = useState<LocationDto[]>([]);
   const [productStocks, setProductStocks] = useState<ProductStockDto[]>([]);
@@ -215,6 +216,14 @@ export default function MultiWarehouseView({ onTriggerNotification }: MultiWareh
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => onNavigate?.('warehouses')}
+            className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-700 transition"
+          >
+            <Warehouse size={12} />
+            <span>Master Gudang</span>
+          </button>
+
           <button
             onClick={fetchData}
             className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
@@ -451,3 +460,4 @@ export default function MultiWarehouseView({ onTriggerNotification }: MultiWareh
     </div>
   );
 }
+

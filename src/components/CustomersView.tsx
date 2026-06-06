@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X } from '@/src/components/icons';
+import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X, Edit, Trash2, Save } from '@/src/components/icons';
 import { Customer } from '../types';
 import { authStorage } from '../services/api';
 import { customersApi } from '../features/customers/api';
@@ -18,6 +18,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,34 +76,79 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
 
   const generateCustomerCode = () => {
     const timestamp = Date.now().toString().slice(-8);
-    return `CUST-${timestamp}`;
+    return `CUST${timestamp}`;
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingCustomer(null);
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (cust: Customer) => {
+    setEditingCustomer(cust);
+    setName(cust.name);
+    setPhone(cust.phone === '-' ? '' : cust.phone);
+    setEmail(cust.email === '-' ? '' : cust.email);
+    setCity(cust.city === '-' ? '' : cust.city);
+    setAddress(cust.address === '-' ? '' : cust.address);
+    setStatus(cust.status);
+    setShowAddModal(true);
+  };
+
+  const handleDelete = async (id: string, custName: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus customer ${custName}?`)) return;
+
+    onTriggerNotification(`Menghapus customer ${custName}...`);
+    try {
+      await customersApi.deleteCustomer(id);
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+      onTriggerNotification(`Sukses menghapus customer: ${custName}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal menghapus customer dari backend.';
+      onTriggerNotification(message);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone || !city) {
-      onTriggerNotification('Gagal menambahkan: Harap isi Nama, No HP, dan Kota!');
+      onTriggerNotification('Gagal menyimpan: Harap isi Nama, No HP, dan Kota!');
       return;
     }
-
-    const nextCode = generateCustomerCode();
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
-      const newCustomer = await customersApi.createCustomer({
-        code: nextCode,
-        name,
-        phone,
-        email,
-        city,
-        address,
-        status,
-      });
+      if (editingCustomer) {
+        const updated = await customersApi.updateCustomer(editingCustomer.id, {
+          code: editingCustomer.code,
+          name,
+          phone,
+          email,
+          city,
+          address,
+          status,
+        });
 
-      setCustomers((prev) => [newCustomer, ...prev]);
-      onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
+        setCustomers((prev) => prev.map((c) => (c.id === editingCustomer.id ? updated : c)));
+        onTriggerNotification(`Sukses memperbarui Customer: ${updated.name}`);
+      } else {
+        const nextCode = generateCustomerCode();
+        const newCustomer = await customersApi.createCustomer({
+          code: nextCode,
+          name,
+          phone,
+          email,
+          city,
+          address,
+          status,
+        });
+
+        setCustomers((prev) => [newCustomer, ...prev]);
+        onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
+      }
       resetForm();
       setShowAddModal(false);
     } catch (error) {
@@ -147,7 +193,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
         >
           <Plus size={16} />
@@ -230,12 +276,20 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex justify-end gap-1.5">
                           <button
-                            onClick={() => onTriggerNotification(`Membuka profil customer ${cust.name}`)}
-                            className="px-2.5 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
+                            onClick={() => handleOpenEditModal(cust)}
+                            className="p-1 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 rounded transition-all"
+                            title="Edit"
                           >
-                            Atur
+                            <Edit size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(cust.id, cust.name)}
+                            className="p-1 hover:bg-rose-50 border border-slate-200 hover:border-rose-100 text-slate-400 hover:text-rose-600 rounded transition-all"
+                            title="Hapus"
+                          >
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
@@ -265,7 +319,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserPlus size={18} className="text-cyan-400" />
-                <h3 className="font-sans font-bold text-sm">Registrasi Customer Baru</h3>
+                <h3 className="font-sans font-bold text-sm">
+                  {editingCustomer ? `Edit Data Customer: ${editingCustomer.code}` : 'Registrasi Customer Baru'}
+                </h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -374,9 +430,10 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Registrasi'}
+                  <Save size={13} />
+                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
                 </button>
               </div>
             </form>

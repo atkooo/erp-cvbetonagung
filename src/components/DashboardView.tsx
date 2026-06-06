@@ -106,36 +106,32 @@ export default function DashboardView({
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden">
-        {/* Abstract background graphics */}
-        <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 w-64 h-64 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-xl p-6 text-slate-900 border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-mono tracking-wider text-cyan-400 font-bold uppercase bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-800/50">
+            <span className="text-[10px] font-mono tracking-wider text-slate-600 font-bold uppercase bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
               SISTEM ERP INTERNAL 2026
             </span>
-            <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
+            <h1 className="font-sans font-bold tracking-tight text-xl md:text-2xl mt-3 text-slate-900 flex items-center gap-2">
               Kembali Bekerja, Tim CV Beton Agung
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-slate-200 bg-slate-50 text-slate-500 rounded px-1.5 py-0.5 ml-2">
                 API MODE
               </span>
             </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
               Platform ERP mengintegrasikan produksi workshop beton, manajemen proyek custom, logistik stok material, dan rekapitulasi pembayaran secara realtime.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => onNavigate('scan-qr-product')}
-              className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-blue-600 hover:opacity-90 active:scale-95 text-xs text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-xs text-white font-bold rounded-lg transition-all shadow-sm flex items-center gap-2"
             >
               Simulasi Scan QR
             </button>
             <button
               onClick={() => onNavigate('projects')}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-200 font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-white hover:bg-slate-50 active:scale-95 text-xs text-slate-700 font-bold rounded-lg border border-slate-200 transition-all flex items-center gap-2"
             >
               Lihat Proyek
             </button>
@@ -155,12 +151,12 @@ export default function DashboardView({
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Total Unit Stok</span>
-                <h3 className="text-xl font-bold font-sans text-slate-800 mt-1">{totalStock.toLocaleString()} <span className="text-xs text-slate-500 font-normal">Pcs/Mtr</span></h3>
-                <button onClick={() => onNavigate('stock-management')} className="text-[10px] hover:underline text-cyan-600 flex items-center gap-1 mt-2.5 font-bold">
+                <h3 className="text-xl font-bold font-sans text-slate-900 mt-1">{totalStock.toLocaleString()} <span className="text-xs text-slate-500 font-normal">Pcs/Mtr</span></h3>
+                <button onClick={() => onNavigate('stock-management')} className="text-[10px] hover:underline text-slate-600 flex items-center gap-1 mt-2.5 font-bold">
                   Check detail gudang &rarr;
                 </button>
               </div>
-              <div className="p-3 rounded-xl bg-cyan-50 text-cyan-600">
+              <div className="p-3 rounded-lg bg-slate-100 text-slate-600">
                 <Package size={20} />
               </div>
             </div>
@@ -169,13 +165,13 @@ export default function DashboardView({
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Omset Sales Mei</span>
-                <h3 className="text-xl font-bold font-sans text-emerald-600 mt-1">{formatIDR(salesThisMonth)}</h3>
+                <h3 className="text-xl font-bold font-sans text-slate-900 mt-1">{formatIDR(salesThisMonth)}</h3>
                 <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-2.5">
-                  <TrendingUp size={12} className="text-emerald-500" />
-                  <span className="font-bold text-emerald-600">+12.4%</span> dari bulan lalu
+                  <TrendingUp size={12} className="text-emerald-600" />
+                  <span className="font-bold text-emerald-700">+12.4%</span> dari bulan lalu
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="p-3 rounded-lg bg-slate-100 text-slate-600">
                 <TrendingUp size={20} />
               </div>
             </div>
@@ -185,12 +181,12 @@ export default function DashboardView({
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">Proyek Aktif</span>
                 <h3 className="text-xl font-bold font-sans text-slate-800 mt-1">{filteredActiveProjects.length} Proyek</h3>
-                <button onClick={() => onNavigate('projects')} className="text-[10px] hover:underline text-amber-600 flex items-center gap-1 mt-2.5 font-bold">
+                <button onClick={() => onNavigate('projects')} className="text-[10px] hover:underline text-slate-600 flex items-center gap-1 mt-2.5 font-bold">
                   Monitoring Workshop &rarr;
                 </button>
               </div>
-              <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
-                <Wrench size={20} className="text-amber-500" />
+              <div className="p-3 rounded-lg bg-slate-100 text-slate-600">
+                <Wrench size={20} />
               </div>
             </div>
 
@@ -205,7 +201,7 @@ export default function DashboardView({
                   Butuh Restock PO &rarr;
                 </button>
               </div>
-              <div className={`p-3 rounded-xl ${lowStockCount > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-50 text-slate-400'}`}>
+              <div className={`p-3 rounded-lg ${lowStockCount > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
                 <AlertTriangle size={20} />
               </div>
             </div>
@@ -237,23 +233,23 @@ export default function DashboardView({
 
             {/* Unpaid Invoice warning */}
             <div onClick={() => onNavigate('invoices')} className="p-3.5 bg-slate-50 hover:bg-slate-100 cursor-pointer rounded-xl border border-slate-200 transition-colors flex items-center gap-3">
-              <div className="p-2 bg-rose-100/50 rounded-lg text-rose-600">
+              <div className="p-2 bg-slate-200/60 rounded-lg text-slate-600">
                 <Receipt size={16} />
               </div>
               <div>
                 <p className="text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Invoice Unpaid</p>
-                <p className="text-sm font-bold text-rose-700">{unpaidInvoices.length} Dokumen Tagihan</p>
+                <p className="text-sm font-bold text-slate-800">{unpaidInvoices.length} Dokumen Tagihan</p>
               </div>
             </div>
 
             {/* Total products SKU */}
             <div onClick={() => onNavigate('products')} className="p-3.5 bg-slate-50 hover:bg-slate-100 cursor-pointer rounded-xl border border-slate-200 transition-colors flex items-center gap-3">
-              <div className="p-2 bg-indigo-100/50 rounded-lg text-indigo-600">
+              <div className="p-2 bg-slate-200/60 rounded-lg text-slate-600">
                 <Package size={16} />
               </div>
               <div>
                 <p className="text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Katalog Aktif</p>
-                <p className="text-sm font-bold text-indigo-800">{totalProducts} Variasi SKU</p>
+                <p className="text-sm font-bold text-slate-800">{totalProducts} Variasi SKU</p>
               </div>
             </div>
           </div>
@@ -267,7 +263,7 @@ export default function DashboardView({
                   <h3 className="font-sans font-bold text-sm text-slate-800">Analisis Proyek & Penjualan Bulanan (Semester I 2026)</h3>
                   <p className="text-[10px] text-slate-400 mt-0.5">Pendapatan kotor realisasi proyek custom dan beton pracetak</p>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">
+                <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 font-bold rounded">
                   Periode: Jan - Jun
                 </span>
               </div>
@@ -277,8 +273,8 @@ export default function DashboardView({
                 <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono border-b border-slate-200/50 pb-1 mb-2">
                   <span>Rp Milyar</span>
                   <div className="flex gap-4">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-1 bg-cyan-500 rounded" />Proyek Custom</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-indigo-500 rounded-sm" />Roster & Lisplang</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-1 bg-slate-700 rounded" />Proyek Custom</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-slate-400 rounded-sm" />Roster & Lisplang</span>
                   </div>
                 </div>
 
@@ -309,12 +305,12 @@ export default function DashboardView({
                         {/* Domes Bar */}
                         <div 
                           style={{ height: `${dt.custom}%` }}
-                          className="w-4 bg-gradient-to-t from-cyan-600 to-cyan-400 rounded-t-sm shadow-inner transition-all group-hover:brightness-105"
+                          className="w-4 bg-slate-700 rounded-t-sm transition-all group-hover:bg-slate-800"
                         />
                         {/* Pieces Bar */}
                         <div 
                           style={{ height: `${dt.pieces}%` }}
-                          className="w-2.5 bg-gradient-to-t from-indigo-700 to-indigo-500 rounded-t-sm transition-all group-hover:brightness-105"
+                          className="w-2.5 bg-slate-400 rounded-t-sm transition-all group-hover:bg-slate-500"
                         />
                       </div>
                       <span className="text-[10px] text-slate-500 font-medium whitespace-nowrap">{dt.month}</span>
@@ -339,17 +335,13 @@ export default function DashboardView({
                         <span className="text-slate-700 truncate max-w-[200px]" title={item.name}>
                           {item.name}
                         </span>
-                        <span className="text-indigo-600 font-mono">{item.count.toLocaleString()} unit</span>
+                        <span className="text-slate-500 font-mono">{item.count.toLocaleString()} unit</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div 
                             style={{ width: `${item.percentage}%` }}
-                            className={`h-full rounded-full bg-gradient-to-r ${
-                              idx === 0 ? 'from-cyan-500 to-blue-500' :
-                              idx === 1 ? 'from-purple-500 to-indigo-500' :
-                              idx === 2 ? 'from-amber-500 to-orange-500' : 'from-emerald-500 to-teal-500'
-                            }`}
+                            className={idx === 0 ? 'h-full rounded-full bg-slate-700' : 'h-full rounded-full bg-slate-400'}
                           />
                         </div>
                         <span className="text-[10px] text-slate-400 font-mono w-8 text-right">{item.percentage}%</span>
@@ -380,7 +372,7 @@ export default function DashboardView({
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="text-rose-500 animate-pulse" size={16} />
+                  <AlertTriangle className="text-rose-600" size={16} />
                   <h3 className="font-sans font-bold text-sm text-slate-800">Alert Stok Menipis (&le; Batas Minimum)</h3>
                 </div>
                 <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-full">
@@ -443,13 +435,13 @@ export default function DashboardView({
                   filteredActiveProjects.map((proj) => {
                     // Custom CSS color mapped to stage
                     const statusColors: any = {
-                      Survey: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-                      Penawaran: 'bg-blue-100 text-blue-700 border-blue-200',
-                      Deal: 'bg-teal-100 text-teal-700 border-teal-200',
-                      Produksi: 'bg-amber-100 text-amber-700 border-amber-300 animate-pulse',
-                      Pengiriman: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-                      Pemasangan: 'bg-purple-100 text-purple-700 border-purple-200',
-                      Selesai: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                      Survey: 'bg-slate-100 text-slate-700 border-slate-200',
+                      Penawaran: 'bg-slate-100 text-slate-700 border-slate-200',
+                      Deal: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                      Produksi: 'bg-amber-50 text-amber-700 border-amber-200',
+                      Pengiriman: 'bg-slate-100 text-slate-700 border-slate-200',
+                      Pemasangan: 'bg-slate-100 text-slate-700 border-slate-200',
+                      Selesai: 'bg-emerald-50 text-emerald-700 border-emerald-200',
                     };
 
                     return (
@@ -485,7 +477,7 @@ export default function DashboardView({
                               <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                 <div 
                                   style={{ width: `${proj.progress}%` }}
-                                  className="bg-amber-500 h-full rounded-full"
+                                  className="bg-slate-700 h-full rounded-full"
                                 />
                               </div>
                             </div>
@@ -524,10 +516,10 @@ export default function DashboardView({
                           <strong className="text-slate-700 mt-0.5 block">{so.customerName}</strong>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-indigo-700 block">{formatIDR(so.total)}</span>
+                          <span className="font-bold text-slate-800 block">{formatIDR(so.total)}</span>
                           <span className={`text-[9px] font-bold ${
                             so.status === 'Selesai' ? 'text-emerald-600' :
-                            so.status === 'Diproses' ? 'text-blue-500' : 'text-slate-505 text-slate-500'
+                            so.status === 'Diproses' ? 'text-slate-600' : 'text-slate-505 text-slate-500'
                           }`}>{so.status}</span>
                         </div>
                       </div>
@@ -564,17 +556,17 @@ export default function DashboardView({
                 <h4 className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-widest">LOG PRODUKSI & STOK</h4>
                 <div className="space-y-2.5 border-l border-slate-200 pl-3.5 ml-1">
                   <div className="relative">
-                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-cyan-500 rounded-full border border-white" />
+                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-slate-500 rounded-full border border-white" />
                     <p className="text-[11px] font-bold text-slate-700">Lisplang Klasik C30 masuk 150 M</p>
                     <p className="text-[9px] text-slate-400 font-mono mt-0.5">Hari ini, 09:15 | Penerimaan PO-012</p>
                   </div>
                   <div className="relative">
-                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white" />
+                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-slate-400 rounded-full border border-white" />
                     <p className="text-[11px] font-bold text-slate-700">Roster Beton Silang keluar 350 Pcs</p>
                     <p className="text-[9px] text-slate-400 font-mono mt-0.5">Kemarin, 14:30 | Pengiriman SO-088</p>
                   </div>
                   <div className="relative">
-                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-blue-500 rounded-full border border-white" />
+                    <span className="absolute -left-5 top-1 w-2.5 h-2.5 bg-slate-400 rounded-full border border-white" />
                     <p className="text-[11px] font-bold text-slate-700">Modul proyek Baiturrahman selesai produksi</p>
                     <p className="text-[9px] text-slate-400 font-mono mt-0.5">29 Mei 2026, 11:00 | Lokasi: Lab Cetaka A</p>
                   </div>
