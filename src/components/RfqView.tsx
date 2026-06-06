@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Printer, X, FileText, ChevronDown, ChevronRight, Building2 } from '@/src/components/icons';
 import { Rfq, Supplier } from '../types';
 import { suppliersApi } from '../features/suppliers/api';
+import PurchaseRequestPicker from './PurchaseRequestPicker';
 
 interface RfqViewProps {
   onTriggerNotification: (message: string) => void;
@@ -35,35 +36,7 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
         setSuppliers(sups);
         if (sups.length > 0) setSupplierId(sups[0].id);
 
-        // Mock RFQs
-        setRfqs([
-          {
-            id: 'rfq-1',
-            rfqNumber: 'RFQ-2026-001',
-            purchaseRequestId: 'pr-1',
-            supplierId: 'sup-1',
-            supplierName: 'PT Semen Indonesia',
-            rfqDate: '2026-06-02',
-            validUntil: '2026-06-09',
-            status: 'Dikirim',
-            items: [
-              { id: 'item-1', productId: 'p1', productName: 'Semen Gresik 40kg', quantity: 100, quotedUnitPrice: 48000, subtotal: 4800000 },
-            ]
-          },
-          {
-            id: 'rfq-2',
-            rfqNumber: 'RFQ-2026-002',
-            purchaseRequestId: 'pr-2',
-            supplierId: 'sup-2',
-            supplierName: 'Toko Besi Maju Jaya',
-            rfqDate: '2026-06-03',
-            validUntil: '2026-06-10',
-            status: 'Diterima',
-            items: [
-              { id: 'item-2', productId: 'p3', productName: 'Besi Wiremesh', quantity: 200, quotedUnitPrice: 150000, subtotal: 30000000 },
-            ]
-          }
-        ]);
+        setRfqs([]);
       } catch (err) {
         console.error(err);
       } finally {
@@ -215,7 +188,11 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Referensi PR</label>
-                <input type="text" value={prNumber} onChange={e => setPrNumber(e.target.value)} className="w-full p-2 border rounded font-mono" required />
+                <PurchaseRequestPicker 
+                  value={prNumber}
+                  onChange={(pr) => setPrNumber(pr.prNumber)}
+                  statusFilter="Disetujui"
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Pilih Supplier / Vendor</label>

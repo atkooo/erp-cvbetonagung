@@ -1,6 +1,6 @@
 import { apiClient } from '../../services/api';
 import { Invoice, Payment } from '../../types';
-import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable } from './types';
+import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable, AccountDto, CashTransactionDto, CreateCashTransactionDto } from './types';
 import { mapInvoiceFromDto, mapPaymentFromDto, mapSupplierPayableFromDto } from './mappers';
 
 export const financeApi = {
@@ -27,6 +27,21 @@ export const financeApi = {
   async updateSupplierPayable(id: string, data: Partial<{ paid_amount: number; status: 'open' | 'partial' | 'paid' }>): Promise<SupplierPayable> {
     const response = await apiClient.put<{ data: SupplierPayableDto }>(`/purchasing/supplier-payables/${id}`, data);
     return mapSupplierPayableFromDto(response.data);
+  },
+
+  async getAccounts(): Promise<AccountDto[]> {
+    const response = await apiClient.get<{ data: AccountDto[] }>('/finance/accounts');
+    return response.data;
+  },
+
+  async getCashTransactions(): Promise<CashTransactionDto[]> {
+    const response = await apiClient.get<{ data: CashTransactionDto[] }>('/finance/cash-transactions?include=account');
+    return response.data;
+  },
+
+  async createCashTransaction(data: CreateCashTransactionDto): Promise<CashTransactionDto> {
+    const response = await apiClient.post<{ data: CashTransactionDto }>('/finance/cash-transactions', data);
+    return response.data;
   }
 };
 

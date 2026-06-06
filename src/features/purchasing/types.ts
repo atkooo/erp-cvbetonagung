@@ -46,12 +46,10 @@ export interface CreatePurchaseOrderDto {
 }
 
 export interface ReceivePurchaseOrderDto {
-  received_date: string;
-  notes?: string;
-  items: {
-    id: string; // PurchaseOrderItem ID
-    received_quantity: number;
-  }[];
+  to_location_id: string;
+  handled_by?: string | null;
+  movement_at: string;
+  notes?: string | null;
 }
 
 export interface ReturnItemDto {

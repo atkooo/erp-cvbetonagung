@@ -70,3 +70,41 @@ export interface SupplierPayable {
   status: 'Open' | 'Lunas';
 }
 
+export interface AccountDto {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  balance: number | string;
+  currency: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface CashTransactionDto {
+  id: string;
+  transaction_number: string;
+  account_id: string;
+  transaction_date: string;
+  type: 'in' | 'out';
+  amount: number | string;
+  category: string;
+  description: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  recorded_by: string | null;
+  created_at: string;
+  account?: AccountDto;
+}
+
+export interface CreateCashTransactionDto {
+  transaction_number: string;
+  account_id: string;
+  transaction_date: string;
+  type: 'in' | 'out';
+  amount: number;
+  category: string;
+  description?: string;
+  reference_type?: string;
+  reference_id?: string;
+}

@@ -49,6 +49,7 @@ const ReturnsView = React.lazy(() => import('./components/ReturnsView'));
 const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudgetingView'));
 const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
 const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
+const CashExpenseView = React.lazy(() => import('./components/CashExpenseView'));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 
 import { CheckCircle2, WifiOff } from '@/src/components/icons';
@@ -331,6 +332,8 @@ export default function App() {
         return <ReturnsView onTriggerNotification={triggerNotification} />;
       case 'receivables-payables':
         return <ReceivablesPayablesView onTriggerNotification={triggerNotification} />;
+      case 'cash-expense':
+        return <CashExpenseView onTriggerNotification={triggerNotification} />;
       case 'delivery-orders':
         return <DeliveryOrdersView onTriggerNotification={triggerNotification} />;
       case 'returns':

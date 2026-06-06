@@ -82,6 +82,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   invoices: "Faktur Penjualan (Invoices)",
   payments: "Riwayat Pembayaran Customer",
   "receivables-payables": "Piutang & Hutang",
+  "cash-expense": "Kas & Biaya Operasional",
   "purchase-requests": "Purchase Request (PR)",
   rfq: "Request For Quotation (RFQ)",
   "purchase-orders": "Purchase Order (PO Pemasok)",
@@ -115,7 +116,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     id: "core",
     items: [
       { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard },
-      { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
+      // { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
     ],
   },
   {
@@ -171,6 +172,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "receivables-payables",
         label: "Piutang & Hutang",
         icon: WalletCards,
+        requiredModule: "finance",
+      },
+      {
+        view: "cash-expense",
+        label: "Kas & Biaya",
+        icon: Calculator,
         requiredModule: "finance",
       },
     ],
@@ -266,49 +273,49 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   //   ],
   // },
 
-  {
-    id: "hrd",
-    title: "HRD & Personalia",
-    collapsible: true,
-    items: [
-      {
-        view: "employees",
-        label: "Master Karyawan",
-        icon: UserCog,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-dashboard",
-        label: "Dashboard Absensi",
-        icon: CalendarCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-scanner",
-        label: "Scan Absensi (QR)",
-        icon: Scan,
-        requiredModule: "employees",
-      },
-      {
-        view: "leave-management",
-        label: "Pengajuan Cuti",
-        icon: FileCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "payroll-management",
-        label: "Payroll",
-        icon: Calculator,
-        requiredModule: "finance",
-      },
-      {
-        view: "employee-loans",
-        label: "Pinjaman Karyawan",
-        icon: Handshake,
-        requiredModule: "finance",
-      },
-    ],
-  },
+  // {
+  //   id: "hrd",
+  //   title: "HRD & Personalia",
+  //   collapsible: true,
+  //   items: [
+  //     {
+  //       view: "employees",
+  //       label: "Master Karyawan",
+  //       icon: UserCog,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "attendance-dashboard",
+  //       label: "Dashboard Absensi",
+  //       icon: CalendarCheck,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "attendance-scanner",
+  //       label: "Scan Absensi (QR)",
+  //       icon: Scan,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "leave-management",
+  //       label: "Pengajuan Cuti",
+  //       icon: FileCheck,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "payroll-management",
+  //       label: "Payroll",
+  //       icon: Calculator,
+  //       requiredModule: "finance",
+  //     },
+  //     {
+  //       view: "employee-loans",
+  //       label: "Pinjaman Karyawan",
+  //       icon: Handshake,
+  //       requiredModule: "finance",
+  //     },
+  //   ],
+  // },
   {
     id: "inventory",
     title: "Inventory",

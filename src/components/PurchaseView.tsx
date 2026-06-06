@@ -120,23 +120,13 @@ export default function PurchaseView({
       const d = new Date();
       const todayStr = d.toISOString().split('T')[0];
       
-      // Build items payload assuming full receive for simplicity
-      const receiveItems = items.filter(it => it.id).map(it => ({
-        id: it.id,
-        received_quantity: it.quantity
-      }));
-
-      if (receiveItems.length === 0) {
-        onTriggerNotification('Tidak ada item ID valid untuk konfirmasi penerimaan via API.');
-        return;
-      }
-
       await purchasingApi.receivePurchaseOrder(poId, {
-        received_date: todayStr,
-        items: receiveItems
+        movement_at: new Date().toISOString(),
+        to_location_id: '019e9ad6-c8d2-7170-9090-1def3d995d06', // HARDCODED for now as there's no location picker yet
+        notes: `Barang diterima dari PO ${poNum}`
       });
       
-      onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}`);
+      onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}. Cek di menu Hutang & Inventory.`);
       await loadData();
     } catch (err) {
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');

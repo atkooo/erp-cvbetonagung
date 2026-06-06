@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Filter, Plus, Printer, X, ChevronDown, ChevronRight, Check } from '@/src/components/icons';
 import { PurchaseRequest, Product } from '../types';
 import { productsApi } from '../features/products/api';
+import ProductPicker from './ProductPicker';
 
 interface PurchaseRequestViewProps {
   onTriggerNotification: (message: string) => void;
@@ -33,38 +34,9 @@ export default function PurchaseRequestView({ onTriggerNotification }: PurchaseR
       try {
         const prods = await productsApi.getProducts();
         setProducts(prods);
-        if (prods.length > 0) setProductId(prods[0].id);
 
-        // Mock PRs
-        setPurchaseRequests([
-          {
-            id: 'pr-1',
-            prNumber: 'PR-2026-0601',
-            requesterId: 'usr-1',
-            requesterName: 'Budi (Gudang)',
-            requestDate: '2026-06-01',
-            requiredDate: '2026-06-10',
-            department: 'Gudang Utama',
-            status: 'Draft',
-            items: [
-              { id: 'item-1', productId: 'p1', productName: 'Semen Gresik 40kg', quantity: 100, status: 'Draft' },
-              { id: 'item-2', productId: 'p2', productName: 'Pasir Lumajang', quantity: 50, status: 'Draft' },
-            ]
-          },
-          {
-            id: 'pr-2',
-            prNumber: 'PR-2026-0602',
-            requesterId: 'usr-2',
-            requesterName: 'Andi (Produksi)',
-            requestDate: '2026-06-03',
-            requiredDate: '2026-06-08',
-            department: 'Produksi',
-            status: 'Disetujui',
-            items: [
-              { id: 'item-3', productId: 'p3', productName: 'Besi Wiremesh', quantity: 200, status: 'Disetujui' },
-            ]
-          }
-        ]);
+
+        setPurchaseRequests([]);
       } catch (err) {
         console.error(err);
       } finally {
@@ -212,9 +184,12 @@ export default function PurchaseRequestView({ onTriggerNotification }: PurchaseR
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Pilih Material</label>
-                <select value={productId} onChange={e => setProductId(e.target.value)} className="w-full p-2 border rounded">
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <ProductPicker 
+                  value={productId}
+                  onChange={(product) => setProductId(product.id)}
+                  categoryFilter="Bahan Baku" // Contoh jika ingin memfilter hanya bahan baku, hapus prop ini untuk semua produk
+                  placeholder="Pilih Material untuk di-request..."
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
