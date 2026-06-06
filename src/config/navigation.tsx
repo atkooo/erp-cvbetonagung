@@ -62,6 +62,7 @@ export interface NavigationSection {
 export const VIEW_TITLES: Record<ViewType, string> = {
   login: "Masuk Sistem",
   dashboard: "Dashboard Utama",
+  "employee-dashboard": "Portal Karyawan (Self-Service)",
   customers: "Manajemen Customer (Pelanggan)",
   employees: "Master Data Karyawan",
   suppliers: "Manajemen Supplier (Pemasok)",
@@ -110,6 +111,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     id: "core",
     items: [
       { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard },
+      { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
     ],
   },
   {
@@ -181,49 +183,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       },
     ],
   },
-  {
-    id: "hrd",
-    title: "HRD & Personalia",
-    collapsible: true,
-    items: [
-      {
-        view: "employees",
-        label: "Master Karyawan",
-        icon: UserCog,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-dashboard",
-        label: "Dashboard Absensi",
-        icon: CalendarCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-scanner",
-        label: "Scan Absensi (QR)",
-        icon: Scan,
-        requiredModule: "employees",
-      },
-      {
-        view: "leave-management",
-        label: "Pengajuan Cuti",
-        icon: FileCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "payroll-management",
-        label: "Payroll",
-        icon: Calculator,
-        requiredModule: "finance",
-      },
-      {
-        view: "employee-loans",
-        label: "Pinjaman Karyawan",
-        icon: Handshake,
-        requiredModule: "finance",
-      },
-    ],
-  },
+
   {
     id: "workshop",
     title: "Workshop & Proyek",
@@ -276,6 +236,50 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   //     },
   //   ],
   // },
+
+  {
+    id: "hrd",
+    title: "HRD & Personalia",
+    collapsible: true,
+    items: [
+      {
+        view: "employees",
+        label: "Master Karyawan",
+        icon: UserCog,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-dashboard",
+        label: "Dashboard Absensi",
+        icon: CalendarCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-scanner",
+        label: "Scan Absensi (QR)",
+        icon: Scan,
+        requiredModule: "employees",
+      },
+      {
+        view: "leave-management",
+        label: "Pengajuan Cuti",
+        icon: FileCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "payroll-management",
+        label: "Payroll",
+        icon: Calculator,
+        requiredModule: "finance",
+      },
+      {
+        view: "employee-loans",
+        label: "Pinjaman Karyawan",
+        icon: Handshake,
+        requiredModule: "finance",
+      },
+    ],
+  },
   {
     id: "inventory",
     title: "Inventory",

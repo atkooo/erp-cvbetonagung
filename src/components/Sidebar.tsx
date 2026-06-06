@@ -40,15 +40,21 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
     }));
   };
 
-  const hasAccessToModule = (requiredModule?: string) => {
-    if (!requiredModule) return true; // public / global module
+  const hasAccessToModule = (requiredModule?: string, itemView?: string) => {
     if (userRoleCode === 'admin') return true; // Admin has full access fallback
     
+    // Explicit bypass for employee
     if (userRoleCode === 'employee') {
-      // Karyawan hanya bisa akses modul HRD/Personalia
+      // Sembunyikan Dashboard Utama dari Karyawan
+      if (itemView === 'dashboard') return false;
+      
+      // Karyawan hanya bisa akses modul HRD/Personalia atau modul yang sengaja di-set public
+      if (!requiredModule) return true;
       return requiredModule === 'employees';
     }
 
+    if (!requiredModule) return true; // public / global module for non-employees
+    
     if (!userPermissions || userPermissions.length === 0) {
       return false; // No permissions loaded, deny access
     }
@@ -58,7 +64,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
   };
 
   const renderNavItem = (item: NavigationItem) => {
-    if (!hasAccessToModule(item.requiredModule)) {
+    if (!hasAccessToModule(item.requiredModule, item.view)) {
       return null;
     }
 
@@ -117,7 +123,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
           const isExpanded = expandedSections[section.id];
           
           // Pre-filter items to check if section has any visible items
-          const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule));
+          const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule, item.view));
           
           if (visibleItems.length === 0) {
              return null;

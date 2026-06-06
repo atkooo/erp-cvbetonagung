@@ -307,6 +307,7 @@ export interface AuthSession {
 export type ViewType =
   | 'login'
   | 'dashboard'
+  | 'employee-dashboard'
   | 'customers'
   | 'employees'
   | 'suppliers'

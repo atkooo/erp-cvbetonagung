@@ -14,6 +14,7 @@ import Topbar from './components/Topbar';
 import LoginView from './components/LoginView';
 
 const DashboardView = React.lazy(() => import('./components/DashboardView'));
+const EmployeeDashboardView = React.lazy(() => import('./components/EmployeeDashboardView'));
 const CustomersView = React.lazy(() => import('./components/CustomersView'));
 const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
 const ProductsView = React.lazy(() => import('./components/ProductsView'));
@@ -122,7 +123,8 @@ export default function App() {
         setUserEmail(user.email);
         setUserRole(user.role?.name || 'User');
         setUserRoleCode(user.role?.code || 'admin');
-        setCurrentView((view) => (view === 'login' ? 'dashboard' : view));
+        const defaultView = user.role?.code === 'employee' ? 'employee-dashboard' : 'dashboard';
+        setCurrentView((view) => (view === 'login' ? defaultView : view));
       })
       .catch((error: Error) => {
         setAuthUser(null);
@@ -141,7 +143,8 @@ export default function App() {
 
   const handleLoginSuccess = (session: AuthSession) => {
     applyAuthUser(session.user);
-    setCurrentView('dashboard');
+    const defaultView = session.user.role?.code === 'employee' ? 'employee-dashboard' : 'dashboard';
+    setCurrentView(defaultView);
   };
 
   const handleLogout = async () => {
@@ -181,6 +184,12 @@ export default function App() {
               setSelectedProjectId(pid);
             }}
             onTriggerNotification={triggerNotification}
+          />
+        );
+      case 'employee-dashboard':
+        return (
+          <EmployeeDashboardView
+            onNavigate={setCurrentView}
           />
         );
       case 'customers':
@@ -405,6 +414,61 @@ export default function App() {
           <div className="w-8 h-8 mx-auto border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
           <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">Memulihkan Sesi ERP</p>
         </div>
+      </div>
+    );
+  }
+
+  // Mobile Layout for Employee
+  if (userRoleCode === 'employee') {
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+        {!isOnline && (
+          <div className="bg-rose-600 text-white text-[10px] font-bold text-center py-1.5 px-4 flex items-center justify-center gap-2 shrink-0 animate-in slide-in-from-top duration-300">
+            <WifiOff size={12} className="animate-pulse" />
+            <span>Mode Offline</span>
+          </div>
+        )}
+        
+        {/* Simple Mobile Header */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+          <div className="flex items-center gap-3">
+            {currentView !== 'employee-dashboard' && (
+              <button 
+                onClick={() => setCurrentView('employee-dashboard')}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition-colors"
+                title="Kembali ke Beranda"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+            )}
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-mono font-bold text-emerald-600 tracking-wider">CV Beton Agung</span>
+              <span className="text-xs font-bold text-slate-800">Portal Karyawan</span>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">
+            Keluar
+          </button>
+        </div>
+
+        {/* Dynamic viewport scroll canvas container */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
+          <React.Suspense fallback={
+            <div className="py-12 text-center">
+              <div className="w-6 h-6 mx-auto border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-2.5" />
+            </div>
+          }>
+            {renderContent()}
+          </React.Suspense>
+        </div>
+
+        {/* Floating System-wide toast notification overlay */}
+        {toast && (
+          <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white rounded-full shadow-xl px-5 py-2.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200 whitespace-nowrap">
+            <CheckCircle2 size={15} className="text-white stroke-[3]" />
+            <span className="font-sans font-bold text-[11px]">{toast}</span>
+          </div>
+        )}
       </div>
     );
   }
