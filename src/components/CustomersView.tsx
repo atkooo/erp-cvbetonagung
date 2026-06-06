@@ -177,7 +177,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
             />
           </div>
-          
+
           <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
             <Filter size={13} className="text-slate-400" />
             <select
@@ -221,7 +221,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               <thead>
                 <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
                   <th className="p-3.5 pl-5">Kode</th>
-                  <th className="p-3.5">Nama Customer / Mandor</th>
+                  <th className="p-3.5">Nama Customer</th>
                   <th className="p-3.5">Nomor Telepon / WA</th>
                   <th className="p-3.5">Kota Operasional</th>
                   <th className="p-3.5">Alamat Lengkap</th>
@@ -267,11 +267,10 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                         <span>{cust.email}</span>
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                          cust.status === 'Aktif' 
-                            ? 'bg-emerald-100 text-emerald-800' 
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${cust.status === 'Aktif'
+                            ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-100 text-slate-500'
-                        }`}>
+                          }`}>
                           {cust.status}
                         </span>
                       </td>
@@ -299,7 +298,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination UI */}
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
             <span>Menampilkan 1-{filteredCustomers.length} dari {customers.length} item</span>
