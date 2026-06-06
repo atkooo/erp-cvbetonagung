@@ -25,6 +25,8 @@ const SalesView = React.lazy(() => import('./components/SalesView'));
 const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
 const PaymentsView = React.lazy(() => import('./components/PaymentsView'));
 const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
+const PurchaseRequestView = React.lazy(() => import('./components/PurchaseRequestView'));
+const RfqView = React.lazy(() => import('./components/RfqView'));
 const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
 const QrView = React.lazy(() => import('./components/QrView'));
 const ReportsView = React.lazy(() => import('./components/ReportsView'));
@@ -300,7 +302,17 @@ export default function App() {
 
       // Purchasing & Procurement
       case 'purchase-requests':
+        return (
+          <PurchaseRequestView
+            onTriggerNotification={triggerNotification}
+          />
+        );
       case 'rfq':
+        return (
+          <RfqView
+            onTriggerNotification={triggerNotification}
+          />
+        );
       case 'purchase-orders':
         return (
           <PurchaseView
