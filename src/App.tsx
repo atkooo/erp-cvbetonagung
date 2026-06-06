@@ -298,13 +298,25 @@ export default function App() {
           />
         );
 
-      // Purchasing
+      // Purchasing & Procurement
+      case 'purchase-requests':
+      case 'rfq':
       case 'purchase-orders':
         return (
           <PurchaseView
             onTriggerNotification={triggerNotification}
           />
         );
+      case 'goods-receipts':
+        return (
+          <InventoryView
+            initialTab="masuk"
+            onTriggerNotification={triggerNotification}
+            onNavigate={setCurrentView}
+          />
+        );
+      case 'purchase-returns':
+        return <ReturnsView onTriggerNotification={triggerNotification} />;
       case 'receivables-payables':
         return <ReceivablesPayablesView onTriggerNotification={triggerNotification} />;
       case 'delivery-orders':
