@@ -26,12 +26,14 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
     { id: 4, text: 'Proyek workshop Baiturrahman memasuki tahap produksi.', type: 'project' },
   ];
 
+  const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
+
   return (
     <div className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20 shrink-0">
       {/* View Title */}
       <div className="flex items-center gap-3">
         <h2 className="font-sans font-bold text-slate-800 text-lg uppercase tracking-tight">
-          {VIEW_TITLES[currentView] || 'CV Beton Agung'}
+          {VIEW_TITLES[currentView] || appName}
         </h2>
       </div>
 

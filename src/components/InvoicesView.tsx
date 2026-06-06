@@ -64,9 +64,6 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
         <div className="flex-1">
           <h3 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
             E-Faktur / Invoice Penjualan
-            <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
-              API MODE
-            </span>
           </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa piutang, dan status jatuh tempo.</p>
         </div>

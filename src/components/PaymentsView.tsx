@@ -93,7 +93,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
           {/* Visual Method cards summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Cash summary */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Nominal Cash (Tunai)</span>
               <h4 className="text-base font-black text-slate-800 font-mono mt-1.5">
                 {formatIDR(payments.filter(p => p.method === 'Cash' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
@@ -102,7 +102,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
             </div>
 
             {/* Transfer sum */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Transfer Rek Bank</span>
               <h4 className="text-base font-black text-cyan-705 font-mono mt-1.5 text-cyan-600">
                 {formatIDR(payments.filter(p => p.method === 'Transfer' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
@@ -111,7 +111,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
             </div>
 
             {/* QRIS sum */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-4 rounded-xl border border-slate-200">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total E-Wallet QRIS Digital</span>
               <h4 className="text-base font-black text-indigo-750 font-mono mt-1.5 text-indigo-600">
                 {formatIDR(payments.filter(p => p.method === 'QRIS' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
@@ -125,9 +125,6 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
             <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 Log Inventaris Kas Masuk / Penerimaan Termin ({filteredPayments.length} Pembayaran)
-                <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
-                  API MODE
-                </span>
               </h3>
               <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung Audited Cash</span>
             </div>

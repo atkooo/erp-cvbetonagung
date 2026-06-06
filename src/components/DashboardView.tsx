@@ -114,9 +114,6 @@ export default function DashboardView({
             </span>
             <h1 className="font-sans font-bold tracking-tight text-xl md:text-2xl mt-3 text-slate-900 flex items-center gap-2">
               Kembali Bekerja, Tim CV Beton Agung
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-slate-200 bg-slate-50 text-slate-500 rounded px-1.5 py-0.5 ml-2">
-                API MODE
-              </span>
             </h1>
             <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
               Platform ERP mengintegrasikan produksi workshop beton, manajemen proyek custom, logistik stok material, dan rekapitulasi pembayaran secara realtime.

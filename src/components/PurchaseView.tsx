@@ -157,9 +157,6 @@ export default function PurchaseView({
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
               Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik, dan pasir lumajang super.
-              <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
-                API MODE
-              </span>
             </p>
           </div>
         </div>

@@ -272,31 +272,28 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
   return (
     <div className="space-y-6 font-sans text-xs">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-700">
+            <Factory size={20} />
+          </div>
           <div>
-            <span className="text-[10px] font-mono tracking-wider text-cyan-400 font-bold uppercase bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-800/50">
-              MANUFAKTUR & PRODUKSI
-            </span>
-            <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
+            <h3 className="font-sans font-bold text-sm text-slate-800 flex items-center gap-2">
               Work Order & SPK Cetak
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                API MODE
-              </span>
-            </h1>
-            <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">
               Keluarkan Surat Perintah Kerja (SPK) untuk tukang, monitor progress cetak harian, hitung persentase barang reject, dan monitor produksi beton secara live.
             </p>
           </div>
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 shrink-0"
-          >
-            <Plus size={14} />
-            <span>Buat SPK / WO</span>
-          </button>
         </div>
+
+        <button
+          onClick={handleOpenCreateModal}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+        >
+          <Plus size={14} />
+          <span>Buat SPK / WO</span>
+        </button>
       </div>
 
       {isLoading ? (
@@ -703,13 +700,13 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Simpan SPK
                 </button>
@@ -829,13 +826,13 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
                 <button
                   type="button"
                   onClick={() => setIsLogModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Simpan Laporan
                 </button>
@@ -879,13 +876,13 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
                 <button
                   type="button"
                   onClick={() => setIsUpdateStageModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Ubah Tahap
                 </button>

@@ -187,7 +187,7 @@ export default function CategoriesView({
                 {/* Header card info */}
                 <div className="flex items-start justify-between">
                   <div
-                    className={`p-2.5 rounded-lg bg-gradient-to-br ${(cat as any).color || "from-slate-500 to-slate-650"} text-white shadow`}
+                    className="p-2.5 rounded-lg bg-slate-700 text-white shadow"
                   >
                     <IconComponent size={20} />
                   </div>

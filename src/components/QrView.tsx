@@ -446,9 +446,9 @@ export default function QrView({
 
         <button
           onClick={() => onNavigateSubView('scanner')}
-          className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-blue-600 text-slate-950 font-bold hover:opacity-90 rounded-lg text-xs flex items-center gap-2 shadow"
+          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white font-bold hover:bg-slate-800 rounded-lg text-xs flex items-center gap-2 shadow cursor-pointer"
         >
-          <Scan size={16} className="text-slate-920" />
+          <Scan size={16} className="text-white" />
           <span>Buka Scanner Kamera</span>
         </button>
       </div>
@@ -532,7 +532,7 @@ export default function QrView({
               <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">CV BETON AGUNG LOGISTIC</p>
               
               {/* Massive QR drawing */}
-              <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border shadow-inner">
+              <div className="p-3 bg-slate-50 rounded-2xl border shadow-inner">
                 {drawMockQrCode(showQrModal.sku, true)}
               </div>
 

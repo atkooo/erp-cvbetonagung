@@ -352,9 +352,6 @@ export default function ProjectsView({
         <div>
           <h3 className="font-sans font-bold text-sm text-slate-850 uppercase tracking-tight flex items-center gap-2">
             Portofolio Pelaksanaan Proyek
-            <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
-              API MODE
-            </span>
           </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Sistem pelacakan pekerjaan workshop, pengiriman material, progres lapangan, serta penarikan termin pembayaran.</p>
         </div>
@@ -373,7 +370,13 @@ export default function ProjectsView({
       {isLoading ? (
         <div className="text-center py-12 text-slate-400 text-xs">Memuat daftar proyek...</div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-xs">Tidak ada proyek yang terdaftar.</div>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center py-16">
+          <AlertTriangle size={32} className="mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+          <h4 className="font-bold text-slate-700 text-sm">Belum Ada Proyek Terdaftar</h4>
+          <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+            Belum ada data kontrak proyek terdaftar dalam database. Silakan gunakan tombol di atas untuk mendaftarkan kontrak proyek baru.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {projects.map((proj) => {

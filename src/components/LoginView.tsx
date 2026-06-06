@@ -27,8 +27,25 @@ interface LoginViewProps {
 export default function LoginView({ onLoginSuccess, onTriggerNotification }: LoginViewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [showOtpField, setShowOtpField] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
+
+  const handleLogoClick = () => {
+    setLogoClicks((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setShowOtpField(true);
+        onTriggerNotification('Mode Akses Khusus Super Admin Aktif.');
+        return 0;
+      }
+      return next;
+    });
+  };
 
   const showLoginError = (message: string) => {
     setErrorMessage(message);
@@ -50,8 +67,8 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
-      showLoginError('Isi email dan password untuk melanjutkan.');
+    if (!email || (!password && !otp)) {
+      showLoginError(showOtpField ? 'Isi email dan OTP untuk melanjutkan.' : 'Isi email dan password untuk melanjutkan.');
       return;
     }
 
@@ -59,7 +76,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
     setIsSubmitting(true);
 
     try {
-      const session = await authApi.login(email, password);
+      const session = await authApi.login(email, password, showOtpField ? otp : undefined);
       onLoginSuccess(session);
       onTriggerNotification(`Selamat datang kembali, ${session.user.name}!`);
     } catch (error) {
@@ -77,12 +94,12 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
         {/* Left Side: Brand Panel */}
         <section className="bg-slate-900 text-slate-200 p-8 md:p-10 flex flex-col justify-between gap-10">
           <div className="space-y-10">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 select-none cursor-pointer" onClick={handleLogoClick}>
               <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center">
                 <Building2 size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-black text-white uppercase tracking-wider">CV. Beton Agung</h1>
+                <h1 className="text-sm font-black text-white uppercase tracking-wider">{appName}</h1>
                 <p className="text-[10px] font-mono tracking-widest text-slate-400 mt-0.5">Sistem Operasional ERP</p>
               </div>
             </div>
@@ -123,7 +140,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Sistem Aktif
             </span>
-            <span>© 2026 CV. Beton Agung</span>
+            <span>© 2026 {appName}</span>
           </div>
         </section>
 
@@ -156,24 +173,46 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+              {!showOtpField && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                      <KeyRound size={13} />
+                    </span>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                    <KeyRound size={13} />
-                  </span>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
-                  />
+              )}
+
+              {showOtpField && (
+                <div className="space-y-1.5 animate-pulse">
+                  <label className="text-[10px] uppercase font-mono font-bold text-emerald-600">Super OTP Key</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-emerald-600">
+                      <LockKeyhole size={13} />
+                    </span>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      placeholder="******"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className="w-full bg-emerald-50/50 border border-emerald-200 focus:border-emerald-500 rounded-lg py-2 pl-9 pr-3 text-emerald-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-xs font-mono tracking-widest text-center"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {errorMessage && (
                 <div className="bg-red-50 border border-red-100 text-red-700 rounded-lg px-3 py-2 text-[10px] leading-relaxed">

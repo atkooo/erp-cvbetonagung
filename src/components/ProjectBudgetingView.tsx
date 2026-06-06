@@ -193,42 +193,52 @@ export default function ProjectBudgetingView({ onTriggerNotification }: ProjectB
         desc="Rencana Anggaran Biaya (RAB) Proyek. Bandingkan proyeksi estimasi biaya dengan realisasi pengeluaran lapangan secara real-time."
       />
 
-      {/* Selector Row */}
-      <Panel className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/50 border border-slate-200">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <span className="font-bold text-slate-700 whitespace-nowrap">Pilih Proyek:</span>
-          <select
-            className="flex-1 md:w-80 px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white font-bold text-slate-800 text-xs"
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-          >
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.projectName} ({p.code})</option>
-            ))}
-          </select>
-        </div>
+      {projects.length === 0 ? (
+        <Panel className="p-8 text-center py-16">
+          <AlertTriangle size={32} className="mx-auto mb-3 text-slate-300 stroke-[1.5]" />
+          <h4 className="font-bold text-slate-700 text-sm">Belum Ada Proyek Terdaftar</h4>
+          <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+            Tidak ada proyek aktif yang ditemukan dalam database. Silakan daftarkan proyek baru terlebih dahulu pada menu Proyek untuk mulai menyusun rencana anggaran biaya (RAB).
+          </p>
+        </Panel>
+      ) : (
+        <>
+          {/* Selector Row */}
+          <Panel className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/50 border border-slate-200">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <span className="font-bold text-slate-700 whitespace-nowrap">Pilih Proyek:</span>
+              <select
+                className="flex-1 md:w-80 px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white font-bold text-slate-800 text-xs"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+              >
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.projectName} ({p.code})</option>
+                ))}
+              </select>
+            </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
-          >
-            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-            <span>Segarkan</span>
-          </button>
-          
-          <button
-            onClick={() => setShowAddModal(true)}
-            disabled={!selectedProjectId}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-bold transition"
-          >
-            <Plus size={14} />
-            <span>Tambah Anggaran RAB</span>
-          </button>
-        </div>
-      </Panel>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchData}
+                className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
+              >
+                <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+                <span>Segarkan</span>
+              </button>
+              
+              <button
+                onClick={() => setShowAddModal(true)}
+                disabled={!selectedProjectId}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-bold transition"
+              >
+                <Plus size={14} />
+                <span>Tambah Anggaran RAB</span>
+              </button>
+            </div>
+          </Panel>
 
-      {selectedProjectId && activeProject && (
+          {selectedProjectId && activeProject && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -305,6 +315,8 @@ export default function ProjectBudgetingView({ onTriggerNotification }: ProjectB
               </div>
             )}
           </Panel>
+        </>
+      )}
         </>
       )}
 

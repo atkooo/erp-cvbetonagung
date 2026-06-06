@@ -184,9 +184,6 @@ export default function SalesView({
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
               {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
-              <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
-                API MODE
-              </span>
             </p>
           </div>
         </div>
@@ -395,9 +392,9 @@ export default function SalesView({
                 {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
                   <button
                     onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber)}
-                    className="w-full py-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 hover:opacity-90 text-slate-950 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <FileCheck size={13} className="text-slate-950" />
+                    <FileCheck size={13} className="text-white" />
                     <span>Approve to SO</span>
                   </button>
                 ) : !isQuotation && selectedDoc.status === 'Draft' ? (
@@ -407,9 +404,9 @@ export default function SalesView({
                       onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
                       setSelectedDoc(null);
                     }}
-                    className="w-full py-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 hover:opacity-90 text-slate-950 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Receipt size={13} className="text-slate-950" />
+                    <Receipt size={13} className="text-white" />
                     <span>Terbitkan Invoice</span>
                   </button>
                 ) : (

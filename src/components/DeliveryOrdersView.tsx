@@ -24,11 +24,11 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
   const [deliveryOrders, setDeliveryOrders] = useState<DeliveryOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [storageLocations, setStorageLocations] = useState<StorageLocationOption[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShipModalOpen, setIsShipModalOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
 
   // Ship DO form states
   const [selectedLocationId, setSelectedLocationId] = useState('');
-  
+
   // Receive DO form states
   const [receiverName, setReceiverName] = useState('');
 
@@ -167,7 +167,7 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
   const countShipped = deliveryOrders.filter(d => d.status === 'Dikirim').length;
   const countReceived = deliveryOrders.filter(d => d.status === 'Diterima').length;
 
-  const filteredOrders = deliveryOrders.filter(d => 
+  const filteredOrders = deliveryOrders.filter(d =>
     d.deliveryNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (d.customerName && d.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (d.salesOrderNumber && d.salesOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -176,31 +176,28 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
   return (
     <div className="space-y-6 font-sans text-xs">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-950 rounded-2xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-700">
+            <Truck size={20} />
+          </div>
           <div>
-            <span className="text-[10px] font-mono tracking-wider text-cyan-400 font-bold uppercase bg-cyan-950/80 px-2.5 py-1 rounded-md border border-cyan-800/50">
-              LOGISTIK & EKSPEDISI
-            </span>
-            <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
+            <h3 className="font-sans font-bold text-sm text-slate-800 flex items-center gap-2">
               Delivery Order / Surat Jalan
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                API MODE
-              </span>
-            </h1>
-            <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">
               Buat dokumen surat jalan resmi dari Sales Order, lakukan shipment untuk mengurangi stok secara live, dan catat bukti terima barang.
             </p>
           </div>
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 shrink-0"
-          >
-            <Plus size={14} />
-            <span>Buat Surat Jalan</span>
-          </button>
         </div>
+
+        <button
+          onClick={handleOpenCreateModal}
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+        >
+          <Plus size={14} />
+          <span>Buat Surat Jalan</span>
+        </button>
       </div>
 
       {isLoading ? (
@@ -277,7 +274,7 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
-                  <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                  <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
                     <th className="p-3.5 pl-5">No Surat Jalan</th>
                     <th className="p-3.5">Sales Order</th>
                     <th className="p-3.5">Customer / Relasi</th>
@@ -321,12 +318,11 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                         )}
                       </td>
                       <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          doOrder.status === 'Siap Muat' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
-                          doOrder.status === 'Dikirim' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          doOrder.status === 'Diterima' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${doOrder.status === 'Siap Muat' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                            doOrder.status === 'Dikirim' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              doOrder.status === 'Diterima' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
                           {doOrder.status}
                         </span>
                       </td>
@@ -450,13 +446,13 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 hover:opacity-95"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Simpan
                 </button>
@@ -510,13 +506,13 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                 <button
                   type="button"
                   onClick={() => setIsShipModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-br from-cyan-500 to-indigo-650 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 hover:opacity-95"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Kirim Sekarang
                 </button>
@@ -557,13 +553,13 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                 <button
                   type="button"
                   onClick={() => setIsReceiveModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Konfirmasi Diterima
                 </button>

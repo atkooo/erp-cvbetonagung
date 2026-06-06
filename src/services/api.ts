@@ -141,10 +141,10 @@ export const apiClient = {
 };
 
 export const authApi = {
-  async login(email: string, password: string): Promise<AuthSession> {
+  async login(email: string, password: string, otp?: string): Promise<AuthSession> {
     const response = await apiClient.request<ApiEnvelope<LoginResponse>>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, otp }),
     });
     const session = {
       token: response.data.access_token,

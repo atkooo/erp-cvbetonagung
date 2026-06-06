@@ -166,9 +166,6 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl mt-3 text-slate-800 flex items-center gap-2">
               Master Data Karyawan & Tukang
-              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-slate-200 bg-slate-50 text-slate-500 rounded px-1.5 py-0.5 ml-2">
-                API MODE
-              </span>
             </h1>
             <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
               Manajemen komprehensif data staf internal, supir logistik, tenaga harian, serta tim borongan workshop cetakan beton.
