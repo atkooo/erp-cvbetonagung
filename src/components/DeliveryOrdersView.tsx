@@ -8,6 +8,7 @@ import { Truck, Plus, Search, CheckCircle2, ChevronRight, X, Clock, HelpCircle, 
 import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { DeliveryOrder, SalesOrder } from '../types';
+import { SkeletonTable, SkeletonCard, ErrorCard } from './Skeleton';
 
 interface DeliveryOrdersViewProps {
   onTriggerNotification: (message: string) => void;
@@ -19,19 +20,13 @@ interface StorageLocationOption {
   code: string;
 }
 
-// Dummy initial data for demo mode fallback
-const dummyDeliveryOrders: DeliveryOrder[] = [
-  { id: 'do1', deliveryNumber: 'DO-2026-0601', salesOrderId: 'so1', salesOrderNumber: 'SO-2026-05-033', customerId: 'c1', customerName: 'Masjid Baiturrahman', deliveryDate: '2026-06-02', status: 'Dikirim', receiverName: '', notes: 'Kubah GRC D 6 Meter', items: [{ id: 'doi1', productId: 'p1', productName: 'Kubah GRC D 6 Meter', productSku: 'KBG-006', quantity: 1 }] },
-  { id: 'do2', deliveryNumber: 'DO-2026-0602', salesOrderId: 'so2', salesOrderNumber: 'SO-2026-05-035', customerId: 'c2', customerName: 'PT Karya Beton Raya', deliveryDate: '2026-06-01', receivedAt: '2026-06-02', receiverName: 'Pak Anton', status: 'Diterima', notes: 'Roster 1.500 pcs', items: [{ id: 'doi2', productId: 'p2', productName: 'Roster Beton Motif Kotak', productSku: 'RST-001', quantity: 1500 }] },
-  { id: 'do3', deliveryNumber: 'DO-2026-0603', salesOrderId: 'so3', salesOrderNumber: 'SO-2026-05-036', customerId: 'c3', customerName: 'H. Ahmad Syukur', deliveryDate: '2026-06-04', status: 'Siap Muat', receiverName: '', notes: 'Lisplang M20 80 m', items: [{ id: 'doi3', productId: 'p3', productName: 'Lisplang Beton M20', productSku: 'LPL-M20', quantity: 80 }] },
-];
-
 export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOrdersViewProps) {
-  const [deliveryOrders, setDeliveryOrders] = useState<DeliveryOrder[]>(dummyDeliveryOrders);
+  const [deliveryOrders, setDeliveryOrders] = useState<DeliveryOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [storageLocations, setStorageLocations] = useState<StorageLocationOption[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals state
@@ -52,32 +47,23 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
   // Receive DO form states
   const [receiverName, setReceiverName] = useState('');
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
   const fetchData = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      if (hasBackendSession) {
-        // Fetch real data
-        const [dos, sos, locs] = await Promise.all([
-          salesApi.getDeliveryOrders(),
-          salesApi.getSalesOrders(),
-          apiClient.get<{ data: StorageLocationOption[] }>('/master-data/storage-locations')
-        ]);
-        setDeliveryOrders(dos);
-        setSalesOrders(sos);
-        setStorageLocations(locs.data || []);
-      } else {
-        // Mock storage locations
-        setStorageLocations([
-          { id: 'loc1', name: 'Gudang Utama A', code: 'GD-A' },
-          { id: 'loc2', name: 'Workshop Produksi', code: 'WS-01' },
-          { id: 'loc3', name: 'Gudang Bahan Baku', code: 'GD-BB' },
-        ]);
-      }
+      const [dos, sos, locs] = await Promise.all([
+        salesApi.getDeliveryOrders(),
+        salesApi.getSalesOrders(),
+        apiClient.get<{ data: StorageLocationOption[] }>('/master-data/storage-locations')
+      ]);
+      setDeliveryOrders(dos);
+      setSalesOrders(sos);
+      setStorageLocations(locs.data || []);
     } catch (err) {
       console.error('Failed to load delivery order resources', err);
-      onTriggerNotification('Gagal mengambil data surat jalan.');
+      const msg = err instanceof Error ? err.message : 'Gagal mengambil data surat jalan';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +71,7 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
 
   useEffect(() => {
     fetchData();
-  }, [hasBackendSession]);
+  }, []);
 
   const handleOpenCreateModal = () => {
     // Generate auto DO number
@@ -105,31 +91,13 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
     }
 
     try {
-      if (hasBackendSession) {
-        const created = await salesApi.createDeliveryOrder(selectedSalesOrderId, {
-          delivery_number: deliveryNumber,
-          delivery_date: deliveryDate,
-          notes
-        });
-        setDeliveryOrders(prev => [created, ...prev]);
-        onTriggerNotification(`Surat Jalan ${deliveryNumber} berhasil dibuat`);
-      } else {
-        const so = salesOrders.find(s => s.id === selectedSalesOrderId) || { orderNumber: 'SO-MOCK', customerName: 'Mock Customer' };
-        const mockNew: DeliveryOrder = {
-          id: `do-${Date.now()}`,
-          deliveryNumber,
-          salesOrderId: selectedSalesOrderId,
-          salesOrderNumber: so.orderNumber,
-          customerId: 'mock-customer-id',
-          customerName: so.customerName,
-          deliveryDate,
-          status: 'Siap Muat',
-          notes,
-          items: []
-        };
-        setDeliveryOrders(prev => [mockNew, ...prev]);
-        onTriggerNotification(`Surat Jalan ${deliveryNumber} disimulasikan`);
-      }
+      const created = await salesApi.createDeliveryOrder(selectedSalesOrderId, {
+        delivery_number: deliveryNumber,
+        delivery_date: deliveryDate,
+        notes
+      });
+      setDeliveryOrders(prev => [created, ...prev]);
+      onTriggerNotification(`Surat Jalan ${deliveryNumber} berhasil dibuat`);
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error('Failed to create delivery order', err);
@@ -148,15 +116,11 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
     if (!selectedDo || !selectedLocationId) return;
 
     try {
-      if (hasBackendSession) {
-        const updated = await salesApi.shipDeliveryOrder(selectedDo.id, {
-          from_location_id: selectedLocationId,
-          movement_at: new Date().toISOString()
-        });
-        setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? updated : item));
-      } else {
-        setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? { ...item, status: 'Dikirim' } : item));
-      }
+      const updated = await salesApi.shipDeliveryOrder(selectedDo.id, {
+        from_location_id: selectedLocationId,
+        movement_at: new Date().toISOString()
+      });
+      setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? updated : item));
       onTriggerNotification(`Surat Jalan ${selectedDo.deliveryNumber} status diubah ke: Dikirim`);
       setIsShipModalOpen(false);
     } catch (err) {
@@ -179,21 +143,12 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
     }
 
     try {
-      if (hasBackendSession) {
-        const updated = await salesApi.updateDeliveryOrderStatus(selectedDo.id, {
-          status: 'received',
-          receiver_name: receiverName,
-          received_at: new Date().toISOString()
-        });
-        setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? updated : item));
-      } else {
-        setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? { 
-          ...item, 
-          status: 'Diterima', 
-          receiverName, 
-          receivedAt: new Date().toISOString().split('T')[0] 
-        } : item));
-      }
+      const updated = await salesApi.updateDeliveryOrderStatus(selectedDo.id, {
+        status: 'received',
+        receiver_name: receiverName,
+        received_at: new Date().toISOString()
+      });
+      setDeliveryOrders(prev => prev.map(item => item.id === selectedDo.id ? updated : item));
       onTriggerNotification(`Surat Jalan ${selectedDo.deliveryNumber} dikonfirmasi Diterima oleh ${receiverName}`);
       setIsReceiveModalOpen(false);
     } catch (err) {
@@ -230,11 +185,9 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
               Delivery Order / Surat Jalan
-              {hasBackendSession && (
-                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                  API MODE
-                </span>
-              )}
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
+                API MODE
+              </span>
             </h1>
             <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
               Buat dokumen surat jalan resmi dari Sales Order, lakukan shipment untuk mengurangi stok secara live, dan catat bukti terima barang.
@@ -250,171 +203,176 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Pengiriman</span>
-            <h4 className="text-lg font-black text-slate-800 mt-1">{totalDos} Surat</h4>
-          </div>
-          <div className="p-2.5 bg-slate-50 text-slate-500 rounded-lg">
-            <Truck size={18} />
-          </div>
+      {isLoading ? (
+        <div className="space-y-6">
+          <SkeletonCard count={4} />
+          <SkeletonTable rows={5} cols={8} />
         </div>
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchData} />
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Pengiriman</span>
+                <h4 className="text-lg font-black text-slate-800 mt-1">{totalDos} Surat</h4>
+              </div>
+              <div className="p-2.5 bg-slate-50 text-slate-500 rounded-lg">
+                <Truck size={18} />
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Siap Muat</span>
-            <h4 className="text-lg font-black text-cyan-600 mt-1">{countReady} Surat</h4>
-          </div>
-          <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">
-            <Clock size={18} />
-          </div>
-        </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Siap Muat</span>
+                <h4 className="text-lg font-black text-cyan-600 mt-1">{countReady} Surat</h4>
+              </div>
+              <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">
+                <Clock size={18} />
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Dalam Pengiriman</span>
-            <h4 className="text-lg font-black text-amber-600 mt-1">{countShipped} Surat</h4>
-          </div>
-          <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
-            <Send size={18} />
-          </div>
-        </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Dalam Pengiriman</span>
+                <h4 className="text-lg font-black text-amber-600 mt-1">{countShipped} Surat</h4>
+              </div>
+              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
+                <Send size={18} />
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Sudah Diterima</span>
-            <h4 className="text-lg font-black text-emerald-600 mt-1">{countReceived} Surat</h4>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div>
+                <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Sudah Diterima</span>
+                <h4 className="text-lg font-black text-emerald-600 mt-1">{countReceived} Surat</h4>
+              </div>
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                <CheckCircle2 size={18} />
+              </div>
+            </div>
           </div>
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
-            <CheckCircle2 size={18} />
-          </div>
-        </div>
-      </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Search */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-            <input
-              type="text"
-              placeholder="Cari no. DO, customer, sales order..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
-            />
-          </div>
-          <div className="text-[10px] text-slate-400 font-mono">
-            Menampilkan {filteredOrders.length} dari {totalDos} data surat jalan
-          </div>
-        </div>
+          {/* Main Table */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Search */}
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                <input
+                  type="text"
+                  placeholder="Cari no. DO, customer, sales order..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
+                />
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                Menampilkan {filteredOrders.length} dari {totalDos} data surat jalan
+              </div>
+            </div>
 
-        {isLoading ? (
-          <div className="p-12 text-center text-slate-400 font-sans">
-            Memuat database ekspedisi...
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                  <th className="p-3.5 pl-5">No Surat Jalan</th>
-                  <th className="p-3.5">Sales Order</th>
-                  <th className="p-3.5">Customer / Relasi</th>
-                  <th className="p-3.5">Tanggal Muat</th>
-                  <th className="p-3.5">Detail Muatan</th>
-                  <th className="p-3.5">Nama Penerima</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 pr-5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOrders.map((doOrder) => (
-                  <tr key={doOrder.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-cyan-600">{doOrder.deliveryNumber}</td>
-                    <td className="p-3.5 font-mono text-slate-500">{doOrder.salesOrderNumber || '-'}</td>
-                    <td className="p-3.5 font-bold text-slate-800">{doOrder.customerName}</td>
-                    <td className="p-3.5 font-mono text-slate-500">{doOrder.deliveryDate}</td>
-                    <td className="p-3.5 text-slate-600">
-                      {doOrder.items && doOrder.items.length > 0 ? (
-                        <div className="space-y-0.5">
-                          {doOrder.items.map(item => (
-                            <div key={item.id} className="font-semibold text-slate-700">
-                              {item.productName} ({item.quantity} pcs)
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">{doOrder.notes || 'Muatan Custom'}</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-650 text-slate-700">
-                      {doOrder.receiverName ? (
-                        <div>
-                          <div className="font-bold text-slate-800">{doOrder.receiverName}</div>
-                          {doOrder.receivedAt && (
-                            <div className="text-[9px] text-slate-400 font-mono">Tgl: {doOrder.receivedAt}</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                    <th className="p-3.5 pl-5">No Surat Jalan</th>
+                    <th className="p-3.5">Sales Order</th>
+                    <th className="p-3.5">Customer / Relasi</th>
+                    <th className="p-3.5">Tanggal Muat</th>
+                    <th className="p-3.5">Detail Muatan</th>
+                    <th className="p-3.5">Nama Penerima</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 pr-5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredOrders.map((doOrder) => (
+                    <tr key={doOrder.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-3.5 pl-5 font-mono font-bold text-cyan-600">{doOrder.deliveryNumber}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{doOrder.salesOrderNumber || '-'}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{doOrder.customerName}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{doOrder.deliveryDate}</td>
+                      <td className="p-3.5 text-slate-600">
+                        {doOrder.items && doOrder.items.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {doOrder.items.map(item => (
+                              <div key={item.id} className="font-semibold text-slate-700">
+                                {item.productName} ({item.quantity} pcs)
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">{doOrder.notes || 'Muatan Custom'}</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-650 text-slate-700">
+                        {doOrder.receiverName ? (
+                          <div>
+                            <div className="font-bold text-slate-800">{doOrder.receiverName}</div>
+                            {doOrder.receivedAt && (
+                              <div className="text-[9px] text-slate-400 font-mono">Tgl: {doOrder.receivedAt}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">-</span>
+                        )}
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          doOrder.status === 'Siap Muat' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                          doOrder.status === 'Dikirim' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          doOrder.status === 'Diterima' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          {doOrder.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          {doOrder.status === 'Siap Muat' && (
+                            <button
+                              onClick={() => handleOpenShipModal(doOrder)}
+                              className="px-2.5 py-1 bg-cyan-600 text-white text-[10px] font-bold rounded-lg hover:bg-cyan-700 transition-all flex items-center gap-1"
+                            >
+                              <Send size={10} />
+                              <span>Kirim</span>
+                            </button>
                           )}
+                          {doOrder.status === 'Dikirim' && (
+                            <button
+                              onClick={() => handleOpenReceiveModal(doOrder)}
+                              className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-1"
+                            >
+                              <Check size={10} />
+                              <span>Terima</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handlePrintDo(doOrder.deliveryNumber)}
+                            className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all"
+                          >
+                            Cetak
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-slate-400 italic">-</span>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        doOrder.status === 'Siap Muat' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
-                        doOrder.status === 'Dikirim' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        doOrder.status === 'Diterima' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        'bg-rose-50 text-rose-700 border-rose-200'
-                      }`}>
-                        {doOrder.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex justify-end gap-1.5">
-                        {doOrder.status === 'Siap Muat' && (
-                          <button
-                            onClick={() => handleOpenShipModal(doOrder)}
-                            className="px-2.5 py-1 bg-cyan-600 text-white text-[10px] font-bold rounded-lg hover:bg-cyan-700 transition-all flex items-center gap-1"
-                          >
-                            <Send size={10} />
-                            <span>Kirim</span>
-                          </button>
-                        )}
-                        {doOrder.status === 'Dikirim' && (
-                          <button
-                            onClick={() => handleOpenReceiveModal(doOrder)}
-                            className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-1"
-                          >
-                            <Check size={10} />
-                            <span>Terima</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handlePrintDo(doOrder.deliveryNumber)}
-                          className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all"
-                        >
-                          Cetak
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredOrders.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
-                      Tidak ada Surat Jalan yang terdaftar.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
+                        Tidak ada Surat Jalan yang terdaftar.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Modal: Buat Surat Jalan */}
       {isCreateModalOpen && (

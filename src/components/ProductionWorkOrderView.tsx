@@ -14,32 +14,24 @@ import { productsApi } from '../features/products/api';
 import { employeesApi } from '../features/employees/api';
 import { projectsApi } from '../features/projects/api';
 import { salesApi } from '../features/sales/api';
+import { ErrorCard } from './Skeleton';
 import { ProductionWorkOrder, ProductionWorkLog, Employee, Product, Project, SalesOrder } from '../types';
 
 interface ProductionWorkOrderViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-// Fallback dummy data for demo mode
-const dummyWorkOrders: ProductionWorkOrder[] = [
-  { id: 'wo1', workOrderNumber: 'WO-2026-0601', productId: 'p1', productName: 'Kubah GRC D 6 Meter', productSku: 'KBG-006', sourceLabel: 'Masjid Baiturrahman', stage: 'Cetak', targetQty: 1, completedQty: 0, progress: 0, dueDate: '2026-06-10', logs: [] },
-  { id: 'wo2', workOrderNumber: 'WO-2026-0602', productId: 'p2', productName: 'Roster Motif Kotak', productSku: 'RST-001', sourceLabel: 'Stok Gudang', stage: 'Curing', targetQty: 1000, completedQty: 200, progress: 20, dueDate: '2026-06-04', logs: [
-    { id: 'wl1', workOrderId: 'wo2', employeeId: 'e1', employeeName: 'Pak Slamet', workDate: '2026-06-04', stage: 'Cetak', madeQty: 120, rejectQty: 5, okQty: 115, pieceRate: 500, notes: 'Cetakan A' },
-    { id: 'wl2', workOrderId: 'wo2', employeeId: 'e2', employeeName: 'Pak Budi', workDate: '2026-06-04', stage: 'Cetak', madeQty: 95, rejectQty: 2, okQty: 93, pieceRate: 500, notes: 'Cetakan B' }
-  ]},
-  { id: 'wo3', workOrderNumber: 'WO-2026-0603', productId: 'p3', productName: 'Lisplang Beton M20', productSku: 'LPL-M20', sourceLabel: 'SO-2026-05-033', stage: 'Finishing', targetQty: 80, completedQty: 68, progress: 85, dueDate: '2026-06-03', logs: [] },
-];
-
 export default function ProductionWorkOrderView({ onTriggerNotification }: ProductionWorkOrderViewProps) {
-  const [workOrders, setWorkOrders] = useState<ProductionWorkOrder[]>(dummyWorkOrders);
+  const [workOrders, setWorkOrders] = useState<ProductionWorkOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWoId, setSelectedWoId] = useState<string | null>('wo2');
+  const [selectedWoId, setSelectedWoId] = useState<string | null>(null);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -68,32 +60,31 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
   // Form States - Update Stage
   const [updateStageValue, setUpdateStageValue] = useState('Cetak');
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
   const fetchData = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      if (hasBackendSession) {
-        const [wos, prods, emps, projs, sos] = await Promise.all([
-          productionApi.getWorkOrders(),
-          productsApi.getProducts(),
-          employeesApi.getEmployees(),
-          projectsApi.getProjects(),
-          salesApi.getSalesOrders()
-        ]);
-        setWorkOrders(wos);
-        setProducts(prods);
-        setEmployees(emps.filter(e => e.status === 'Aktif'));
-        setProjects(projs);
-        setSalesOrders(sos);
+      const [wos, prods, emps, projs, sos] = await Promise.all([
+        productionApi.getWorkOrders(),
+        productsApi.getProducts(),
+        employeesApi.getEmployees(),
+        projectsApi.getProjects(),
+        salesApi.getSalesOrders()
+      ]);
+      setWorkOrders(wos);
+      setProducts(prods);
+      setEmployees(emps.filter(e => e.status === 'Aktif'));
+      setProjects(projs);
+      setSalesOrders(sos);
 
-        if (wos.length > 0) {
-          setSelectedWoId(wos[0].id);
-        }
+      if (wos.length > 0) {
+        setSelectedWoId(wos[0].id);
       }
     } catch (err) {
       console.error('Failed to load production data', err);
-      onTriggerNotification('Gagal mengambil data produksi.');
+      const msg = err instanceof Error ? err.message : 'Gagal mengambil data produksi';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +92,7 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
 
   useEffect(() => {
     fetchData();
-  }, [hasBackendSession]);
+  }, []);
 
   const handleOpenCreateModal = () => {
     const nextNum = workOrders.length + 1;
@@ -133,42 +124,21 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
         label = pr ? pr.projectName : '';
       }
 
-      if (hasBackendSession) {
-        const payload: any = {
-          work_order_number: newWoNumber,
-          product_id: selectedProductId,
-          stage,
-          target_qty: targetQty,
-          due_date: dueDate || null,
-          source_label: label || 'Stok Gudang',
-        };
-        if (selectedSalesOrderId) payload.sales_order_id = selectedSalesOrderId;
-        if (selectedProjectId) payload.project_id = selectedProjectId;
+      const payload: any = {
+        work_order_number: newWoNumber,
+        product_id: selectedProductId,
+        stage,
+        target_qty: targetQty,
+        due_date: dueDate || null,
+        source_label: label || 'Stok Gudang',
+      };
+      if (selectedSalesOrderId) payload.sales_order_id = selectedSalesOrderId;
+      if (selectedProjectId) payload.project_id = selectedProjectId;
 
-        const created = await productionApi.createWorkOrder(payload);
-        setWorkOrders(prev => [created, ...prev]);
-        setSelectedWoId(created.id);
-        onTriggerNotification(`Work Order ${newWoNumber} berhasil dibuat`);
-      } else {
-        const prodObj = products.find(p => p.id === selectedProductId) || { name: 'Produk GRC', sku: 'GRC-01' };
-        const mockNew: ProductionWorkOrder = {
-          id: `wo-${Date.now()}`,
-          workOrderNumber: newWoNumber,
-          productId: selectedProductId,
-          productName: prodObj.name,
-          productSku: prodObj.sku,
-          sourceLabel: label || 'Stok Gudang',
-          stage,
-          targetQty,
-          completedQty: 0,
-          progress: 0,
-          dueDate,
-          logs: []
-        };
-        setWorkOrders(prev => [mockNew, ...prev]);
-        setSelectedWoId(mockNew.id);
-        onTriggerNotification(`Work Order ${newWoNumber} disimulasikan`);
-      }
+      const created = await productionApi.createWorkOrder(payload);
+      setWorkOrders(prev => [created, ...prev]);
+      setSelectedWoId(created.id);
+      onTriggerNotification(`Work Order ${newWoNumber} berhasil dibuat`);
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error('Failed to create Work Order', err);
@@ -205,57 +175,23 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
     }
 
     try {
-      if (hasBackendSession) {
-        const payload = {
-          work_order_id: selectedWoId,
-          employee_id: selectedEmployeeId,
-          work_date: logWorkDate,
-          stage: logStage,
-          made_qty: madeQty,
-          reject_qty: rejectQty,
-          ok_qty: okQty,
-          notes: logNotes || undefined
-        };
+      const payload = {
+        work_order_id: selectedWoId,
+        employee_id: selectedEmployeeId,
+        work_date: logWorkDate,
+        stage: logStage,
+        made_qty: madeQty,
+        reject_qty: rejectQty,
+        ok_qty: okQty,
+        notes: logNotes || undefined
+      };
 
-        const createdLog = await productionApi.createWorkLog(payload);
-        
-        // Refresh work orders to recalculate progress & logs
-        const refreshedWos = await productionApi.getWorkOrders();
-        setWorkOrders(refreshedWos);
-        onTriggerNotification(`Input harian untuk WO berhasil disimpan`);
-      } else {
-        // Mock update
-        const emp = employees.find(e => e.id === selectedEmployeeId) || { name: 'Tukang Mock' };
-        const newLog: ProductionWorkLog = {
-          id: `wl-${Date.now()}`,
-          workOrderId: selectedWoId,
-          employeeId: selectedEmployeeId,
-          employeeName: emp.name,
-          workDate: logWorkDate,
-          stage: logStage,
-          madeQty,
-          rejectQty,
-          okQty,
-          pieceRate: 500,
-          notes: logNotes
-        };
-
-        setWorkOrders(prev => prev.map(wo => {
-          if (wo.id === selectedWoId) {
-            const logs = [...(wo.logs || []), newLog];
-            const completedQty = logs.reduce((sum, l) => sum + l.okQty, 0);
-            const progress = Math.min(100, Math.round((completedQty / wo.targetQty) * 100));
-            return {
-              ...wo,
-              completedQty,
-              progress,
-              logs
-            };
-          }
-          return wo;
-        }));
-        onTriggerNotification('Input harian disimulasikan');
-      }
+      const createdLog = await productionApi.createWorkLog(payload);
+      
+      // Refresh work orders to recalculate progress & logs
+      const refreshedWos = await productionApi.getWorkOrders();
+      setWorkOrders(refreshedWos);
+      onTriggerNotification(`Input harian untuk WO berhasil disimpan`);
       setIsLogModalOpen(false);
     } catch (err) {
       console.error('Failed to save production log', err);
@@ -274,14 +210,10 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
     if (!selectedWoId || !selectedWo) return;
 
     try {
-      if (hasBackendSession) {
-        const updated = await productionApi.updateWorkOrder(selectedWoId, {
-          stage: updateStageValue
-        });
-        setWorkOrders(prev => prev.map(w => w.id === selectedWoId ? updated : w));
-      } else {
-        setWorkOrders(prev => prev.map(w => w.id === selectedWoId ? { ...w, stage: updateStageValue } : w));
-      }
+      const updated = await productionApi.updateWorkOrder(selectedWoId, {
+        stage: updateStageValue
+      });
+      setWorkOrders(prev => prev.map(w => w.id === selectedWoId ? updated : w));
       onTriggerNotification(`WO ${selectedWo.workOrderNumber} tahap diubah ke: ${updateStageValue}`);
       setIsUpdateStageModalOpen(false);
     } catch (err) {
@@ -294,9 +226,7 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
     if (!window.confirm(`Apakah Anda yakin ingin menghapus Work Order ${num}?`)) return;
 
     try {
-      if (hasBackendSession) {
-        await productionApi.deleteWorkOrder(id);
-      }
+      await productionApi.deleteWorkOrder(id);
       setWorkOrders(prev => prev.filter(w => w.id !== id));
       if (selectedWoId === id) {
         setSelectedWoId(null);
@@ -351,11 +281,9 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
               Work Order & SPK Cetak
-              {hasBackendSession && (
-                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                  API MODE
-                </span>
-              )}
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
+                API MODE
+              </span>
             </h1>
             <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
               Keluarkan Surat Perintah Kerja (SPK) untuk tukang, monitor progress cetak harian, hitung persentase barang reject, dan monitor produksi beton secara live.
@@ -371,251 +299,269 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
         </div>
       </div>
 
-      {/* Stage KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          { label: 'Draft', count: countDraft, color: 'text-slate-500 bg-slate-50' },
-          { label: 'Cetak', count: countCetak, color: 'text-cyan-600 bg-cyan-50' },
-          { label: 'Curing', count: countCuring, color: 'text-amber-600 bg-amber-50' },
-          { label: 'Finishing', count: countFinishing, color: 'text-indigo-600 bg-indigo-50' },
-          { label: 'QC & Siap', count: countQC, color: 'text-emerald-600 bg-emerald-50' },
-        ].map((stageItem) => (
-          <div key={stageItem.label} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-            <div>
-              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">{stageItem.label}</span>
-              <h4 className="text-lg font-black text-slate-800 mt-1">{stageItem.count} SPK</h4>
-            </div>
-            <div className={`p-2.5 rounded-lg ${stageItem.color}`}>
-              <Factory size={16} />
-            </div>
+      {isLoading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
           </div>
-        ))}
-      </div>
-
-      {/* Main Grid: WO List & Detailed Monitor */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Left: WO List */}
-        <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[550px]">
-          <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
-            <h3 className="font-bold text-slate-850 text-sm">Daftar Antrian Produksi</h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-              <input
-                type="text"
-                placeholder="Cari WO, produk, proyek..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
-              />
-            </div>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="xl:col-span-5 h-[550px] bg-slate-100 rounded-xl animate-pulse" />
+            <div className="xl:col-span-7 h-[550px] bg-slate-100 rounded-xl animate-pulse" />
           </div>
-
-          <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="p-12 text-center text-slate-400">Memuat data Work Order...</div>
-            ) : filteredWos.map((wo) => (
-              <div 
-                key={wo.id}
-                onClick={() => setSelectedWoId(wo.id)}
-                className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${
-                  selectedWoId === wo.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-cyan-600">{wo.workOrderNumber}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                      wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                      wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                      wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                      'bg-cyan-50 text-cyan-700 border-cyan-100'
-                    }`}>
-                      {wo.stage}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-slate-800">{wo.productName}</h4>
-                  <p className="text-[10px] text-slate-500 font-medium">Order: {wo.sourceLabel || 'Stok'}</p>
+        </div>
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchData} />
+      ) : (
+        <>
+          {/* Stage KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            {[
+              { label: 'Draft', count: countDraft, color: 'text-slate-500 bg-slate-50' },
+              { label: 'Cetak', count: countCetak, color: 'text-cyan-600 bg-cyan-50' },
+              { label: 'Curing', count: countCuring, color: 'text-amber-600 bg-amber-50' },
+              { label: 'Finishing', count: countFinishing, color: 'text-indigo-600 bg-indigo-50' },
+              { label: 'QC & Siap', count: countQC, color: 'text-emerald-600 bg-emerald-50' },
+            ].map((stageItem) => (
+              <div key={stageItem.label} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] uppercase font-mono font-bold text-slate-400">{stageItem.label}</span>
+                  <h4 className="text-lg font-black text-slate-800 mt-1">{stageItem.count} SPK</h4>
                 </div>
-
-                <div className="text-right shrink-0">
-                  <div className="font-mono text-slate-700 font-semibold">{wo.completedQty} / {wo.targetQty} pcs</div>
-                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1 ml-auto">
-                    <div className="h-full bg-cyan-500" style={{ width: `${wo.progress}%` }} />
-                  </div>
-                  <div className="text-[9px] font-mono text-slate-400 mt-1">{wo.progress}%</div>
+                <div className={`p-2.5 rounded-lg ${stageItem.color}`}>
+                  <Factory size={16} />
                 </div>
               </div>
             ))}
-            {filteredWos.length === 0 && (
-              <div className="p-12 text-center text-slate-400">Tidak ada Work Order ditemukan.</div>
-            )}
           </div>
-        </div>
 
-        {/* Right: Detailed Monitor Card */}
-        <div className="xl:col-span-7 space-y-6">
-          {selectedWo ? (
-            <>
-              {/* Detailed Header Card */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">
-                        {selectedWo.workOrderNumber}
-                      </span>
-                      <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
-                        {selectedWo.stage}
-                      </span>
-                    </div>
-                    <h3 className="font-sans font-black text-slate-800 text-base mt-2">{selectedWo.productName}</h3>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Sumber Order: <span className="font-semibold text-slate-700">{selectedWo.sourceLabel || 'Stok Gudang'}</span>
-                      {selectedWo.dueDate && ` | Target Selesai: ${selectedWo.dueDate}`}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleOpenUpdateStageModal}
-                      className="px-3 py-1.5 border border-slate-200 bg-slate-50 hover:bg-white text-slate-650 font-bold rounded-lg transition-all"
-                    >
-                      Ubah Tahap
-                    </button>
-                    <button
-                      onClick={handleOpenLogModal}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all"
-                    >
-                      Input Hasil Harian
-                    </button>
-                    <button
-                      onClick={() => handleDeleteWo(selectedWo.id, selectedWo.workOrderNumber)}
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Progress Stats bar */}
-                <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-100 text-center">
-                  {[
-                    { label: 'Target Produksi', value: `${selectedWo.targetQty} pcs`, color: 'text-slate-800' },
-                    { label: 'Total Output', value: `${totalMade} pcs`, color: 'text-cyan-600' },
-                    { label: 'Bagus (OK)', value: `${totalOk} pcs`, color: 'text-emerald-600' },
-                    { label: 'Reject QC', value: `${totalReject} pcs`, color: 'text-rose-600' }
-                  ].map((stat) => (
-                    <div key={stat.label} className="p-4 border-r last:border-r-0 border-slate-100">
-                      <span className="text-[9px] uppercase font-mono font-bold text-slate-400">{stat.label}</span>
-                      <p className={`mt-1 text-base font-black ${stat.color}`}>{stat.value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Progress Qty OK Terhadap Target</span>
-                    <span className="font-mono font-black text-cyan-600">{selectedWo.progress}%</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${selectedWo.progress}%` }} />
-                  </div>
+          {/* Main Grid: WO List & Detailed Monitor */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* Left: WO List */}
+            <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[550px]">
+              <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
+                <h3 className="font-bold text-slate-850 text-sm">Daftar Antrian Produksi</h3>
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Cari WO, produk, proyek..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
+                  />
                 </div>
               </div>
 
-              {/* Sub Grid: Log Harian & Rekap per Worker */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                {/* Log Harian */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden md:col-span-8 flex flex-col max-h-[300px]">
-                  <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                    <h4 className="font-bold text-slate-800">Catatan Harian Cetak/Finishing</h4>
-                    <span className="text-[10px] text-slate-400 font-mono">Total {logsList.length} Entri</span>
-                  </div>
-                  <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-                    <table className="w-full text-left border-collapse text-[10px]">
-                      <thead className="bg-slate-50 sticky top-0 border-b z-10">
-                        <tr className="font-mono text-slate-500 uppercase tracking-wider">
-                          <th className="p-2.5 pl-4">Tanggal</th>
-                          <th className="p-2.5">Tukang</th>
-                          <th className="p-2.5">Tahap</th>
-                          <th className="p-2.5 text-right">Dibuat</th>
-                          <th className="p-2.5 text-right">OK</th>
-                          <th className="p-2.5 text-right">Reject</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {logsList.map((log) => (
-                          <tr key={log.id} className="hover:bg-slate-50/55">
-                            <td className="p-2.5 pl-4 font-mono text-slate-500">{log.workDate}</td>
-                            <td className="p-2.5 font-bold text-slate-800">{log.employeeName}</td>
-                            <td className="p-2.5 text-slate-600">{log.stage}</td>
-                            <td className="p-2.5 text-right font-mono">{log.madeQty}</td>
-                            <td className="p-2.5 text-right font-mono text-emerald-600 font-bold">{log.okQty}</td>
-                            <td className="p-2.5 text-right font-mono text-rose-500">{log.rejectQty}</td>
-                          </tr>
-                        ))}
-                        {logsList.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="p-8 text-center text-slate-400 italic">
-                              Belum ada catatan laporan harian untuk WO ini.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+              <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                {filteredWos.map((wo) => (
+                  <div 
+                    key={wo.id}
+                    onClick={() => setSelectedWoId(wo.id)}
+                    className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${
+                      selectedWoId === wo.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-cyan-600">{wo.workOrderNumber}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                          wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                          wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                          wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                          'bg-cyan-50 text-cyan-700 border-cyan-100'
+                        }`}>
+                          {wo.stage}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-slate-800">{wo.productName}</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Order: {wo.sourceLabel || 'Stok'}</p>
+                    </div>
 
-                {/* Rekap per worker */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-4 max-h-[300px] overflow-y-auto">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3">
-                    <UserCheck size={14} className="text-cyan-600" />
-                    <h4 className="font-bold text-slate-800">Rekap Per Tukang</h4>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono text-slate-700 font-semibold">{wo.completedQty} / {wo.targetQty} pcs</div>
+                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1 ml-auto">
+                        <div className="h-full bg-cyan-500" style={{ width: `${wo.progress}%` }} />
+                      </div>
+                      <div className="text-[9px] font-mono text-slate-400 mt-1">{wo.progress}%</div>
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    {Object.entries(workerSummary).map(([worker, summary]) => {
-                      const rejectRate = summary.made ? Math.round((summary.reject / summary.made) * 100) : 0;
-                      return (
-                        <div key={worker} className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px]">
-                          <div className="flex items-center justify-between gap-1 font-bold">
-                            <span className="text-slate-800 truncate">{worker}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                              rejectRate > 4 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            }`}>
-                              {rejectRate}% reject
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1 mt-2 text-center font-mono">
-                            <div>
-                              <div className="text-[8px] text-slate-400">Total</div>
-                              <div className="font-bold text-slate-700">{summary.made}</div>
-                            </div>
-                            <div>
-                              <div className="text-[8px] text-slate-400 text-emerald-600">OK</div>
-                              <div className="font-bold text-emerald-700">{summary.ok}</div>
-                            </div>
-                            <div>
-                              <div className="text-[8px] text-slate-400 text-rose-500">Rej</div>
-                              <div className="font-bold text-rose-600">{summary.reject}</div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {Object.keys(workerSummary).length === 0 && (
-                      <div className="text-center text-slate-400 py-8 italic">Tidak ada rekap.</div>
-                    )}
-                  </div>
-                </div>
+                ))}
+                {filteredWos.length === 0 && (
+                  <div className="p-12 text-center text-slate-400">Tidak ada Work Order ditemukan.</div>
+                )}
               </div>
-            </>
-          ) : (
-            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-12 text-center text-slate-400 font-sans">
-              <Clipboard size={32} className="mx-auto text-slate-300 mb-2" />
-              Pilih Work Order di sebelah kiri untuk memantau aktivitas produksi secara detail.
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Right: Detailed Monitor Card */}
+            <div className="xl:col-span-7 space-y-6">
+              {selectedWo ? (
+                <>
+                  {/* Detailed Header Card */}
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">
+                            {selectedWo.workOrderNumber}
+                          </span>
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
+                            {selectedWo.stage}
+                          </span>
+                        </div>
+                        <h3 className="font-sans font-black text-slate-800 text-base mt-2">{selectedWo.productName}</h3>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Sumber Order: <span className="font-semibold text-slate-700">{selectedWo.sourceLabel || 'Stok Gudang'}</span>
+                          {selectedWo.dueDate && ` | Target Selesai: ${selectedWo.dueDate}`}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleOpenUpdateStageModal}
+                          className="px-3 py-1.5 border border-slate-200 bg-slate-50 hover:bg-white text-slate-650 font-bold rounded-lg transition-all"
+                        >
+                          Ubah Tahap
+                        </button>
+                        <button
+                          onClick={handleOpenLogModal}
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all"
+                        >
+                          Input Hasil Harian
+                        </button>
+                        <button
+                          onClick={() => handleDeleteWo(selectedWo.id, selectedWo.workOrderNumber)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Progress Stats bar */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-100 text-center">
+                      {[
+                        { label: 'Target Produksi', value: `${selectedWo.targetQty} pcs`, color: 'text-slate-800' },
+                        { label: 'Total Output', value: `${totalMade} pcs`, color: 'text-cyan-600' },
+                        { label: 'Bagus (OK)', value: `${totalOk} pcs`, color: 'text-emerald-600' },
+                        { label: 'Reject QC', value: `${totalReject} pcs`, color: 'text-rose-600' }
+                      ].map((stat) => (
+                        <div key={stat.label} className="p-4 border-r last:border-r-0 border-slate-100">
+                          <span className="text-[9px] uppercase font-mono font-bold text-slate-400">{stat.label}</span>
+                          <p className={`mt-1 text-base font-black ${stat.color}`}>{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Progress Qty OK Terhadap Target</span>
+                        <span className="font-mono font-black text-cyan-600">{selectedWo.progress}%</span>
+                      </div>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${selectedWo.progress}%` }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sub Grid: Log Harian & Rekap per Worker */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Log Harian */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden md:col-span-8 flex flex-col max-h-[300px]">
+                      <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                        <h4 className="font-bold text-slate-800">Catatan Harian Cetak/Finishing</h4>
+                        <span className="text-[10px] text-slate-400 font-mono">Total {logsList.length} Entri</span>
+                      </div>
+                      <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                        <table className="w-full text-left border-collapse text-[10px]">
+                          <thead className="bg-slate-50 sticky top-0 border-b z-10">
+                            <tr className="font-mono text-slate-500 uppercase tracking-wider">
+                              <th className="p-2.5 pl-4">Tanggal</th>
+                              <th className="p-2.5">Tukang</th>
+                              <th className="p-2.5">Tahap</th>
+                              <th className="p-2.5 text-right">Dibuat</th>
+                              <th className="p-2.5 text-right">OK</th>
+                              <th className="p-2.5 text-right">Reject</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {logsList.map((log) => (
+                              <tr key={log.id} className="hover:bg-slate-50/55">
+                                <td className="p-2.5 pl-4 font-mono text-slate-500">{log.workDate}</td>
+                                <td className="p-2.5 font-bold text-slate-800">{log.employeeName}</td>
+                                <td className="p-2.5 text-slate-600">{log.stage}</td>
+                                <td className="p-2.5 text-right font-mono">{log.madeQty}</td>
+                                <td className="p-2.5 text-right font-mono text-emerald-600 font-bold">{log.okQty}</td>
+                                <td className="p-2.5 text-right font-mono text-rose-500">{log.rejectQty}</td>
+                              </tr>
+                            ))}
+                            {logsList.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="p-8 text-center text-slate-400 italic">
+                                  Belum ada catatan laporan harian untuk WO ini.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Rekap per worker */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-4 max-h-[300px] overflow-y-auto">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-3">
+                        <UserCheck size={14} className="text-cyan-600" />
+                        <h4 className="font-bold text-slate-800">Rekap Per Tukang</h4>
+                      </div>
+                      <div className="space-y-3">
+                        {Object.entries(workerSummary).map(([worker, summary]) => {
+                          const rejectRate = summary.made ? Math.round((summary.reject / summary.made) * 100) : 0;
+                          return (
+                            <div key={worker} className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px]">
+                              <div className="flex items-center justify-between gap-1 font-bold">
+                                <span className="text-slate-800 truncate">{worker}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                  rejectRate > 4 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                }`}>
+                                  {rejectRate}% reject
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1 mt-2 text-center font-mono">
+                                <div>
+                                  <div className="text-[8px] text-slate-400">Total</div>
+                                  <div className="font-bold text-slate-700">{summary.made}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[8px] text-slate-400 text-emerald-600">OK</div>
+                                  <div className="font-bold text-emerald-700">{summary.ok}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[8px] text-slate-400 text-rose-500">Rej</div>
+                                  <div className="font-bold text-rose-600">{summary.reject}</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {Object.keys(workerSummary).length === 0 && (
+                          <div className="text-center text-slate-400 py-8 italic">Tidak ada rekap.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-12 text-center text-slate-400 font-sans">
+                  <Clipboard size={32} className="mx-auto text-slate-300 mb-2" />
+                  Pilih Work Order di sebelah kiri untuk memantau aktivitas produksi secara detail.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modal: Buat SPK / WO */}
       {isCreateModalOpen && (

@@ -8,33 +8,34 @@ import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, 
 import { Invoice, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface InvoicesViewProps {
-  invoices: Invoice[];
   onTriggerNotification: (message: string) => void;
   onNavigate: (view: ViewType) => void;
 }
 
-export default function InvoicesView({ invoices, onTriggerNotification, onNavigate }: InvoicesViewProps) {
+export default function InvoicesView({ onTriggerNotification, onNavigate }: InvoicesViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // API states
-  const [apiInvoices, setApiInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const hasBackendSession = Boolean(authStorage.getToken());
-  const activeInvoices = hasBackendSession ? apiInvoices : invoices;
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const data = await financeApi.getInvoices();
-      setApiInvoices(data);
+      setInvoices(data);
     } catch (err) {
       console.error('Failed to load invoices', err);
+      const msg = err instanceof Error ? err.message : 'Gagal memuat data invoice';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -42,13 +43,13 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
+  }, []);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const filteredInvoices = activeInvoices.filter((inv) => {
+  const filteredInvoices = invoices.filter((inv) => {
     const matchesSearch =
       inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
       inv.customerName.toLowerCase().includes(search.toLowerCase());
@@ -64,7 +65,7 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
           <h3 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
             E-Faktur / Invoice Penjualan
             <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
-              {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+              API MODE
             </span>
           </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa piutang, dan status jatuh tempo.</p>
@@ -113,78 +114,78 @@ export default function InvoicesView({ invoices, onTriggerNotification, onNaviga
       </div>
 
       {/* Main invoices grid table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">Nomor invoice</th>
-                <th className="p-3.5">Nama Customer</th>
-                <th className="p-3.5">Tanggal Terbit</th>
-                <th className="p-3.5">Jatuh Tempo</th>
-                <th className="p-3.5">Nilai Tagihan</th>
-                <th className="p-3.5">Telah Dibayar</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5 pr-5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
-                    Memuat data faktur dari backend...
-                  </td>
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={8} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={loadData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">Nomor invoice</th>
+                  <th className="p-3.5">Nama Customer</th>
+                  <th className="p-3.5">Tanggal Terbit</th>
+                  <th className="p-3.5">Jatuh Tempo</th>
+                  <th className="p-3.5">Nilai Tagihan</th>
+                  <th className="p-3.5">Telah Dibayar</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
                 </tr>
-              ) : filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
-                    Tidak ditemukan kecocokan dokumen invoice.
-                  </td>
-                </tr>
-              ) : (
-                filteredInvoices.map((inv) => {
-                  const badgeColors: Record<string, string> = {
-                    'Belum Lunas': 'bg-slate-100 text-slate-600 border-slate-200',
-                    'Sebagian Dibayar': 'bg-blue-100 text-blue-700 border-blue-200',
-                    Lunas: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                    Overdue: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse',
-                  };
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12 text-slate-400">
+                      Tidak ditemukan kecocokan dokumen invoice.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((inv) => {
+                    const badgeColors: Record<string, string> = {
+                      'Belum Lunas': 'bg-slate-100 text-slate-600 border-slate-200',
+                      'Sebagian Dibayar': 'bg-blue-100 text-blue-700 border-blue-200',
+                      Lunas: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      Overdue: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse',
+                    };
 
-                  return (
-                    <tr key={inv.id} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-1.5">
-                        <Receipt size={13} className="text-slate-400" />
-                        <span>{inv.invoiceNumber}</span>
-                      </td>
-                      <td className="p-3.5 font-bold text-slate-700">{inv.customerName}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{inv.date}</td>
-                      <td className="p-3.5 font-mono font-medium text-amber-600">{inv.dueDate}</td>
-                      <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(inv.total)}</td>
-                      <td className="p-3.5 font-mono text-emerald-600 font-bold">{formatIDR(inv.paidAmount)}</td>
-                      <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badgeColors[inv.status] || 'bg-slate-100'}`}>
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-right font-bold">
-                        <button
-                          onClick={() => {
-                            setSelectedInvoice(inv);
-                            onTriggerNotification(`Membuka Visual Invoice Slip ${inv.invoiceNumber}`);
-                          }}
-                          className="px-2.5 py-1 text-[10px] bg-slate-50 hover:bg-slate-100 border rounded cursor-pointer transition-colors"
-                        >
-                          Lihat Slip
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    return (
+                      <tr key={inv.id} className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-1.5">
+                          <Receipt size={13} className="text-slate-400" />
+                          <span>{inv.invoiceNumber}</span>
+                        </td>
+                        <td className="p-3.5 font-bold text-slate-700">{inv.customerName}</td>
+                        <td className="p-3.5 font-mono text-slate-500">{inv.date}</td>
+                        <td className="p-3.5 font-mono font-medium text-amber-600">{inv.dueDate}</td>
+                        <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(inv.total)}</td>
+                        <td className="p-3.5 font-mono text-emerald-600 font-bold">{formatIDR(inv.paidAmount)}</td>
+                        <td className="p-3.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badgeColors[inv.status] || 'bg-slate-100'}`}>
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 pr-5 text-right font-bold">
+                          <button
+                            onClick={() => {
+                              setSelectedInvoice(inv);
+                              onTriggerNotification(`Membuka Visual Invoice Slip ${inv.invoiceNumber}`);
+                            }}
+                            className="px-2.5 py-1 text-[10px] bg-slate-50 hover:bg-slate-100 border rounded cursor-pointer transition-colors"
+                          >
+                            Lihat Slip
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Visual Invoice Slate (Simulated Letterhead Receipt) */}
       {selectedInvoice && (

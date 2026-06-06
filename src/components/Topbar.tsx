@@ -33,7 +33,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
         <h2 className="font-sans font-bold text-slate-800 text-lg uppercase tracking-tight">
           {VIEW_TITLES[currentView] || 'CV Beton Agung'}
         </h2>
-        <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono bg-sky-50 text-sky-700 rounded border border-sky-100">
+        <span className="hidden md:inline-block px-2 py-0.5 text-[10px] font-mono bg-slate-50 text-slate-600 rounded border border-slate-200">
           LIVE SYSTEM
         </span>
       </div>
@@ -42,15 +42,15 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
       <div className="flex items-center gap-4">
         {/* Quick Website link */}
         <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
-          <Globe size={14} className="text-cyan-500" />
+          <Globe size={14} className="text-slate-400" />
           <span>http://cvbetonagung.com</span>
         </div>
 
         {/* Role display */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-sky-50 text-xs font-semibold text-slate-700 rounded-lg border border-sky-100">
-          <ShieldCheck size={14} className="text-sky-600" />
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200">
+          <ShieldCheck size={14} className="text-slate-500" />
           <span className="text-[10px] uppercase font-mono text-slate-400">Hak Akses:</span>
-          <span className="text-sky-700 font-bold">{userRole}</span>
+          <span className="text-slate-900 font-bold">{userRole}</span>
         </div>
 
         {/* Notifications Toggle */}
@@ -91,7 +91,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
                           <AlertTriangle size={14} />
                         </div>
                       ) : (
-                        <div className="p-1 rounded bg-blue-50 text-blue-500">
+                        <div className="p-1 rounded bg-slate-50 text-slate-500">
                           <Bell size={14} />
                         </div>
                       )}
@@ -109,7 +109,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
                     setShowNotifications(false);
                     onTriggerNotification('Semua notifikasi ditandai telah dibaca');
                   }}
-                  className="text-[10px] text-cyan-600 hover:text-cyan-700 font-semibold"
+                  className="text-[10px] text-slate-900 hover:text-slate-700 font-bold"
                 >
                   Tandai Semua Selesai dibaca
                 </button>

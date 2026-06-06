@@ -24,23 +24,16 @@ import { authStorage } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { customersApi } from '../features/customers/api';
 import { productsApi } from '../features/products/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
-  quotations: Quotation[]; // fallback dummy
-  salesOrders: SalesOrder[]; // fallback dummy
-  onAddQuotation: (q: Quotation) => void;
-  onAddSalesOrder: (so: SalesOrder) => void;
   onTriggerNotification: (message: string) => void;
   onNavigate: (view: ViewType) => void;
 }
 
 export default function SalesView({
   type,
-  quotations,
-  salesOrders,
-  onAddQuotation,
-  onAddSalesOrder,
   onTriggerNotification,
   onNavigate,
 }: SalesViewProps) {
@@ -50,19 +43,15 @@ export default function SalesView({
   const [showAddForm, setShowAddForm] = useState(false);
 
   // API states
-  const [apiQuotations, setApiQuotations] = useState<Quotation[]>([]);
-  const [apiSalesOrders, setApiSalesOrders] = useState<SalesOrder[]>([]);
-  const [apiCustomers, setApiCustomers] = useState<Customer[]>([]);
-  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
-  // Active data sources
-  const activeQuotations = hasBackendSession ? apiQuotations : quotations;
-  const activeSalesOrders = hasBackendSession ? apiSalesOrders : salesOrders;
   const isQuotation = type === 'quotation';
-  const dataList = isQuotation ? activeQuotations : activeSalesOrders;
+  const dataList = isQuotation ? quotations : salesOrders;
 
   // Form states to create a quick document
   const [custId, setCustId] = useState('');
@@ -71,8 +60,8 @@ export default function SalesView({
   const [itemPrice, setItemPrice] = useState(0);
 
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const [qs, sos, custsRes, prods] = await Promise.all([
         salesApi.getQuotations(),
@@ -80,10 +69,10 @@ export default function SalesView({
         customersApi.listCustomers(),
         productsApi.getProducts()
       ]);
-      setApiQuotations(qs);
-      setApiSalesOrders(sos);
-      setApiCustomers(custsRes.customers);
-      setApiProducts(prods);
+      setQuotations(qs);
+      setSalesOrders(sos);
+      setCustomers(custsRes.customers);
+      setProducts(prods);
 
       if (custsRes.customers.length > 0 && !custId) setCustId(custsRes.customers[0].id);
       if (prods.length > 0 && !productId) {
@@ -92,6 +81,9 @@ export default function SalesView({
       }
     } catch (err) {
       console.error('Failed to load sales data', err);
+      const msg = err instanceof Error ? err.message : 'Gagal memuat data penjualan';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +91,7 @@ export default function SalesView({
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession, type]);
+  }, [type]);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -124,96 +116,55 @@ export default function SalesView({
       return;
     }
 
-    if (hasBackendSession) {
-      try {
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        const validUntil = new Date(d);
-        validUntil.setDate(d.getDate() + 14); // 14 days valid
-
-        if (isQuotation) {
-          await salesApi.createQuotation({
-            customer_id: custId,
-            quotation_date: todayStr,
-            valid_until: validUntil.toISOString().split('T')[0],
-            items: [
-              {
-                product_id: productId,
-                quantity: itemQty,
-                unit_price: itemPrice,
-              }
-            ]
-          });
-          onTriggerNotification(`Sukses menerbitkan Quotation via API`);
-        } else {
-          await salesApi.createSalesOrder({
-            customer_id: custId,
-            order_date: todayStr,
-            items: [
-              {
-                product_id: productId,
-                quantity: itemQty,
-                unit_price: itemPrice,
-              }
-            ]
-          });
-          onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
-        }
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
-      }
-    } else {
-      // Dummy logic
-      const selectedProd = apiProducts.find(p => p.id === productId) || { name: 'Dummy Product' };
-      const selectedCust = apiCustomers.find(c => c.id === custId) || { name: 'Dummy Customer' };
-      const totalDoc = itemQty * itemPrice;
-      const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      const d = new Date();
+      const todayStr = d.toISOString().split('T')[0];
+      const validUntil = new Date(d);
+      validUntil.setDate(d.getDate() + 14); // 14 days valid
 
       if (isQuotation) {
-        const nextQuoteNum = `Q-2026-05-00${quotations.length + 4}`;
-        const newQuote: Quotation = {
-          id: `q${quotations.length + 4}`,
-          quoteNumber: nextQuoteNum,
-          customerName: selectedCust.name,
-          date: todayStr,
-          validUntil: '2026-06-30',
-          total: totalDoc,
-          status: 'Draft',
-          items: [{ productName: selectedProd.name, quantity: itemQty, price: itemPrice }],
-        };
-        onAddQuotation(newQuote);
-        onTriggerNotification(`Sukses menerbitkan Draft Quotation ${nextQuoteNum}`);
+        await salesApi.createQuotation({
+          customer_id: custId,
+          quotation_date: todayStr,
+          valid_until: validUntil.toISOString().split('T')[0],
+          items: [
+            {
+              product_id: productId,
+              quantity: itemQty,
+              unit_price: itemPrice,
+            }
+          ]
+        });
+        onTriggerNotification(`Sukses menerbitkan Quotation via API`);
       } else {
-        const nextSONum = `SO-2026-05-0${salesOrders.length + 91}`;
-        const newSO: SalesOrder = {
-          id: `so${salesOrders.length + 91}`,
-          orderNumber: nextSONum,
-          customerName: selectedCust.name,
-          date: todayStr,
-          total: totalDoc,
-          status: 'Draft',
-          items: [{ productName: selectedProd.name, quantity: itemQty, price: itemPrice }],
-        };
-        onAddSalesOrder(newSO);
-        onTriggerNotification(`Sukses menerbitkan Draft Sales Order ${nextSONum}`);
+        await salesApi.createSalesOrder({
+          customer_id: custId,
+          order_date: todayStr,
+          items: [
+            {
+              product_id: productId,
+              quantity: itemQty,
+              unit_price: itemPrice,
+            }
+          ]
+        });
+        onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
       }
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
     }
 
     setShowAddForm(false);
   };
 
   const handleApproveQuotation = async (docId: string, quoteNum: string) => {
-    if (hasBackendSession) {
-      try {
-        await salesApi.approveQuotation(docId);
-        onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO)`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve quotation');
-      }
-    } else {
-      onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO) terekam`);
+    try {
+      await salesApi.approveQuotation(docId);
+      onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO)`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve quotation');
     }
     onNavigate('sales-orders');
     setSelectedDoc(null);
@@ -234,7 +185,7 @@ export default function SalesView({
             <p className="text-[10px] text-slate-400 mt-0.5">
               {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
               <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
-                {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+                API MODE
               </span>
             </p>
           </div>
@@ -292,78 +243,80 @@ export default function SalesView({
       </div>
 
       {/* 3. Document Tables */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">Nomor Dokumen</th>
-                <th className="p-3.5">Nama Relasi Customer</th>
-                <th className="p-3.5">Tanggal Dokumen</th>
-                {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
-                <th className="p-3.5">Nilai Transaksi (Gross)</th>
-                <th className="p-3.5">Status Alur</th>
-                <th className="p-3.5 pr-5 text-right">Rincian</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400 font-medium">Memuat data dari backend...</td>
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={isQuotation ? 7 : 6} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={loadData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">Nomor Dokumen</th>
+                  <th className="p-3.5">Nama Relasi Customer</th>
+                  <th className="p-3.5">Tanggal Dokumen</th>
+                  {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
+                  <th className="p-3.5">Nilai Transaksi (Gross)</th>
+                  <th className="p-3.5">Status Alur</th>
+                  <th className="p-3.5 pr-5 text-right">Rincian</th>
                 </tr>
-              ) : filteredDocs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400 font-medium">
-                    Tidak ada dokumen transaksi terekam saat ini.
-                  </td>
-                </tr>
-              ) : (
-                filteredDocs.map((doc: any, idx) => {
-                  const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
-                  const statusColors: Record<string, string> = {
-                    Draft: 'bg-slate-100 text-slate-600',
-                    Terkirim: 'bg-blue-100 text-blue-700',
-                    Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                    Ditolak: 'bg-red-100 text-red-700',
-                    Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
-                    Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                    Dibatalkan: 'bg-slate-100 text-slate-400',
-                  };
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredDocs.length === 0 ? (
+                  <tr>
+                    <td colSpan={isQuotation ? 7 : 6} className="text-center py-12 text-slate-400 font-medium">
+                      Tidak ada dokumen transaksi terekam saat ini.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDocs.map((doc: any, idx) => {
+                    const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
+                    const statusColors: Record<string, string> = {
+                      Draft: 'bg-slate-100 text-slate-600',
+                      Terkirim: 'bg-blue-100 text-blue-700',
+                      Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      Ditolak: 'bg-red-100 text-red-700',
+                      Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                      Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      Dibatalkan: 'bg-slate-100 text-slate-400',
+                    };
 
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
-                        {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
-                        <span>{docNum}</span>
-                      </td>
-                      <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
-                      {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
-                      <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
-                      <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || 'bg-slate-50'}`}>
-                          {doc.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedDoc(doc);
-                            onTriggerNotification(`Membuka rincian item dokumen ${docNum}`);
-                          }}
-                          className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2"
-                        >
-                          Rincian Item
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
+                          {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
+                          <span>{docNum}</span>
+                        </td>
+                        <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
+                        <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
+                        {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
+                        <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
+                        <td className="p-3.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || 'bg-slate-50'}`}>
+                            {doc.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 pr-5 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedDoc(doc);
+                              onTriggerNotification(`Membuka rincian item dokumen ${docNum}`);
+                            }}
+                            className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2"
+                          >
+                            Rincian Item
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. Side Drawer Modal for Detailed Items overview */}
       {selectedDoc && (
@@ -490,13 +443,13 @@ export default function SalesView({
             <form onSubmit={handleCreateDocument} className="p-5 space-y-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
-                {apiCustomers.length > 0 ? (
+                {customers.length > 0 ? (
                   <select
                     value={custId}
                     onChange={(e) => setCustId(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
                   >
-                    {apiCustomers.map(c => (
+                    {customers.map(c => (
                       <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
                     ))}
                   </select>
@@ -509,12 +462,12 @@ export default function SalesView({
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk Borongan</label>
-                {apiProducts.length > 0 ? (
+                {products.length > 0 ? (
                   <select
                     value={productId}
                     onChange={(e) => {
                       setProductId(e.target.value);
-                      const selProd = apiProducts.find(p => p.id === e.target.value);
+                      const selProd = products.find(p => p.id === e.target.value);
                       if (selProd) {
                         setItemPrice(selProd.sellingPrice || 0);
                         setItemQty(1);
@@ -522,7 +475,7 @@ export default function SalesView({
                     }}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded"
                   >
-                    {apiProducts.map(p => (
+                    {products.map(p => (
                       <option key={p.id} value={p.id}>{p.name} ({formatIDR(p.sellingPrice)})</option>
                     ))}
                   </select>

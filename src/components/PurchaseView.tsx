@@ -10,19 +10,14 @@ import { authStorage } from '../services/api';
 import { purchasingApi } from '../features/purchasing/api';
 import { suppliersApi } from '../features/suppliers/api';
 import { productsApi } from '../features/products/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface PurchaseViewProps {
-  purchaseOrders: PurchaseOrder[];
-  onAddPurchaseOrder: (po: PurchaseOrder) => void;
   onTriggerNotification: (message: string) => void;
-  products: any[];
 }
 
 export default function PurchaseView({
-  purchaseOrders,
-  onAddPurchaseOrder,
   onTriggerNotification,
-  products,
 }: PurchaseViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -30,13 +25,11 @@ export default function PurchaseView({
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
 
   // API states
-  const [apiPurchaseOrders, setApiPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [apiSuppliers, setApiSuppliers] = useState<Supplier[]>([]);
-  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const hasBackendSession = Boolean(authStorage.getToken());
-  const activePurchaseOrders = hasBackendSession ? apiPurchaseOrders : purchaseOrders;
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New PO States
   const [supplierId, setSupplierId] = useState('');
@@ -45,17 +38,17 @@ export default function PurchaseView({
   const [price, setPrice] = useState(0);
 
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const [pos, sups, prods] = await Promise.all([
         purchasingApi.getPurchaseOrders(),
         suppliersApi.getSuppliers(),
         productsApi.getProducts()
       ]);
-      setApiPurchaseOrders(pos);
-      setApiSuppliers(sups);
-      setApiProducts(prods);
+      setPurchaseOrders(pos);
+      setSuppliers(sups);
+      setProducts(prods);
 
       if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
       if (prods.length > 0 && !productId) {
@@ -64,6 +57,9 @@ export default function PurchaseView({
       }
     } catch (err) {
       console.error('Failed to load purchasing data', err);
+      const msg = err instanceof Error ? err.message : 'Gagal memuat data pembelian';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -71,13 +67,13 @@ export default function PurchaseView({
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
+  }, []);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const filteredPOs = activePurchaseOrders.filter((po) => {
+  const filteredPOs = purchaseOrders.filter((po) => {
     const matchesSearch =
       po.poNumber.toLowerCase().includes(search.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(search.toLowerCase());
@@ -92,81 +88,58 @@ export default function PurchaseView({
       return;
     }
 
-    if (hasBackendSession) {
-      try {
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        const expectedDate = new Date(d);
-        expectedDate.setDate(d.getDate() + 7); // assume 7 days delivery
+    try {
+      const d = new Date();
+      const todayStr = d.toISOString().split('T')[0];
+      const expectedDate = new Date(d);
+      expectedDate.setDate(d.getDate() + 7); // assume 7 days delivery
 
-        await purchasingApi.createPurchaseOrder({
-          supplier_id: supplierId,
-          order_date: todayStr,
-          expected_date: expectedDate.toISOString().split('T')[0],
-          items: [
-            {
-              product_id: productId,
-              quantity: qty,
-              unit_price: price,
-            }
-          ]
-        });
-        onTriggerNotification(`Sukses menerbitkan PO via API`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen PO');
-      }
-    } else {
-      const selectedSup = apiSuppliers.find(s => s.id === supplierId) || { name: 'Dummy Supplier' };
-      const selectedProd = apiProducts.find(p => p.id === productId) || { name: 'Dummy Product' };
-
-      const nextPoNum = `PO-2026-05-01${purchaseOrders.length + 4}`;
-      const newPo: PurchaseOrder = {
-        id: `po${purchaseOrders.length + 4}`,
-        poNumber: nextPoNum,
-        supplierName: selectedSup.name,
-        date: new Date().toISOString().split('T')[0],
-        total: qty * price,
-        status: 'Draft',
-        items: [{ productName: selectedProd.name, quantity: qty, price }],
-      };
-
-      onAddPurchaseOrder(newPo);
-      onTriggerNotification(`Sukses menerbitkan Draft PO: ${nextPoNum}`);
+      await purchasingApi.createPurchaseOrder({
+        supplier_id: supplierId,
+        order_date: todayStr,
+        expected_date: expectedDate.toISOString().split('T')[0],
+        items: [
+          {
+            product_id: productId,
+            quantity: qty,
+            unit_price: price,
+          }
+        ]
+      });
+      onTriggerNotification(`Sukses menerbitkan PO via API`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen PO');
     }
 
     setShowAddModal(false);
   };
 
   const handleReceiveGoods = async (poId: string, poNum: string, items: any[]) => {
-    if (hasBackendSession) {
-      try {
-        const d = new Date();
-        const todayStr = d.toISOString().split('T')[0];
-        
-        // Build items payload assuming full receive for simplicity
-        const receiveItems = items.filter(it => it.id).map(it => ({
-          id: it.id,
-          received_quantity: it.quantity
-        }));
+    try {
+      const d = new Date();
+      const todayStr = d.toISOString().split('T')[0];
+      
+      // Build items payload assuming full receive for simplicity
+      const receiveItems = items.filter(it => it.id).map(it => ({
+        id: it.id,
+        received_quantity: it.quantity
+      }));
 
-        if (receiveItems.length === 0) {
-          onTriggerNotification('Tidak ada item ID valid untuk konfirmasi penerimaan via API.');
-          return;
-        }
-
-        await purchasingApi.receivePurchaseOrder(poId, {
-          received_date: todayStr,
-          items: receiveItems
-        });
-        
-        onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
+      if (receiveItems.length === 0) {
+        onTriggerNotification('Tidak ada item ID valid untuk konfirmasi penerimaan via API.');
+        return;
       }
-    } else {
-      onTriggerNotification(`Konfirmasi fisik semen/baja masuk untuk PO ${poNum}`);
+
+      await purchasingApi.receivePurchaseOrder(poId, {
+        received_date: todayStr,
+        items: receiveItems
+      });
+      
+      onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
     }
   };
 
@@ -185,7 +158,7 @@ export default function PurchaseView({
             <p className="text-[10px] text-slate-400 mt-0.5">
               Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik, dan pasir lumajang super.
               <span className="ml-2 px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px] text-slate-500">
-                {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+                API MODE
               </span>
             </p>
           </div>
@@ -250,115 +223,117 @@ export default function PurchaseView({
       </div>
 
       {/* Main grid table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">No PO.</th>
-                <th className="p-3.5">Pemasok Vendor</th>
-                <th className="p-3.5">Tanggal Surat</th>
-                <th className="p-3.5">Total Pengadaan</th>
-                <th className="p-3.5">Status Logistik</th>
-                <th className="p-3.5 pr-5 text-right">Rincian Item</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">Memuat data dari backend...</td>
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={6} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={loadData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">No PO.</th>
+                  <th className="p-3.5">Pemasok Vendor</th>
+                  <th className="p-3.5">Tanggal Surat</th>
+                  <th className="p-3.5">Total Pengadaan</th>
+                  <th className="p-3.5">Status Logistik</th>
+                  <th className="p-3.5 pr-5 text-right">Rincian Item</th>
                 </tr>
-              ) : filteredPOs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
-                    Tidak ditemukan data Purchase Order yang terekam.
-                  </td>
-                </tr>
-              ) : (
-                filteredPOs.map((po) => {
-                  const isExpanded = expandedPoId === po.id;
-                  const statusColors: Record<string, string> = {
-                    Draft: 'bg-slate-100 text-slate-600',
-                    Dipesan: 'bg-blue-100 text-blue-700 border-blue-200',
-                    'Diterima Sebagian': 'bg-amber-100 text-amber-700 border-amber-300 animate-pulse',
-                    'Diterima Penuh': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                    Dibatalkan: 'bg-slate-100 text-slate-400',
-                  };
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPOs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
+                      Tidak ditemukan data Purchase Order yang terekam.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPOs.map((po) => {
+                    const isExpanded = expandedPoId === po.id;
+                    const statusColors: Record<string, string> = {
+                      Draft: 'bg-slate-100 text-slate-600',
+                      Dipesan: 'bg-blue-100 text-blue-700 border-blue-200',
+                      'Diterima Sebagian': 'bg-amber-100 text-amber-700 border-amber-300 animate-pulse',
+                      'Diterima Penuh': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      Dibatalkan: 'bg-slate-100 text-slate-400',
+                    };
 
-                  return (
-                    <React.Fragment key={po.id}>
-                      <tr className="hover:bg-slate-50/40">
-                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
-                          <button
-                            onClick={() => setExpandedPoId(isExpanded ? null : po.id)}
-                            className="flex items-center gap-1.5 focus:outline-none text-left"
-                          >
-                            {isExpanded ? <ChevronDown size={14} className="text-cyan-500" /> : <ChevronRight size={14} className="text-slate-400" />}
-                            <span>{po.poNumber}</span>
-                          </button>
-                        </td>
-                        <td className="p-3.5 font-bold text-slate-700">{po.supplierName}</td>
-                        <td className="p-3.5 font-mono text-slate-500">{po.date}</td>
-                        <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(po.total)}</td>
-                        <td className="p-3.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || 'bg-slate-100'}`}>
-                            {po.status}
-                          </span>
-                        </td>
-                        <td className="p-3.5 pr-5 text-right">
-                          <button
-                            onClick={() => {
-                              onTriggerNotification(`Mencetak draft dokumen pengadaan ${po.poNumber}`);
-                            }}
-                            className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
-                            title="Print PO"
-                          >
-                            Cetak
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Expandable PO items block */}
-                      {isExpanded && (
-                        <tr className="bg-slate-50/50">
-                          <td colSpan={6} className="p-4 pl-12 border-b border-slate-100">
-                            <div className="space-y-4 max-w-xl">
-                              <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">KOMPONEN RESTOCK BORONGAN</h5>
-                              <div className="space-y-1.5">
-                                {po.items?.map((it, idx) => (
-                                  <div key={idx} className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs">
-                                    <div>
-                                      <strong className="text-slate-700 block">{it.productName}</strong>
-                                      <span className="text-slate-400 font-mono text-[10px]">{it.quantity} Pcs x {formatIDR(it.price)}</span>
-                                    </div>
-                                    <strong className="font-mono text-slate-950">{formatIDR(it.quantity * it.price)}</strong>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {po.status === 'Dipesan' && (
-                                <div className="pt-3 border-t flex justify-end">
-                                  <button
-                                    onClick={() => handleReceiveGoods(po.id, po.poNumber, po.items)}
-                                    className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-bold flex items-center gap-1 shadow transition-colors"
-                                  >
-                                    <PackageCheck size={11} className="stroke-[2.5]" />
-                                    <span>Konfirmasi Terima Gudang</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                    return (
+                      <React.Fragment key={po.id}>
+                        <tr className="hover:bg-slate-50/40">
+                          <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
+                            <button
+                              onClick={() => setExpandedPoId(isExpanded ? null : po.id)}
+                              className="flex items-center gap-1.5 focus:outline-none text-left"
+                            >
+                              {isExpanded ? <ChevronDown size={14} className="text-cyan-500" /> : <ChevronRight size={14} className="text-slate-400" />}
+                              <span>{po.poNumber}</span>
+                            </button>
+                          </td>
+                          <td className="p-3.5 font-bold text-slate-700">{po.supplierName}</td>
+                          <td className="p-3.5 font-mono text-slate-500">{po.date}</td>
+                          <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(po.total)}</td>
+                          <td className="p-3.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || 'bg-slate-100'}`}>
+                              {po.status}
+                            </span>
+                          </td>
+                          <td className="p-3.5 pr-5 text-right">
+                            <button
+                              onClick={() => {
+                                onTriggerNotification(`Mencetak draft dokumen pengadaan ${po.poNumber}`);
+                              }}
+                              className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
+                              title="Print PO"
+                            >
+                              Cetak
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+
+                        {/* Expandable PO items block */}
+                        {isExpanded && (
+                          <tr className="bg-slate-50/50">
+                            <td colSpan={6} className="p-4 pl-12 border-b border-slate-100">
+                              <div className="space-y-4 max-w-xl">
+                                <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">KOMPONEN RESTOCK BORONGAN</h5>
+                                <div className="space-y-1.5">
+                                  {po.items?.map((it, idx) => (
+                                    <div key={idx} className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs">
+                                      <div>
+                                        <strong className="text-slate-700 block">{it.productName}</strong>
+                                        <span className="text-slate-400 font-mono text-[10px]">{it.quantity} Pcs x {formatIDR(it.price)}</span>
+                                      </div>
+                                      <strong className="font-mono text-slate-950">{formatIDR(it.quantity * it.price)}</strong>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {po.status === 'Dipesan' && (
+                                  <div className="pt-3 border-t flex justify-end">
+                                    <button
+                                      onClick={() => handleReceiveGoods(po.id, po.poNumber, po.items)}
+                                      className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-bold flex items-center gap-1 shadow transition-colors"
+                                    >
+                                      <PackageCheck size={11} className="stroke-[2.5]" />
+                                      <span>Konfirmasi Terima Gudang</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rilis PO Modal */}
       {showAddModal && (
@@ -379,13 +354,13 @@ export default function PurchaseView({
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier</label>
-                {apiSuppliers.length > 0 ? (
+                {suppliers.length > 0 ? (
                   <select
                     value={supplierId}
                     onChange={(e) => setSupplierId(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
                   >
-                    {apiSuppliers.map(s => (
+                    {suppliers.map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
                     ))}
                   </select>
@@ -398,12 +373,12 @@ export default function PurchaseView({
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Komponen Produk Penunjang</label>
-                {apiProducts.length > 0 ? (
+                {products.length > 0 ? (
                   <select
                     value={productId}
                     onChange={(e) => {
                       setProductId(e.target.value);
-                      const prod = apiProducts.find(p => p.id === e.target.value);
+                      const prod = products.find(p => p.id === e.target.value);
                       if (prod) {
                         setPrice(prod.costPrice || 0);
                         setQty(1);
@@ -411,7 +386,7 @@ export default function PurchaseView({
                     }}
                     className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
                   >
-                    {apiProducts.map(p => (
+                    {products.map(p => (
                       <option key={p.id} value={p.id}>{p.name} (HPP: {formatIDR(p.costPrice || 0)})</option>
                     ))}
                   </select>

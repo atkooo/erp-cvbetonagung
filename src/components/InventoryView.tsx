@@ -20,21 +20,14 @@ import { Product, StockMovement } from '../types';
 import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface InventoryViewProps {
-  products: Product[];
-  stockMovements: StockMovement[];
-  onAddStockMovement: (newMovement: StockMovement) => void;
-  onUpdateProductStock: (sku: string, qtyChange: number) => void;
   onTriggerNotification: (message: string) => void;
   initialTab?: 'stok' | 'masuk' | 'keluar' | 'riwayat';
 }
 
 export default function InventoryView({
-  products,
-  stockMovements,
-  onAddStockMovement,
-  onUpdateProductStock,
   onTriggerNotification,
   initialTab = 'stok',
 }: InventoryViewProps) {
@@ -49,14 +42,14 @@ export default function InventoryView({
   const [showOutwardModal, setShowOutwardModal] = useState(false);
 
   // Form states - Barang Masuk
-  const [inSku, setInSku] = useState(products[0]?.sku || '');
+  const [inSku, setInSku] = useState('');
   const [inQty, setInQty] = useState(0);
   const [inDoc, setInDoc] = useState('');
   const [inHandler, setInHandler] = useState('Gudang - Wahyu');
   const [inNotes, setInNotes] = useState('');
 
   // Form states - Barang Keluar
-  const [outSku, setOutSku] = useState(products[0]?.sku || '');
+  const [outSku, setOutSku] = useState('');
   const [outQty, setOutQty] = useState(0);
   const [outDoc, setOutDoc] = useState('');
   const [outHandler, setOutHandler] = useState('Admin Gudang');
@@ -64,17 +57,12 @@ export default function InventoryView({
 
   const categories = ['Kubah Masjid', 'Lisplang', 'Roster', 'Ornamen Beton', 'Tanaman', 'Produk Custom'];
 
-  const [apiProducts, setApiProducts] = useState<Product[]>([]);
-  const [apiMovements, setApiMovements] = useState<StockMovement[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const hasBackendSession = Boolean(authStorage.getToken());
-
-  const activeProducts = hasBackendSession ? apiProducts : products;
-  const activeMovements = hasBackendSession ? apiMovements : stockMovements;
 
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -93,11 +81,13 @@ export default function InventoryView({
         };
       });
 
-      setApiProducts(combinedProds);
-      setApiMovements(movs);
+      setProducts(combinedProds);
+      setStockMovements(movs);
       
-      if (combinedProds.length > 0 && !inSku) setInSku(combinedProds[0].sku);
-      if (combinedProds.length > 0 && !outSku) setOutSku(combinedProds[0].sku);
+      if (combinedProds.length > 0) {
+        setInSku(prev => prev || combinedProds[0].sku);
+        setOutSku(prev => prev || combinedProds[0].sku);
+      }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Gagal memuat data inventory');
     } finally {
@@ -107,13 +97,7 @@ export default function InventoryView({
 
   React.useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
-
-  // Timestamps helper
-  const getFormattedDateTime = () => {
-    const d = new Date();
-    return d.toISOString().replace('T', ' ').substring(0, 16);
-  };
+  }, []);
 
   // Submit Incoming Goods
   const handleInwardSubmit = async (e: React.FormEvent) => {
@@ -123,39 +107,22 @@ export default function InventoryView({
       return;
     }
 
-    const matchedProd = activeProducts.find(p => p.sku === inSku);
+    const matchedProd = products.find(p => p.sku === inSku);
     if (!matchedProd) return;
 
-    if (hasBackendSession) {
-      try {
-        await inventoryApi.receiveGoods({
-          product_id: matchedProd.id,
-          quantity: inQty,
-          location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
-          reference_type: 'PO',
-          reference_number: inDoc,
-          notes: inNotes,
-        });
-        onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}] via API`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerima barang');
-      }
-    } else {
-      const newMov: StockMovement = {
-        id: `m-in-${Date.now()}`,
-        sku: inSku,
-        productName: matchedProd.name,
-        type: 'Masuk',
+    try {
+      await inventoryApi.receiveGoods({
+        product_id: matchedProd.id,
         quantity: inQty,
-        referenceDoc: inDoc,
-        date: getFormattedDateTime(),
-        handler: inHandler,
-        notes: inNotes || 'Penerimaan bahan masuk gudang',
-      };
-      onAddStockMovement(newMov);
-      onUpdateProductStock(inSku, inQty);
-      onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}]`);
+        location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+        reference_type: 'PO',
+        reference_number: inDoc,
+        notes: inNotes,
+      });
+      onTriggerNotification(`Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}] via API`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerima barang');
     }
 
     // Reset Form
@@ -173,7 +140,7 @@ export default function InventoryView({
       return;
     }
 
-    const matchedProd = activeProducts.find(p => p.sku === outSku);
+    const matchedProd = products.find(p => p.sku === outSku);
     if (!matchedProd) return;
 
     if (matchedProd.stock < outQty) {
@@ -181,36 +148,19 @@ export default function InventoryView({
       return;
     }
 
-    if (hasBackendSession) {
-      try {
-        await inventoryApi.issueGoods({
-          product_id: matchedProd.id,
-          quantity: outQty,
-          location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
-          reference_type: 'SO',
-          reference_number: outDoc,
-          notes: outNotes,
-        });
-        onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}] via API`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal mengeluarkan barang');
-      }
-    } else {
-      const newMov: StockMovement = {
-        id: `m-out-${Date.now()}`,
-        sku: outSku,
-        productName: matchedProd.name,
-        type: 'Keluar',
+    try {
+      await inventoryApi.issueGoods({
+        product_id: matchedProd.id,
         quantity: outQty,
-        referenceDoc: outDoc,
-        date: getFormattedDateTime(),
-        handler: outHandler,
-        notes: outNotes || 'Pengeluaran logistik proyek',
-      };
-      onAddStockMovement(newMov);
-      onUpdateProductStock(outSku, -outQty);
-      onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}]`);
+        location_id: '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // default generic ID
+        reference_type: 'SO',
+        reference_number: outDoc,
+        notes: outNotes,
+      });
+      onTriggerNotification(`Sukses mengeluarkan ${outQty} ${matchedProd.unit} untuk SKU [${outSku}] via API`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal mengeluarkan barang');
     }
 
     // Reset Form
@@ -276,7 +226,7 @@ export default function InventoryView({
         )}
         {activeTab === 'stok' && (
           <div className="text-[10px] font-mono text-slate-400 bg-slate-100 p-2 rounded-lg border border-slate-200 text-center truncate max-w-[250px]">
-            {hasBackendSession ? 'API Mode' : 'Lokal Mode'} | Total Katalog: <strong className="text-slate-700">{activeProducts.length} SKU</strong>
+            API Mode | Total Katalog: <strong className="text-slate-700">{products.length} SKU</strong>
           </div>
         )}
       </div>
@@ -288,220 +238,210 @@ export default function InventoryView({
       )}
 
       {/* CONTENT SWITCHER CARD */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* TAB 1: STOK PRODUK */}
-        {activeTab === 'stok' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">SKU No.</th>
-                  <th className="p-3.5">Nama Item Produk</th>
-                  <th className="p-3.5">Kategori</th>
-                  <th className="p-3.5">Lokasi Rak</th>
-                  <th className="p-3.5 text-center">Stok Saat Ini</th>
-                  <th className="p-3.5 text-center">Minimum Stok</th>
-                  <th className="p-3.5">Status Alaram</th>
-                  <th className="p-3.5 pr-5 text-right">Aksi Manual</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {isLoading ? (
-                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
-                ) : activeProducts
-                  .filter((p) => {
-                    const matchSrc = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
-                    const matchStt = stockStatusFilter === 'All' || p.status === stockStatusFilter;
-                    return matchSrc && matchStt;
-                  })
-                  .map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">{p.sku}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{p.name}</td>
-                      <td className="p-3.5 text-slate-500 font-semibold">{p.category}</td>
-                      <td className="p-3.5 text-slate-500 font-medium">{p.location}</td>
-                      <td className="p-3.5 text-center font-mono font-bold text-slate-900 bg-slate-50/10">
-                        {p.stock} <span className="font-normal text-slate-400 text-[10px]">{p.unit}</span>
-                      </td>
-                      <td className="p-3.5 text-center font-mono text-slate-400">{p.minStock} {p.unit}</td>
-                      <td className="p-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
-                          p.status === 'Aman' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          p.status === 'Menipis' ? 'bg-amber-50 text-amber-700 border border-amber-200 font-semibold' :
-                          'bg-red-50 text-red-700 border border-red-200 font-bold'
-                        }`}>
-                          {p.status === 'Aman' && <CheckCircle size={10} />}
-                          {p.status === 'Menipis' && <AlertCircle size={10} />}
-                          {p.status === 'Habis' && <AlertCircle size={10} />}
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-right">
-                        <button
-                          onClick={() => {
-                            const newQtyStr = prompt(`Masukkan penyesuaian stok baru untuk ${p.sku} (Angka):`, String(p.stock));
-                            if (newQtyStr !== null) {
-                              const newQtyValue = parseInt(newQtyStr, 10);
-                              if (!isNaN(newQtyValue)) {
-                                const diff = newQtyValue - p.stock;
-                                onUpdateProductStock(p.sku, diff);
-                                onTriggerNotification(`Stok manual ${p.sku} disesuaikan menjadi ${newQtyValue}`);
-                              }
-                            }
-                          }}
-                          className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 bg-slate-50 rounded text-[10px]"
-                        >
-                          Koreksi
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 2: BARANG MASUK */}
-        {activeTab === 'masuk' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">No Transaksi</th>
-                  <th className="p-3.5">Tanggal Masuk</th>
-                  <th className="p-3.5">No Referensi / PO</th>
-                  <th className="p-3.5">SKU No.</th>
-                  <th className="p-3.5">Deskripsi Barang</th>
-                  <th className="p-3.5 text-center">Jumlah Masuk</th>
-                  <th className="p-3.5">Petugas Gudang</th>
-                  <th className="p-3.5 pr-5">Keterangan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {isLoading ? (
-                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
-                ) : activeMovements
-                  .filter(m => m.type === 'Masuk' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
-                  .map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-5 font-mono text-slate-400">{m.id}</td>
-                      <td className="p-3.5 font-mono text-slate-600">{m.date}</td>
-                      <td className="p-3.5 font-mono font-bold text-cyan-600">{m.referenceDoc}</td>
-                      <td className="p-3.5 font-mono font-semibold text-slate-700">{m.sku}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{m.productName}</td>
-                      <td className="p-3.5 text-center font-semibold text-emerald-600 font-mono">
-                        +{m.quantity}
-                      </td>
-                      <td className="p-3.5 text-slate-600 flex items-center gap-1.5 pt-4">
-                        <User size={12} className="text-slate-400" />
-                        <span>{m.handler}</span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-slate-500 italic max-w-[150px] truncate" title={m.notes}>{m.notes}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 3: BARANG KELUAR */}
-        {activeTab === 'keluar' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">No Transaksi</th>
-                  <th className="p-3.5">Tanggal Keluar</th>
-                  <th className="p-3.5">Referensi SO No</th>
-                  <th className="p-3.5">SKU No.</th>
-                  <th className="p-3.5">Deskripsi Barang</th>
-                  <th className="p-3.5 text-center">Jumlah Keluar</th>
-                  <th className="p-3.5">Kurir / Handler</th>
-                  <th className="p-3.5 pr-5">Tujuan Distribusi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {isLoading ? (
-                  <tr><td colSpan={8} className="text-center py-10 text-slate-400">Memuat data dari backend...</td></tr>
-                ) : activeMovements
-                  .filter(m => m.type === 'Keluar' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
-                  .map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/40">
-                      <td className="p-3.5 pl-5 font-mono text-slate-400">{m.id}</td>
-                      <td className="p-3.5 font-mono text-slate-600">{m.date}</td>
-                      <td className="p-3.5 font-mono font-bold text-indigo-600">{m.referenceDoc}</td>
-                      <td className="p-3.5 font-mono font-semibold text-slate-700">{m.sku}</td>
-                      <td className="p-3.5 font-bold text-slate-800">{m.productName}</td>
-                      <td className="p-3.5 text-center font-semibold text-rose-600 font-mono">
-                        -{m.quantity}
-                      </td>
-                      <td className="p-3.5 text-slate-600 flex items-center gap-1.5 pt-4">
-                        <User size={12} className="text-slate-400" />
-                        <span>{m.handler}</span>
-                      </td>
-                      <td className="p-3.5 pr-5 text-slate-500 max-w-[150px] truncate" title={m.notes}>{m.notes}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TAB 4: RIWAYAT PERGERAKAN STOK */}
-        {activeTab === 'riwayat' && (
-          <div className="p-6">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-5 flex items-center gap-2">
-              <Clock size={16} className="text-cyan-500" />
-              <span>Timeline Log Mutasi Fisik Sejarah Gudang</span>
-            </h4>
-
-            <div className="relative border-l border-slate-200 pl-6 ml-3 space-y-6">
-              {isLoading ? (
-                <p className="text-slate-400 text-sm py-4">Memuat riwayat dari backend...</p>
-              ) : activeMovements
-                .filter(m => m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()))
-                .map((m, idx) => (
-                  <div key={idx} className="relative text-xs">
-                    {/* Circle indicators */}
-                    <span className={`absolute -left-[30px] top-0 p-1 rounded-full text-white ${
-                      m.type === 'Masuk' ? 'bg-emerald-500' : 'bg-rose-500'
-                    }`}>
-                      {m.type === 'Masuk' ? <ArrowDownCircle size={12} /> : <ArrowUpCircle size={12} />}
-                    </span>
-
-                    {/* Timeline box layout */}
-                    <div className="bg-slate-50 hover:bg-slate-100 p-3.5 rounded-xl border border-slate-200 max-w-2xl transition-colors">
-                      <div className="flex md:items-center justify-between flex-col md:flex-row gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[9px] bg-slate-200/60 font-black text-slate-700 px-1.5 py-0.5 rounded">
-                            {m.sku}
-                          </span>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
-                            m.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={8} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={loadData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* TAB 1: STOK PRODUK */}
+          {activeTab === 'stok' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                    <th className="p-3.5 pl-5">SKU No.</th>
+                    <th className="p-3.5">Nama Item Produk</th>
+                    <th className="p-3.5">Kategori</th>
+                    <th className="p-3.5">Lokasi Rak</th>
+                    <th className="p-3.5 text-center">Stok Saat Ini</th>
+                    <th className="p-3.5 text-center">Minimum Stok</th>
+                    <th className="p-3.5">Status Alaram</th>
+                    <th className="p-3.5 pr-5 text-right">Aksi Manual</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {products
+                    .filter((p) => {
+                      const matchSrc = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+                      const matchStt = stockStatusFilter === 'All' || p.status === stockStatusFilter;
+                      return matchSrc && matchStt;
+                    })
+                    .map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">{p.sku}</td>
+                        <td className="p-3.5 font-bold text-slate-800">{p.name}</td>
+                        <td className="p-3.5 text-slate-500 font-semibold">{p.category}</td>
+                        <td className="p-3.5 text-slate-500 font-medium">{p.location}</td>
+                        <td className="p-3.5 text-center font-mono font-bold text-slate-900 bg-slate-50/10">
+                          {p.stock} <span className="font-normal text-slate-400 text-[10px]">{p.unit}</span>
+                        </td>
+                        <td className="p-3.5 text-center font-mono text-slate-400">{p.minStock} {p.unit}</td>
+                        <td className="p-3.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
+                            p.status === 'Aman' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            p.status === 'Menipis' ? 'bg-amber-50 text-amber-700 border border-amber-200 font-semibold' :
+                            'bg-red-50 text-red-700 border border-red-200 font-bold'
                           }`}>
-                            MUTASI {m.type.toUpperCase()}
+                            {p.status === 'Aman' && <CheckCircle size={10} />}
+                            {p.status === 'Menipis' && <AlertCircle size={10} />}
+                            {p.status === 'Habis' && <AlertCircle size={10} />}
+                            {p.status}
                           </span>
-                        </div>
-                        <span className="font-mono text-[10px] text-slate-400">{m.date}</span>
-                      </div>
-
-                      <h5 className="font-bold text-slate-800 mt-2">{m.productName}</h5>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Kuantitas: <strong className="text-slate-700">{m.quantity} Pcs / Unit</strong> | Dokumen: <strong className="text-cyan-600 font-mono">{m.referenceDoc}</strong>
-                      </p>
-                      
-                      {m.notes && (
-                        <div className="mt-2.5 pt-1.5 border-t border-slate-200/50 text-[10px] text-slate-400 italic">
-                          Catatan: {m.notes}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                        </td>
+                        <td className="p-3.5 pr-5 text-right">
+                          <button
+                            onClick={() => {
+                              onTriggerNotification('Koreksi stok manual dinonaktifkan. Silakan gunakan modul Stock Opname.');
+                            }}
+                            className="px-2 py-1 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 bg-slate-50 rounded text-[10px]"
+                          >
+                            Koreksi
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* TAB 2: BARANG MASUK */}
+          {activeTab === 'masuk' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                    <th className="p-3.5 pl-5">No Transaksi</th>
+                    <th className="p-3.5">Tanggal Masuk</th>
+                    <th className="p-3.5">No Referensi / PO</th>
+                    <th className="p-3.5">SKU No.</th>
+                    <th className="p-3.5">Deskripsi Barang</th>
+                    <th className="p-3.5 text-center">Jumlah Masuk</th>
+                    <th className="p-3.5">Petugas Gudang</th>
+                    <th className="p-3.5 pr-5">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {stockMovements
+                    .filter(m => m.type === 'Masuk' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
+                    .map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono text-slate-400">{m.id}</td>
+                        <td className="p-3.5 font-mono text-slate-600">{m.date}</td>
+                        <td className="p-3.5 font-mono font-bold text-cyan-600">{m.referenceDoc}</td>
+                        <td className="p-3.5 font-mono font-semibold text-slate-700">{m.sku}</td>
+                        <td className="p-3.5 font-bold text-slate-800">{m.productName}</td>
+                        <td className="p-3.5 text-center font-semibold text-emerald-600 font-mono">
+                          +{m.quantity}
+                        </td>
+                        <td className="p-3.5 text-slate-600 flex items-center gap-1.5 pt-4">
+                          <User size={12} className="text-slate-400" />
+                          <span>{m.handler}</span>
+                        </td>
+                        <td className="p-3.5 pr-5 text-slate-500 italic max-w-[150px] truncate" title={m.notes}>{m.notes}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 3: BARANG KELUAR */}
+          {activeTab === 'keluar' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                    <th className="p-3.5 pl-5">No Transaksi</th>
+                    <th className="p-3.5">Tanggal Keluar</th>
+                    <th className="p-3.5">Referensi SO No</th>
+                    <th className="p-3.5">SKU No.</th>
+                    <th className="p-3.5">Deskripsi Barang</th>
+                    <th className="p-3.5 text-center">Jumlah Keluar</th>
+                    <th className="p-3.5">Kurir / Handler</th>
+                    <th className="p-3.5 pr-5">Tujuan Distribusi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {stockMovements
+                    .filter(m => m.type === 'Keluar' && (m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()) || m.referenceDoc.toLowerCase().includes(search.toLowerCase())))
+                    .map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono text-slate-400">{m.id}</td>
+                        <td className="p-3.5 font-mono text-slate-600">{m.date}</td>
+                        <td className="p-3.5 font-mono font-bold text-indigo-600">{m.referenceDoc}</td>
+                        <td className="p-3.5 font-mono font-semibold text-slate-700">{m.sku}</td>
+                        <td className="p-3.5 font-bold text-slate-800">{m.productName}</td>
+                        <td className="p-3.5 text-center font-semibold text-rose-600 font-mono">
+                          -{m.quantity}
+                        </td>
+                        <td className="p-3.5 text-slate-600 flex items-center gap-1.5 pt-4">
+                          <User size={12} className="text-slate-400" />
+                          <span>{m.handler}</span>
+                        </td>
+                        <td className="p-3.5 pr-5 text-slate-500 max-w-[150px] truncate" title={m.notes}>{m.notes}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 4: RIWAYAT PERGERAKAN STOK */}
+          {activeTab === 'riwayat' && (
+            <div className="p-6">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Clock size={16} className="text-cyan-500" />
+                <span>Timeline Log Mutasi Fisik Sejarah Gudang</span>
+              </h4>
+
+              <div className="relative border-l border-slate-200 pl-6 ml-3 space-y-6">
+                {stockMovements
+                  .filter(m => m.productName.toLowerCase().includes(search.toLowerCase()) || m.sku.toLowerCase().includes(search.toLowerCase()))
+                  .map((m, idx) => (
+                    <div key={idx} className="relative text-xs">
+                      {/* Circle indicators */}
+                      <span className={`absolute -left-[30px] top-0 p-1 rounded-full text-white ${
+                        m.type === 'Masuk' ? 'bg-emerald-500' : 'bg-rose-500'
+                      }`}>
+                        {m.type === 'Masuk' ? <ArrowDownCircle size={12} /> : <ArrowUpCircle size={12} />}
+                      </span>
+
+                      {/* Timeline box layout */}
+                      <div className="bg-slate-50 hover:bg-slate-100 p-3.5 rounded-xl border border-slate-200 max-w-2xl transition-colors">
+                        <div className="flex md:items-center justify-between flex-col md:flex-row gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[9px] bg-slate-200/60 font-black text-slate-700 px-1.5 py-0.5 rounded">
+                              {m.sku}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
+                              m.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              MUTASI {m.type.toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-400">{m.date}</span>
+                        </div>
+
+                        <h5 className="font-bold text-slate-800 mt-2">{m.productName}</h5>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Kuantitas: <strong className="text-slate-700">{m.quantity} Pcs / Unit</strong> | Dokumen: <strong className="text-cyan-600 font-mono">{m.referenceDoc}</strong>
+                        </p>
+                        
+                        {m.notes && (
+                          <div className="mt-2.5 pt-1.5 border-t border-slate-200/50 text-[10px] text-slate-400 italic">
+                            Catatan: {m.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODAL BARANG MASUK */}
       {showInwardModal && (
@@ -525,7 +465,7 @@ export default function InventoryView({
                   onChange={(e) => setInSku(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
-                  {activeProducts.map((p, idx) => (
+                  {products.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name}</option>
                   ))}
                 </select>
@@ -609,7 +549,7 @@ export default function InventoryView({
                   onChange={(e) => setOutSku(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
                 >
-                  {activeProducts.map((p, idx) => (
+                  {products.map((p, idx) => (
                     <option key={idx} value={p.sku}>{p.sku} | {p.name} (Sisa: {p.stock})</option>
                   ))}
                 </select>

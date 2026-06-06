@@ -18,8 +18,8 @@ interface SidebarProps {
   userPermissions?: AuthPermission[];
 }
 
-const activeClass = 'bg-sky-700 text-white font-medium';
-const inactiveClass = 'text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors duration-150';
+const activeClass = 'bg-slate-800/80 border-l-2 border-slate-400 pl-2.5 text-white font-bold transition-all';
+const inactiveClass = 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors pl-3';
 
 const isItemActive = (item: NavigationItem, currentView: ViewType) => {
   return item.view === currentView || Boolean(item.activeViews?.includes(currentView));
@@ -64,36 +64,36 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
       <button
         key={item.view}
         onClick={() => onViewChange(item.view)}
-        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-left transition-all ${
+        className={`w-full flex items-center gap-2 py-2 rounded text-xs text-left transition-all ${
           active ? activeClass : inactiveClass
         }`}
       >
-        <Icon size={14} />
+        <Icon size={13} />
         <span>{item.label}</span>
       </button>
     );
   };
 
   return (
-    <div className="w-64 bg-slate-950 text-slate-100 h-screen flex flex-col border-r border-slate-800 shrink-0 select-none overflow-y-auto scrollbar-thin">
-      <div className="p-5 border-b border-slate-800 bg-slate-950/60 sticky top-0 backdrop-blur-md z-10 flex items-center gap-3">
-        <div className="bg-sky-700 p-2 rounded-lg text-white">
-          <HardHat size={20} className="stroke-[2.5]" />
+    <div className="w-64 bg-slate-950 text-slate-100 h-screen flex flex-col border-r border-slate-900 shrink-0 select-none overflow-y-auto scrollbar-thin">
+      <div className="p-5 border-b border-slate-900 bg-slate-950/60 sticky top-0 backdrop-blur-md z-10 flex items-center gap-3">
+        <div className="bg-slate-800 border border-slate-700/50 p-2 rounded-lg text-white">
+          <HardHat size={18} className="stroke-[2.5]" />
         </div>
         <div>
-          <h1 className="font-sans font-bold tracking-tight text-white text-base">CV Beton Agung</h1>
-          <span className="text-[10px] uppercase tracking-wider font-mono text-sky-300 font-semibold">Sistem Operasional</span>
+          <h1 className="font-sans font-bold tracking-tight text-white text-sm">CV Beton Agung</h1>
+          <span className="text-[9px] uppercase tracking-widest font-mono text-slate-400 font-bold">Sistem Operasional</span>
         </div>
       </div>
 
-      <div className="p-4 mx-3 my-3 bg-slate-900/60 rounded-xl border border-slate-800/50 flex items-center justify-between">
+      <div className="p-4 mx-3 my-3 bg-slate-900/40 rounded-xl border border-slate-900/60 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-slate-800 border border-sky-500/30 flex items-center justify-center font-bold text-sky-300 text-sm">
+          <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 text-xs">
             {userRoleName.substring(0, 2).toUpperCase()}
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-200">Akun Aktif</p>
-            <p className="text-[10px] font-mono text-slate-400 mt-0.5 bg-slate-800 rounded px-1.5 py-0.5 inline-block" title={`Role Code: ${userRoleCode}`}>
+            <p className="text-[11px] font-bold text-slate-200">Akun Aktif</p>
+            <p className="text-[9px] font-mono text-slate-400 mt-0.5 bg-slate-800 border border-slate-700/40 rounded px-1.5 py-0.5 inline-block" title={`Role Code: ${userRoleCode}`}>
               {userRoleName}
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
           title="Keluar dari Sistem"
           className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
         >
-          <LogOut size={16} />
+          <LogOut size={14} />
         </button>
       </div>
 
@@ -119,7 +119,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
           }
 
           return (
-            <div key={section.id} className={section.separator ? 'pt-4 border-t border-slate-800/60 mt-4 space-y-1.5' : 'space-y-1'}>
+            <div key={section.id} className={section.separator ? 'pt-4 border-t border-slate-900/60 mt-4 space-y-1.5' : 'space-y-1'}>
               {section.title && (
                 section.collapsible ? (
                   <button
@@ -137,7 +137,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
               )}
 
               {(!section.collapsible || isExpanded) && (
-                <div className={section.title ? 'pl-1.5 space-y-1 border-l border-slate-800/60 ml-2 mt-1' : 'space-y-1.5'}>
+                <div className={section.title ? 'pl-1 border-l border-slate-900 ml-2 mt-1' : 'space-y-1.5'}>
                   {visibleItems.map(renderNavItem)}
                 </div>
               )}
@@ -146,7 +146,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
         })}
       </div>
 
-      <div className="p-3 bg-slate-900 border-t border-slate-800 text-center text-[10px] text-slate-500 font-mono">
+      <div className="p-3 bg-slate-950 border-t border-slate-900 text-center text-[9px] text-slate-600 font-mono">
         CV Beton Agung ERP
       </div>
     </div>

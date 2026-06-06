@@ -107,6 +107,7 @@ export const apiClient = {
 
     if (response.status === 401) {
       authStorage.clear();
+      window.dispatchEvent(new Event('auth:unauthorized'));
       throw new ApiRequestError('Sesi berakhir. Silakan masuk ulang.', response.status);
     }
 

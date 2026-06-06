@@ -3,80 +3,40 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { FolderTree, Sparkles, LayoutGrid, Plus, Compass, BrickWall, Flower, FileCode, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FolderTree, Sparkles, LayoutGrid, Plus, Compass, BrickWall, Flower, FileCode } from 'lucide-react';
 import { Product, Category } from '../types';
-import { authStorage } from '../services/api';
 import { productsApi } from '../features/products/api';
 
 interface CategoriesViewProps {
-  products: Product[];
   onTriggerNotification: (message: string) => void;
 }
 
-export default function CategoriesView({ products, onTriggerNotification }: CategoriesViewProps) {
-  const [apiCategories, setApiCategories] = useState<Category[]>([]);
+export default function CategoriesView({ onTriggerNotification }: CategoriesViewProps) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const hasBackendSession = Boolean(authStorage.getToken());
 
-  React.useEffect(() => {
-    if (!hasBackendSession) return;
+  useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
-    productsApi.getCategories()
-      .then(data => { if (isMounted) setApiCategories(data); })
-      .catch(err => { if (isMounted) onTriggerNotification(err.message); })
-      .finally(() => { if (isMounted) setIsLoading(false); });
-    return () => { isMounted = false; };
-  }, [hasBackendSession]);
-
-  // Static categories definition
-  const staticCategories = [
-    {
-      name: 'Kubah Masjid',
-      icon: Compass,
-      description: 'Kubah precast GRC bermotif artistik dan kubah logam enamel platinum untuk masjid jami & musholla.',
-      color: 'from-amber-500 to-orange-600',
-      tag: 'Produk Utama',
-    },
-    {
-      name: 'Lisplang',
-      icon: LayoutGrid,
-      description: 'Lisplang beton cor kualitas tinggi untuk pelindung tepi atau talang atap rumah bergaya klasik & minimalis.',
-      color: 'from-blue-500 to-cyan-650',
-      tag: 'Eksterior Atap',
-    },
-    {
-      name: 'Roster',
-      icon: BrickWall,
-      description: 'Roster beton angin-angin dekoratif beraneka ragam motif untuk dinding sirkulasi partisi modern.',
-      color: 'from-indigo-500 to-purple-600',
-      tag: 'Sirkulasi & Fasad',
-    },
-    {
-      name: 'Ornamen Beton',
-      icon: LayoutGrid,
-      description: 'Pilar korintian klasik, mihrab kaligrafi, ornamen dinding GRC, serta relief beton pencetakan khusus.',
-      color: 'from-teal-500 to-emerald-600',
-      tag: 'Seni Pracetak',
-    },
-    {
-      name: 'Tanaman',
-      icon: Flower,
-      description: 'Pot beton pracetak minimalis dan aneka tanaman hias perdu rimbun untuk pengasrian taman.',
-      color: 'from-emerald-500 to-green-650',
-      tag: 'Taman & Lanskap',
-    },
-    {
-      name: 'Produk Custom',
-      icon: FileCode,
-      description: 'Sistem cetakan kustomor GRC, pilar lengkung tinggi, ornamen kubah eksternal, dan pracetak khusus.',
-      color: 'from-slate-600 to-slate-800',
-      tag: 'Desain Arsitek',
-    },
-  ];
-
-  const activeCategories = hasBackendSession ? apiCategories : staticCategories;
+    Promise.all([productsApi.getCategories(), productsApi.getProducts()])
+      .then(([catsData, productsData]) => {
+        if (isMounted) {
+          setCategories(catsData);
+          setProducts(productsData);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) onTriggerNotification(err.message);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -89,7 +49,7 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
           </div>
           <h2 className="text-base font-bold text-slate-800">Manajemen Partisi & Klasifikasi Produk</h2>
           <p className="text-xs text-slate-500 max-w-xl">
-            CV Beton Agung mengelompokkan katalog produk ke dalam 6 lini utama produksi guna menstandardisasi proses precast cetakan beton, penentuan harga borongan, dan pemantauan material logistik.
+            CV Beton Agung mengelompokkan katalog produk ke dalam lini utama produksi guna menstandardisasi proses precast cetakan beton, penentuan harga borongan, dan pemantauan material logistik.
           </p>
         </div>
         <button
@@ -104,7 +64,7 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
       {/* Grid of categories cards */}
       {isLoading && <p className="text-sm text-slate-500">Memuat kategori dari backend...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {activeCategories.map((cat, idx) => {
+        {categories.map((cat, idx) => {
           const IconComponent = (cat as any).icon || FolderTree;
           // Count active products in this category
           const productCount = products.filter((p) => p.category === cat.name).length;
@@ -117,7 +77,7 @@ export default function CategoriesView({ products, onTriggerNotification }: Cate
               <div className="p-5">
                 {/* Header card info */}
                 <div className="flex items-start justify-between">
-                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${(cat as any).color || 'from-slate-500 to-slate-600'} text-white shadow`}>
+                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${(cat as any).color || 'from-slate-500 to-slate-650'} text-white shadow`}>
                     <IconComponent size={20} />
                   </div>
                   <span className="text-[10px] font-mono tracking-wider font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">

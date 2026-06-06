@@ -8,22 +8,20 @@ import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, 
 import { Customer } from '../types';
 import { authStorage } from '../services/api';
 import { customersApi } from '../features/customers/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface CustomersViewProps {
-  customers: Customer[];
-  onAddCustomer: (newCustomer: Customer) => void;
   onTriggerNotification: (message: string) => void;
 }
 
-export default function CustomersView({ customers, onAddCustomer, onTriggerNotification }: CustomersViewProps) {
+export default function CustomersView({ onTriggerNotification }: CustomersViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [apiCustomers, setApiCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const hasBackendSession = Boolean(authStorage.getToken());
 
   // Form states
   const [name, setName] = useState('');
@@ -32,43 +30,31 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
-  const activeCustomers = hasBackendSession ? apiCustomers : customers;
 
-  useEffect(() => {
-    if (!hasBackendSession) {
-      return;
-    }
-
-    let isMounted = true;
+  const fetchData = () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     customersApi
       .listCustomers()
       .then(({ customers }) => {
-        if (isMounted) {
-          setApiCustomers(customers);
-        }
+        setCustomers(customers);
       })
       .catch((error: Error) => {
-        if (isMounted) {
-          setErrorMessage(error.message);
-          onTriggerNotification(error.message);
-        }
+        setErrorMessage(error.message);
+        onTriggerNotification(error.message);
       })
       .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [hasBackendSession]);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // Filter & Search
-  const filteredCustomers = activeCustomers.filter((cust) => {
+  const filteredCustomers = customers.filter((cust) => {
     const matchesSearch =
       cust.name.toLowerCase().includes(search.toLowerCase()) ||
       cust.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -101,52 +87,31 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
 
     const nextCode = generateCustomerCode();
 
-    if (hasBackendSession) {
-      setIsSubmitting(true);
-      setErrorMessage(null);
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
-      try {
-        const newCustomer = await customersApi.createCustomer({
-          code: nextCode,
-          name,
-          phone,
-          email,
-          city,
-          address,
-          status,
-        });
+    try {
+      const newCustomer = await customersApi.createCustomer({
+        code: nextCode,
+        name,
+        phone,
+        email,
+        city,
+        address,
+        status,
+      });
 
-        setApiCustomers((prev) => [newCustomer, ...prev]);
-        onAddCustomer(newCustomer);
-        onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
-        resetForm();
-        setShowAddModal(false);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Gagal menyimpan customer ke backend.';
-        setErrorMessage(message);
-        onTriggerNotification(message);
-      } finally {
-        setIsSubmitting(false);
-      }
-
-      return;
+      setCustomers((prev) => [newCustomer, ...prev]);
+      onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
+      resetForm();
+      setShowAddModal(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal menyimpan customer ke backend.';
+      setErrorMessage(message);
+      onTriggerNotification(message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newCust: Customer = {
-      id: `c${customers.length + 1}`,
-      code: `CST-00${customers.length + 1}`,
-      name,
-      phone,
-      email: email || `${name.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-      city,
-      address: address || 'Alamat Belum Diatur',
-      status,
-    };
-
-    onAddCustomer(newCust);
-    onTriggerNotification(`Sukses menambahkan Customer: ${name} (${newCust.code})`);
-    resetForm();
-    setShowAddModal(false);
   };
 
   return (
@@ -190,114 +155,107 @@ export default function CustomersView({ customers, onAddCustomer, onTriggerNotif
         </button>
       </div>
 
-      {/* Grid of quick info or main table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
-            Refferal Buku Alamat Pelanggan ({filteredCustomers.length} Item)
-          </h3>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {hasBackendSession ? 'Backend API' : 'Demo Lokal'}
-          </span>
-        </div>
-
-        {errorMessage && (
-          <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-[11px] font-semibold text-rose-700">
-            {errorMessage}
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={8} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
+              Refferal Buku Alamat Pelanggan ({filteredCustomers.length} Item)
+            </h3>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Backend API
+            </span>
           </div>
-        )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">Kode</th>
-                <th className="p-3.5">Nama Customer / Mandor</th>
-                <th className="p-3.5">Nomor Telepon / WA</th>
-                <th className="p-3.5">Kota Operasional</th>
-                <th className="p-3.5">Alamat Lengkap</th>
-                <th className="p-3.5">Email</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5 pr-5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400">
-                    Memuat data customer dari backend...
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">Kode</th>
+                  <th className="p-3.5">Nama Customer / Mandor</th>
+                  <th className="p-3.5">Nomor Telepon / WA</th>
+                  <th className="p-3.5">Kota Operasional</th>
+                  <th className="p-3.5">Alamat Lengkap</th>
+                  <th className="p-3.5">Email</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
                 </tr>
-              ) : filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400">
-                    Tidak ada data customer yang cocok dengan pencarian Anda.
-                  </td>
-                </tr>
-              ) : (
-                filteredCustomers.map((cust) => (
-                  <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-cyan-600">
-                      {cust.code}
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-bold text-slate-800 flex items-center gap-2">
-                        {cust.name}
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-600">
-                      <div className="flex items-center gap-1.5">
-                        <Phone size={12} className="text-slate-400" />
-                        <span>{cust.phone}</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-1 text-slate-700 font-medium">
-                        <MapPin size={12} className="text-emerald-500" />
-                        <span>{cust.city}</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5 text-slate-500 truncate max-w-[200px]" title={cust.address}>
-                      {cust.address}
-                    </td>
-                    <td className="p-3.5 text-slate-500 font-mono">
-                      <span>{cust.email}</span>
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                        cust.status === 'Aktif' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {cust.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => onTriggerNotification(`Membuka profil customer ${cust.name}`)}
-                          className="px-2.5 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
-                        >
-                          Atur
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                      Tidak ada data customer yang cocok dengan pencarian Anda.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination UI */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Menampilkan 1-{filteredCustomers.length} dari {activeCustomers.length} item</span>
-          <div className="flex gap-1">
-            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
-            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+                ) : (
+                  filteredCustomers.map((cust) => (
+                    <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-3.5 pl-5 font-mono font-bold text-cyan-600">
+                        {cust.code}
+                      </td>
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-800 flex items-center gap-2">
+                          {cust.name}
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <Phone size={12} className="text-slate-400" />
+                          <span>{cust.phone}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1 text-slate-700 font-medium">
+                          <MapPin size={12} className="text-emerald-500" />
+                          <span>{cust.city}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-slate-500 truncate max-w-[200px]" title={cust.address}>
+                        {cust.address}
+                      </td>
+                      <td className="p-3.5 text-slate-500 font-mono">
+                        <span>{cust.email}</span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                          cust.status === 'Aktif' 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {cust.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => onTriggerNotification(`Membuka profil customer ${cust.name}`)}
+                            className="px-2.5 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
+                          >
+                            Atur
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Pagination UI */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Menampilkan 1-{filteredCustomers.length} dari {customers.length} item</span>
+            <div className="flex gap-1">
+              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
+              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal Tambah Customer */}
       {showAddModal && (

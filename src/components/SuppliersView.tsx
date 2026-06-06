@@ -8,22 +8,20 @@ import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X } from 'lucide-
 import { Supplier } from '../types';
 import { authStorage } from '../services/api';
 import { suppliersApi } from '../features/suppliers/api';
+import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface SuppliersViewProps {
-  suppliers: Supplier[];
-  onAddSupplier: (newSupplier: Supplier) => void;
   onTriggerNotification: (message: string) => void;
 }
 
-export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotification }: SuppliersViewProps) {
+export default function SuppliersView({ onTriggerNotification }: SuppliersViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [apiSuppliers, setApiSuppliers] = useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const hasBackendSession = Boolean(authStorage.getToken());
 
   // Form states
   const [name, setName] = useState('');
@@ -33,37 +31,30 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
 
-  const activeSuppliers = hasBackendSession ? apiSuppliers : suppliers;
-
-  React.useEffect(() => {
-    if (!hasBackendSession) return;
-
-    let isMounted = true;
+  const fetchData = () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     suppliersApi
       .getSuppliers()
       .then((data) => {
-        if (isMounted) setApiSuppliers(data);
+        setSuppliers(data);
       })
       .catch((err: Error) => {
-        if (isMounted) {
-          setErrorMessage(err.message);
-          onTriggerNotification(err.message);
-        }
+        setErrorMessage(err.message);
+        onTriggerNotification(err.message);
       })
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [hasBackendSession]);
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   // Filter & Search
-  const filteredSuppliers = activeSuppliers.filter((supp) => {
+  const filteredSuppliers = suppliers.filter((supp) => {
     const matchesSearch =
       supp.name.toLowerCase().includes(search.toLowerCase()) ||
       supp.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,64 +71,37 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
       return;
     }
 
-    const nextCode = `SPL-00${activeSuppliers.length + 1}`;
+    const nextCode = `SPL-00${suppliers.length + 1}`;
 
-    if (hasBackendSession) {
-      setIsSubmitting(true);
-      setErrorMessage(null);
-      try {
-        const newSupp = await suppliersApi.createSupplier({
-          code: nextCode,
-          name,
-          contact_name: contactName,
-          phone,
-          city,
-          address,
-          status: status === 'Aktif' ? 'active' : 'inactive',
-        });
-        setApiSuppliers((prev) => [newSupp, ...prev]);
-        onAddSupplier(newSupp);
-        onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
-        
-        setName('');
-        setContactName('');
-        setPhone('');
-        setCity('');
-        setAddress('');
-        setStatus('Aktif');
-        setShowAddModal(false);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Gagal menyimpan supplier';
-        setErrorMessage(msg);
-        onTriggerNotification(msg);
-      } finally {
-        setIsSubmitting(false);
-      }
-      return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const newSupp = await suppliersApi.createSupplier({
+        code: nextCode,
+        name,
+        contact_name: contactName,
+        phone,
+        city,
+        address,
+        status: status === 'Aktif' ? 'active' : 'inactive',
+      });
+      setSuppliers((prev) => [newSupp, ...prev]);
+      onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
+      
+      setName('');
+      setContactName('');
+      setPhone('');
+      setCity('');
+      setAddress('');
+      setStatus('Aktif');
+      setShowAddModal(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan supplier';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newSupp: Supplier = {
-      id: `s${suppliers.length + 1}`,
-      code: nextCode,
-      name,
-      contactName,
-      phone,
-      city,
-      address: address || 'Alamat Belum Diatur',
-      status,
-    };
-
-    onAddSupplier(newSupp);
-    onTriggerNotification(`Sukses mendaftarkan Supplier: ${name} (${nextCode})`);
-
-    // reset states
-    setName('');
-    setContactName('');
-    setPhone('');
-    setCity('');
-    setAddress('');
-    setStatus('Aktif');
-    setShowAddModal(false);
   };
 
   return (
@@ -181,113 +145,106 @@ export default function SuppliersView({ suppliers, onAddSupplier, onTriggerNotif
         </button>
       </div>
 
-      {/* Main Table card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
-            Buku Rekanan Vendor / Supplier Material ({filteredSuppliers.length} Item)
-          </h3>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {hasBackendSession ? 'Backend API' : 'Demo Lokal'}
-          </span>
-        </div>
-
-        {errorMessage && (
-          <div className="px-5 py-3 bg-rose-50 border-b border-rose-100 text-[11px] font-semibold text-rose-700">
-            {errorMessage}
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={8} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchData} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
+              Buku Rekanan Vendor / Supplier Material ({filteredSuppliers.length} Item)
+            </h3>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Backend API
+            </span>
           </div>
-        )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">Kode Vendor</th>
-                <th className="p-3.5">Nama Perusahaan / Unit Usaha</th>
-                <th className="p-3.5">PIC / Kontak Utama</th>
-                <th className="p-3.5">Kontak Desk</th>
-                <th className="p-3.5">Kota Asal</th>
-                <th className="p-3.5">Alamat Gudang Vendor</th>
-                <th className="p-3.5">Status Polisi PO</th>
-                <th className="p-3.5 pr-5 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400">
-                    Memuat data supplier dari backend...
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">Kode Vendor</th>
+                  <th className="p-3.5">Nama Perusahaan / Unit Usaha</th>
+                  <th className="p-3.5">PIC / Kontak Utama</th>
+                  <th className="p-3.5">Kontak Desk</th>
+                  <th className="p-3.5">Kota Asal</th>
+                  <th className="p-3.5">Alamat Gudang Vendor</th>
+                  <th className="p-3.5">Status Polisi PO</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
                 </tr>
-              ) : filteredSuppliers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400">
-                    Tidak ada data supplier yang beraliansi dengan kriteria tersebut.
-                  </td>
-                </tr>
-              ) : (
-                filteredSuppliers.map((supp) => (
-                  <tr key={supp.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
-                      {supp.code}
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-800">
-                      {supp.name}
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-1.5 text-slate-700">
-                        <User size={12} className="text-slate-400" />
-                        <span className="font-medium">{supp.contactName}</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-600">
-                      <div className="flex items-center gap-1.5">
-                        <Phone size={12} className="text-slate-400" />
-                        <span>{supp.phone}</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-1 text-slate-700">
-                        <MapPin size={12} className="text-cyan-500" />
-                        <span>{supp.city}</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5 text-slate-500 max-w-[200px] truncate" title={supp.address}>
-                      {supp.address}
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                        supp.status === 'Aktif' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {supp.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <button
-                        onClick={() => onTriggerNotification(`Melihat log PO dikirim ke ${supp.name}`)}
-                        className="px-2 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
-                      >
-                        Rekonsil
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredSuppliers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                      Tidak ada data supplier yang beraliansi dengan kriteria tersebut.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredSuppliers.map((supp) => (
+                    <tr key={supp.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
+                        {supp.code}
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-800">
+                        {supp.name}
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1.5 text-slate-700">
+                          <User size={12} className="text-slate-400" />
+                          <span className="font-medium">{supp.contactName}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <Phone size={12} className="text-slate-400" />
+                          <span>{supp.phone}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-1 text-slate-700">
+                          <MapPin size={12} className="text-cyan-500" />
+                          <span>{supp.city}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-slate-500 max-w-[200px] truncate" title={supp.address}>
+                        {supp.address}
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                          supp.status === 'Aktif' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {supp.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        <button
+                          onClick={() => onTriggerNotification(`Melihat log PO dikirim ke ${supp.name}`)}
+                          className="px-2 py-1 text-[10px] border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
+                        >
+                          Rekonsil
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Footer Pagination */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Menampilkan 1-{filteredSuppliers.length} dari {activeSuppliers.length} item</span>
-          <div className="flex gap-1">
-            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
-            <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+          {/* Footer Pagination */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length} item</span>
+            <div className="flex gap-1">
+              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
+              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal Add Supplier */}
       {showAddModal && (

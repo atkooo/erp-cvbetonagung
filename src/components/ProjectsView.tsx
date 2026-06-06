@@ -32,39 +32,31 @@ import { authStorage } from '../services/api';
 import { projectsApi } from '../features/projects/api';
 
 interface ProjectsViewProps {
-  projects: Project[];
   selectedProjectId: string | null;
   onSelectProjectId: (id: string | null) => void;
   onNavigate: (view: ViewType) => void;
   onTriggerNotification: (message: string) => void;
-  onAddTimelineEvent: (projectId: string, date: string, stage: string, desc: string) => void;
 }
 
 export default function ProjectsView({
-  projects,
   selectedProjectId,
   onSelectProjectId,
   onNavigate,
   onTriggerNotification,
-  onAddTimelineEvent,
 }: ProjectsViewProps) {
   const [showEventAddModal, setShowEventAddModal] = useState(false);
   const [newStage, setNewStage] = useState('Produksi Workshop');
   const [newDesc, setNewDesc] = useState('');
 
   // API states
-  const [apiProjects, setApiProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-  const activeProjects = hasBackendSession ? apiProjects : projects;
-
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
     try {
       const data = await projectsApi.getProjects();
-      setApiProjects(data);
+      setProjects(data);
     } catch (err) {
       console.error('Failed to load projects', err);
     } finally {
@@ -74,7 +66,7 @@ export default function ProjectsView({
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
+  }, []);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -100,60 +92,55 @@ export default function ProjectsView({
   };
 
   // Find selected project
-  const project = activeProjects.find((p) => p.id === selectedProjectId);
+  const project = projects.find((p) => p.id === selectedProjectId);
 
   const handleAddTimeline = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!project || !newDesc) return;
 
-    if (hasBackendSession) {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        
-        // Map stage to database status and progress
-        let progress = project.progress;
-        let status = 'production'; // default
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      // Map stage to database status and progress
+      let progress = project.progress;
+      let status = 'production'; // default
 
-        if (newStage.includes('Survey')) {
-          progress = 15;
-          status = 'survey';
-        } else if (newStage.includes('Produksi')) {
-          progress = 45;
-          status = 'production';
-        } else if (newStage.includes('Pengiriman')) {
-          progress = 70;
-          status = 'shipping';
-        } else if (newStage.includes('Pemasangan')) {
-          progress = 85;
-          status = 'installation';
-        } else if (newStage.includes('Penyelesaian')) {
-          progress = 95;
-          status = 'installation';
-        } else if (newStage.includes('Selesai')) {
-          progress = 100;
-          status = 'completed';
-        }
-
-        // 1. Create timeline event
-        await projectsApi.createTimelineEvent({
-          project_id: project.id,
-          event_date: todayStr,
-          stage: newStage,
-          description: newDesc,
-          icon: newStage.includes('Survey') ? 'Compass' : 'CheckCircle'
-        });
-
-        // 2. Update project progress and status
-        await projectsApi.updateProject(project.id, { progress, status });
-
-        onTriggerNotification(`Sukses merekam timeline progress: ${newStage}`);
-        await loadData();
-      } catch (err) {
-        onTriggerNotification(err instanceof Error ? err.message : 'Gagal merekam progress');
+      if (newStage.includes('Survey')) {
+        progress = 15;
+        status = 'survey';
+      } else if (newStage.includes('Produksi')) {
+        progress = 45;
+        status = 'production';
+      } else if (newStage.includes('Pengiriman')) {
+        progress = 70;
+        status = 'shipping';
+      } else if (newStage.includes('Pemasangan')) {
+        progress = 85;
+        status = 'installation';
+      } else if (newStage.includes('Penyelesaian')) {
+        progress = 95;
+        status = 'installation';
+      } else if (newStage.includes('Selesai')) {
+        progress = 100;
+        status = 'completed';
       }
-    } else {
-      onAddTimelineEvent(project.id, new Date().toISOString().split('T')[0], newStage, newDesc);
+
+      // 1. Create timeline event
+      await projectsApi.createTimelineEvent({
+        project_id: project.id,
+        event_date: todayStr,
+        stage: newStage,
+        description: newDesc,
+        icon: newStage.includes('Survey') ? 'Compass' : 'CheckCircle'
+      });
+
+      // 2. Update project progress and status
+      await projectsApi.updateProject(project.id, { progress, status });
+
       onTriggerNotification(`Sukses merekam timeline progress: ${newStage}`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal merekam progress');
     }
 
     setNewDesc('');
@@ -366,7 +353,7 @@ export default function ProjectsView({
           <h3 className="font-sans font-bold text-sm text-slate-850 uppercase tracking-tight flex items-center gap-2">
             Portofolio Pelaksanaan Proyek
             <span className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded font-mono text-[9px] text-slate-500 normal-case font-normal">
-              {hasBackendSession ? 'API MODE' : 'DEMO MODE'}
+              API MODE
             </span>
           </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Sistem pelacakan pekerjaan workshop, pengiriman material, progres lapangan, serta penarikan termin pembayaran.</p>
@@ -385,11 +372,11 @@ export default function ProjectsView({
       {/* Main projects grid listings */}
       {isLoading ? (
         <div className="text-center py-12 text-slate-400 text-xs">Memuat daftar proyek...</div>
-      ) : activeProjects.length === 0 ? (
+      ) : projects.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-xs">Tidak ada proyek yang terdaftar.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {activeProjects.map((proj) => {
+          {projects.map((proj) => {
             // Compute status colors
             const statusColors: any = {
               Survey: 'bg-indigo-100 text-indigo-700 border-indigo-200',

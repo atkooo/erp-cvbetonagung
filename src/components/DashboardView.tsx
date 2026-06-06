@@ -28,49 +28,26 @@ import { financeApi } from '../features/finance/api';
 import { projectsApi } from '../features/projects/api';
 
 interface DashboardViewProps {
-  customers: Customer[];
-  suppliers: Supplier[];
-  products: Product[];
-  salesOrders: SalesOrder[];
-  invoices: Invoice[];
-  projects: Project[];
   onNavigate: (view: ViewType) => void;
   onNavigateToProject: (view: ViewType, projectId: string) => void;
   onTriggerNotification: (message: string) => void;
 }
 
 export default function DashboardView({
-  customers,
-  suppliers,
-  products,
-  salesOrders,
-  invoices,
-  projects,
   onNavigate,
   onNavigateToProject,
   onTriggerNotification,
 }: DashboardViewProps) {
   // Local state for API mode
-  const [apiCustomers, setApiCustomers] = useState<Customer[]>([]);
-  const [apiSuppliers, setApiSuppliers] = useState<Supplier[]>([]);
-  const [apiProducts, setApiProducts] = useState<Product[]>([]);
-  const [apiSalesOrders, setApiSalesOrders] = useState<SalesOrder[]>([]);
-  const [apiInvoices, setApiInvoices] = useState<Invoice[]>([]);
-  const [apiProjects, setApiProjects] = useState<Project[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
-  // Use API state if session exists, else use static props
-  const activeCustomers = hasBackendSession ? apiCustomers : customers;
-  const activeSuppliers = hasBackendSession ? apiSuppliers : suppliers;
-  const activeProducts = hasBackendSession ? apiProducts : products;
-  const activeSalesOrders = hasBackendSession ? apiSalesOrders : salesOrders;
-  const activeInvoices = hasBackendSession ? apiInvoices : invoices;
-  const activeProjects = hasBackendSession ? apiProjects : projects;
-
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
     try {
       const [prods, custRes, sups, sos, invs, projs] = await Promise.all([
@@ -81,12 +58,12 @@ export default function DashboardView({
         financeApi.getInvoices(),
         projectsApi.getProjects()
       ]);
-      setApiProducts(prods);
-      setApiCustomers(custRes.customers);
-      setApiSuppliers(sups);
-      setApiSalesOrders(sos);
-      setApiInvoices(invs);
-      setApiProjects(projs);
+      setProducts(prods);
+      setCustomers(custRes.customers);
+      setSuppliers(sups);
+      setSalesOrders(sos);
+      setInvoices(invs);
+      setProjects(projs);
     } catch (err) {
       console.error('Failed to load dashboard statistics', err);
     } finally {
@@ -96,22 +73,22 @@ export default function DashboardView({
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
+  }, []);
 
   // Compute dashboard metrics
-  const totalProducts = activeProducts.length;
-  const totalCustomers = activeCustomers.length;
-  const totalSuppliers = activeSuppliers.length;
+  const totalProducts = products.length;
+  const totalCustomers = customers.length;
+  const totalSuppliers = suppliers.length;
   
-  const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0);
-  const lowStockProducts = activeProducts.filter(p => p.stock <= p.minStock || p.status === 'Menipis' || p.status === 'Habis');
+  const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+  const lowStockProducts = products.filter(p => p.stock <= p.minStock || p.status === 'Menipis' || p.status === 'Habis');
   const lowStockCount = lowStockProducts.length;
 
-  const currentMonthSO = activeSalesOrders.filter(so => so.status !== 'Dibatalkan');
+  const currentMonthSO = salesOrders.filter(so => so.status !== 'Dibatalkan');
   const salesThisMonth = currentMonthSO.reduce((acc, so) => acc + so.total, 0);
 
-  const unpaidInvoices = activeInvoices.filter(inv => inv.status === 'Belum Lunas' || inv.status === 'Sebagian Dibayar' || inv.status === 'Overdue');
-  const filteredActiveProjects = activeProjects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan');
+  const unpaidInvoices = invoices.filter(inv => inv.status === 'Belum Lunas' || inv.status === 'Sebagian Dibayar' || inv.status === 'Overdue');
+  const filteredActiveProjects = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan');
 
   // Format currency helpers
   const formatIDR = (num: number) => {
@@ -141,11 +118,9 @@ export default function DashboardView({
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
               Kembali Bekerja, Tim CV Beton Agung
-              {hasBackendSession && (
-                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                  API MODE
-                </span>
-              )}
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
+                API MODE
+              </span>
             </h1>
             <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
               Platform ERP mengintegrasikan produksi workshop beton, manajemen proyek custom, logistik stok material, dan rekapitulasi pembayaran secara realtime.
@@ -539,10 +514,10 @@ export default function DashboardView({
               <div className="space-y-3">
                 <h4 className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-widest">PROSES PENJUALAN (SO)</h4>
                 <div className="space-y-2">
-                  {activeSalesOrders.length === 0 ? (
+                  {salesOrders.length === 0 ? (
                     <div className="text-slate-400 text-xs py-4 text-center">Belum ada Sales Order.</div>
                   ) : (
-                    activeSalesOrders.slice(0, 3).map((so, idx) => (
+                    salesOrders.slice(0, 3).map((so, idx) => (
                       <div key={idx} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/40 text-xs flex items-center justify-between">
                         <div>
                           <span className="font-mono text-[10px] text-slate-500 block">{so.orderNumber}</span>
@@ -565,10 +540,10 @@ export default function DashboardView({
               <div className="space-y-3">
                 <h4 className="text-[11px] font-mono font-bold text-slate-400 uppercase tracking-widest">DOKUMEN INVOICE JATUH TEMPO</h4>
                 <div className="space-y-2">
-                  {activeInvoices.filter(inv => inv.status !== 'Lunas').length === 0 ? (
+                  {invoices.filter(inv => inv.status !== 'Lunas').length === 0 ? (
                     <div className="text-slate-400 text-xs py-4 text-center">Semua Invoice lunas.</div>
                   ) : (
-                    activeInvoices.filter(inv => inv.status !== 'Lunas').slice(0, 3).map((inv, idx) => (
+                    invoices.filter(inv => inv.status !== 'Lunas').slice(0, 3).map((inv, idx) => (
                       <div key={idx} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/40 text-xs flex items-center justify-between">
                         <div>
                           <span className="font-mono text-[10px] text-slate-500 block">{inv.invoiceNumber}</span>

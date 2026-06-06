@@ -27,10 +27,7 @@ export default function ReportsView({ onTriggerNotification }: ReportsViewProps)
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
   const loadData = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
     try {
       const [sos, pos, invs, prods] = await Promise.all([
@@ -52,7 +49,7 @@ export default function ReportsView({ onTriggerNotification }: ReportsViewProps)
 
   useEffect(() => {
     loadData();
-  }, [hasBackendSession]);
+  }, []);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -60,24 +57,18 @@ export default function ReportsView({ onTriggerNotification }: ReportsViewProps)
 
   // Calculations for stats
   // 1. Total Omset (Sales orders total or Invoices total)
-  const totalRevenue = hasBackendSession
-    ? salesOrders.filter(so => so.status !== 'Dibatalkan').reduce((acc, so) => acc + so.total, 0)
-    : 185000000;
+  const totalRevenue = salesOrders.filter(so => so.status !== 'Dibatalkan').reduce((acc, so) => acc + so.total, 0);
 
   // 2. Total Pembelian (Purchase orders total)
-  const totalPurchases = hasBackendSession
-    ? purchaseOrders.filter(po => po.status !== 'Dibatalkan').reduce((acc, po) => acc + po.total, 0)
-    : 46000000;
+  const totalPurchases = purchaseOrders.filter(po => po.status !== 'Dibatalkan').reduce((acc, po) => acc + po.total, 0);
 
   // 3. Proyeksi Laba Bersih
-  const netProfit = hasBackendSession ? (totalRevenue - totalPurchases) : 139000000;
+  const netProfit = totalRevenue - totalPurchases;
 
   // 4. Tingkat Penagihan Lunas
   const totalInvoiced = invoices.reduce((acc, inv) => acc + inv.total, 0);
   const totalPaid = invoices.reduce((acc, inv) => acc + inv.paidAmount, 0);
-  const collectionRate = hasBackendSession
-    ? (totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0)
-    : 92.5;
+  const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
 
   return (
     <div className="space-y-6 font-sans text-xs">

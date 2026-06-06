@@ -4,18 +4,6 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import {
-  initialCustomers,
-  initialSuppliers,
-  initialProducts,
-  initialStockMovements,
-  initialQuotations,
-  initialSalesOrders,
-  initialInvoices,
-  initialPayments,
-  initialPurchaseOrders,
-  initialProjects
-} from './dummyData';
 import type { AuthSession, AuthUser, Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
 import { authApi, authStorage } from './services/api';
 
@@ -23,37 +11,38 @@ import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 
 // Feature sub-modules
-import DashboardView from './components/DashboardView';
-import CustomersView from './components/CustomersView';
-import SuppliersView from './components/SuppliersView';
-import ProductsView from './components/ProductsView';
-import CategoriesView from './components/CategoriesView';
-import InventoryView from './components/InventoryView';
-import SalesView from './components/SalesView';
-import InvoicesView from './components/InvoicesView';
-import PaymentsView from './components/PaymentsView';
-import PurchaseView from './components/PurchaseView';
-import ProjectsView from './components/ProjectsView';
-import QrView from './components/QrView';
-import ReportsView from './components/ReportsView';
-import SettingsView from './components/SettingsView';
 import LoginView from './components/LoginView';
-import EmployeeMasterView from './components/EmployeeMasterView';
-import DeliveryOrdersView from './components/DeliveryOrdersView';
-import ProductionWorkOrderView from './components/ProductionWorkOrderView';
-import BomCostingView from './components/BomCostingView';
-import StockOpnameView from './components/StockOpnameView';
-import ApprovalWorkflowView from './components/ApprovalWorkflowView';
-import AuditLogView from './components/AuditLogView';
-import RemindersView from './components/RemindersView';
-import DocumentExportsView from './components/DocumentExportsView';
-import ReturnsView from './components/ReturnsView';
-import ProjectBudgetingView from './components/ProjectBudgetingView';
-import MultiWarehouseView from './components/MultiWarehouseView';
-import ReceivablesPayablesView from './components/ReceivablesPayablesView';
-import RolePermissionView from './components/RolePermissionView';
 
-import { CheckCircle2 } from 'lucide-react';
+const DashboardView = React.lazy(() => import('./components/DashboardView'));
+const CustomersView = React.lazy(() => import('./components/CustomersView'));
+const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
+const ProductsView = React.lazy(() => import('./components/ProductsView'));
+const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
+const InventoryView = React.lazy(() => import('./components/InventoryView'));
+const SalesView = React.lazy(() => import('./components/SalesView'));
+const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
+const PaymentsView = React.lazy(() => import('./components/PaymentsView'));
+const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
+const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
+const QrView = React.lazy(() => import('./components/QrView'));
+const ReportsView = React.lazy(() => import('./components/ReportsView'));
+const SettingsView = React.lazy(() => import('./components/SettingsView'));
+const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
+const DeliveryOrdersView = React.lazy(() => import('./components/DeliveryOrdersView'));
+const ProductionWorkOrderView = React.lazy(() => import('./components/ProductionWorkOrderView'));
+const BomCostingView = React.lazy(() => import('./components/BomCostingView'));
+const StockOpnameView = React.lazy(() => import('./components/StockOpnameView'));
+const ApprovalWorkflowView = React.lazy(() => import('./components/ApprovalWorkflowView'));
+const AuditLogView = React.lazy(() => import('./components/AuditLogView'));
+const RemindersView = React.lazy(() => import('./components/RemindersView'));
+const DocumentExportsView = React.lazy(() => import('./components/DocumentExportsView'));
+const ReturnsView = React.lazy(() => import('./components/ReturnsView'));
+const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudgetingView'));
+const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
+const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
+const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
+
+import { CheckCircle2, WifiOff } from 'lucide-react';
 
 export default function App() {
   // Authentication & Security state
@@ -64,18 +53,9 @@ export default function App() {
   const [userEmail, setUserEmail] = useState(storedUser?.email || '');
   const [authUser, setAuthUser] = useState<AuthUser | null>(storedUser);
   const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedUser && authStorage.getToken()));
-
-  // Global Mock Database States
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>(initialStockMovements);
-  const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
-  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>(initialSalesOrders);
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  
+  // Connection / Online state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Focus detail page state modifiers
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -95,6 +75,33 @@ export default function App() {
     }, 4000);
     setToastTimeout(timeout);
   };
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      triggerNotification('Koneksi internet terhubung kembali.');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      triggerNotification('Koneksi internet terputus.');
+    };
+    const handleUnauthorized = () => {
+      setAuthUser(null);
+      setUserEmail('');
+      setCurrentView('login');
+      triggerNotification('Sesi Anda telah berakhir. Silakan masuk kembali.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, []);
 
   useEffect(() => {
     if (!authStorage.getToken()) {
@@ -119,144 +126,6 @@ export default function App() {
       })
       .finally(() => setIsRestoringSession(false));
   }, []);
-
-  // -------------------------------------------------------------
-  // DATA MANIPULATION HANDLERS (Simulated CRUD operations)
-  // -------------------------------------------------------------
-
-  const handleAddCustomer = (newCustomer: Customer) => {
-    setCustomers((prev) => [newCustomer, ...prev]);
-  };
-
-  const handleAddSupplier = (newSupplier: Supplier) => {
-    setSuppliers((prev) => [newSupplier, ...prev]);
-  };
-
-  const handleAddProduct = (newProduct: Product) => {
-    setProducts((prev) => [newProduct, ...prev]);
-  };
-
-  const handleAddStockMovement = (newMovement: StockMovement) => {
-    setStockMovements((prev) => [newMovement, ...prev]);
-    // Synchronize product quantity
-    setProducts((prevProducts) =>
-      prevProducts.map((p) => {
-        if (p.sku === newMovement.sku) {
-          const delta = newMovement.type === 'Masuk' ? newMovement.quantity : -newMovement.quantity;
-          const nextStock = Math.max(p.stock + delta, 0);
-          let nextStatus: 'Aman' | 'Menipis' | 'Habis' = 'Aman';
-          if (nextStock === 0) {
-            nextStatus = 'Habis';
-          } else if (nextStock <= p.minStock) {
-            nextStatus = 'Menipis';
-          }
-          return { ...p, stock: nextStock, status: nextStatus };
-        }
-        return p;
-      })
-    );
-  };
-
-  const handleAddQuotation = (newQuotation: Quotation) => {
-    setQuotations((prev) => [newQuotation, ...prev]);
-  };
-
-  const handleAddSalesOrder = (newSO: SalesOrder) => {
-    setSalesOrders((prev) => [newSO, ...prev]);
-    // Produce mock invoice
-    const nextInvNum = `INV-2026-05-10${invoices.length + 8}`;
-    const newInv: Invoice = {
-      id: `inv${invoices.length + 8}`,
-      invoiceNumber: nextInvNum,
-      customerName: newSO.customerName,
-      date: newSO.date,
-      dueDate: '2026-06-30',
-      total: newSO.total,
-      paidAmount: 0,
-      status: 'Belum Lunas',
-    };
-    setInvoices((prev) => [newInv, ...prev]);
-  };
-
-  const handleAddPurchaseOrder = (newPO: PurchaseOrder) => {
-    setPurchaseOrders((prev) => [newPO, ...prev]);
-  };
-
-  const handleVerifyPayment = (paymentId: string) => {
-    setPayments((prevPayments) =>
-      prevPayments.map((p) => {
-        if (p.id === paymentId) {
-          // Sync invoice too
-          setInvoices((prevInvoices) =>
-            prevInvoices.map((inv) => {
-              if (inv.invoiceNumber === p.invoiceNumber) {
-                const nextPaid = inv.paidAmount + p.amount;
-                const nextStatus = nextPaid >= inv.total ? 'Lunas' : 'Sebagian Dibayar';
-                return { ...inv, paidAmount: nextPaid, status: nextStatus };
-              }
-              return inv;
-            })
-          );
-          return { ...p, status: 'Verified' };
-        }
-        return p;
-      })
-    );
-  };
-
-  const handleAddTimelineEvent = (projectId: string, date: string, stage: string, desc: string) => {
-    setProjects((prev) =>
-      prev.map((proj) => {
-        if (proj.id === projectId) {
-          const nextEvent = {
-            date,
-            stage,
-            description: desc,
-            icon: stage.includes('Survey') ? 'Compass' : 'CheckCircle',
-          };
-          // Adjust general progress percentage based on stage name
-          let nextProgress = proj.progress;
-          if (stage.includes('Selesai')) nextProgress = 100;
-          else if (stage.includes('Pemasangan')) nextProgress = 85;
-          else if (stage.includes('Pengiriman')) nextProgress = 70;
-          else if (stage.includes('Produksi')) nextProgress = 45;
-
-          let nextStatus: Project['status'] = proj.status;
-          if (stage.includes('Selesai')) nextStatus = 'Selesai';
-          else if (stage.includes('Pemasangan')) nextStatus = 'Pemasangan';
-          else if (stage.includes('Pengiriman')) nextStatus = 'Pengiriman';
-          else if (stage.includes('Produksi')) nextStatus = 'Produksi';
-          else if (stage.includes('Survey')) nextStatus = 'Survey';
-
-          return {
-            ...proj,
-            progress: nextProgress,
-            status: nextStatus,
-            timeline: [...proj.timeline, nextEvent],
-          };
-        }
-        return proj;
-      })
-    );
-  };
-
-  const handleUpdateProductStock = (sku: string, diff: number) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.sku === sku) {
-          const nextStock = Math.max(p.stock + diff, 0);
-          let nextStatus: 'Aman' | 'Menipis' | 'Habis' = 'Aman';
-          if (nextStock === 0) {
-            nextStatus = 'Habis';
-          } else if (nextStock <= p.minStock) {
-            nextStatus = 'Menipis';
-          }
-          return { ...p, stock: nextStock, status: nextStatus };
-        }
-        return p;
-      })
-    );
-  };
 
   const applyAuthUser = (user: AuthUser) => {
     setAuthUser(user);
@@ -295,12 +164,6 @@ export default function App() {
       case 'dashboard':
         return (
           <DashboardView
-            customers={customers}
-            suppliers={suppliers}
-            products={products}
-            salesOrders={salesOrders}
-            invoices={invoices}
-            projects={projects}
             onNavigate={(v) => {
               setCurrentView(v);
               if (v === 'project-detail') {
@@ -317,8 +180,6 @@ export default function App() {
       case 'customers':
         return (
           <CustomersView
-            customers={customers}
-            onAddCustomer={handleAddCustomer}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -327,23 +188,18 @@ export default function App() {
       case 'suppliers':
         return (
           <SuppliersView
-            suppliers={suppliers}
-            onAddSupplier={handleAddSupplier}
             onTriggerNotification={triggerNotification}
           />
         );
       case 'products':
         return (
           <ProductsView
-            products={products}
-            onAddProduct={handleAddProduct}
             onTriggerNotification={triggerNotification}
           />
         );
       case 'categories':
         return (
           <CategoriesView
-            products={products}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -353,10 +209,6 @@ export default function App() {
         return (
           <InventoryView
             initialTab="stok"
-            products={products}
-            stockMovements={stockMovements}
-            onAddStockMovement={handleAddStockMovement}
-            onUpdateProductStock={handleUpdateProductStock}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -364,10 +216,6 @@ export default function App() {
         return (
           <InventoryView
             initialTab="masuk"
-            products={products}
-            stockMovements={stockMovements}
-            onAddStockMovement={handleAddStockMovement}
-            onUpdateProductStock={handleUpdateProductStock}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -375,10 +223,6 @@ export default function App() {
         return (
           <InventoryView
             initialTab="keluar"
-            products={products}
-            stockMovements={stockMovements}
-            onAddStockMovement={handleAddStockMovement}
-            onUpdateProductStock={handleUpdateProductStock}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -386,10 +230,6 @@ export default function App() {
         return (
           <InventoryView
             initialTab="riwayat"
-            products={products}
-            stockMovements={stockMovements}
-            onAddStockMovement={handleAddStockMovement}
-            onUpdateProductStock={handleUpdateProductStock}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -399,10 +239,6 @@ export default function App() {
         return (
           <SalesView
             type="quotation"
-            quotations={quotations}
-            salesOrders={salesOrders}
-            onAddQuotation={handleAddQuotation}
-            onAddSalesOrder={handleAddSalesOrder}
             onTriggerNotification={triggerNotification}
             onNavigate={setCurrentView}
           />
@@ -411,10 +247,6 @@ export default function App() {
         return (
           <SalesView
             type="sales-order"
-            quotations={quotations}
-            salesOrders={salesOrders}
-            onAddQuotation={handleAddQuotation}
-            onAddSalesOrder={handleAddSalesOrder}
             onTriggerNotification={triggerNotification}
             onNavigate={setCurrentView}
           />
@@ -424,7 +256,6 @@ export default function App() {
       case 'invoices':
         return (
           <InvoicesView
-            invoices={invoices}
             onTriggerNotification={triggerNotification}
             onNavigate={setCurrentView}
           />
@@ -432,8 +263,6 @@ export default function App() {
       case 'payments':
         return (
           <PaymentsView
-            payments={payments}
-            onVerifyPayment={handleVerifyPayment}
             onTriggerNotification={triggerNotification}
           />
         );
@@ -442,10 +271,7 @@ export default function App() {
       case 'purchase-orders':
         return (
           <PurchaseView
-            purchaseOrders={purchaseOrders}
-            onAddPurchaseOrder={handleAddPurchaseOrder}
             onTriggerNotification={triggerNotification}
-            products={products}
           />
         );
       case 'receivables-payables':
@@ -480,12 +306,10 @@ export default function App() {
       case 'project-detail':
         return (
           <ProjectsView
-            projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProjectId={setSelectedProjectId}
             onNavigate={setCurrentView}
             onTriggerNotification={triggerNotification}
-            onAddTimelineEvent={handleAddTimelineEvent}
           />
         );
 
@@ -493,7 +317,6 @@ export default function App() {
       case 'qr-products':
         return (
           <QrView
-            products={products}
             currentSubView="list"
             scannedSku={scannedSku}
             onNavigateSubView={(sub, sku) => {
@@ -507,14 +330,12 @@ export default function App() {
               }
             }}
             onTriggerNotification={triggerNotification}
-            onUpdateProductStock={handleUpdateProductStock}
           />
         );
       case 'scan-qr-product':
       case 'scanned-product-detail':
         return (
           <QrView
-            products={products}
             currentSubView={currentView === 'scan-qr-product' ? 'scanner' : 'detail'}
             scannedSku={scannedSku}
             onNavigateSubView={(sub, sku) => {
@@ -528,7 +349,6 @@ export default function App() {
               }
             }}
             onTriggerNotification={triggerNotification}
-            onUpdateProductStock={handleUpdateProductStock}
           />
         );
 
@@ -558,10 +378,10 @@ export default function App() {
 
   if (isRestoringSession) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 mx-auto border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-mono uppercase tracking-widest text-slate-400">Memulihkan sesi ERP</p>
+          <div className="w-8 h-8 mx-auto border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+          <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">Memulihkan Sesi ERP</p>
         </div>
       </div>
     );
@@ -588,6 +408,12 @@ export default function App() {
 
       {/* 2. Main content block viewport container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {!isOnline && (
+          <div className="bg-rose-600 text-white text-[10px] font-sans font-bold text-center py-1.5 px-4 flex items-center justify-center gap-2 shrink-0 animate-in slide-in-from-top duration-300">
+            <WifiOff size={12} className="animate-pulse" />
+            <span>Koneksi internet terputus. Bekerja dalam mode offline.</span>
+          </div>
+        )}
         {/* Top Header bar */}
         <Topbar
           currentView={currentView}
@@ -600,16 +426,23 @@ export default function App() {
         {/* Dynamic viewport scroll canvas container */}
         <div className="flex-1 overflow-y-auto p-6 bg-[#f8fafc]">
           <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
-            {renderContent()}
+            <React.Suspense fallback={
+              <div className="p-12 text-center bg-white rounded-lg border border-slate-200/80 shadow-sm">
+                <div className="w-6 h-6 mx-auto border-2 border-slate-900 border-t-transparent rounded-full animate-spin mb-2.5" />
+                <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">Memuat Modul ERP...</p>
+              </div>
+            }>
+              {renderContent()}
+            </React.Suspense>
           </div>
         </div>
       </div>
 
       {/* Floating System-wide toast notification overlay */}
       {toast && (
-        <div className="fixed bottom-5 right-5 bg-slate-900 border border-slate-800 text-white rounded-xl shadow-2xl p-4 flex items-center gap-3 z-50 animate-bounce duration-150">
-          <CheckCircle2 size={18} className="text-cyan-405 text-cyan-400 stroke-[3]" />
-          <span className="font-sans font-bold text-xs">{toast}</span>
+        <div className="fixed bottom-5 right-5 bg-slate-900 text-white rounded-lg shadow-xl p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <CheckCircle2 size={15} className="text-white stroke-[3]" />
+          <span className="font-sans font-bold text-[11px]">{toast}</span>
         </div>
       )}
     </div>

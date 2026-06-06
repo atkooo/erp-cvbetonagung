@@ -24,30 +24,96 @@ import {
   Boxes,
   Compass
 } from 'lucide-react';
-import { Product, ViewType } from '../types';
+import { Product, ViewType, StockMovement } from '../types';
+import { productsApi } from '../features/products/api';
+import { inventoryApi } from '../features/inventory/api';
 
 interface QrViewProps {
-  products: Product[];
   currentSubView: 'list' | 'scanner' | 'detail';
   scannedSku: string | null;
   onNavigateSubView: (subView: 'list' | 'scanner' | 'detail', sku?: string | null) => void;
   onTriggerNotification: (message: string) => void;
-  onUpdateProductStock: (sku: string, diff: number) => void;
 }
 
 export default function QrView({
-  products,
   currentSubView,
   scannedSku,
   onNavigateSubView,
   onTriggerNotification,
-  onUpdateProductStock,
 }: QrViewProps) {
   const [search, setSearch] = useState('');
   const [showQrModal, setShowQrModal] = useState<Product | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [scanProgress, setScanProgress] = useState(0); // 0 to 100 for simulated camera scan delay
   const [scanTriggered, setScanTriggered] = useState<string | null>(null);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const [prods, stocks] = await Promise.all([
+        productsApi.getProducts(),
+        inventoryApi.getProductStocks(),
+      ]);
+
+      const combinedProds = prods.map(p => {
+        const stockData = stocks.find(s => s.product?.sku === p.sku);
+        return {
+          ...p,
+          stock: stockData ? Number(stockData.quantity) : 0,
+          location: stockData?.location?.name || 'Gudang Utama',
+        };
+      });
+
+      setProducts(combinedProds);
+    } catch (err) {
+      console.error('Failed to load products in QrView', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateProductStock = async (sku: string, diff: number) => {
+    const prod = products.find(p => p.sku === sku);
+    if (!prod) return;
+
+    try {
+      // Find the location ID for this product from stocks
+      const stocks = await inventoryApi.getProductStocks();
+      const matchedStock = stocks.find(s => s.product_id === prod.id || s.product?.sku === sku);
+      const locationId = matchedStock?.location_id || '9f2a95e6-xxxx-xxxx-xxxx-xxxxxxxxxxxx'; // generic location fallback
+
+      if (diff > 0) {
+        await inventoryApi.receiveGoods({
+          product_id: prod.id,
+          quantity: diff,
+          location_id: locationId,
+          reference_type: 'QR-ADJUST',
+          reference_number: 'QR-IN',
+          notes: 'Penyesuaian stok masuk via scan QR',
+        });
+      } else if (diff < 0) {
+        await inventoryApi.issueGoods({
+          product_id: prod.id,
+          quantity: Math.abs(diff),
+          location_id: locationId,
+          reference_type: 'QR-ADJUST',
+          reference_number: 'QR-OUT',
+          notes: 'Penyesuaian stok keluar via scan QR',
+        });
+      }
+      onTriggerNotification(`Sukses memperbarui stok ${prod.name}`);
+      await loadProducts();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal memperbarui stok via API');
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
   // Formatting currency helper
   const formatIDR = (num: number) => {
@@ -185,8 +251,7 @@ export default function QrView({
               <div className="pt-2 flex gap-1 bg-slate-55 p-1 rounded-md border text-[10px]">
                 <button
                   onClick={() => {
-                    onUpdateProductStock(scannedProduct.sku, 10);
-                    onTriggerNotification(`Sukses menambah 10 ${scannedProduct.unit} ke ${scannedProduct.name}`);
+                    handleUpdateProductStock(scannedProduct.sku, 10);
                   }}
                   className="flex-1 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded font-bold transition-all text-center"
                 >
@@ -195,8 +260,7 @@ export default function QrView({
                 <button
                   onClick={() => {
                     if (scannedProduct.stock >= 5) {
-                      onUpdateProductStock(scannedProduct.sku, -5);
-                      onTriggerNotification(`Sukses mengurangi 5 ${scannedProduct.unit} dari ${scannedProduct.name}`);
+                      handleUpdateProductStock(scannedProduct.sku, -5);
                     } else {
                       onTriggerNotification('Gagal: Stok tidak mencukupi!');
                     }

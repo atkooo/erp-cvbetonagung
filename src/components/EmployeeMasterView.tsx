@@ -8,26 +8,19 @@ import { UserCog, Plus, Search, Trash2, Edit, X, Save, AlertCircle } from 'lucid
 import { authStorage } from '../services/api';
 import { employeesApi } from '../features/employees/api';
 import { Employee } from '../types';
+import { SkeletonCard, SkeletonTable, ErrorCard } from './Skeleton';
 
 interface EmployeeMasterViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-// Initial dummy data for Demo Mode
-const dummyEmployees: Employee[] = [
-  { id: 'emp1', employeeNumber: 'EMP-001', name: 'Pak Slamet', roleName: 'Tukang Cetak', department: 'Workshop', employeeType: 'Borongan', dailyRate: 0, pieceRate: 350, status: 'Aktif', address: 'Jl. Raya Agung', phone: '08123456789', joinDate: '2025-01-15' },
-  { id: 'emp2', employeeNumber: 'EMP-002', name: 'Pak Budi', roleName: 'Tukang Cetak', department: 'Workshop', employeeType: 'Borongan', dailyRate: 0, pieceRate: 300, status: 'Aktif', address: 'Jl. Melati', phone: '08123456790', joinDate: '2025-02-10' },
-  { id: 'emp3', employeeNumber: 'EMP-003', name: 'Pak Roni', roleName: 'Finishing', department: 'Workshop', employeeType: 'Harian', dailyRate: 80000, pieceRate: 0, status: 'Aktif', address: 'Jl. Mawar', phone: '08123456791', joinDate: '2025-03-01' },
-  { id: 'emp4', employeeNumber: 'EMP-004', name: 'Ibu Rina', roleName: 'Admin Gudang', department: 'Gudang', employeeType: 'Tetap', dailyRate: 150000, pieceRate: 0, status: 'Aktif', address: 'Jl. Kamboja', phone: '08123456792', joinDate: '2024-06-20' },
-  { id: 'emp5', employeeNumber: 'EMP-005', name: 'Mas Fajar', roleName: 'Driver', department: 'Logistik', employeeType: 'Kontrak', dailyRate: 100000, pieceRate: 0, status: 'Nonaktif', address: 'Jl. Dahlia', phone: '08123456793', joinDate: '2025-04-12' },
-];
-
 export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMasterViewProps) {
-  const [employees, setEmployees] = useState<Employee[]>(dummyEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
   const [employeeNumber, setEmployeeNumber] = useState('');
@@ -42,17 +35,17 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
   const [phone, setPhone] = useState('');
   const [joinDate, setJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
   const fetchEmployees = async () => {
-    if (!hasBackendSession) return;
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const data = await employeesApi.getEmployees();
       setEmployees(data);
     } catch (err) {
       console.error('Failed to load employees', err);
-      onTriggerNotification('Gagal mengambil data karyawan.');
+      const msg = err instanceof Error ? err.message : 'Gagal mengambil data karyawan.';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +53,7 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
 
   useEffect(() => {
     fetchEmployees();
-  }, [hasBackendSession]);
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
@@ -117,24 +110,12 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
 
     try {
       if (editingEmployee) {
-        if (hasBackendSession) {
-          const updated = await employeesApi.updateEmployee(editingEmployee.id, payload);
-          setEmployees(prev => prev.map(item => item.id === editingEmployee.id ? updated : item));
-        } else {
-          setEmployees(prev => prev.map(item => item.id === editingEmployee.id ? { ...item, ...payload } : item));
-        }
+        const updated = await employeesApi.updateEmployee(editingEmployee.id, payload);
+        setEmployees(prev => prev.map(item => item.id === editingEmployee.id ? updated : item));
         onTriggerNotification(`Berhasil memperbarui data karyawan ${name}`);
       } else {
-        if (hasBackendSession) {
-          const created = await employeesApi.createEmployee(payload);
-          setEmployees(prev => [created, ...prev]);
-        } else {
-          const mockNew: Employee = {
-            id: `emp-${Date.now()}`,
-            ...payload
-          };
-          setEmployees(prev => [mockNew, ...prev]);
-        }
+        const created = await employeesApi.createEmployee(payload);
+        setEmployees(prev => [created, ...prev]);
         onTriggerNotification(`Karyawan baru ${name} ditambahkan`);
       }
       setIsModalOpen(false);
@@ -147,9 +128,7 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
   const handleDelete = async (id: string, empName: string) => {
     if (!window.confirm(`Hapus data karyawan ${empName}?`)) return;
     try {
-      if (hasBackendSession) {
-        await employeesApi.deleteEmployee(id);
-      }
+      await employeesApi.deleteEmployee(id);
       setEmployees(prev => prev.filter(item => item.id !== id));
       onTriggerNotification(`Berhasil menghapus karyawan ${empName}`);
     } catch (err) {
@@ -187,11 +166,9 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
               Master Data Karyawan & Tukang
-              {hasBackendSession && (
-                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-indigo-400/35 bg-indigo-950/50 text-indigo-400 rounded px-1.5 py-0.5 ml-2">
-                  API MODE
-                </span>
-              )}
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-indigo-400/35 bg-indigo-950/50 text-indigo-400 rounded px-1.5 py-0.5 ml-2">
+                API MODE
+              </span>
             </h1>
             <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
               Manajemen komprehensif data staf internal, supir logistik, tenaga harian, serta tim borongan workshop cetakan beton.
@@ -208,72 +185,75 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Anggota Tim</span>
-            <h4 className="text-lg font-black text-slate-800 mt-1">{totalEmployees} Orang</h4>
+      {isLoading ? (
+        <SkeletonCard count={4} />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Total Anggota Tim</span>
+              <h4 className="text-lg font-black text-slate-800 mt-1">{totalEmployees} Orang</h4>
+            </div>
+            <div className="p-2.5 bg-slate-50 text-slate-500 rounded-lg">
+              <UserCog size={18} />
+            </div>
           </div>
-          <div className="p-2.5 bg-slate-50 text-slate-500 rounded-lg">
-            <UserCog size={18} />
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Status Aktif</span>
+              <h4 className="text-lg font-black text-emerald-650 text-emerald-600 mt-1">{activeCount} Orang</h4>
+            </div>
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
+              <UserCog size={18} />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tim Workshop Cetak</span>
+              <h4 className="text-lg font-black text-indigo-600 mt-1">{workshopCount} Orang</h4>
+            </div>
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
+              <UserCog size={18} />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tenaga Borongan</span>
+              <h4 className="text-lg font-black text-amber-600 mt-1">{boronganCount} Orang</h4>
+            </div>
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
+              <UserCog size={18} />
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Status Aktif</span>
-            <h4 className="text-lg font-black text-emerald-650 text-emerald-600 mt-1">{activeCount} Orang</h4>
+      {isLoading ? (
+        <SkeletonTable rows={5} cols={10} />
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchEmployees} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Search Filter Panel */}
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+              <input
+                type="text"
+                placeholder="Cari nama, kode, jabatan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+              />
+            </div>
+            <div className="text-[10px] text-slate-400 font-mono">
+              Menampilkan {filteredEmployees.length} dari {totalEmployees} entri
+            </div>
           </div>
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
-            <UserCog size={18} />
-          </div>
-        </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tim Workshop Cetak</span>
-            <h4 className="text-lg font-black text-indigo-600 mt-1">{workshopCount} Orang</h4>
-          </div>
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
-            <UserCog size={18} />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-          <div>
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Tenaga Borongan</span>
-            <h4 className="text-lg font-black text-amber-600 mt-1">{boronganCount} Orang</h4>
-          </div>
-          <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
-            <UserCog size={18} />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Table Panel */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Search Filter Panel */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-            <input
-              type="text"
-              placeholder="Cari nama, kode, jabatan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
-            />
-          </div>
-          <div className="text-[10px] text-slate-400 font-mono">
-            Menampilkan {filteredEmployees.length} dari {totalEmployees} entri
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="p-12 text-center text-slate-400 font-sans">
-            Memuat data karyawan dari backend...
-          </div>
-        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
@@ -354,8 +334,8 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Modal Dialog Form */}
       {isModalOpen && (

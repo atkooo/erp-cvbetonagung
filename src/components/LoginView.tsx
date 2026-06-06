@@ -34,15 +34,15 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
     setErrorMessage(message);
     Swal.fire({
       icon: 'error',
-      title: 'Tidak bisa masuk',
+      title: 'Tidak dapat masuk',
       text: message,
       confirmButtonText: 'Coba lagi',
       buttonsStyling: false,
       customClass: {
-        popup: 'rounded-lg border border-slate-200 shadow-xl',
-        title: 'text-base font-bold text-slate-900',
-        htmlContainer: 'text-xs text-slate-600',
-        confirmButton: 'px-4 py-2 rounded-lg bg-sky-600 text-white text-xs font-bold hover:bg-sky-700',
+        popup: 'rounded-xl border border-slate-200 shadow-xl bg-white font-sans text-xs',
+        title: 'text-sm font-bold text-slate-900 pt-4',
+        htmlContainer: 'text-xs text-slate-500 py-2',
+        confirmButton: 'px-4 py-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-slate-800 transition-colors',
       },
     });
   };
@@ -72,74 +72,77 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
   };
 
   return (
-    <div className="min-h-screen bg-sky-50 flex items-center justify-center px-4 py-8 font-sans text-xs text-slate-700">
-      <main className="w-full max-w-5xl grid lg:grid-cols-[1fr_420px] bg-white border border-sky-100 rounded-lg shadow-sm overflow-hidden">
-        <section className="bg-sky-50 border-b lg:border-b-0 lg:border-r border-sky-100 p-6 md:p-8 flex flex-col justify-between gap-8">
-          <div className="space-y-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
+      <main className="w-full max-w-4xl grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+        {/* Left Side: Brand Panel */}
+        <section className="bg-slate-900 text-slate-200 p-8 md:p-10 flex flex-col justify-between gap-10">
+          <div className="space-y-10">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-lg bg-sky-700 flex items-center justify-center shadow-sm">
-                <Building2 size={22} className="text-white" />
+              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center">
+                <Building2 size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="text-base font-black text-slate-900 uppercase">CV. Beton Agung</h1>
-                <p className="text-[11px] font-semibold text-sky-700">Sistem Operasional Perusahaan</p>
+                <h1 className="text-sm font-black text-white uppercase tracking-wider">CV. Beton Agung</h1>
+                <p className="text-[10px] font-mono tracking-widest text-slate-400 mt-0.5">Sistem Operasional ERP</p>
               </div>
             </div>
 
-            <div className="max-w-xl space-y-3">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Portal Internal</p>
-              <h2 className="text-2xl md:text-3xl font-black text-slate-950 leading-tight">
-                Kelola pekerjaan harian dengan akses yang sesuai peran.
+            <div className="space-y-4">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-slate-400 border border-slate-800 bg-slate-800/40 px-2 py-0.5 rounded">
+                Portal Internal
+              </span>
+              <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
+                Manajemen Aliran Kerja & Operasional Terpusat.
               </h2>
-              <p className="text-sm leading-6 text-slate-600">
-                Masuk untuk membuka dashboard, transaksi, persediaan, proyek, dan laporan sesuai otorisasi akun Anda.
+              <p className="text-xs leading-relaxed text-slate-400">
+                Masuk untuk mengakses dasbor utama, modul logistik surat jalan, manajemen produksi cetak beton, approval workflow, serta laporan keuangan terintegrasi.
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="bg-white border border-sky-100 rounded-lg p-4">
-                <ShieldCheck size={18} className="text-sky-700 mb-3" />
-                <p className="font-bold text-slate-900">Akses Aman</p>
-                <p className="mt-1 text-[11px] leading-5 text-slate-500">Setiap akun memiliki batas akses masing-masing.</p>
-              </div>
-              <div className="bg-white border border-sky-100 rounded-lg p-4">
-                <CheckCircle2 size={18} className="text-sky-700 mb-3" />
-                <p className="font-bold text-slate-900">Data Terkendali</p>
-                <p className="mt-1 text-[11px] leading-5 text-slate-500">Transaksi dan aktivitas tersimpan terpusat.</p>
-              </div>
-              <div className="bg-white border border-sky-100 rounded-lg p-4">
-                <LockKeyhole size={18} className="text-sky-700 mb-3" />
-                <p className="font-bold text-slate-900">Audit Aktivitas</p>
-                <p className="mt-1 text-[11px] leading-5 text-slate-500">Perubahan penting dapat ditelusuri kembali.</p>
-              </div>
+            <div className="grid grid-cols-1 gap-3.5 pt-2">
+              {[
+                { icon: ShieldCheck, title: 'Otorisasi Ketat', desc: 'Hak akses ketat berbasis matriks peran divisi.' },
+                { icon: CheckCircle2, title: 'Integritas Transaksi', desc: 'Pencatatan real-time untuk audit & kepatuhan.' },
+                { icon: LockKeyhole, title: 'Pelacakan Aktivitas', desc: 'Setiap perubahan penting terdaftar dalam sistem.' }
+              ].map(({ icon: Icon, title, desc }, idx) => {
+                return (
+                  <div key={idx} className="flex gap-3 bg-slate-800/30 border border-slate-800/60 rounded-lg p-3.5">
+                    <Icon size={16} className="text-slate-300 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-white text-[11px]">{title}</p>
+                      <p className="mt-0.5 text-[10px] text-slate-400 leading-normal">{desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-sky-200 bg-white text-sky-800 font-semibold">
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono border-t border-slate-800/60 pt-4">
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800/50 border border-slate-700/40 text-slate-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Sistem siap digunakan
+              Sistem Aktif
             </span>
-            <span>CV. Beton Agung © 2026</span>
+            <span>© 2026 CV. Beton Agung</span>
           </div>
         </section>
 
-        <section className="p-6 md:p-8 flex items-center">
-          <div className="w-full">
-            <div className="mb-6">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Selamat datang</p>
-              <h2 className="mt-2 text-xl font-black text-slate-950">Masuk ke akun Anda</h2>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                Gunakan email dan password yang diberikan oleh perusahaan.
+        {/* Right Side: Login Form */}
+        <section className="p-8 md:p-10 flex items-center bg-white">
+          <div className="w-full space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Sign In</h2>
+              <p className="mt-1 text-slate-400 text-xs">
+                Masukkan kredensial akun korporat Anda.
               </p>
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700">Email</label>
+                <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Email Address</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
-                    <Mail size={14} />
+                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <Mail size={13} />
                   </span>
                   <input
                     type="email"
@@ -148,16 +151,18 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nama@betonagung.co.id"
                     autoComplete="email"
-                    className="w-full bg-white border border-slate-300 focus:border-sky-600 rounded-lg py-2.5 pl-9 pr-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                    className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700">Password</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+                </div>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
-                    <KeyRound size={14} />
+                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <KeyRound size={13} />
                   </span>
                   <input
                     type="password"
@@ -165,13 +170,13 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    className="w-full bg-white border border-slate-300 focus:border-sky-600 rounded-lg py-2.5 pl-9 pr-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                    className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
                   />
                 </div>
               </div>
 
               {errorMessage && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-3 py-2 text-[11px] leading-relaxed">
+                <div className="bg-red-50 border border-red-100 text-red-700 rounded-lg px-3 py-2 text-[10px] leading-relaxed">
                   {errorMessage}
                 </div>
               )}
@@ -179,15 +184,15 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-sky-700 border border-sky-700 font-bold text-white rounded-lg hover:bg-sky-800 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-2.5 bg-slate-900 border border-slate-900 font-bold text-white rounded-lg hover:bg-slate-800 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
               >
-                <span>{isSubmitting ? 'Memeriksa akun' : 'Masuk ke Sistem'}</span>
-                {isSubmitting ? <Loader2 size={14} className="animate-spin stroke-[2.5]" /> : <ArrowRight size={14} className="stroke-[2.5]" />}
+                <span>{isSubmitting ? 'Memproses Autentikasi' : 'Masuk ke Dashboard'}</span>
+                {isSubmitting ? <Loader2 size={13} className="animate-spin stroke-[2.5]" /> : <ArrowRight size={13} className="stroke-[2.5]" />}
               </button>
             </form>
 
-            <div className="mt-5 border border-sky-100 bg-sky-50 rounded-lg p-3 text-[11px] leading-5 text-slate-600">
-              Jika Anda lupa akses masuk, hubungi penanggung jawab sistem di perusahaan.
+            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-[10px] leading-normal text-slate-400">
+              Penggunaan sistem ini diawasi oleh kebijakan keamanan internal perusahaan. Kehilangan kata sandi wajib dilaporkan ke Administrator IT.
             </div>
           </div>
         </section>

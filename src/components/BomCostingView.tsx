@@ -12,41 +12,21 @@ import { authStorage } from '../services/api';
 import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';
 import { Bom, BomItem, Product } from '../types';
+import { ErrorCard } from './Skeleton';
 
 interface BomCostingViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-// Fallback dummy data for demo mode
-const dummyBoms: Bom[] = [
-  {
-    id: 'bom1',
-    productId: 'p1',
-    productName: 'Roster Beton Motif Kotak',
-    productSku: 'RST-001',
-    version: 'v1.0',
-    effectiveFrom: '2026-01-01',
-    status: 'active',
-    totalCost: 1754000,
-    items: [
-      { id: 'bi1', bomId: 'bom1', componentProductId: 'm1', componentSku: 'SEMEN-01', componentName: 'Semen Portland OPC 50Kg', quantity: 8, unitCode: 'sak', unitCost: 65000, subtotal: 520000 },
-      { id: 'bi2', bomId: 'bom1', componentProductId: 'm2', componentSku: 'PASIR-01', componentName: 'Pasir Lumajang', quantity: 0.8, unitCode: 'm3', unitCost: 280000, subtotal: 224000 },
-      { id: 'bi3', bomId: 'bom1', componentProductId: 'm3', componentSku: 'WMSH-08', componentName: 'Besi Wiremesh M8', quantity: 1, unitCode: 'lembar', unitCost: 385000, subtotal: 385000 },
-      { id: 'bi4', bomId: 'bom1', componentProductId: 'm4', componentSku: 'ADD-01', componentName: 'Pigmen / Additive', quantity: 2, unitCode: 'kg', unitCost: 45000, subtotal: 90000 },
-      { id: 'bi5', bomId: 'bom1', componentName: 'Tenaga Kerja Cetak', quantity: 1, unitCode: 'batch', unitCost: 350000, subtotal: 350000 },
-      { id: 'bi6', bomId: 'bom1', componentName: 'Overhead Workshop', quantity: 1, unitCode: 'batch', unitCost: 180000, subtotal: 180000 },
-    ]
-  }
-];
-
 export default function BomCostingView({ onTriggerNotification }: BomCostingViewProps) {
-  const [boms, setBoms] = useState<Bom[]>(dummyBoms);
+  const [boms, setBoms] = useState<Bom[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [units, setUnits] = useState<{ id: string; name: string; code: string }[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBomId, setSelectedBomId] = useState<string | null>('bom1');
+  const [selectedBomId, setSelectedBomId] = useState<string | null>(null);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -73,8 +53,6 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
   const [tempUnitId, setTempUnitId] = useState('');
   const [tempUnitCost, setTempUnitCost] = useState(0);
 
-  const hasBackendSession = Boolean(authStorage.getToken());
-
   const formatIDR = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -86,41 +64,21 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
 
   const fetchData = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      if (hasBackendSession) {
-        const [bomList, prodList] = await Promise.all([
-          productionApi.getBoms(),
-          productsApi.getProducts()
-        ]);
-        setBoms(bomList);
-        setProducts(prodList);
-        
-        // Fetch units
-        try {
-          const uList = await productsApi.getUnits();
-          setUnits(uList);
-        } catch {
-          // fallback units
-          setUnits([
-            { id: 'u1', name: 'Pcs', code: 'pcs' },
-            { id: 'u2', name: 'Sak', code: 'sak' },
-            { id: 'u3', name: 'Meter Kubik', code: 'm3' },
-            { id: 'u4', name: 'Kilogram', code: 'kg' },
-            { id: 'u5', name: 'Lembar', code: 'lembar' },
-            { id: 'u6', name: 'Batch', code: 'batch' }
-          ]);
-        }
-
-        if (bomList.length > 0) {
-          setSelectedBomId(bomList[0].id);
-        }
-      } else {
-        // Mock products
-        setProducts([
-          { id: 'p1', sku: 'RST-001', name: 'Roster Beton Motif Kotak', sellingPrice: 2450000, stock: 100, unit: 'pcs', category: 'Beton', costPrice: 1500000, location: 'Gudang Utama', minStock: 10, status: 'Aman' },
-          { id: 'p2', sku: 'KBG-006', name: 'Kubah GRC D 6 Meter', sellingPrice: 15000000, stock: 5, unit: 'unit', category: 'GRC', costPrice: 9000000, location: 'Gudang Utama', minStock: 2, status: 'Aman' },
-          { id: 'p3', sku: 'LPL-M20', name: 'Lisplang Beton M20', sellingPrice: 180000, stock: 500, unit: 'pcs', category: 'Beton', costPrice: 100000, location: 'Gudang Utama', minStock: 20, status: 'Aman' }
-        ]);
+      const [bomList, prodList] = await Promise.all([
+        productionApi.getBoms(),
+        productsApi.getProducts()
+      ]);
+      setBoms(bomList);
+      setProducts(prodList);
+      
+      // Fetch units
+      try {
+        const uList = await productsApi.getUnits();
+        setUnits(uList);
+      } catch {
+        // fallback units
         setUnits([
           { id: 'u1', name: 'Pcs', code: 'pcs' },
           { id: 'u2', name: 'Sak', code: 'sak' },
@@ -130,9 +88,15 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
           { id: 'u6', name: 'Batch', code: 'batch' }
         ]);
       }
+
+      if (bomList.length > 0) {
+        setSelectedBomId(bomList[0].id);
+      }
     } catch (err) {
       console.error('Failed to load BOM costing data', err);
-      onTriggerNotification('Gagal mengambil data BOM HPP.');
+      const msg = err instanceof Error ? err.message : 'Gagal mengambil data BOM HPP';
+      setErrorMessage(msg);
+      onTriggerNotification(msg);
     } finally {
       setIsLoading(false);
     }
@@ -140,7 +104,7 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
 
   useEffect(() => {
     fetchData();
-  }, [hasBackendSession]);
+  }, []);
 
   const handleOpenCreateModal = () => {
     setProductId('');
@@ -223,49 +187,18 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
     try {
       const calculatedTotalCost = formItems.reduce((sum, item) => sum + item.subtotal, 0);
 
-      if (hasBackendSession) {
-        const payload = {
-          product_id: productId,
-          version,
-          effective_from: effectiveFrom || undefined,
-          status,
-          items: formItems
-        };
+      const payload = {
+        product_id: productId,
+        version,
+        effective_from: effectiveFrom || undefined,
+        status,
+        items: formItems
+      };
 
-        const created = await productionApi.createBom(payload);
-        setBoms(prev => [created, ...prev]);
-        setSelectedBomId(created.id);
-        onTriggerNotification(`Resep BOM versi ${version} berhasil disimpan`);
-      } else {
-        const prod = products.find(p => p.id === productId) || { name: 'Produk GRC', sku: 'GRC-01' };
-        const mockNew: Bom = {
-          id: `bom-${Date.now()}`,
-          productId,
-          productName: prod.name,
-          productSku: prod.sku,
-          version,
-          effectiveFrom,
-          status,
-          totalCost: calculatedTotalCost,
-          items: formItems.map((fi, i) => {
-            const uCode = units.find(u => u.id === fi.unit_id)?.code || 'pcs';
-            return {
-              id: `bi-${Date.now()}-${i}`,
-              bomId: `bom-${Date.now()}`,
-              componentProductId: fi.component_product_id,
-              componentName: fi.component_name || 'Komponen Custom',
-              quantity: fi.quantity,
-              unitCode: uCode,
-              unitCost: fi.unit_cost,
-              subtotal: fi.subtotal
-            };
-          })
-        };
-
-        setBoms(prev => [mockNew, ...prev]);
-        setSelectedBomId(mockNew.id);
-        onTriggerNotification(`Simulasi resep BOM ${version} berhasil ditambahkan`);
-      }
+      const created = await productionApi.createBom(payload);
+      setBoms(prev => [created, ...prev]);
+      setSelectedBomId(created.id);
+      onTriggerNotification(`Resep BOM versi ${version} berhasil disimpan`);
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error('Failed to create BOM', err);
@@ -277,9 +210,7 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
     if (!window.confirm(`Apakah Anda yakin ingin menghapus BOM versi ${ver}?`)) return;
 
     try {
-      if (hasBackendSession) {
-        await productionApi.deleteBom(id);
-      }
+      await productionApi.deleteBom(id);
       setBoms(prev => prev.filter(b => b.id !== id));
       if (selectedBomId === id) {
         setSelectedBomId(null);
@@ -294,16 +225,12 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
   const handleToggleStatus = async (bom: Bom) => {
     const nextStatus = bom.status === 'active' ? 'inactive' : 'active';
     try {
-      if (hasBackendSession) {
-        const updated = await productionApi.updateBom(bom.id, {
-          product_id: bom.productId,
-          version: bom.version,
-          status: nextStatus
-        });
-        setBoms(prev => prev.map(b => b.id === bom.id ? updated : b));
-      } else {
-        setBoms(prev => prev.map(b => b.id === bom.id ? { ...b, status: nextStatus } : b));
-      }
+      const updated = await productionApi.updateBom(bom.id, {
+        product_id: bom.productId,
+        version: bom.version,
+        status: nextStatus
+      });
+      setBoms(prev => prev.map(b => b.id === bom.id ? updated : b));
       onTriggerNotification(`Status BOM ${bom.version} diubah ke: ${nextStatus === 'active' ? 'Aktif' : 'Nonaktif'}`);
     } catch (err) {
       console.error('Failed to update BOM status', err);
@@ -338,11 +265,9 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
             </span>
             <h1 className="font-sans font-black tracking-tight text-xl md:text-2xl mt-3 text-slate-100 flex items-center gap-2">
               Bill of Materials (BOM) & Costing
-              {hasBackendSession && (
-                <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
-                  API MODE
-                </span>
-              )}
+              <span className="text-[9px] font-mono font-normal tracking-normal normal-case border border-cyan-400/35 bg-cyan-950/50 text-cyan-400 rounded px-1.5 py-0.5 ml-2">
+                API MODE
+              </span>
             </h1>
             <p className="text-xs text-slate-350 mt-1 max-w-xl leading-relaxed">
               Buat resep campuran beton (semen, pasir, wiremesh, zat aditif) atau upah tenaga kerja cetak untuk menghitung Harga Pokok Produksi (HPP) aktual.
@@ -358,185 +283,202 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
         </div>
       </div>
 
-      {/* KPI Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Rencana Produk</span>
-          <h4 className="text-base font-black text-slate-800 mt-1 truncate">{relatedProduct ? relatedProduct.name : 'Roster Beton'}</h4>
-          <span className="text-[9px] text-slate-400 font-mono">{relatedProduct ? relatedProduct.sku : 'RST-001'}</span>
+      {isLoading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+            <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="xl:col-span-4 h-[480px] bg-slate-100 rounded-xl animate-pulse" />
+            <div className="xl:col-span-8 h-[480px] bg-slate-100 rounded-xl animate-pulse" />
+          </div>
         </div>
+      ) : errorMessage ? (
+        <ErrorCard message={errorMessage} onRetry={fetchData} />
+      ) : (
+        <>
+          {/* KPI Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Rencana Produk</span>
+              <h4 className="text-base font-black text-slate-800 mt-1 truncate">{relatedProduct ? relatedProduct.name : 'Roster Beton'}</h4>
+              <span className="text-[9px] text-slate-400 font-mono">{relatedProduct ? relatedProduct.sku : 'RST-001'}</span>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Total HPP BOM</span>
-          <h4 className="text-base font-black text-rose-600 mt-1">{formatIDR(totalCost)}</h4>
-          <span className="text-[9px] text-slate-400 font-mono">BOM {selectedBom ? selectedBom.version : 'N/A'}</span>
-        </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Total HPP BOM</span>
+              <h4 className="text-base font-black text-rose-600 mt-1">{formatIDR(totalCost)}</h4>
+              <span className="text-[9px] text-slate-400 font-mono">BOM {selectedBom ? selectedBom.version : 'N/A'}</span>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Harga Jual Unit</span>
-          <h4 className="text-base font-black text-slate-800 mt-1">{formatIDR(sellingPrice)}</h4>
-          <span className="text-[9px] text-slate-400 font-mono">Tabel Master Harga Jual</span>
-        </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Harga Jual Unit</span>
+              <h4 className="text-base font-black text-slate-800 mt-1">{formatIDR(sellingPrice)}</h4>
+              <span className="text-[9px] text-slate-400 font-mono">Tabel Master Harga Jual</span>
+            </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Margin Kotor Perkiraan</span>
-          <h4 className="text-base font-black text-emerald-600 mt-1">{formatIDR(margin)}</h4>
-          <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded ml-1">
-            {marginPercentage}% Margin
-          </span>
-        </div>
-      </div>
-
-      {/* Main Grid: BOM List & Table Detail */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Left: Recipe List */}
-        <div className="xl:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[480px]">
-          <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
-            <h3 className="font-bold text-slate-850 text-sm">Resep BOM Aktif</h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-              <input
-                type="text"
-                placeholder="Cari versi, nama produk..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
-              />
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <span className="text-[9px] uppercase font-mono font-bold text-slate-400">Margin Kotor Perkiraan</span>
+              <h4 className="text-base font-black text-emerald-600 mt-1">{formatIDR(margin)}</h4>
+              <span className="text-[9px] font-mono text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded ml-1">
+                {marginPercentage}% Margin
+              </span>
             </div>
           </div>
 
-          <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="p-12 text-center text-slate-400">Memuat resep BOM...</div>
-            ) : filteredBoms.map((bom) => (
-              <div
-                key={bom.id}
-                onClick={() => setSelectedBomId(bom.id)}
-                className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${
-                  selectedBomId === bom.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-indigo-600">{bom.version}</span>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStatus(bom);
-                      }}
-                      className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
-                        bom.status === 'active' 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100' 
-                          : 'bg-slate-100 text-slate-650 border-slate-200 hover:bg-slate-200'
-                      }`}
+          {/* Main Grid: BOM List & Table Detail */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* Left: Recipe List */}
+            <div className="xl:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[480px]">
+              <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
+                <h3 className="font-bold text-slate-850 text-sm">Resep BOM Aktif</h3>
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Cari versi, nama produk..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                {filteredBoms.map((bom) => (
+                  <div
+                    key={bom.id}
+                    onClick={() => setSelectedBomId(bom.id)}
+                    className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${
+                      selectedBomId === bom.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-indigo-600">{bom.version}</span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(bom);
+                          }}
+                          className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
+                            bom.status === 'active' 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100' 
+                              : 'bg-slate-100 text-slate-650 border-slate-200 hover:bg-slate-200'
+                          }`}
+                        >
+                          {bom.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                        </button>
+                      </div>
+                      <h4 className="font-bold text-slate-800 mt-1">{bom.productName}</h4>
+                      <p className="text-[9px] text-slate-400 font-mono mt-0.5">Berlaku: {bom.effectiveFrom || '-'}</p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="font-mono font-black text-slate-800">{formatIDR(bom.totalCost)}</div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteBom(bom.id, bom.version);
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded mt-1.5 inline-block"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {filteredBoms.length === 0 && (
+                  <div className="p-12 text-center text-slate-400">Tidak ada resep BOM ditemukan.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Item Recipe Details */}
+            <div className="xl:col-span-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[480px]">
+              {selectedBom ? (
+                <>
+                  {/* Card Header details */}
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Layers size={14} className="text-cyan-600" />
+                        <h3 className="font-bold text-slate-800">Komposisi Bahan & Jasa Produksi</h3>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Produk: <span className="font-bold text-slate-700">{selectedBom.productName}</span> | SKU: <span className="font-mono">{selectedBom.productSku}</span>
+                      </p>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="text-[9px] text-slate-450 uppercase block font-bold">Total HPP Terhitung</span>
+                      <span className="text-sm font-black text-rose-600">{formatIDR(selectedBom.totalCost)}</span>
+                    </div>
+                  </div>
+
+                  {/* Table list */}
+                  <div className="overflow-y-auto flex-1">
+                    <table className="w-full text-left border-collapse text-[10px]">
+                      <thead className="bg-slate-50 border-b sticky top-0 z-10">
+                        <tr className="font-mono text-slate-500 uppercase tracking-wider">
+                          <th className="p-3 pl-5">Komponen Resep BOM</th>
+                          <th className="p-3">Kebutuhan Qty</th>
+                          <th className="p-3">Harga Satuan</th>
+                          <th className="p-3 pr-5 text-right">Subtotal HPP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(selectedBom.items || []).map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50/50">
+                            <td className="p-3 pl-5">
+                              <div className="font-bold text-slate-800">{item.componentName}</div>
+                              {item.componentSku && <span className="text-[8px] font-mono text-slate-400">{item.componentSku}</span>}
+                            </td>
+                            <td className="p-3 font-mono text-slate-700 font-medium">{item.quantity} {item.unitCode}</td>
+                            <td className="p-3 font-mono text-slate-500">{formatIDR(item.unitCost)}</td>
+                            <td className="p-3 pr-5 text-right font-mono font-black text-slate-800">{formatIDR(item.subtotal)}</td>
+                          </tr>
+                        ))}
+                        {(selectedBom.items || []).length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="p-12 text-center text-slate-400 italic">
+                              BOM ini tidak memiliki item bahan baku.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Bottom notice panel */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-150 flex items-center justify-between gap-3 shrink-0">
+                    <div className="flex items-center gap-2 text-slate-500 text-[10px]">
+                      <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                      <span>
+                        BOM HPP memengaruhi estimasi margin laba kotor saat menyusun surat penawaran (Quotation) penjualan.
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => onTriggerNotification('BOM ini telah dikunci. Buat BOM versi baru untuk mengubah resep.')}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold flex items-center gap-1 shrink-0"
                     >
-                      {bom.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                      <LockKeyhole size={11} />
+                      <span>Kunci Resep</span>
                     </button>
                   </div>
-                  <h4 className="font-bold text-slate-800 mt-1">{bom.productName}</h4>
-                  <p className="text-[9px] text-slate-400 font-mono mt-0.5">Berlaku: {bom.effectiveFrom || '-'}</p>
+                </>
+              ) : (
+                <div className="bg-slate-50 border-t border-slate-200 h-full flex flex-col items-center justify-center text-slate-400 italic font-sans p-12 text-center">
+                  <Clipboard size={32} className="text-slate-300 mb-2" />
+                  Pilih salah satu resep BOM di kiri untuk melihat komposisi HPP.
                 </div>
-
-                <div className="text-right shrink-0">
-                  <div className="font-mono font-black text-slate-800">{formatIDR(bom.totalCost)}</div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteBom(bom.id, bom.version);
-                    }}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded mt-1.5 inline-block"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {filteredBoms.length === 0 && (
-              <div className="p-12 text-center text-slate-400">Tidak ada resep BOM ditemukan.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Item Recipe Details */}
-        <div className="xl:col-span-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[480px]">
-          {selectedBom ? (
-            <>
-              {/* Card Header details */}
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Layers size={14} className="text-cyan-600" />
-                    <h3 className="font-bold text-slate-800">Komposisi Bahan & Jasa Produksi</h3>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Produk: <span className="font-bold text-slate-700">{selectedBom.productName}</span> | SKU: <span className="font-mono">{selectedBom.productSku}</span>
-                  </p>
-                </div>
-                <div className="text-right font-mono">
-                  <span className="text-[9px] text-slate-450 uppercase block font-bold">Total HPP Terhitung</span>
-                  <span className="text-sm font-black text-rose-600">{formatIDR(selectedBom.totalCost)}</span>
-                </div>
-              </div>
-
-              {/* Table list */}
-              <div className="overflow-y-auto flex-1">
-                <table className="w-full text-left border-collapse text-[10px]">
-                  <thead className="bg-slate-50 border-b sticky top-0 z-10">
-                    <tr className="font-mono text-slate-500 uppercase tracking-wider">
-                      <th className="p-3 pl-5">Komponen Resep BOM</th>
-                      <th className="p-3">Kebutuhan Qty</th>
-                      <th className="p-3">Harga Satuan</th>
-                      <th className="p-3 pr-5 text-right">Subtotal HPP</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(selectedBom.items || []).map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50">
-                        <td className="p-3 pl-5">
-                          <div className="font-bold text-slate-800">{item.componentName}</div>
-                          {item.componentSku && <span className="text-[8px] font-mono text-slate-400">{item.componentSku}</span>}
-                        </td>
-                        <td className="p-3 font-mono text-slate-700 font-medium">{item.quantity} {item.unitCode}</td>
-                        <td className="p-3 font-mono text-slate-500">{formatIDR(item.unitCost)}</td>
-                        <td className="p-3 pr-5 text-right font-mono font-black text-slate-800">{formatIDR(item.subtotal)}</td>
-                      </tr>
-                    ))}
-                    {(selectedBom.items || []).length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="p-12 text-center text-slate-400 italic">
-                          BOM ini tidak memiliki item bahan baku.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Bottom notice panel */}
-              <div className="p-4 bg-slate-50 border-t border-slate-150 flex items-center justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-2 text-slate-500 text-[10px]">
-                  <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-                  <span>
-                    BOM HPP memengaruhi estimasi margin laba kotor saat menyusun surat penawaran (Quotation) penjualan.
-                  </span>
-                </div>
-                <button
-                  onClick={() => onTriggerNotification('BOM ini telah dikunci. Buat BOM versi baru untuk mengubah resep.')}
-                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded font-bold flex items-center gap-1 shrink-0"
-                >
-                  <LockKeyhole size={11} />
-                  <span>Kunci Resep</span>
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="bg-slate-50 border-t border-slate-200 h-full flex flex-col items-center justify-center text-slate-400 italic font-sans p-12 text-center">
-              <Clipboard size={32} className="text-slate-300 mb-2" />
-              Pilih salah satu resep BOM di kiri untuk melihat komposisi HPP.
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Modal: Buat Resep BOM Baru */}
       {isCreateModalOpen && (
