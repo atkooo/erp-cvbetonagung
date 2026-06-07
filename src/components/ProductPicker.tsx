@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, X, Package, Check, Box } from '@/src/components/icons';
 import { Product } from '../types';
 import { productsApi } from '../features/products/api';
+import { inventoryApi } from '../features/inventory/api';
 
 interface ProductPickerProps {
   value?: string; // Product ID that is currently selected
@@ -32,19 +33,29 @@ export default function ProductPicker({
   const selectedProduct = products.find(p => p.id === value);
 
   useEffect(() => {
-    if (isOpen && products.length === 0) {
+    if ((isOpen || value) && products.length === 0) {
       loadProducts();
     }
-  }, [isOpen]);
+  }, [isOpen, value, products.length]);
 
   const loadProducts = async () => {
     setIsLoading(true);
     try {
-      const data = await productsApi.getProducts();
+      const [prods, stocks] = await Promise.all([
+        productsApi.getProducts(),
+        inventoryApi.getProductStocks()
+      ]);
+      
+      const productsWithStock = prods.map(p => {
+        const productStocks = stocks.filter(s => s.product_id === p.id);
+        const totalStock = productStocks.reduce((sum, s) => sum + Number(s.quantity || 0), 0);
+        return { ...p, stock: totalStock };
+      });
+
       // Apply category filter if provided
       const filtered = categoryFilter 
-        ? data.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase())
-        : data;
+        ? productsWithStock.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase())
+        : productsWithStock;
       setProducts(filtered);
     } catch (error) {
       console.error('Failed to load products', error);
@@ -72,11 +83,15 @@ export default function ProductPicker({
         onClick={() => setIsOpen(true)}
         className={`w-full p-2.5 border rounded-lg flex items-center justify-between cursor-pointer bg-white hover:bg-slate-50 transition-colors ${className}`}
       >
-        <div className="flex items-center gap-2 overflow-hidden">
-          <Box size={16} className="text-slate-400 shrink-0" />
-          <span className={`text-xs truncate ${selectedProduct ? 'text-slate-800 font-bold' : 'text-slate-400'}`}>
-            {selectedProduct ? selectedProduct.name : placeholder}
-          </span>
+        <div className="flex items-center gap-2 overflow-hidden w-full">
+          <Package size={16} className="text-slate-400 shrink-0" />
+          {isLoading && value && !selectedProduct ? (
+            <div className="h-4 bg-slate-200 animate-pulse rounded w-2/3"></div>
+          ) : (
+            <span className={`text-xs truncate ${selectedProduct ? 'text-slate-800 font-bold' : 'text-slate-400'}`}>
+              {selectedProduct ? selectedProduct.name : placeholder}
+            </span>
+          )}
         </div>
       </div>
 

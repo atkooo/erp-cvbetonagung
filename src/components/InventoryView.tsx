@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -24,8 +24,12 @@ import { Product, StockMovement } from "../types";
 import { apiClient } from "../services/api";
 import { productsApi } from "../features/products/api";
 import { inventoryApi } from "../features/inventory/api";
+import { purchasingApi } from "../features/purchasing/api";
+import { salesApi } from "../features/sales/api";
+import { PurchaseOrder, SalesOrder } from "../types";
 import { LocationDto, ProductStockDto } from "../features/inventory/types";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
+import ReferencePicker from "./ReferencePicker";
 
 interface InventoryViewProps {
   onTriggerNotification: (message: string) => void;
@@ -93,6 +97,8 @@ export default function InventoryView({
   const [productStocks, setProductStocks] = useState<ProductStockDto[]>([]);
   const [locations, setLocations] = useState<LocationDto[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -100,13 +106,15 @@ export default function InventoryView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [prods, stocks, movs, locRes] = await Promise.all([
+      const [prods, stocks, movs, locRes, pos, sos] = await Promise.all([
         productsApi.getProducts(),
         inventoryApi.getProductStocks(),
         inventoryApi.getStockMovements(),
         apiClient.get<{ data: LocationDto[] }>(
           "/master-data/storage-locations",
         ),
+        purchasingApi.getPurchaseOrders(),
+        salesApi.getSalesOrders(),
       ]);
 
       const combinedProds = prods.map((p) => {
@@ -146,6 +154,8 @@ export default function InventoryView({
       setProductStocks(stocks);
       setLocations(locRes.data);
       setStockMovements(movs);
+      setPurchaseOrders(pos);
+      setSalesOrders(sos);
 
       if (combinedProds.length > 0) {
         setInSku((prev) => prev || combinedProds[0].sku);
@@ -207,6 +217,27 @@ export default function InventoryView({
       getDefaultIncomingLocationId(product)
     );
   };
+
+  // Auto-populate Inward Modal when PO is selected
+  useEffect(() => {
+    if (inDoc && inDoc.startsWith('PO-')) {
+      const selectedPo = purchaseOrders.find(po => po.poNumber === inDoc);
+      if (selectedPo && selectedPo.items && selectedPo.items.length > 0) {
+        // Find product SKU matching the first item's productName
+        const firstItem = selectedPo.items[0];
+        // The productName might have extra spaces or be slightly different, but try exact match first
+        const matchedProduct = products.find(p => p.name.toLowerCase() === firstItem.productName.toLowerCase());
+        
+        if (matchedProduct) {
+          setInSku(matchedProduct.sku);
+          setSelectedProduct(matchedProduct);
+          setInLocationId(getDefaultIncomingLocationId(matchedProduct));
+          // Pre-fill quantity
+          setInQty(firstItem.quantity);
+        }
+      }
+    }
+  }, [inDoc]);
 
   const openInwardModal = (product?: Product) => {
     const target = product || selectedProduct || products[0] || null;
@@ -380,6 +411,22 @@ export default function InventoryView({
     }
   };
 
+  const poOptions = purchaseOrders
+    .filter(po => po.status !== 'Dibatalkan')
+    .map(po => ({
+      id: po.id,
+      number: po.poNumber,
+      label: po.supplierName,
+      subLabel: po.status
+    }));
+
+  const soOptions = salesOrders.map(so => ({
+    id: so.id,
+    number: so.orderNumber,
+    label: so.customerName,
+    subLabel: so.status
+  }));
+
   return (
     <div className="space-y-6">
       {/* SEARCH AND ACTION SUB BAR */}
@@ -457,7 +504,7 @@ export default function InventoryView({
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {/* TAB 1: STOK PRODUK */}
           {activeTab === "stok" && (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto pb-32">
               <table className="w-full text-left font-sans text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
@@ -551,7 +598,7 @@ export default function InventoryView({
                               </button>
 
                               {openStockActionId === p.id && (
-                                <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                                <div className="absolute right-0 mt-1 z-20 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1014,13 +1061,12 @@ export default function InventoryView({
                   <label className="text-[11px] font-bold text-slate-600">
                     Referensi PO / Surat Jalan
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={inDoc}
-                    onChange={(e) => setInDoc(e.target.value)}
+                  <ReferencePicker
+                    title="Pilih Purchase Order (PO)"
                     placeholder="Contoh: PO-2026-05-120"
-                    className="w-full px-3 py-2 border border-slate-200 font-mono"
+                    value={inDoc}
+                    onChange={setInDoc}
+                    options={poOptions}
                   />
                 </div>
               </div>
@@ -1280,13 +1326,12 @@ export default function InventoryView({
                   <label className="text-[11px] font-bold text-slate-600">
                     Referensi SO / Surat Jalan Keluar
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={outDoc}
-                    onChange={(e) => setOutDoc(e.target.value)}
+                  <ReferencePicker
+                    title="Pilih Sales Order (SO)"
                     placeholder="Contoh: SO-2026-05-090"
-                    className="w-full px-3 py-2 border border-slate-200 font-mono"
+                    value={outDoc}
+                    onChange={setOutDoc}
+                    options={soOptions}
                   />
                 </div>
               </div>

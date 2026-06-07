@@ -137,6 +137,7 @@ export interface PurchaseRequestItem {
   productName: string;
   quantity: number;
   status: string;
+  unit?: string;
 }
 
 export interface PurchaseRequest {
@@ -159,6 +160,7 @@ export interface RfqItem {
   quantity: number;
   quotedUnitPrice: number;
   subtotal: number;
+  unit?: string;
 }
 
 export interface Rfq {

@@ -90,7 +90,7 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
-      <main className="w-full max-w-4xl grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+      <main className="w-full max-w-4xl min-h-[520px] grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
         {/* Left Side: Brand Panel */}
         <section className="bg-slate-900 text-slate-200 p-8 md:p-10 flex flex-col justify-between gap-10">
           <div className="space-y-10">
@@ -109,29 +109,8 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                 Portal Internal
               </span>
               <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
-                Manajemen Aliran Kerja & Operasional Terpusat.
+                Sistem Manajemen & Operasional Terpusat.
               </h2>
-              <p className="text-xs leading-relaxed text-slate-400">
-                Masuk untuk mengakses dasbor utama, modul logistik surat jalan, manajemen produksi cetak beton, approval workflow, serta laporan keuangan terintegrasi.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3.5 pt-2">
-              {[
-                { icon: ShieldCheck, title: 'Otorisasi Ketat', desc: 'Hak akses ketat berbasis matriks peran divisi.' },
-                { icon: CheckCircle2, title: 'Integritas Transaksi', desc: 'Pencatatan real-time untuk audit & kepatuhan.' },
-                { icon: LockKeyhole, title: 'Pelacakan Aktivitas', desc: 'Setiap perubahan penting terdaftar dalam sistem.' }
-              ].map(({ icon: Icon, title, desc }, idx) => {
-                return (
-                  <div key={idx} className="flex gap-3 bg-slate-800/30 border border-slate-800/60 rounded-lg p-3.5">
-                    <Icon size={16} className="text-slate-300 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-white text-[11px]">{title}</p>
-                      <p className="mt-0.5 text-[10px] text-slate-400 leading-normal">{desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
@@ -229,10 +208,6 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                 {isSubmitting ? <Loader2 size={13} className="animate-spin stroke-[2.5]" /> : <ArrowRight size={13} className="stroke-[2.5]" />}
               </button>
             </form>
-
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-[10px] leading-normal text-slate-400">
-              Penggunaan sistem ini diawasi oleh kebijakan keamanan internal perusahaan. Kehilangan kata sandi wajib dilaporkan ke Administrator IT.
-            </div>
           </div>
         </section>
       </main>

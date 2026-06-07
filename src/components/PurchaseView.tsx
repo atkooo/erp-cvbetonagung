@@ -3,14 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck } from '@/src/components/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck, FileText } from '@/src/components/icons';
 import { PurchaseOrder, Supplier, Product } from '../types';
 import { authStorage } from '../services/api';
 import { purchasingApi } from '../features/purchasing/api';
 import { suppliersApi } from '../features/suppliers/api';
 import { productsApi } from '../features/products/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import { useReactToPrint } from 'react-to-print';
+import { formatDate } from '../utils/date';
+import Swal from 'sweetalert2';
 
 interface PurchaseViewProps {
   onTriggerNotification: (message: string) => void;
@@ -23,6 +26,13 @@ export default function PurchaseView({
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
+  const [printPoId, setPrintPoId] = useState<string | null>(null);
+
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrintAction = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'PO_CV_Beton_Agung'
+  });
 
   // API states
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -77,7 +87,9 @@ export default function PurchaseView({
     const matchesSearch =
       po.poNumber.toLowerCase().includes(search.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || po.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' 
+      ? po.status !== 'Dibatalkan' 
+      : po.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -130,6 +142,75 @@ export default function PurchaseView({
       await loadData();
     } catch (err) {
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
+    }
+  };
+
+  const handleApprove = async (poId: string, poNum: string) => {
+    const result = await Swal.fire({
+      title: 'Konfirmasi Approval PO',
+      text: `Apakah Anda yakin ingin menyetujui Purchase Order ${poNum}? PO yang telah disetujui akan berstatus Dipesan dan dikirim ke Supplier.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#059669', // emerald-600
+      cancelButtonColor: '#64748b', // slate-500
+      confirmButtonText: 'Ya, Setujui PO!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await purchasingApi.approvePurchaseOrder(poId);
+        Swal.fire(
+          'Approved!',
+          `PO ${poNum} berhasil disetujui. Status kini menjadi Dipesan.`,
+          'success'
+        );
+        await loadData();
+      } catch (err) {
+        Swal.fire(
+          'Gagal',
+          err instanceof Error ? err.message : 'Terjadi kesalahan saat menyetujui PO',
+          'error'
+        );
+      }
+    }
+  };
+
+  const handleCancel = async (poId: string, poNum: string) => {
+    const result = await Swal.fire({
+      title: 'Batalkan PO?',
+      text: `Masukkan alasan pembatalan Purchase Order ${poNum}:`,
+      icon: 'error',
+      input: 'textarea',
+      inputPlaceholder: 'Tuliskan alasan pembatalan di sini...',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48', // rose-600
+      cancelButtonColor: '#64748b', // slate-500
+      confirmButtonText: 'Ya, Batalkan!',
+      cancelButtonText: 'Tidak',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await purchasingApi.cancelPurchaseOrder(poId, result.value);
+        Swal.fire(
+          'Dibatalkan!',
+          `PO ${poNum} berhasil dibatalkan.`,
+          'success'
+        );
+        await loadData();
+      } catch (err) {
+        Swal.fire(
+          'Gagal',
+          err instanceof Error ? err.message : 'Terjadi kesalahan saat membatalkan PO',
+          'error'
+        );
+      }
     }
   };
 
@@ -259,17 +340,35 @@ export default function PurchaseView({
                             </button>
                           </td>
                           <td className="p-3.5 font-bold text-slate-700">{po.supplierName}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{po.date}</td>
+                          <td className="p-3.5 font-mono text-slate-500">{formatDate(po.date)}</td>
                           <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(po.total)}</td>
                           <td className="p-3.5">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || 'bg-slate-100'}`}>
                               {po.status}
                             </span>
                           </td>
-                          <td className="p-3.5 pr-5 text-right">
+                          <td className="p-3.5 pr-5 text-right whitespace-nowrap">
+                            {po.status === 'Draft' && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(po.id, po.poNumber)}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleCancel(po.id, po.poNumber)}
+                                  className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
+                                >
+                                  Batal
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={() => {
-                                onTriggerNotification(`Mencetak draft dokumen pengadaan ${po.poNumber}`);
+                                setPrintPoId(po.id);
+                                onTriggerNotification(`Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`);
+                                setTimeout(() => handlePrintAction(), 300);
                               }}
                               className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
                               title="Print PO"
@@ -420,6 +519,96 @@ export default function PurchaseView({
           </div>
         </div>
       )}
+
+      {/* Hidden Print Layout */}
+      <div className="hidden">
+        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+          {printPoId && (() => {
+            const poToPrint = purchaseOrders.find(p => p.id === printPoId);
+            if (!poToPrint) return null;
+            return (
+              <div className="w-full">
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
+                  <div>
+                    <h1 className="text-3xl font-black tracking-tighter uppercase">CV Beton Agung</h1>
+                    <p className="text-sm font-medium mt-1">General Contractor & Supplier Material Alam</p>
+                    <p className="text-xs mt-1 max-w-xs text-gray-600">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-2xl font-black text-gray-400 uppercase tracking-widest border border-gray-300 inline-block px-4 py-1 rounded">PURCHASE ORDER</h2>
+                    <p className="font-mono font-bold mt-2 text-lg">{poToPrint.poNumber}</p>
+                    <p className="text-sm">Tanggal: {formatDate(poToPrint.date)}</p>
+                  </div>
+                </div>
+
+                {/* To */}
+                <div className="mb-8 p-4 border border-black rounded-lg inline-block min-w-[300px]">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Kepada Yth. (Supplier)</p>
+                  <p className="font-bold text-lg">{poToPrint.supplierName}</p>
+                </div>
+
+                {/* Items */}
+                <table className="w-full mb-8 border-collapse border border-black">
+                  <thead>
+                    <tr className="bg-gray-100 uppercase text-xs">
+                      <th className="p-3 border border-black text-left w-12">No</th>
+                      <th className="p-3 border border-black text-left">Nama Produk / Material</th>
+                      <th className="p-3 border border-black text-center w-24">Qty</th>
+                      <th className="p-3 border border-black text-right w-40">Harga Satuan</th>
+                      <th className="p-3 border border-black text-right w-48">Jumlah</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poToPrint.items?.map((item, idx) => (
+                      <tr key={item.id || idx}>
+                        <td className="p-3 border border-black text-center">{idx + 1}</td>
+                        <td className="p-3 border border-black font-medium">{item.productName}</td>
+                        <td className="p-3 border border-black text-center">{item.quantity}</td>
+                        <td className="p-3 border border-black text-right font-mono">{formatIDR(item.price)}</td>
+                        <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(item.quantity * item.price)}</td>
+                      </tr>
+                    ))}
+                    {!poToPrint.items?.length && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center italic">Tidak ada rincian material</td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-100">
+                      <td colSpan={4} className="p-3 border border-black text-right font-bold">TOTAL KESELURUHAN</td>
+                      <td className="p-3 border border-black text-right font-bold font-mono text-lg">{formatIDR(poToPrint.total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                <div className="text-xs mb-12">
+                  <p><strong>Catatan Tambahan:</strong> Harap menyertakan salinan dokumen PO ini pada saat pengiriman faktur tagihan dan surat jalan (GRN).</p>
+                </div>
+
+                <div className="flex justify-between text-center mt-12 px-12">
+                  <div>
+                    <p className="mb-24">Dipesan Oleh,</p>
+                    <p className="font-bold border-b border-black pb-1 uppercase">Purchasing Dept.</p>
+                    <p className="mt-1">CV Beton Agung</p>
+                  </div>
+                  <div>
+                    <p className="mb-24">Disetujui Oleh,</p>
+                    <p className="font-bold border-b border-black pb-1 uppercase">Direktur Utama</p>
+                    <p className="mt-1">CV Beton Agung</p>
+                  </div>
+                  <div>
+                    <p className="mb-24">Dikonfirmasi Oleh,</p>
+                    <p className="font-bold border-b border-black pb-1 text-white select-none">.</p>
+                    <p className="mt-1">{poToPrint.supplierName}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
     </div>
   );
 }

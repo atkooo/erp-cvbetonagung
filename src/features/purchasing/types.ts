@@ -1,3 +1,49 @@
+export interface PurchaseRequestItemDto {
+  id: string;
+  purchase_request_id: string;
+  product_id: string;
+  description: string | null;
+  quantity: number;
+  status: string;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+    unit?: {
+      code: string;
+    } | string;
+  };
+}
+
+export interface PurchaseRequestDto {
+  id: string;
+  pr_number: string;
+  requester_id: string;
+  request_date: string;
+  required_date: string | null;
+  department: string;
+  status: string;
+  notes: string | null;
+  requester?: {
+    id: string;
+    name: string;
+  };
+  items?: PurchaseRequestItemDto[];
+}
+
+export interface CreatePurchaseRequestDto {
+  requester_id: string;
+  request_date: string;
+  required_date?: string;
+  department: string;
+  notes?: string;
+  items: {
+    product_id: string;
+    quantity: number;
+    description?: string;
+  }[];
+}
+
 export interface PurchaseOrderItemDto {
   id: string;
   purchase_order_id: string;
@@ -119,3 +165,49 @@ export interface Return {
   items: ReturnItem[];
 }
 
+export interface RfqItemDto {
+  id: string;
+  rfq_id: string;
+  product_id: string | null;
+  description: string | null;
+  quantity: number;
+  quoted_unit_price: number;
+  subtotal: number;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+  };
+}
+
+export interface RfqDto {
+  id: string;
+  rfq_number: string;
+  purchase_request_id: string | null;
+  supplier_id: string;
+  rfq_date: string;
+  valid_until: string;
+  status: string;
+  notes: string | null;
+  supplier?: {
+    id: string;
+    name: string;
+  };
+  items?: RfqItemDto[];
+}
+
+export interface CreateRfqDto {
+  purchase_request_id?: string;
+  supplier_id: string;
+  rfq_date: string;
+  valid_until: string;
+  status: string;
+  notes?: string;
+  items: {
+    product_id?: string;
+    description?: string;
+    quantity: number;
+    quoted_unit_price: number;
+    subtotal: number;
+  }[];
+}

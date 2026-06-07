@@ -12,13 +12,9 @@ interface AttendanceDashboardViewProps {
 
 export default function AttendanceDashboardView({ onTriggerNotification }: AttendanceDashboardViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Dummy data for visual presentation since API isn't fully mocked
-  const attendances = [
-    { id: 1, name: 'Budi Santoso', date: '2026-06-06', clockIn: '08:00', clockOut: '17:00', status: 'Hadir', lateMinutes: 0 },
-    { id: 2, name: 'Siti Aminah', date: '2026-06-06', clockIn: '08:15', clockOut: '17:05', status: 'Terlambat', lateMinutes: 15 },
-    { id: 3, name: 'Ahmad Mulyadi', date: '2026-06-06', clockIn: '-', clockOut: '-', status: 'Cuti', lateMinutes: 0 },
-  ];
+  
+  // Data will be fetched from API later
+  const attendances: any[] = [];
 
   return (
     <div className="space-y-6 font-sans text-xs">
@@ -106,26 +102,32 @@ export default function AttendanceDashboardView({ onTriggerNotification }: Atten
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {attendances.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/50">
-                <td className="p-3.5 pl-5 font-bold text-slate-800">{item.name}</td>
-                <td className="p-3.5 font-mono text-slate-500">{item.date}</td>
-                <td className="p-3.5 font-mono text-slate-700">{item.clockIn}</td>
-                <td className="p-3.5 font-mono text-slate-700">{item.clockOut}</td>
-                <td className="p-3.5">
-                  {item.lateMinutes > 0 ? <span className="text-rose-600 font-bold">{item.lateMinutes} mnt</span> : '-'}
-                </td>
-                <td className="p-3.5">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                    item.status === 'Hadir' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    item.status === 'Terlambat' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    'bg-slate-100 text-slate-600 border-slate-200'
-                  }`}>
-                    {item.status}
-                  </span>
-                </td>
+            {attendances.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">Belum ada data absensi.</td>
               </tr>
-            ))}
+            ) : (
+              attendances.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50/50">
+                  <td className="p-3.5 pl-5 font-bold text-slate-800">{item.name}</td>
+                  <td className="p-3.5 font-mono text-slate-500">{item.date}</td>
+                  <td className="p-3.5 font-mono text-slate-700">{item.clockIn}</td>
+                  <td className="p-3.5 font-mono text-slate-700">{item.clockOut}</td>
+                  <td className="p-3.5">
+                    {item.lateMinutes > 0 ? <span className="text-rose-600 font-bold">{item.lateMinutes} mnt</span> : '-'}
+                  </td>
+                  <td className="p-3.5">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      item.status === 'Hadir' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      item.status === 'Terlambat' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                      'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

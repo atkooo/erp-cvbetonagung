@@ -1,12 +1,34 @@
-import { PurchaseOrder } from '../../types';
-import { PurchaseOrderDto, ReturnItemDto, ReturnItem, ReturnDto, Return } from './types';
+import { PurchaseOrder, PurchaseRequest, PurchaseRequestItem } from '../../types';
+import { PurchaseOrderDto, ReturnItemDto, ReturnItem, ReturnDto, Return, PurchaseRequestDto, PurchaseRequestItemDto } from './types';
+
+export const mapPurchaseRequestItemFromDto = (dto: PurchaseRequestItemDto): PurchaseRequestItem => ({
+  id: dto.id,
+  productId: dto.product_id,
+  productName: dto.product?.name || dto.description || 'Unknown Product',
+  quantity: Number(dto.quantity),
+  status: dto.status,
+  unit: (typeof dto.product?.unit === 'object' ? (dto.product.unit as any).code : dto.product?.unit) || 'Unit'
+});
+
+export const mapPurchaseRequestFromDto = (dto: PurchaseRequestDto): PurchaseRequest => ({
+  id: dto.id,
+  prNumber: dto.pr_number,
+  requesterId: dto.requester_id,
+  requesterName: dto.requester?.name || 'Unknown',
+  requestDate: dto.request_date,
+  requiredDate: dto.required_date || dto.request_date,
+  department: dto.department,
+  status: dto.status,
+  notes: dto.notes || undefined,
+  items: (dto.items || []).map(mapPurchaseRequestItemFromDto)
+});
 
 export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder => ({
   id: dto.id,
   poNumber: dto.purchase_number || `PO-${dto.id.substring(0, 8)}`,
   supplierName: dto.supplier?.name || 'Unknown Supplier',
-  date: dto.order_date,
-  total: Number(dto.total),
+  date: (dto as any).po_date || dto.order_date,
+  total: Number(dto.total) || (dto.items || []).reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_price)), 0),
   status: mapPurchaseOrderStatus(dto.status),
   items: (dto.items || []).map(item => ({
     id: item.id, // For receiving logic
@@ -47,3 +69,25 @@ export const mapReturnFromDto = (dto: ReturnDto): Return => ({
   items: (dto.items || []).map(mapReturnItemFromDto),
 });
 
+export const mapRfqItemFromDto = (dto: any): any => ({
+  id: dto.id,
+  productId: dto.product_id || '',
+  productName: dto.product?.name || dto.description || 'Custom Item',
+  quantity: Number(dto.quantity),
+  quotedUnitPrice: Number(dto.quoted_unit_price),
+  subtotal: Number(dto.subtotal),
+  unit: (typeof dto.product?.unit === 'object' ? (dto.product.unit as any).code : dto.product?.unit) || 'Unit'
+});
+
+export const mapRfqFromDto = (dto: any): any => ({
+  id: dto.id,
+  rfqNumber: dto.rfq_number,
+  purchaseRequestId: dto.purchase_request?.pr_number || dto.purchase_request_id || '-',
+  supplierId: dto.supplier_id,
+  supplierName: dto.supplier?.name || 'Unknown Supplier',
+  rfqDate: dto.rfq_date,
+  validUntil: dto.valid_until,
+  status: dto.status,
+  notes: dto.notes || undefined,
+  items: (dto.items || []).map(mapRfqItemFromDto)
+});

@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, ShoppingCart, Check, FileText } from '@/src/components/icons';
 import { PurchaseRequest } from '../types';
+import { purchasingApi } from '../features/purchasing/api';
+import { formatDate } from '../utils/date';
 
 interface PurchaseRequestPickerProps {
   value?: string; // PR Number that is currently selected
@@ -31,23 +33,19 @@ export default function PurchaseRequestPicker({
   const selectedPr = purchaseRequests.find(pr => pr.prNumber === value || pr.id === value);
 
   useEffect(() => {
-    if (isOpen && purchaseRequests.length === 0) {
+    if ((isOpen || value) && purchaseRequests.length === 0) {
       loadData();
     }
-  }, [isOpen]);
+  }, [isOpen, value, purchaseRequests.length]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call later
-      // const data = await purchasingApi.getPurchaseRequests();
+      const data = await purchasingApi.getPurchaseRequests();
       
-      // Mock data for now (sama seperti di PurchaseRequestView)
-      const mockPRs: PurchaseRequest[] = [];
-
       const filtered = statusFilter 
-        ? mockPRs.filter(pr => pr.status === statusFilter)
-        : mockPRs;
+        ? data.filter(pr => pr.status === statusFilter)
+        : data;
         
       setPurchaseRequests(filtered);
     } catch (error) {
@@ -76,11 +74,15 @@ export default function PurchaseRequestPicker({
         onClick={() => setIsOpen(true)}
         className={`w-full p-2.5 border rounded-lg flex items-center justify-between cursor-pointer bg-white hover:bg-slate-50 transition-colors ${className}`}
       >
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden w-full">
           <FileText size={16} className="text-slate-400 shrink-0" />
-          <span className={`text-xs truncate ${selectedPr ? 'text-slate-800 font-bold font-mono' : 'text-slate-400'}`}>
-            {selectedPr ? selectedPr.prNumber : value || placeholder}
-          </span>
+          {isLoading && value && !selectedPr ? (
+            <div className="h-4 bg-slate-200 animate-pulse rounded w-1/3"></div>
+          ) : (
+            <span className={`text-xs truncate ${selectedPr ? 'text-slate-800 font-bold font-mono' : 'text-slate-400'}`}>
+              {selectedPr ? selectedPr.prNumber : value || placeholder}
+            </span>
+          )}
         </div>
       </div>
 
@@ -155,7 +157,7 @@ export default function PurchaseRequestPicker({
                         <div className="text-right">
                           <div className="text-[10px] text-slate-500 mb-0.5">Tanggal Butuh</div>
                           <div className="text-xs font-bold text-slate-800">
-                            {pr.requiredDate}
+                            {formatDate(pr.requiredDate)}
                           </div>
                         </div>
                         {(value === pr.id || value === pr.prNumber) && (
