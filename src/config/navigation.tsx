@@ -32,6 +32,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Tag,
   Truck,
   TrendingUp,
   Upload,
@@ -68,6 +69,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   suppliers: "Manajemen Supplier (Pemasok)",
   products: "Daftar Produk Konstruksi",
   categories: "Kategori Produk",
+  units: "Master Satuan Produk",
   warehouses: "Master Gudang & Rak",
   "stock-management": "Manajemen Stok Produk",
   "incoming-goods": "Penerimaan Barang Masuk",
@@ -101,7 +103,8 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "qr-products": "Daftar QR Code Produk",
   "scan-qr-product": "Scanner QR Produk (Simulasi Kamera)",
   "scanned-product-detail": "Detail Produk Hasil Scan QR",
-  reports: "Analisis & Laporan Operasional",
+  "finance-reports": "Laporan Keuangan & Omset",
+  "inventory-reports": "Mutasi & Turnover Stok",
   "attendance-dashboard": "Dashboard Absensi",
   "leave-management": "Pengajuan & Approval Cuti",
   "attendance-scanner": "Scan Absensi (QR)",
@@ -116,7 +119,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     id: "core",
     items: [
       { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard },
-      // { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
+      { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
     ],
   },
   {
@@ -273,49 +276,49 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   //   ],
   // },
 
-  // {
-  //   id: "hrd",
-  //   title: "HRD & Personalia",
-  //   collapsible: true,
-  //   items: [
-  //     {
-  //       view: "employees",
-  //       label: "Master Karyawan",
-  //       icon: UserCog,
-  //       requiredModule: "employees",
-  //     },
-  //     {
-  //       view: "attendance-dashboard",
-  //       label: "Dashboard Absensi",
-  //       icon: CalendarCheck,
-  //       requiredModule: "employees",
-  //     },
-  //     {
-  //       view: "attendance-scanner",
-  //       label: "Scan Absensi (QR)",
-  //       icon: Scan,
-  //       requiredModule: "employees",
-  //     },
-  //     {
-  //       view: "leave-management",
-  //       label: "Pengajuan Cuti",
-  //       icon: FileCheck,
-  //       requiredModule: "employees",
-  //     },
-  //     {
-  //       view: "payroll-management",
-  //       label: "Payroll",
-  //       icon: Calculator,
-  //       requiredModule: "finance",
-  //     },
-  //     {
-  //       view: "employee-loans",
-  //       label: "Pinjaman Karyawan",
-  //       icon: Handshake,
-  //       requiredModule: "finance",
-  //     },
-  //   ],
-  // },
+  {
+    id: "hrd",
+    title: "HRD & Personalia",
+    collapsible: true,
+    items: [
+      {
+        view: "employees",
+        label: "Master Karyawan",
+        icon: UserCog,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-dashboard",
+        label: "Dashboard Absensi",
+        icon: CalendarCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "attendance-scanner",
+        label: "Scan Absensi (QR)",
+        icon: Scan,
+        requiredModule: "employees",
+      },
+      {
+        view: "leave-management",
+        label: "Pengajuan Cuti",
+        icon: FileCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "payroll-management",
+        label: "Payroll",
+        icon: Calculator,
+        requiredModule: "finance",
+      },
+      {
+        view: "employee-loans",
+        label: "Pinjaman Karyawan",
+        icon: Handshake,
+        requiredModule: "finance",
+      },
+    ],
+  },
   {
     id: "inventory",
     title: "Inventory",
@@ -389,6 +392,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "products",
       },
       {
+        view: "units",
+        label: "Satuan Produk",
+        icon: Tag,
+        requiredModule: "products",
+      },
+      {
         view: "warehouses",
         label: "Gudang & Rak",
         icon: Warehouse,
@@ -420,19 +429,36 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "settings",
       }, // or audit log module
       { view: "reminders", label: "Reminder Center", icon: BellRing },
-      { view: "document-exports", label: "Export Dokumen", icon: FileDown },
+    ],
+  },
+  {
+    id: "reports",
+    title: "Report",
+    collapsible: true,
+    items: [
+      {
+        view: "document-exports",
+        label: "Export Dokumen",
+        icon: FileDown,
+      },
+      {
+        view: "finance-reports",
+        label: "Laporan Keuangan & Omset",
+        icon: TrendingUp,
+        requiredModule: "reports",
+      },
+      {
+        view: "inventory-reports",
+        label: "Mutasi & Turnover Stok",
+        icon: TrendingUp,
+        requiredModule: "reports",
+      },
     ],
   },
   {
     id: "system",
     separator: true,
     items: [
-      {
-        view: "reports",
-        label: "Laporan Analytics",
-        icon: TrendingUp,
-        requiredModule: "reports",
-      },
       {
         view: "settings",
         label: "Pengaturan",

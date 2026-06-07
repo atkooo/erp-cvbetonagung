@@ -34,6 +34,7 @@ export interface Product {
   sellingPrice: number;
   stock: number;
   unit: string;
+  unitId?: string;
   location: string;
   minStock: number;
   status: 'Aman' | 'Menipis' | 'Habis';
@@ -77,6 +78,7 @@ export interface SalesOrder {
 export interface Quotation {
   id: string;
   quoteNumber: string;
+  customerId?: string;
   customerName: string;
   date: string;
   validUntil: string;
@@ -384,6 +386,7 @@ export type ViewType =
   | 'suppliers'
   | 'products'
   | 'categories'
+  | 'units'
   | 'warehouses'
   | 'stock-management'
   | 'incoming-goods'
@@ -417,7 +420,8 @@ export type ViewType =
   | 'qr-products'
   | 'scan-qr-product'
   | 'scanned-product-detail'
-  | 'reports'
+  | 'finance-reports'
+  | 'inventory-reports'
   | 'attendance-dashboard'
   | 'leave-management'
   | 'payroll-management'

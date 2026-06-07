@@ -34,6 +34,7 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
 export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   id: dto.id,
   quoteNumber: dto.quotation_number,
+  customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
   date: dto.quotation_date,
   validUntil: dto.valid_until,

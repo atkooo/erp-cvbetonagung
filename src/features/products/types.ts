@@ -19,6 +19,11 @@ export interface UnitDto {
   name: string;
 }
 
+export interface UnitFormData {
+  code: string;
+  name: string;
+}
+
 export interface ProductDto {
   id: string;
   sku: string;

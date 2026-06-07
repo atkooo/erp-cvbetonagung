@@ -55,6 +55,7 @@ export default function SalesView({
 
   // Form states to create a quick document
   const [custId, setCustId] = useState('');
+  const [quotationId, setQuotationId] = useState('');
   const [productId, setProductId] = useState('');
   const [itemQty, setItemQty] = useState(1);
   const [itemPrice, setItemPrice] = useState(0);
@@ -139,6 +140,7 @@ export default function SalesView({
       } else {
         await salesApi.createSalesOrder({
           customer_id: custId,
+          quotation_id: quotationId ? quotationId : undefined,
           order_date: todayStr,
           items: [
             {
@@ -155,6 +157,7 @@ export default function SalesView({
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
     }
 
+    setQuotationId('');
     setShowAddForm(false);
   };
 
@@ -456,6 +459,24 @@ export default function SalesView({
                   </select>
                 )}
               </div>
+
+              {!isQuotation && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation (Opsional)</label>
+                  <select
+                    value={quotationId}
+                    onChange={(e) => setQuotationId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
+                  >
+                    <option value="">-- Tanpa Referensi Quotation --</option>
+                    {quotations
+                      .filter(q => q.customerId === custId && q.status === 'Disetujui')
+                      .map(q => (
+                        <option key={q.id} value={q.id}>{q.quoteNumber} - {formatIDR(q.total)}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk Borongan</label>

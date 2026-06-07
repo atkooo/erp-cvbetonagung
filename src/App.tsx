@@ -19,6 +19,7 @@ const CustomersView = React.lazy(() => import('./components/CustomersView'));
 const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
 const ProductsView = React.lazy(() => import('./components/ProductsView'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
+const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
 const SalesView = React.lazy(() => import('./components/SalesView'));
@@ -29,7 +30,8 @@ const PurchaseRequestView = React.lazy(() => import('./components/PurchaseReques
 const RfqView = React.lazy(() => import('./components/RfqView'));
 const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
 const QrView = React.lazy(() => import('./components/QrView'));
-const ReportsView = React.lazy(() => import('./components/ReportsView'));
+const FinanceReportView = React.lazy(() => import('./components/FinanceReportView'));
+const InventoryReportView = React.lazy(() => import('./components/InventoryReportView'));
 const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
 const AttendanceDashboardView = React.lazy(() => import('./components/AttendanceDashboardView'));
@@ -231,6 +233,12 @@ export default function App() {
             onTriggerNotification={triggerNotification}
           />
         );
+      case 'units':
+        return (
+          <UnitsView
+            onTriggerNotification={triggerNotification}
+          />
+        );
       case 'warehouses':
         return <WarehouseMasterView onTriggerNotification={triggerNotification} />;
 
@@ -410,8 +418,10 @@ export default function App() {
           />
         );
 
-      case 'reports':
-        return <ReportsView onTriggerNotification={triggerNotification} />;
+      case 'finance-reports':
+        return <FinanceReportView onTriggerNotification={triggerNotification} />;
+      case 'inventory-reports':
+        return <InventoryReportView onTriggerNotification={triggerNotification} />;
       case 'settings':
         return <SettingsView onTriggerNotification={triggerNotification} />;
 

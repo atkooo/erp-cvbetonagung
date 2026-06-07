@@ -1,4 +1,4 @@
-import { CategoryDto, CategoryFormData, ProductDto, ProductFormData } from './types';
+import { CategoryDto, CategoryFormData, ProductDto, ProductFormData, UnitDto } from './types';
 import { Category, Product } from '../../types';
 
 export const mapCategoryFromDto = (dto: CategoryDto): Category => ({
@@ -15,12 +15,13 @@ export const mapCategoryToDto = (formData: CategoryFormData): Partial<CategoryDt
   status: formData.status,
 });
 
-export const mapProductFromDto = (dto: ProductDto): Product => ({
+export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Product => ({
   id: dto.id,
   sku: dto.sku,
   name: dto.name,
   category: dto.category?.name || 'Uncategorized',
-  unit: dto.unit?.code || 'PCS',
+  unit: dto.unit?.code || units.find((unit) => unit.id === dto.unit_id)?.code || '',
+  unitId: dto.unit_id,
   stock: 0, // Product list might not return live stock by default unless eager loaded
   minStock: Number(dto.min_stock),
   sellingPrice: Number(dto.selling_price),

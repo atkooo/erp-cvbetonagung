@@ -111,8 +111,8 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
 
   const handleSaveWarehouse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!warehouseForm.code.trim() || !warehouseForm.name.trim()) {
-      Swal.fire('Error', 'Kode dan nama gudang wajib diisi.', 'error');
+    if (!warehouseForm.name.trim()) {
+      Swal.fire('Error', 'Nama gudang wajib diisi.', 'error');
       return;
     }
 
@@ -141,8 +141,8 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
 
   const handleSaveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!locationForm.warehouse_id || !locationForm.code.trim() || !locationForm.name.trim()) {
-      Swal.fire('Error', 'Gudang, kode, dan nama rak wajib diisi.', 'error');
+    if (!locationForm.warehouse_id || !locationForm.name.trim()) {
+      Swal.fire('Error', 'Gudang dan nama rak wajib diisi.', 'error');
       return;
     }
 
@@ -343,12 +343,18 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
             <form onSubmit={handleSaveWarehouse} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
-                  <span className="font-bold text-slate-700 block">Kode</span>
-                  <input value={warehouseForm.code} onChange={e => setWarehouseForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" required />
+                  <span className="font-bold text-slate-700 block">Kode (Otomatis/Manual)</span>
+                  <input value={warehouseForm.code} placeholder="Otomatis" onChange={e => setWarehouseForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="font-bold text-slate-700 block">Tipe</span>
-                  <input value={warehouseForm.type} onChange={e => setWarehouseForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-3 py-2 border rounded-lg" />
+                  <select value={warehouseForm.type} onChange={e => setWarehouseForm(prev => ({ ...prev, type: e.target.value }))} className="w-full px-3 py-2 border rounded-lg">
+                    <option value="Internal">Internal</option>
+                    <option value="Eksternal">Eksternal (Vendor/Titipan)</option>
+                    <option value="Produksi">Produksi / Pabrikasi</option>
+                    <option value="Showroom">Showroom / Toko</option>
+                    <option value="Transit">Virtual / Transit</option>
+                  </select>
                 </label>
               </div>
               <label className="space-y-1.5 block">
@@ -387,8 +393,8 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
-                  <span className="font-bold text-slate-700 block">Kode Rak</span>
-                  <input value={locationForm.code} onChange={e => setLocationForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" required />
+                  <span className="font-bold text-slate-700 block">Kode Rak (Otomatis)</span>
+                  <input value={locationForm.code} placeholder="Otomatis" onChange={e => setLocationForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="font-bold text-slate-700 block">Nama Lokasi</span>

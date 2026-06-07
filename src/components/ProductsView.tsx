@@ -6,9 +6,10 @@
 import React, { useState } from 'react';
 import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag } from '@/src/components/icons';
 import { Product, Category } from '../types';
-import { productsApi } from '../features/products/api';
+import { DEFAULT_UNITS, productsApi } from '../features/products/api';
 import { UnitDto } from '../features/products/types';
 import { inventoryApi } from '../features/inventory/api';
+import { apiClient } from '../services/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface ProductsViewProps {
@@ -34,11 +35,14 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<UnitDto[]>([]);
+  const [storageLocations, setStorageLocations] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
 
   const fetchData = () => {
     setIsLoading(true);
@@ -49,8 +53,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       productsApi.getCategories(),
       productsApi.getUnits(),
       inventoryApi.getProductStocks(),
+      apiClient.get<{ data: any[] }>('/master-data/storage-locations'),
     ])
-      .then(([productsData, catsData, unitsData, stockData]) => {
+      .then(([productsData, catsData, unitsData, stockData, locRes]) => {
         const productsWithStock = productsData.map((product) => {
           const productStocks = stockData.filter((stockRow) => (
             stockRow.product_id === product.id || stockRow.product?.sku === product.sku
@@ -83,12 +88,17 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
         setProducts(productsWithStock);
         setCategories(catsData);
+        setStorageLocations(locRes.data || []);
+        const nextUnits = unitsData.length > 0 ? unitsData : DEFAULT_UNITS;
         setUnits(unitsData);
         if (catsData.length > 0) {
           setCategory(catsData[0].id); // Select first category by default for new product
         }
-        if (unitsData.length > 0) {
-          setUnit(unitsData[0].id); // Select first unit by default
+        if (nextUnits.length > 0) {
+          setUnit(nextUnits[0].id); // Select first unit by default
+        }
+        if (locRes.data && locRes.data.length > 0) {
+          setLocation(locRes.data[0].id);
         }
       })
       .catch((err: Error) => {
@@ -115,8 +125,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setCostPrice(0);
     setSellingPrice(0);
     setStock(0);
-    setUnit(units[0]?.id || '');
-    setLocation('Gudang Utama');
+    setUnit(visibleUnits[0]?.id || '');
+    setLocation(storageLocations[0]?.id || '');
     setMinStock(10);
   };
 
@@ -128,7 +138,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const handleOpenEditModal = (product: Product) => {
     const selectedCategory = categories.find((cat) => cat.name === product.category);
-    const selectedUnit = units.find((u) => u.code === product.unit || u.name === product.unit);
+    const selectedUnit = visibleUnits.find((u) => u.id === product.unitId || u.code === product.unit || u.name === product.unit);
 
     setEditingProduct(product);
     setSku(product.sku);
@@ -137,7 +147,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
     setStock(product.stock);
-    setUnit(selectedUnit?.id || units[0]?.id || '');
+    setUnit(selectedUnit?.id || visibleUnits[0]?.id || '');
     setLocation(product.location);
     setMinStock(product.minStock);
     setShowAddModal(true);
@@ -149,7 +159,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       prod.name.toLowerCase().includes(search.toLowerCase()) ||
       prod.sku.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === 'All' || prod.category === categoryFilter;
-    
+
     let matchesStatus = true;
     if (statusFilter !== 'All') {
       matchesStatus = prod.status === statusFilter;
@@ -160,8 +170,12 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sku || !name || !costPrice || !sellingPrice) {
+    if (!name || !costPrice || !sellingPrice) {
       onTriggerNotification('Gagal menyimpan: Harap lengkapi semua kolom produk!');
+      return;
+    }
+    if (units.length === 0) {
+      onTriggerNotification('Gagal menyimpan: Master satuan belum tersedia. Tambahkan data satuan di backend terlebih dahulu.');
       return;
     }
 
@@ -182,11 +196,17 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       if (editingProduct) {
         const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
         setProducts((prev) => prev.map((prod) => (prod.id === editingProduct.id ? updatedProduct : prod)));
-        onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name} SKU [${updatedProduct.sku}]`);
+        onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name}`);
       } else {
         const newProd = await productsApi.createProduct(payload);
-        setProducts((prev) => [newProd, ...prev]);
-        onTriggerNotification(`Sukses menambahkan Produk Baru: ${name} SKU [${sku}]`);
+        if (stock > 0 && location) {
+          await inventoryApi.updateProductStock(newProd.id, location, stock);
+          // Update the list immediately to reflect new stock
+          await fetchData();
+        } else {
+          setProducts((prev) => [newProd, ...prev]);
+        }
+        onTriggerNotification(`Sukses menambahkan Produk Baru: ${name}`);
       }
       setShowAddModal(false);
       setEditingProduct(null);
@@ -339,11 +359,10 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                         {p.location}
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                          p.status === 'Aman' ? 'bg-emerald-100 text-emerald-800' :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${p.status === 'Aman' ? 'bg-emerald-100 text-emerald-800' :
                           p.status === 'Menipis' ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-200' :
-                          'bg-red-100 text-red-800 font-sans'
-                        }`}>
+                            'bg-red-100 text-red-800 font-sans'
+                          }`}>
                           {p.status}
                         </span>
                       </td>
@@ -408,11 +427,10 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU Produk (Unik)</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU Produk</label>
                   <input
                     type="text"
-                    required
-                    placeholder="Contoh: KBH-ENM-D5"
+                    placeholder="Otomatis (atau isi manual)"
                     value={sku}
                     onChange={(e) => setSku(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
@@ -477,13 +495,18 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Satuan</label>
-                    <select
-                      value={unit}
-                      onChange={(e) => setUnit(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                    >
-                      {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
-                    </select>
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  >
+                    {visibleUnits.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
+                  </select>
+                  {units.length === 0 && (
+                    <p className="text-[10px] text-amber-600 font-semibold">
+                      Master satuan belum tersedia di database.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Batas Minim Alaram</label>
@@ -497,14 +520,19 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Lokasi Penempatan Rak</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Workshop Area B atau Rak Blok G-4"
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Lokasi Penempatan Rak</label>
+                <select
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                />
+                >
+                  {storageLocations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
+                  ))}
+                </select>
+                {storageLocations.length === 0 && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-1">Master lokasi rak belum tersedia di database.</p>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
