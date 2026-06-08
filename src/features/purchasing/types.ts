@@ -96,6 +96,7 @@ export interface ReceivePurchaseOrderDto {
   handled_by?: string | null;
   movement_at: string;
   notes?: string | null;
+  items?: { id: string; quantity: number }[];
 }
 
 export interface ReturnItemDto {

@@ -119,7 +119,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     id: "core",
     items: [
       { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard },
-      { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
+      // { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
     ],
   },
   {
@@ -155,8 +155,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   },
 
   {
-    id: "billing",
-    title: "Billing & Payment",
+    id: "finance",
+    title: "Finance & Accounting",
     collapsible: true,
     items: [
       {
@@ -207,12 +207,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Purchase Order (PO)",
         icon: ShoppingCart,
         requiredModule: "purchasing",
-      },
-      {
-        view: "goods-receipts",
-        label: "Penerimaan (GRN)",
-        icon: PackageCheck,
-        requiredModule: "inventory",
       },
       {
         view: "purchase-returns",
@@ -332,7 +326,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       },
       {
         view: "incoming-goods",
-        label: "Barang Masuk",
+        label: "Penerimaan (GRN)",
         icon: Download,
         requiredModule: "inventory",
       },

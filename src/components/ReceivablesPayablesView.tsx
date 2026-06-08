@@ -67,6 +67,7 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payables, setPayables] = useState<SupplierPayable[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [payablesTab, setPayablesTab] = useState<'outstanding' | 'lunas'>('outstanding');
 
   useEffect(() => {
     fetchData();
@@ -92,13 +93,13 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
   const handlePaySupplier = async (payable: SupplierPayable) => {
     const remaining = payable.amount - payable.paidAmount;
     if (remaining <= 0) {
-      Swal.fire('Info', 'Utang ini sudah lunas.', 'info');
+      Swal.fire('Info', 'AP ini sudah lunas.', 'info');
       return;
     }
 
     const { value: paymentInput } = await Swal.fire({
-      title: 'Pembayaran Utang Supplier',
-      text: `Masukkan nominal pembayaran untuk ${payable.payableNumber} (Sisa: ${formatIDR(remaining)}):`,
+      title: 'Pembayaran AP Supplier',
+      text: `Masukkan nominal pembayaran untuk ${payable.payableNumber} (Sisa AP Outstanding: ${formatIDR(remaining)}):`,
       input: 'number',
       inputPlaceholder: 'Nominal pembayaran',
       showCancelButton: true,
@@ -107,7 +108,7 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
           return 'Nominal pembayaran harus lebih besar dari 0!';
         }
         if (parseFloat(value) > remaining) {
-          return `Nominal pembayaran tidak boleh melebihi sisa utang (${formatIDR(remaining)})!`;
+          return `Nominal pembayaran tidak boleh melebihi sisa AP Outstanding (${formatIDR(remaining)})!`;
         }
         return null;
       }
@@ -124,12 +125,12 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
           status: status
         });
 
-        Swal.fire('Sukses', `Pembayaran ${formatIDR(paymentAmount)} berhasil dicatat.`, 'success');
-        onTriggerNotification(`Pembayaran utang ${payable.payableNumber} sebesar ${formatIDR(paymentAmount)} berhasil.`);
+        Swal.fire('Sukses', `Pembayaran sebesar ${formatIDR(paymentAmount)} berhasil dicatat.`, 'success');
+        onTriggerNotification(`Pembayaran AP ${payable.payableNumber} sebesar ${formatIDR(paymentAmount)} berhasil.`);
         fetchData();
       } catch (error) {
         console.error('Error recording payment:', error);
-        Swal.fire('Gagal', 'Terjadi kesalahan saat memproses pembayaran utang.', 'error');
+        Swal.fire('Gagal', 'Terjadi kesalahan saat memproses pembayaran AP.', 'error');
       }
     }
   };
@@ -168,16 +169,16 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
     <div className="space-y-6 text-xs font-sans">
       <Header
         icon={<WalletCards size={20} />}
-        title="Piutang & Hutang Usaha (Receivables & Payables)"
-        desc="Kelola penagihan piutang dari invoice customer dan jadwal pembayaran utang supplier untuk kestabilan cashflow."
+        title="Accounts Receivable & Accounts Payable (AR / AP)"
+        desc="Kelola penagihan AR dari invoice customer dan jadwal pembayaran AP supplier untuk kestabilan cashflow."
       />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          ['Piutang Overdue', formatIDR(overdueReceivables), 'rose', 'Terlambat'],
-          ['Piutang Aktif', formatIDR(activeReceivables), 'cyan', 'Belum Jatuh Tempo'],
-          ['Hutang Supplier', formatIDR(totalPayables), 'amber', 'Kewajiban'],
+          ['Overdue AR', formatIDR(overdueReceivables), 'rose', 'Terlambat'],
+          ['Active AR', formatIDR(activeReceivables), 'cyan', 'Belum Jatuh Tempo'],
+          ['Outstanding AP', formatIDR(totalPayables), 'amber', 'Kewajiban'],
           ['Net Cash Exposure', formatIDR(netCashExposure), netCashExposure >= 0 ? 'emerald' : 'rose', 'Net Balance']
         ].map(([label, value, tone, sub]) => (
           <Panel key={label} className="p-4">
@@ -196,7 +197,7 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
           className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
         >
           <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-          <span>Segarkan Data Keuangan</span>
+          <span>Segarkan Data</span>
         </button>
       </div>
 
@@ -204,8 +205,8 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
         {/* Receivables Table */}
         <Panel className="overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Aging Piutang Customer</h4>
-            <StatusPill tone="cyan">Receivables</StatusPill>
+            <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">AR Aging (Accounts Receivable)</h4>
+            <StatusPill tone="cyan">AR</StatusPill>
           </div>
 
           {isLoading ? (
@@ -215,17 +216,17 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
           ) : outstandingInvoices.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <CheckCircle size={20} className="mx-auto mb-1 text-emerald-500" />
-              <p>Tidak ada piutang outstanding.</p>
+              <p>Tidak ada outstanding AR.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[500px]">
                 <thead>
                   <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                    <th className="p-3.5 pl-5">No Invoice</th>
+                    <th className="p-3.5 pl-5">Invoice Number</th>
                     <th className="p-3.5">Customer</th>
-                    <th className="p-3.5">Jatuh Tempo</th>
-                    <th className="p-3.5">Sisa Piutang</th>
+                    <th className="p-3.5">Due Date</th>
+                    <th className="p-3.5">AR Outstanding</th>
                     <th className="p-3.5 pr-5">Status</th>
                   </tr>
                 </thead>
@@ -246,7 +247,10 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
                         </td>
                         <td className="p-3.5 pr-5">
                           <StatusPill tone={isOverdue ? 'rose' : getInvoiceTone(inv.status)}>
-                            {isOverdue ? 'Overdue' : inv.status}
+                            {isOverdue ? 'Overdue' : 
+                             inv.status === 'Lunas' ? 'Paid' : 
+                             inv.status === 'Sebagian Dibayar' ? 'Partially Paid' : 
+                             inv.status === 'Belum Lunas' ? 'Unpaid' : inv.status}
                           </StatusPill>
                         </td>
                       </tr>
@@ -260,36 +264,56 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
 
         {/* Payables Table */}
         <Panel className="overflow-hidden">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Aging Hutang Supplier</h4>
-            <StatusPill tone="amber">Payables</StatusPill>
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">AP Aging (Accounts Payable)</h4>
+              <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-slate-100 p-0.5 max-w-max">
+                <button
+                  type="button"
+                  onClick={() => setPayablesTab('outstanding')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${payablesTab === 'outstanding' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  AP Outstanding ({payables.filter(p => p.status !== 'Lunas').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayablesTab('lunas')}
+                  className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${payablesTab === 'lunas' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  AP History / Paid ({payables.filter(p => p.status === 'Lunas').length})
+                </button>
+              </div>
+            </div>
+            <StatusPill tone={payablesTab === 'outstanding' ? 'amber' : 'emerald'}>
+              {payablesTab === 'outstanding' ? 'AP Outstanding' : 'AP Paid'}
+            </StatusPill>
           </div>
 
           {isLoading ? (
             <div className="flex justify-center py-12">
               <RefreshCw className="animate-spin text-slate-400" size={20} />
             </div>
-          ) : payables.filter(p => p.status !== 'Lunas').length === 0 ? (
+          ) : payables.filter(p => payablesTab === 'outstanding' ? p.status !== 'Lunas' : p.status === 'Lunas').length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <CheckCircle size={20} className="mx-auto mb-1 text-emerald-500" />
-              <p>Tidak ada utang outstanding.</p>
+              <p>{payablesTab === 'outstanding' ? 'Tidak ada outstanding AP.' : 'Tidak ada riwayat AP Paid.'}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[500px]">
                 <thead>
                   <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                    <th className="p-3.5 pl-5">No Payable</th>
+                    <th className="p-3.5 pl-5">AP Number</th>
                     <th className="p-3.5">Supplier</th>
-                    <th className="p-3.5">Jatuh Tempo</th>
-                    <th className="p-3.5">Sisa Utang</th>
+                    <th className="p-3.5">Due Date</th>
+                    <th className="p-3.5">{payablesTab === 'outstanding' ? 'AP Outstanding' : 'Total Paid'}</th>
                     <th className="p-3.5">Status</th>
-                    <th className="p-3.5 pr-5 text-right">Aksi</th>
+                    {payablesTab === 'outstanding' && <th className="p-3.5 pr-5 text-right">Action</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {payables
-                    .filter(p => p.status !== 'Lunas')
+                    .filter(p => payablesTab === 'outstanding' ? p.status !== 'Lunas' : p.status === 'Lunas')
                     .map((payable) => {
                       const remaining = payable.amount - payable.paidAmount;
                       const isOverdue = payable.dueDate && payable.dueDate < today;
@@ -302,22 +326,26 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
                             {payable.dueDate}
                           </td>
                           <td className="p-3.5 font-mono font-black text-slate-900">
-                            {formatIDR(remaining)}
+                            {payablesTab === 'outstanding' ? formatIDR(remaining) : formatIDR(payable.amount)}
                           </td>
                           <td className="p-3.5">
-                            <StatusPill tone={isOverdue ? 'rose' : payable.status === 'Open' ? 'amber' : 'cyan'}>
-                              {isOverdue ? 'Overdue' : payable.status}
+                            <StatusPill tone={isOverdue ? 'rose' : payable.status === 'Lunas' ? 'emerald' : payable.status === 'Open' ? 'amber' : 'cyan'}>
+                              {isOverdue ? 'Overdue' : 
+                               payable.status === 'Lunas' ? 'Paid' : 
+                               payable.status === 'Open' ? 'Outstanding' : payable.status}
                             </StatusPill>
                           </td>
-                          <td className="p-3.5 pr-5 text-right">
-                            <button
-                              onClick={() => handlePaySupplier(payable)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold transition"
-                            >
-                              <HandCoins size={12} />
-                              <span>Bayar</span>
-                            </button>
-                          </td>
+                          {payablesTab === 'outstanding' && (
+                            <td className="p-3.5 pr-5 text-right">
+                              <button
+                                onClick={() => handlePaySupplier(payable)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold transition"
+                              >
+                                <HandCoins size={12} />
+                                <span>Pay</span>
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}

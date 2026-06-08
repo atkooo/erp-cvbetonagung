@@ -115,8 +115,11 @@ export interface Payment {
 
 export interface PurchaseOrderItem {
   id?: string;
+  productId?: string;
+  productSku?: string;
   productName: string;
   quantity: number;
+  receivedQty?: number;
   price: number;
 }
 

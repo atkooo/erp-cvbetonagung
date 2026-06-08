@@ -32,8 +32,11 @@ export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder =>
   status: mapPurchaseOrderStatus(dto.status),
   items: (dto.items || []).map(item => ({
     id: item.id, // For receiving logic
+    productId: item.product?.id || item.product_id,
+    productSku: item.product?.sku || '',
     productName: item.product?.name || item.description || 'Unknown Product',
     quantity: Number(item.quantity),
+    receivedQty: Number(item.received_quantity || 0),
     price: Number(item.unit_price)
   }))
 });

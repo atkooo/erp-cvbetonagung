@@ -50,13 +50,29 @@ export const inventoryApi = {
   },
 
   async receiveGoods(data: MovementFormData): Promise<void> {
-    const payload = mapMovementToDto(data);
-    await apiClient.post('/inventory/movements/in', payload);
+    await apiClient.post('/inventory/stock-movements', {
+      product_id: data.product_id,
+      to_location_id: data.location_id,
+      type: 'in',
+      quantity: data.quantity,
+      reference_type: data.reference_type,
+      reference_number: data.reference_number,
+      notes: data.notes,
+      movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
   },
 
   async issueGoods(data: MovementFormData): Promise<void> {
-    const payload = mapMovementToDto(data);
-    await apiClient.post('/inventory/movements/out', payload);
+    await apiClient.post('/inventory/stock-movements', {
+      product_id: data.product_id,
+      from_location_id: data.location_id,
+      type: 'out',
+      quantity: data.quantity,
+      reference_type: data.reference_type,
+      reference_number: data.reference_number,
+      notes: data.notes,
+      movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
   },
 
   // Stock Opname
