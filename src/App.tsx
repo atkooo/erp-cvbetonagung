@@ -501,7 +501,7 @@ export default function App() {
 
         {/* Floating System-wide toast notification overlay */}
         {toast && (
-          <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white rounded-full shadow-xl px-5 py-2.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200 whitespace-nowrap">
+          <div className="fixed top-5 right-5 bg-slate-900 text-white rounded-full shadow-xl px-5 py-2.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200 whitespace-nowrap">
             <CheckCircle2 size={15} className="text-white stroke-[3]" />
             <span className="font-sans font-bold text-[11px]">{toast}</span>
           </div>
@@ -563,7 +563,7 @@ export default function App() {
 
       {/* Floating System-wide toast notification overlay */}
       {toast && (
-        <div className="fixed bottom-5 right-5 bg-slate-900 text-white rounded-lg shadow-xl p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed top-5 right-5 bg-slate-900 text-white rounded-lg shadow-xl p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200">
           <CheckCircle2 size={15} className="text-white stroke-[3]" />
           <span className="font-sans font-bold text-[11px]">{toast}</span>
         </div>

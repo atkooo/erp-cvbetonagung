@@ -64,6 +64,7 @@ export interface StockMovement {
 export interface SalesOrder {
   id: string;
   orderNumber: string;
+  customerId?: string;
   customerName: string;
   date: string;
   total: number;

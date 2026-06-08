@@ -22,6 +22,7 @@ import {
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage } from '../services/api';
 import { salesApi } from '../features/sales/api';
+import { financeApi } from '../features/finance/api';
 import { customersApi } from '../features/customers/api';
 import { productsApi } from '../features/products/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
@@ -402,9 +403,27 @@ export default function SalesView({
                   </button>
                 ) : !isQuotation && selectedDoc.status === 'Draft' ? (
                   <button
-                    onClick={() => {
-                      onNavigate('invoices');
-                      onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
+                    onClick={async () => {
+                      try {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const dueDate = new Date();
+                        dueDate.setDate(dueDate.getDate() + 14);
+                        const dueDateStr = dueDate.toISOString().split('T')[0];
+
+                        await financeApi.createInvoice({
+                          customer_id: selectedDoc.customerId || '',
+                          sales_order_id: selectedDoc.id,
+                          invoice_date: todayStr,
+                          due_date: dueDateStr,
+                          total: selectedDoc.total,
+                          status: 'unpaid'
+                        });
+
+                        onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
+                        onNavigate('invoices');
+                      } catch (err) {
+                        onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
+                      }
                       setSelectedDoc(null);
                     }}
                     className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -465,12 +484,27 @@ export default function SalesView({
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation (Opsional)</label>
                   <select
                     value={quotationId}
-                    onChange={(e) => setQuotationId(e.target.value)}
+                    onChange={(e) => {
+                      const qId = e.target.value;
+                      setQuotationId(qId);
+                      if (qId) {
+                        const selectedQuo = quotations.find(q => q.id === qId);
+                        if (selectedQuo && selectedQuo.items && selectedQuo.items.length > 0) {
+                          const firstItem = selectedQuo.items[0];
+                          const prod = products.find(p => p.name === firstItem.productName);
+                          if (prod) {
+                            setProductId(prod.id);
+                          }
+                          setItemQty(firstItem.quantity);
+                          setItemPrice(firstItem.price);
+                        }
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
                   >
                     <option value="">-- Tanpa Referensi Quotation --</option>
                     {quotations
-                      .filter(q => q.customerId === custId && q.status === 'Disetujui')
+                      .filter(q => q.customerId === custId && (q.status === 'Terkirim' || q.status === 'Draft'))
                       .map(q => (
                         <option key={q.id} value={q.id}>{q.quoteNumber} - {formatIDR(q.total)}</option>
                       ))}

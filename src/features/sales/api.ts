@@ -15,7 +15,10 @@ export const salesApi = {
   },
 
   async approveQuotation(id: string): Promise<SalesOrder> {
-    const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/quotations/${id}/approve`, {});
+    const todayStr = new Date().toISOString().split('T')[0];
+    const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/quotations/${id}/approve`, {
+      order_date: todayStr
+    });
     return mapSalesOrderFromDto(response.data);
   },
 

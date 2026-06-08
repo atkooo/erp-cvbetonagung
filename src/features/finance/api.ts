@@ -9,6 +9,11 @@ export const financeApi = {
     return response.data.map(mapInvoiceFromDto);
   },
 
+  async createInvoice(data: { customer_id: string; sales_order_id: string; invoice_date: string; due_date?: string; total: number; status?: string }): Promise<Invoice> {
+    const response = await apiClient.post<{ data: InvoiceDto }>('/finance/invoices', data);
+    return mapInvoiceFromDto(response.data);
+  },
+
   async getPayments(): Promise<Payment[]> {
     const response = await apiClient.get<{ data: PaymentDto[] }>('/finance/payments?include=invoice.customer');
     return response.data.map(mapPaymentFromDto);
