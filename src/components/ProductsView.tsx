@@ -11,6 +11,7 @@ import { UnitDto } from '../features/products/types';
 import { inventoryApi } from '../features/inventory/api';
 import { apiClient } from '../services/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import Swal from 'sweetalert2';
 
 interface ProductsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -221,16 +222,38 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   };
 
   const handleDelete = async (product: Product) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus produk ${product.name} (${product.sku})?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus produk ${product.name} (${product.sku}) tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     onTriggerNotification(`Menghapus produk ${product.sku}...`);
     try {
       await productsApi.deleteProduct(product.id);
       setProducts((prev) => prev.filter((prod) => prod.id !== product.id));
-      onTriggerNotification(`Sukses menghapus Produk: ${product.name}`);
+      
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Produk ${product.name} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus produk';
-      setErrorMessage(msg);
+      Swal.fire({
+        title: 'Gagal!',
+        text: msg,
+        icon: 'error'
+      });
       onTriggerNotification(msg);
     }
   };

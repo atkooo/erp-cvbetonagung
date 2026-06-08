@@ -12,13 +12,21 @@ export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   status: mapInvoiceStatus(dto.status),
 });
 
+const mapPaymentMethod = (method: string): Payment['method'] => {
+  const m = method.toLowerCase();
+  if (m === 'cash' || m === 'tunai') return 'Cash';
+  if (m === 'transfer') return 'Transfer';
+  if (m === 'qris') return 'QRIS';
+  return 'Cash';
+};
+
 export const mapPaymentFromDto = (dto: PaymentDto): Payment => ({
   id: dto.id,
   paymentNumber: dto.payment_number,
   invoiceNumber: dto.invoice?.invoice_number || 'N/A',
   customerName: dto.invoice?.customer?.name || 'Unknown Customer',
   date: dto.payment_date,
-  method: dto.method,
+  method: mapPaymentMethod(dto.method),
   amount: Number(dto.amount),
   status: mapPaymentStatus(dto.status),
 });
@@ -37,7 +45,7 @@ export const mapSupplierPayableFromDto = (dto: SupplierPayableDto): SupplierPaya
 const mapInvoiceStatus = (status: string): Invoice['status'] => {
   const s = status.toLowerCase();
   if (s === 'unpaid' || s === 'belum lunas') return 'Belum Lunas';
-  if (s === 'partially_paid' || s === 'sebagian dibayar') return 'Sebagian Dibayar';
+  if (s === 'partial' || s === 'partially_paid' || s === 'sebagian dibayar') return 'Sebagian Dibayar';
   if (s === 'paid' || s === 'lunas') return 'Lunas';
   if (s === 'overdue') return 'Overdue';
   return 'Belum Lunas'; // fallback

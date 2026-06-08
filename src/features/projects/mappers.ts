@@ -36,13 +36,13 @@ export const mapProjectFromDto = (dto: ProjectDto): Project => ({
 const mapProjectStatus = (status: string): Project['status'] => {
   const s = status.toLowerCase();
   if (s === 'survey') return 'Survey';
-  if (s === 'penawaran') return 'Penawaran';
+  if (s === 'quotation' || s === 'penawaran') return 'Penawaran';
   if (s === 'deal') return 'Deal';
-  if (s === 'produksi') return 'Produksi';
-  if (s === 'pengiriman') return 'Pengiriman';
-  if (s === 'pemasangan') return 'Pemasangan';
-  if (s === 'selesai') return 'Selesai';
-  if (s === 'dibatalkan') return 'Dibatalkan';
+  if (s === 'production' || s === 'produksi') return 'Produksi';
+  if (s === 'shipping' || s === 'pengiriman') return 'Pengiriman';
+  if (s === 'installation' || s === 'pemasangan') return 'Pemasangan';
+  if (s === 'completed' || s === 'selesai') return 'Selesai';
+  if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
   return 'Survey'; // fallback
 };
 

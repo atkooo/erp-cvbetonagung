@@ -9,6 +9,7 @@ import { Supplier } from '../types';
 import { authStorage } from '../services/api';
 import { suppliersApi } from '../features/suppliers/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import Swal from 'sweetalert2';
 
 interface SuppliersViewProps {
   onTriggerNotification: (message: string) => void;
@@ -92,15 +93,38 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
   };
 
   const handleDelete = async (id: string, suppName: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus supplier ${suppName}?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus supplier ${suppName} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     onTriggerNotification(`Menghapus supplier ${suppName}...`);
     try {
       await suppliersApi.deleteSupplier(id);
       setSuppliers((prev) => prev.filter((s) => s.id !== id));
-      onTriggerNotification(`Sukses menghapus supplier: ${suppName}`);
+      
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Supplier ${suppName} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal menghapus supplier dari backend.';
+      Swal.fire({
+        title: 'Gagal!',
+        text: message,
+        icon: 'error'
+      });
       onTriggerNotification(message);
     }
   };

@@ -9,6 +9,7 @@ import { authStorage } from '../services/api';
 import { employeesApi } from '../features/employees/api';
 import { Employee } from '../types';
 import { SkeletonCard, SkeletonTable, ErrorCard } from './Skeleton';
+import Swal from 'sweetalert2';
 
 interface EmployeeMasterViewProps {
   onTriggerNotification: (message: string) => void;
@@ -173,13 +174,36 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
   };
 
   const handleDelete = async (id: string, empName: string) => {
-    if (!window.confirm(`Hapus data karyawan ${empName}?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus data karyawan ${empName} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       await employeesApi.deleteEmployee(id);
       setEmployees(prev => prev.filter(item => item.id !== id));
-      onTriggerNotification(`Berhasil menghapus karyawan ${empName}`);
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Data karyawan ${empName} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (err) {
       console.error('Failed to delete employee', err);
+      Swal.fire({
+        title: 'Gagal!',
+        text: 'Gagal menghapus data karyawan.',
+        icon: 'error'
+      });
       onTriggerNotification('Gagal menghapus data karyawan.');
     }
   };

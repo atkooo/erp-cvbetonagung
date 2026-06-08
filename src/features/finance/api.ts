@@ -14,13 +14,21 @@ export const financeApi = {
     return mapInvoiceFromDto(response.data);
   },
 
+  async createPayment(data: { invoice_id: string; payment_date: string; method: 'cash' | 'transfer' | 'qris'; amount: number; notes?: string }): Promise<Payment> {
+    const response = await apiClient.post<{ data: PaymentDto }>('/finance/payments', data);
+    return mapPaymentFromDto(response.data);
+  },
+
   async getPayments(): Promise<Payment[]> {
     const response = await apiClient.get<{ data: PaymentDto[] }>('/finance/payments?include=invoice.customer');
     return response.data.map(mapPaymentFromDto);
   },
 
   async verifyPayment(id: string): Promise<Payment> {
-    const response = await apiClient.post<{ data: PaymentDto }>(`/finance/payments/${id}/verify`, {});
+    const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const response = await apiClient.post<{ data: PaymentDto }>(`/finance/payments/${id}/verify`, {
+      verified_at: todayStr,
+    });
     return mapPaymentFromDto(response.data);
   },
 

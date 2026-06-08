@@ -16,6 +16,7 @@ import { projectsApi } from '../features/projects/api';
 import { salesApi } from '../features/sales/api';
 import { ErrorCard } from './Skeleton';
 import { ProductionWorkOrder, ProductionWorkLog, Employee, Product, Project, SalesOrder } from '../types';
+import Swal from 'sweetalert2';
 
 interface ProductionWorkOrderViewProps {
   onTriggerNotification: (message: string) => void;
@@ -223,7 +224,18 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
   };
 
   const handleDeleteWo = async (id: string, num: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus Work Order ${num}?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus Work Order ${num} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       await productionApi.deleteWorkOrder(id);
@@ -231,9 +243,20 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
       if (selectedWoId === id) {
         setSelectedWoId(null);
       }
-      onTriggerNotification(`Work Order ${num} berhasil dihapus.`);
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Work Order ${num} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (err) {
       console.error('Failed to delete work order', err);
+      Swal.fire({
+        title: 'Gagal!',
+        text: 'Gagal menghapus Work Order.',
+        icon: 'error'
+      });
       onTriggerNotification('Gagal menghapus Work Order.');
     }
   };

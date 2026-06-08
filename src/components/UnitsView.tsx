@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { Edit, Plus, Save, Tag, Trash2, X } from "@/src/components/icons";
 import { productsApi } from "../features/products/api";
 import type { UnitDto } from "../features/products/types";
+import Swal from "sweetalert2";
 
 interface UnitsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -103,17 +104,37 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
   };
 
   const handleDelete = async (unit: UnitDto) => {
-    if (!window.confirm(`Hapus satuan ${unit.name} (${unit.code})?`)) {
-      return;
-    }
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus satuan ${unit.name} (${unit.code}) tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       await productsApi.deleteUnit(unit.id);
       setUnits((prev) => prev.filter((item) => item.id !== unit.id));
-      onTriggerNotification(`Sukses menghapus satuan: ${unit.name}`);
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Satuan ${unit.name} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Gagal menghapus satuan.";
+      Swal.fire({
+        title: 'Gagal!',
+        text: message,
+        icon: 'error'
+      });
       onTriggerNotification(message);
     }
   };

@@ -9,6 +9,7 @@ import { Customer } from '../types';
 import { authStorage } from '../services/api';
 import { customersApi } from '../features/customers/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import Swal from 'sweetalert2';
 
 interface CustomersViewProps {
   onTriggerNotification: (message: string) => void;
@@ -97,15 +98,38 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   };
 
   const handleDelete = async (id: string, custName: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus customer ${custName}?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus customer ${custName} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     onTriggerNotification(`Menghapus customer ${custName}...`);
     try {
       await customersApi.deleteCustomer(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
-      onTriggerNotification(`Sukses menghapus customer: ${custName}`);
+      
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Customer ${custName} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal menghapus customer dari backend.';
+      Swal.fire({
+        title: 'Gagal!',
+        text: message,
+        icon: 'error'
+      });
       onTriggerNotification(message);
     }
   };

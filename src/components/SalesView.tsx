@@ -17,7 +17,8 @@ import {
   X,
   CreditCard,
   Building2,
-  Calendar
+  Calendar,
+  Truck
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage } from '../services/api';
@@ -401,42 +402,78 @@ export default function SalesView({
                     <FileCheck size={13} className="text-white" />
                     <span>Approve to SO</span>
                   </button>
-                ) : !isQuotation && selectedDoc.status === 'Draft' ? (
-                  <button
-                    onClick={async () => {
-                      try {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const dueDate = new Date();
-                        dueDate.setDate(dueDate.getDate() + 14);
-                        const dueDateStr = dueDate.toISOString().split('T')[0];
+                ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
+                  <div className="flex flex-col gap-2 w-full">
+                    {selectedDoc.status === 'Draft' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const dueDate = new Date();
+                            dueDate.setDate(dueDate.getDate() + 14);
+                            const dueDateStr = dueDate.toISOString().split('T')[0];
 
-                        await financeApi.createInvoice({
-                          customer_id: selectedDoc.customerId || '',
-                          sales_order_id: selectedDoc.id,
-                          invoice_date: todayStr,
-                          due_date: dueDateStr,
-                          total: selectedDoc.total,
-                          status: 'unpaid'
-                        });
+                            await financeApi.createInvoice({
+                              customer_id: selectedDoc.customerId || '',
+                              sales_order_id: selectedDoc.id,
+                              invoice_date: todayStr,
+                              due_date: dueDateStr,
+                              total: selectedDoc.total,
+                              status: 'unpaid'
+                            });
 
-                        onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
-                        onNavigate('invoices');
-                      } catch (err) {
-                        onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
-                      }
-                      setSelectedDoc(null);
-                    }}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Receipt size={13} className="text-white" />
-                    <span>Terbitkan Invoice</span>
-                  </button>
+                            onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
+                            onNavigate('invoices');
+                          } catch (err) {
+                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
+                          }
+                          setSelectedDoc(null);
+                        }}
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                      >
+                        <Receipt size={13} className="text-white" />
+                        <span>Terbitkan Invoice</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const doNum = `DO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+                          await salesApi.createDeliveryOrder(selectedDoc.id, {
+                            delivery_number: doNum,
+                            delivery_date: todayStr,
+                            notes: `Surat jalan otomatis dari Sales Order ${selectedDoc.orderNumber}`
+                          });
+
+                          onTriggerNotification(`Berhasil menerbitkan Surat Jalan ${doNum} untuk sales order ${selectedDoc.orderNumber}`);
+                          onNavigate('delivery-orders');
+                        } catch (err) {
+                          onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan Surat Jalan. Cek apakah sudah memiliki DO.');
+                        }
+                        setSelectedDoc(null);
+                      }}
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                    >
+                      <Truck size={13} className="text-white" />
+                      <span>Terbitkan Surat Jalan (DO)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedDoc(null)}
+                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => setSelectedDoc(null)}
-                    className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800"
+                    className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
                   >
-                    Selesai
+                    Tutup
                   </button>
                 )}
               </div>

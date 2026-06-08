@@ -21,6 +21,21 @@ export const projectsApi = {
     return mapProjectFromDto(response.data);
   },
 
+  async createProject(data: {
+    project_name: string;
+    customer_id: string;
+    code?: string;
+    location?: string;
+    project_type?: string;
+    project_spec?: string;
+    contract_value?: number;
+    deadline?: string;
+    status?: string;
+  }): Promise<Project> {
+    const response = await apiClient.post<{ data: ProjectDto }>('/projects/projects', data);
+    return mapProjectFromDto(response.data);
+  },
+
   async getProjectBudgets(): Promise<ProjectBudgetItem[]> {
     const response = await apiClient.get<{ data: ProjectBudgetItemDto[] }>('/projects/project-budget-items?include=project');
     return response.data.map(mapProjectBudgetItemFromDto);

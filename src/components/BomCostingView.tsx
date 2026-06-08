@@ -13,6 +13,7 @@ import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';
 import { Bom, BomItem, Product } from '../types';
 import { ErrorCard } from './Skeleton';
+import Swal from 'sweetalert2';
 
 interface BomCostingViewProps {
   onTriggerNotification: (message: string) => void;
@@ -207,7 +208,18 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
   };
 
   const handleDeleteBom = async (id: string, ver: string) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus BOM versi ${ver}?`)) return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus BOM versi ${ver} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       await productionApi.deleteBom(id);
@@ -215,9 +227,20 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
       if (selectedBomId === id) {
         setSelectedBomId(null);
       }
-      onTriggerNotification(`BOM versi ${ver} berhasil dihapus.`);
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `BOM versi ${ver} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (err) {
       console.error('Failed to delete BOM', err);
+      Swal.fire({
+        title: 'Gagal!',
+        text: 'Gagal menghapus BOM.',
+        icon: 'error'
+      });
       onTriggerNotification('Gagal menghapus BOM.');
     }
   };

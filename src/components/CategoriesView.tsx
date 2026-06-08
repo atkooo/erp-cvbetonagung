@@ -15,6 +15,7 @@ import {
 } from "@/src/components/icons";
 import { Product, Category } from "../types";
 import { productsApi } from "../features/products/api";
+import Swal from "sweetalert2";
 
 interface CategoriesViewProps {
   onTriggerNotification: (message: string) => void;
@@ -81,21 +82,41 @@ export default function CategoriesView({
   };
 
   const handleDelete = async (id: string, catName: string) => {
-    if (
-      !window.confirm(`Apakah Anda yakin ingin menghapus kategori ${catName}?`)
-    )
-      return;
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: `Menghapus kategori ${catName} tidak dapat dibatalkan!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     onTriggerNotification(`Menghapus kategori ${catName}...`);
     try {
       await productsApi.deleteCategory(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
-      onTriggerNotification(`Sukses menghapus kategori: ${catName}`);
+      
+      Swal.fire({
+        title: 'Terhapus!',
+        text: `Kategori ${catName} berhasil dihapus.`,
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Gagal menghapus kategori dari backend.";
+      Swal.fire({
+        title: 'Gagal!',
+        text: message,
+        icon: 'error'
+      });
       onTriggerNotification(message);
     }
   };

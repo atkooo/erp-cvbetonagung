@@ -27,9 +27,10 @@ import {
   X,
   Plus
 } from '@/src/components/icons';
-import { Project, ViewType } from '../types';
+import { Project, ViewType, Customer } from '../types';
 import { authStorage } from '../services/api';
 import { projectsApi } from '../features/projects/api';
+import { customersApi } from '../features/customers/api';
 
 interface ProjectsViewProps {
   selectedProjectId: string | null;
@@ -48,6 +49,19 @@ export default function ProjectsView({
   const [newStage, setNewStage] = useState('Produksi Workshop');
   const [newDesc, setNewDesc] = useState('');
 
+  // Project registration states
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+  const [projName, setProjName] = useState('');
+  const [custId, setCustId] = useState('');
+  const [projCode, setProjCode] = useState('');
+  const [location, setLocation] = useState('');
+  const [projType, setProjType] = useState('Kubah Masjid');
+  const [projSpec, setProjSpec] = useState('');
+  const [contractVal, setContractVal] = useState(0);
+  const [deadline, setDeadline] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
   // API states
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,10 +69,17 @@ export default function ProjectsView({
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await projectsApi.getProjects();
-      setProjects(data);
+      const [projData, custData] = await Promise.all([
+        projectsApi.getProjects(),
+        customersApi.listCustomers()
+      ]);
+      setProjects(projData);
+      setCustomers(custData.customers || []);
+      if (custData.customers && custData.customers.length > 0 && !custId) {
+        setCustId(custData.customers[0].id);
+      }
     } catch (err) {
-      console.error('Failed to load projects', err);
+      console.error('Failed to load projects data', err);
     } finally {
       setIsLoading(false);
     }
@@ -67,6 +88,49 @@ export default function ProjectsView({
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projName || !custId) {
+      onTriggerNotification('Nama proyek dan customer harus diisi.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const generatedCode = projCode || `PRJ-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const created = await projectsApi.createProject({
+        project_name: projName,
+        customer_id: custId,
+        code: generatedCode,
+        location: location || undefined,
+        project_type: projType,
+        project_spec: projSpec || undefined,
+        contract_value: contractVal,
+        deadline: deadline || undefined,
+        status: 'survey'
+      });
+
+      onTriggerNotification(`Proyek ${created.projectName} berhasil didaftarkan`);
+      setShowAddProjectModal(false);
+      
+      // Clear form
+      setProjName('');
+      setProjCode('');
+      setLocation('');
+      setProjType('Kubah Masjid');
+      setProjSpec('');
+      setContractVal(0);
+      setDeadline('');
+
+      await loadData();
+    } catch (err) {
+      console.error('Failed to create project', err);
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal mendaftarkan kontrak proyek');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -357,9 +421,9 @@ export default function ProjectsView({
         </div>
         <button
           onClick={() => {
-            onTriggerNotification('Fungsi registrasi pengerjaan proyek baru. Membuka form kontrak...');
+            setShowAddProjectModal(true);
           }}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center gap-1.5 shrink-0"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
         >
           <Compass size={14} />
           <span>Daftarkan Kontrak Proyek</span>
@@ -466,6 +530,134 @@ export default function ProjectsView({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 3. Modal: Registrasi Proyek Kontrak Baru */}
+      {showAddProjectModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-xs font-sans text-slate-800">
+          <div className="bg-white rounded-xl shadow-2xl border max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Compass size={18} className="text-cyan-400" />
+                <h3 className="font-bold text-sm">Daftarkan Kontrak Proyek Baru</h3>
+              </div>
+              <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleCreateProject} className="p-5 space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Pilih Pelanggan / Partner *</label>
+                {customers.length > 0 ? (
+                  <select
+                    required
+                    value={custId}
+                    onChange={(e) => setCustId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded cursor-pointer"
+                  >
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
+                    <option>Memuat Pelanggan...</option>
+                  </select>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Proyek *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Pemasangan Kubah Masjid Al-Ikhlas"
+                  value={projName}
+                  onChange={(e) => setProjName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Kode Proyek (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="PRJ-2026-XXXX"
+                    value={projCode}
+                    onChange={(e) => setProjCode(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi Proyek</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Surabaya, Jawa Timur"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Jenis Proyek</label>
+                  <select
+                    value={projType}
+                    onChange={(e) => setProjType(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded cursor-pointer"
+                  >
+                    <option value="Kubah Masjid">Kubah Masjid</option>
+                    <option value="Precast Concrete">Precast Concrete</option>
+                    <option value="Ornamen Dinding">Ornamen Dinding</option>
+                    <option value="Pekerjaan Pondasi">Pekerjaan Pondasi</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Nilai Kontrak Proyek (Rp)</label>
+                  <input
+                    type="number"
+                    required
+                    value={contractVal || ''}
+                    onChange={(e) => setContractVal(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Spesifikasi Ornamen/Bahan</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Beton K-350 standard SNI"
+                    value={projSpec}
+                    onChange={(e) => setProjSpec(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal Deadline *</label>
+                  <input
+                    type="date"
+                    required
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
+                <button type="button" onClick={() => setShowAddProjectModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50 cursor-pointer">
+                  {isSaving ? 'Menyimpan...' : 'Simpan Kontrak'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
