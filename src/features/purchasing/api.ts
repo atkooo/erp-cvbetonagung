@@ -1,10 +1,11 @@
 import { apiClient } from '../../services/api';
-import { PurchaseOrder, PurchaseRequest, Rfq } from '../../types';
+import { GoodsReceiptNote, PurchaseOrder, PurchaseRequest, Rfq } from '../../types';
 import { 
-  PurchaseOrderDto, CreatePurchaseOrderDto, ReceivePurchaseOrderDto,
-  ReturnDto, CreateReturnDto, Return, PurchaseRequestDto, CreatePurchaseRequestDto
+  PurchaseOrderDto, CreatePurchaseOrderDto,
+  ReturnDto, CreateReturnDto, Return, PurchaseRequestDto, CreatePurchaseRequestDto,
+  GoodsReceiptNoteDto, CreateGoodsReceiptNoteDto
 } from './types';
-import { mapPurchaseOrderFromDto, mapReturnFromDto, mapPurchaseRequestFromDto, mapRfqFromDto } from './mappers';
+import { mapGoodsReceiptNoteFromDto, mapPurchaseOrderFromDto, mapReturnFromDto, mapPurchaseRequestFromDto, mapRfqFromDto } from './mappers';
 
 export const purchasingApi = {
   async getPurchaseRequests(): Promise<PurchaseRequest[]> {
@@ -71,6 +72,11 @@ export const purchasingApi = {
     return response.data.map(mapPurchaseOrderFromDto);
   },
 
+  async getPurchaseOrder(id: string): Promise<PurchaseOrder> {
+    const response = await apiClient.get<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}?include=supplier,items.product`);
+    return mapPurchaseOrderFromDto(response.data);
+  },
+
   async createPurchaseOrder(data: CreatePurchaseOrderDto & { rfq_id?: string; purchase_request_id?: string }): Promise<PurchaseOrder> {
     const payload = {
       supplier_id: data.supplier_id,
@@ -103,9 +109,14 @@ export const purchasingApi = {
     return mapPurchaseOrderFromDto(finalRes.data);
   },
 
-  async receivePurchaseOrder(id: string, data: ReceivePurchaseOrderDto): Promise<PurchaseOrder> {
-    const response = await apiClient.post<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}/receive`, data);
-    return mapPurchaseOrderFromDto(response.data);
+  async getGoodsReceiptNotes(): Promise<GoodsReceiptNote[]> {
+    const response = await apiClient.get<{ data: GoodsReceiptNoteDto[] }>('/purchasing/goods-receipts?include=purchase_order,warehouse,receiver,items.product&sort=-receipt_date');
+    return response.data.map(mapGoodsReceiptNoteFromDto);
+  },
+
+  async createGoodsReceiptNote(data: CreateGoodsReceiptNoteDto): Promise<GoodsReceiptNote> {
+    const response = await apiClient.post<{ data: GoodsReceiptNoteDto }>('/purchasing/goods-receipts', data);
+    return mapGoodsReceiptNoteFromDto(response.data);
   },
 
   async getReturns(): Promise<Return[]> {
@@ -170,4 +181,3 @@ export const purchasingApi = {
     return mapRfqFromDto(response.data);
   }
 };
-

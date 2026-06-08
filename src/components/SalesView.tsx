@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import {
   FileSpreadsheet,
   FileCheck,
@@ -27,6 +28,7 @@ import { financeApi } from '../features/finance/api';
 import { customersApi } from '../features/customers/api';
 import { productsApi } from '../features/products/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import SearchableSelect from './SearchableSelect';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -43,6 +45,7 @@ export default function SalesView({
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // API states
   const [quotations, setQuotations] = useState<Quotation[]>([]);
@@ -54,6 +57,13 @@ export default function SalesView({
 
   const isQuotation = type === 'quotation';
   const dataList = isQuotation ? quotations : salesOrders;
+  const printTitle = selectedDoc
+    ? `${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`
+    : 'sales-document';
+  const handlePrintAction = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: printTitle,
+  });
 
   // Form states to create a quick document
   const [custId, setCustId] = useState('');
@@ -387,6 +397,7 @@ export default function SalesView({
                 <button
                   onClick={() => {
                     onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`);
+                    setTimeout(() => handlePrintAction(), 150);
                   }}
                   className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5"
                 >
@@ -482,6 +493,96 @@ export default function SalesView({
         </div>
       )}
 
+      <div className="hidden print:block">
+        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+          {selectedDoc && (() => {
+            const docNumber = isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber;
+            const docTitle = isQuotation ? 'QUOTATION' : 'SALES ORDER';
+            const docDateLabel = isQuotation ? 'Tanggal Penawaran' : 'Tanggal Sales Order';
+            const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
+
+            return (
+              <div className="max-w-[800px] mx-auto">
+                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                  <div>
+                    <h1 className="text-2xl font-black tracking-tight">CV BETON AGUNG</h1>
+                    <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
+                    <p className="text-[11px] mt-1">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
+                    <p className="font-mono font-bold mt-2 text-lg">{docNumber}</p>
+                    <p className="text-sm">{docDateLabel}: {selectedDoc.date}</p>
+                    {isQuotation && <p className="text-sm">Berlaku Hingga: {selectedDoc.validUntil}</p>}
+                  </div>
+                </div>
+
+                <div className="border border-black rounded-md p-4 w-[45%] mb-6">
+                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">KEPADA YTH. (CUSTOMER)</p>
+                  <p className="font-bold text-lg mt-1">{selectedDoc.customerName}</p>
+                </div>
+
+                <table className="w-full border-collapse border border-black text-xs">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      <th className="border border-black p-2 w-10">NO</th>
+                      <th className="border border-black p-2 text-left">NAMA PRODUK / PEKERJAAN</th>
+                      <th className="border border-black p-2 w-20 text-right">QTY</th>
+                      <th className="border border-black p-2 w-32 text-right">HARGA SATUAN</th>
+                      <th className="border border-black p-2 w-32 text-right">JUMLAH</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDoc.items?.map((item: any, idx: number) => (
+                      <tr key={`${item.productName}-${idx}`}>
+                        <td className="border border-black p-2 text-center">{idx + 1}</td>
+                        <td className="border border-black p-2 font-bold">{item.productName}</td>
+                        <td className="border border-black p-2 text-right font-mono">{item.quantity}</td>
+                        <td className="border border-black p-2 text-right font-mono">{formatIDR(item.price)}</td>
+                        <td className="border border-black p-2 text-right font-mono font-bold">{formatIDR(item.quantity * item.price)}</td>
+                      </tr>
+                    ))}
+                    {!selectedDoc.items?.length && (
+                      <tr>
+                        <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>Tidak ada item.</td>
+                      </tr>
+                    )}
+                    <tr className="bg-slate-100">
+                      <td colSpan={4} className="border border-black p-3 text-right font-black">TOTAL KESELURUHAN</td>
+                      <td className="border border-black p-3 text-right font-black font-mono text-base">{formatIDR(selectedDoc.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <p className="text-[11px] mt-6">
+                  <strong>Catatan:</strong> Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.
+                </p>
+
+                <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
+                  <div>
+                    <p>Dibuat Oleh,</p>
+                    <div className="h-20"></div>
+                    <p className="border-t border-black pt-2 font-bold">SALES DEPT.</p>
+                    <p>CV Beton Agung</p>
+                  </div>
+                  <div>
+                    <p>{signatureTitle}</p>
+                    <div className="h-20"></div>
+                    <p className="border-t border-black pt-2 font-bold">{selectedDoc.customerName}</p>
+                  </div>
+                  <div>
+                    <p>Mengetahui,</p>
+                    <div className="h-20"></div>
+                    <p className="border-t border-black pt-2 font-bold">DIREKTUR UTAMA</p>
+                    <p>CV Beton Agung</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* 5. Create Draft Modal Form */}
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
@@ -500,29 +601,29 @@ export default function SalesView({
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
                 {customers.length > 0 ? (
-                  <select
+                  <SearchableSelect
                     value={custId}
-                    onChange={(e) => setCustId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                  >
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setCustId(val)}
+                    options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
+                    placeholder="Pilih Customer..."
+                  />
                 ) : (
-                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
-                    <option>Memuat Customer...</option>
-                  </select>
+                  <SearchableSelect
+                    value=""
+                    onChange={() => {}}
+                    options={[]}
+                    placeholder="Memuat Customer..."
+                    disabled
+                  />
                 )}
               </div>
 
               {!isQuotation && (
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation (Opsional)</label>
-                  <select
+                  <SearchableSelect
                     value={quotationId}
-                    onChange={(e) => {
-                      const qId = e.target.value;
+                    onChange={(qId) => {
                       setQuotationId(qId);
                       if (qId) {
                         const selectedQuo = quotations.find(q => q.id === qId);
@@ -537,41 +638,41 @@ export default function SalesView({
                         }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                  >
-                    <option value="">-- Tanpa Referensi Quotation --</option>
-                    {quotations
-                      .filter(q => q.customerId === custId && (q.status === 'Terkirim' || q.status === 'Draft'))
-                      .map(q => (
-                        <option key={q.id} value={q.id}>{q.quoteNumber} - {formatIDR(q.total)}</option>
-                      ))}
-                  </select>
+                    options={[
+                      { value: "", label: "-- Tanpa Referensi Quotation --" },
+                      ...quotations
+                        .filter(q => q.customerId === custId && (q.status === 'Terkirim' || q.status === 'Draft'))
+                        .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${formatIDR(q.total)}` }))
+                    ]}
+                    placeholder="Pilih Referensi Quotation..."
+                  />
                 </div>
               )}
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk Borongan</label>
                 {products.length > 0 ? (
-                  <select
+                  <SearchableSelect
                     value={productId}
-                    onChange={(e) => {
-                      setProductId(e.target.value);
-                      const selProd = products.find(p => p.id === e.target.value);
+                    onChange={(val) => {
+                      setProductId(val);
+                      const selProd = products.find(p => p.id === val);
                       if (selProd) {
                         setItemPrice(selProd.sellingPrice || 0);
                         setItemQty(1);
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded"
-                  >
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({formatIDR(p.sellingPrice)})</option>
-                    ))}
-                  </select>
+                    options={products.map(p => ({ value: p.id, label: `${p.name} (${formatIDR(p.sellingPrice)})` }))}
+                    placeholder="Pilih Produk..."
+                  />
                 ) : (
-                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
-                    <option>Memuat Produk...</option>
-                  </select>
+                  <SearchableSelect
+                    value=""
+                    onChange={() => {}}
+                    options={[]}
+                    placeholder="Memuat Produk..."
+                    disabled
+                  />
                 )}
               </div>
 

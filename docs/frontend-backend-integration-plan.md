@@ -106,6 +106,8 @@ Module prefixes and resources:
 - `purchasing`
   - `purchase-orders`
   - `purchase-order-items`
+  - `goods-receipts`
+  - `goods-receipt-items`
   - `supplier-payables`
   - `returns`
   - `return-items`
@@ -135,7 +137,7 @@ Workflow endpoints:
 - `POST /sales/quotations/{id}/approve`
 - `POST /sales/sales-orders/{id}/deliver`
 - `POST /sales/delivery-orders/{id}/ship`
-- `POST /purchasing/purchase-orders/{id}/receive`
+- `POST /purchasing/goods-receipts`
 - `POST /finance/payments/{id}/verify`
 - `POST /inventory/stock-opname-items/{id}/adjust`
 
@@ -245,7 +247,9 @@ Follow backend readiness and UI dependency order.
 6. Purchasing and returns
    - purchase orders
    - purchase order items
-   - purchase receiving
+   - goods receipt notes
+   - goods receipt note items
+   - purchase receiving stock movements generated from goods receipt notes
    - supplier payables
    - returns
    - return items
@@ -384,7 +388,9 @@ Goal: connect the cross-module business flows.
 Tasks:
 
 - Integrate purchase orders and purchase order items.
-- Integrate purchase receiving through `POST /purchasing/purchase-orders/{id}/receive`.
+- Integrate purchase receiving as a first-class GRN document through `POST /purchasing/goods-receipts`.
+- Ensure GRN has its own header and item tables. Do not use purchase orders or stock movements as the GRN document store.
+- Generate inventory stock movements from posted GRNs, with each movement referencing the GRN id/number for audit traceability.
 - Integrate supplier payables and returns.
 - Integrate projects, timelines, documents, and budget items.
 - Integrate invoices and invoice items.
@@ -393,7 +399,8 @@ Tasks:
 
 Verification:
 
-- receiving a purchase order increases stock through backend workflow.
+- posting a GRN increases stock through backend workflow.
+- GRN number remains printable and searchable after stock movements are generated.
 - payment verification updates invoice paid amount and status.
 - project timeline entries persist after refresh.
 - related financial views agree with backend values.

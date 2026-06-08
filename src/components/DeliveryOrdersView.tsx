@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Search, CheckCircle2, ChevronRight, X, Clock, HelpCircle, FileText, Send, Check } from '@/src/components/icons';
+import React, { useRef, useState, useEffect } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { Truck, Plus, Search, CheckCircle2, ChevronRight, X, Clock, HelpCircle, FileText, Send, Check, Printer } from '@/src/components/icons';
 import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { DeliveryOrder, SalesOrder } from '../types';
@@ -34,6 +35,8 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
   const [isShipModalOpen, setIsShipModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [selectedDo, setSelectedDo] = useState<DeliveryOrder | null>(null);
+  const [printDoId, setPrintDoId] = useState<string | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Create DO form states
   const [selectedSalesOrderId, setSelectedSalesOrderId] = useState('');
@@ -46,6 +49,11 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
 
   // Receive DO form states
   const [receiverName, setReceiverName] = useState('');
+  const printDo = deliveryOrders.find(item => item.id === printDoId) || null;
+  const handlePrintAction = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: printDo?.deliveryNumber || 'surat-jalan',
+  });
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -157,8 +165,10 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
     }
   };
 
-  const handlePrintDo = (doNumber: string) => {
-    onTriggerNotification(`Surat Jalan ${doNumber} disiapkan untuk dicetak. Membuka print layout...`);
+  const handlePrintDo = (doOrder: DeliveryOrder) => {
+    setPrintDoId(doOrder.id);
+    onTriggerNotification(`Surat Jalan ${doOrder.deliveryNumber} disiapkan untuk dicetak. Membuka print layout...`);
+    setTimeout(() => handlePrintAction(), 150);
   };
 
   // Filters & Counts
@@ -347,10 +357,11 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                             </button>
                           )}
                           <button
-                            onClick={() => handlePrintDo(doOrder.deliveryNumber)}
-                            className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all"
+                            onClick={() => handlePrintDo(doOrder)}
+                            className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1"
                           >
-                            Cetak
+                            <Printer size={10} />
+                            <span>Cetak</span>
                           </button>
                         </div>
                       </td>
@@ -369,6 +380,95 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
           </div>
         </>
       )}
+
+      <div className="hidden print:block">
+        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+          {printDo && (
+            <div className="max-w-[800px] mx-auto">
+              <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                <div>
+                  <h1 className="text-2xl font-black tracking-tight">CV BETON AGUNG</h1>
+                  <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
+                  <p className="text-[11px] mt-1">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+                </div>
+                <div className="text-right">
+                  <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">SURAT JALAN</div>
+                  <p className="font-mono font-bold mt-2 text-lg">{printDo.deliveryNumber}</p>
+                  <p className="text-sm">Tanggal Kirim: {printDo.deliveryDate}</p>
+                  <p className="text-sm">Status: {printDo.status}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="border border-black rounded-md p-4">
+                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">DIKIRIM KEPADA</p>
+                  <p className="font-bold text-lg mt-1">{printDo.customerName || '-'}</p>
+                  <p className="mt-2 text-xs text-slate-700">Referensi SO: <strong>{printDo.salesOrderNumber || '-'}</strong></p>
+                </div>
+                <div className="border border-black rounded-md p-4">
+                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">INFORMASI PENERIMAAN</p>
+                  <p className="mt-1">Penerima: <strong>{printDo.receiverName || '-'}</strong></p>
+                  <p>Tanggal Terima: <strong>{printDo.receivedAt || '-'}</strong></p>
+                </div>
+              </div>
+
+              <table className="w-full border-collapse border border-black text-xs">
+                <thead>
+                  <tr className="bg-slate-100">
+                    <th className="border border-black p-2 w-10">NO</th>
+                    <th className="border border-black p-2 text-left">NAMA BARANG / MATERIAL</th>
+                    <th className="border border-black p-2 w-28">SKU</th>
+                    <th className="border border-black p-2 w-28 text-right">QTY KIRIM</th>
+                    <th className="border border-black p-2 w-32">KETERANGAN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printDo.items?.map((item, idx) => (
+                    <tr key={item.id || `${item.productName}-${idx}`}>
+                      <td className="border border-black p-2 text-center">{idx + 1}</td>
+                      <td className="border border-black p-2 font-bold">{item.productName}</td>
+                      <td className="border border-black p-2 text-center font-mono">{item.productSku || '-'}</td>
+                      <td className="border border-black p-2 text-right font-mono font-bold">{item.quantity}</td>
+                      <td className="border border-black p-2">Baik</td>
+                    </tr>
+                  ))}
+                  {!printDo.items?.length && (
+                    <tr>
+                      <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>
+                        {printDo.notes || 'Muatan custom belum memiliki rincian item.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <div className="mt-5 text-[11px] leading-relaxed">
+                <p><strong>Catatan Pengiriman:</strong> {printDo.notes || '-'}</p>
+                <p>Barang yang tercantum di atas telah diserahkan sesuai dokumen Sales Order terkait.</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
+                <div>
+                  <p>Disiapkan Oleh,</p>
+                  <div className="h-20"></div>
+                  <p className="border-t border-black pt-2 font-bold">GUDANG</p>
+                  <p>CV Beton Agung</p>
+                </div>
+                <div>
+                  <p>Dikirim Oleh,</p>
+                  <div className="h-20"></div>
+                  <p className="border-t border-black pt-2 font-bold">SUPIR / EKSPEDISI</p>
+                </div>
+                <div>
+                  <p>Diterima Oleh,</p>
+                  <div className="h-20"></div>
+                  <p className="border-t border-black pt-2 font-bold">{printDo.receiverName || printDo.customerName || 'CUSTOMER'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Modal: Buat Surat Jalan */}
       {isCreateModalOpen && (

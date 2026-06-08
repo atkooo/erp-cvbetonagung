@@ -3,6 +3,7 @@ import { X, ArrowDownCircle, ArrowUpCircle } from "../icons";
 import { Product, StockMovement } from "../../types";
 import { LocationDto as Location, ProductStockDto as ProductStock } from "../../features/inventory/types";
 import ReferencePicker from "../ReferencePicker";
+import SearchableSelect from "../SearchableSelect";
 
 interface InventoryModalsProps {
   // Common
@@ -71,6 +72,9 @@ interface InventoryModalsProps {
   getStockLocationOptions: (p: Product | null) => ProductStock[];
   getDefaultStockLocationId: (p: Product | null) => string;
   handleOutwardSubmit: (e: React.FormEvent) => void;
+
+  // Additional options
+  employeeOptions?: { value: string, label: string }[];
 }
 
 export const InventoryModals: React.FC<InventoryModalsProps> = ({
@@ -79,6 +83,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
   showInwardModal, setShowInwardModal, inSku, setInSku, inQty, setInQty, inDoc, setInDoc, inHandler, setInHandler, inNotes, setInNotes, inLocationId, setInLocationId, poOptions, purchaseOrders, inPoItemsQty, setInPoItemsQty, getIncomingLocationOptions, getDefaultIncomingLocationId, handleInwardSubmit,
   showCorrectionModal, setShowCorrectionModal, correctionQty, setCorrectionQty, correctionLocationId, setCorrectionLocationId, correctionNotes, setCorrectionNotes, handleCorrectionSubmit,
   showOutwardModal, setShowOutwardModal, outSku, setOutSku, outQty, setOutQty, outDoc, setOutDoc, outHandler, setOutHandler, outNotes, setOutNotes, outLocationId, setOutLocationId, soOptions, getStockLocationOptions, getDefaultStockLocationId, handleOutwardSubmit,
+  employeeOptions,
 }) => {
   const selectedPO = React.useMemo(() => {
     return purchaseOrders?.find(po => po.poNumber === inDoc) || null;
@@ -217,19 +222,15 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                   <label className="text-[11px] font-bold text-slate-600">
                     Lokasi Tujuan Gudang / Rak
                   </label>
-                  <select
+                  <SearchableSelect
                     value={inLocationId}
-                    onChange={(e) => setInLocationId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
-                    required
-                  >
-                    <option value="">-- Pilih Lokasi --</option>
-                    {getIncomingLocationOptions().map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name} ({loc.code})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setInLocationId(val)}
+                    options={getIncomingLocationOptions().map((loc) => ({
+                      value: loc.id,
+                      label: `${loc.name} (${loc.code})`
+                    }))}
+                    placeholder="-- Pilih Lokasi --"
+                  />
                 </div>
               </div>
 
@@ -249,23 +250,40 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedPO.items?.map((item: any) => {
+                        {selectedPO.items?.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-4 text-center text-[11px] text-slate-400">
+                              Detail item PO belum tersedia dari backend.
+                            </td>
+                          </tr>
+                        ) : selectedPO.items?.map((item: any) => {
                           const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
-                          if (remaining <= 0) return null;
+                          const currentValue = inPoItemsQty?.[item.id] !== undefined
+                            ? inPoItemsQty[item.id]
+                            : remaining;
+
                           return (
                             <tr key={item.id} className="border-b border-slate-100 last:border-0">
                               <td className="py-2">
-                                <div className="font-bold text-slate-800">{item.productSku}</div>
+                                <div className="font-bold text-slate-800">{item.productSku || "-"}</div>
                                 <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{item.productName}</div>
+                                {remaining <= 0 && (
+                                  <div className="text-[9px] font-bold text-emerald-600 mt-0.5">
+                                    Sudah diterima penuh
+                                  </div>
+                                )}
                               </td>
                               <td className="py-2 text-right font-mono">{item.quantity}</td>
-                              <td className="py-2 text-right font-mono text-rose-600 font-bold">{remaining}</td>
+                              <td className={`py-2 text-right font-mono font-bold ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                {remaining}
+                              </td>
                               <td className="py-2 text-right">
                                 <input
                                   type="number"
                                   min={0}
                                   max={remaining}
-                                  value={inPoItemsQty?.[item.id] !== undefined ? inPoItemsQty[item.id] : remaining}
+                                  value={currentValue}
+                                  disabled={remaining <= 0}
                                   onChange={(e) => {
                                     if (setInPoItemsQty) {
                                       setInPoItemsQty(prev => ({
@@ -274,7 +292,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                                       }));
                                     }
                                   }}
-                                  className="w-20 px-2 py-1 text-right border border-slate-200 rounded text-xs"
+                                  className="w-20 px-2 py-1 text-right border border-slate-200 rounded text-xs disabled:bg-slate-100 disabled:text-slate-400"
                                 />
                               </td>
                             </tr>
@@ -329,12 +347,11 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 <label className="text-[11px] font-bold text-slate-600">
                   Petugas yang Memverifikasi
                 </label>
-                <input
-                  type="text"
-                  required
+                <SearchableSelect
                   value={inHandler}
-                  onChange={(e) => setInHandler(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200"
+                  onChange={(val) => setInHandler(val)}
+                  options={employeeOptions || []}
+                  placeholder="-- Pilih Petugas --"
                 />
               </div>
 
@@ -427,10 +444,9 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 <label className="text-[11px] font-bold text-slate-600">
                   Lokasi / Rak Terdampak
                 </label>
-                <select
+                <SearchableSelect
                   value={correctionLocationId}
-                  onChange={(e) => {
-                    const locId = e.target.value;
+                  onChange={(locId) => {
                     setCorrectionLocationId(locId);
                     const st = getProductStocks(selectedProduct).find(
                       (s) => s.location_id === locId,
@@ -438,27 +454,19 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                     if (st) setCorrectionQty(Number(st.quantity || 0));
                     else setCorrectionQty(0);
                   }}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
-                  required
-                >
-                  <option value="">-- Pilih Lokasi --</option>
-                  {getProductStocks(selectedProduct).length > 0
-                    ? getProductStocks(selectedProduct).map((stock) => (
-                      <option
-                        key={stock.location_id}
-                        value={stock.location_id}
-                      >
-                        {stock.location?.name ||
-                          getLocationName(stock.location_id)}{" "}
-                        - Stok: {Number(stock.quantity || 0)}
-                      </option>
-                    ))
-                    : locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name} ({loc.code}) - Stok: 0
-                      </option>
-                    ))}
-                </select>
+                  options={
+                    getProductStocks(selectedProduct).length > 0
+                      ? getProductStocks(selectedProduct).map((stock) => ({
+                          value: stock.location_id,
+                          label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`
+                        }))
+                      : locations.map((loc) => ({
+                          value: loc.id,
+                          label: `${loc.name} (${loc.code}) - Stok: 0`
+                        }))
+                  }
+                  placeholder="-- Pilih Lokasi --"
+                />
               </div>
 
               <div className="space-y-1">
@@ -544,23 +552,17 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 <label className="text-[11px] font-bold text-slate-600">
                   Lokasi Sumber Gudang / Rak
                 </label>
-                <select
+                <SearchableSelect
                   value={outLocationId}
-                  onChange={(e) => setOutLocationId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
-                  required
-                >
-                  <option value="">-- Pilih Lokasi Stok --</option>
-                  {getStockLocationOptions(getProductBySku(outSku)).map(
-                    (stock) => (
-                      <option key={stock.location_id} value={stock.location_id}>
-                        {stock.location?.name ||
-                          getLocationName(stock.location_id)}{" "}
-                        - Stok: {Number(stock.quantity || 0)}
-                      </option>
-                    ),
+                  onChange={(val) => setOutLocationId(val)}
+                  options={getStockLocationOptions(getProductBySku(outSku)).map(
+                    (stock) => ({
+                      value: stock.location_id,
+                      label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`
+                    })
                   )}
-                </select>
+                  placeholder="-- Pilih Lokasi Stok --"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">
@@ -595,12 +597,11 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 <label className="text-[11px] font-bold text-slate-600">
                   Driver / Kurir Pengantar
                 </label>
-                <input
-                  type="text"
-                  required
+                <SearchableSelect
                   value={outHandler}
-                  onChange={(e) => setOutHandler(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200"
+                  onChange={(val) => setOutHandler(val)}
+                  options={employeeOptions || []}
+                  placeholder="-- Pilih Driver/Kurir/Petugas --"
                 />
               </div>
 

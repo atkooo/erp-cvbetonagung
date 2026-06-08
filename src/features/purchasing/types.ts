@@ -50,6 +50,7 @@ export interface PurchaseOrderItemDto {
   product_id: string;
   description: string | null;
   quantity: number;
+  received_qty?: number;
   received_quantity: number;
   unit_price: number;
   subtotal: number;
@@ -62,8 +63,10 @@ export interface PurchaseOrderItemDto {
 
 export interface PurchaseOrderDto {
   id: string;
+  po_number?: string;
   purchase_number: string;
   supplier_id: string;
+  po_date?: string;
   order_date: string;
   expected_date: string | null;
   status: string; // Draft, Dipesan, Diterima Sebagian, Diterima Penuh, Dibatalkan
@@ -91,12 +94,68 @@ export interface CreatePurchaseOrderDto {
   }[];
 }
 
-export interface ReceivePurchaseOrderDto {
+export interface GoodsReceiptNoteItemDto {
+  id: string;
+  goods_receipt_note_id: string;
+  purchase_order_item_id: string | null;
+  product_id: string;
+  received_quantity: number;
+  rejected_quantity: number;
+  notes: string | null;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+  };
+}
+
+export interface GoodsReceiptNoteDto {
+  id: string;
+  grn_number: string;
+  purchase_order_id: string | null;
+  warehouse_id: string | null;
+  to_location_id?: string | null;
+  received_by: string | null;
+  receipt_date: string;
+  delivery_order_number: string | null;
+  status: string;
+  notes: string | null;
+  purchase_order?: {
+    id: string;
+    purchase_number: string;
+  };
+  warehouse?: {
+    id: string;
+    name: string;
+  };
+  to_location?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  receiver?: {
+    id: string;
+    name: string;
+  };
+  items?: GoodsReceiptNoteItemDto[];
+}
+
+export interface CreateGoodsReceiptNoteDto {
+  purchase_order_id?: string | null;
+  warehouse_id?: string | null;
   to_location_id: string;
-  handled_by?: string | null;
-  movement_at: string;
+  received_by?: string | null;
+  receipt_date: string;
+  delivery_order_number?: string | null;
+  status?: string;
   notes?: string | null;
-  items?: { id: string; quantity: number }[];
+  items: {
+    purchase_order_item_id?: string | null;
+    product_id: string;
+    received_quantity: number;
+    rejected_quantity?: number;
+    notes?: string | null;
+  }[];
 }
 
 export interface ReturnItemDto {

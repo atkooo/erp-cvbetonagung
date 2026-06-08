@@ -67,7 +67,7 @@ export interface SupplierPayable {
   dueDate: string;
   amount: number;
   paidAmount: number;
-  status: 'Open' | 'Lunas';
+  status: 'Open' | 'Sebagian Dibayar' | 'Lunas';
 }
 
 export interface AccountDto {

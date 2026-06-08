@@ -37,8 +37,8 @@ export const financeApi = {
     return response.data.map(mapSupplierPayableFromDto);
   },
 
-  async updateSupplierPayable(id: string, data: Partial<{ paid_amount: number; status: 'open' | 'partial' | 'paid' }>): Promise<SupplierPayable> {
-    const response = await apiClient.put<{ data: SupplierPayableDto }>(`/purchasing/supplier-payables/${id}`, data);
+  async paySupplierPayable(id: string, data: { amount: number; method?: 'cash' | 'transfer' | 'qris'; notes?: string }): Promise<SupplierPayable> {
+    const response = await apiClient.post<{ data: SupplierPayableDto }>(`/finance/supplier-payables/${id}/pay`, data);
     return mapSupplierPayableFromDto(response.data);
   },
 
@@ -57,4 +57,3 @@ export const financeApi = {
     return response.data;
   }
 };
-

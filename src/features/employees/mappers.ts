@@ -16,6 +16,7 @@ export const mapEmployeeFromDto = (dto: EmployeeDto): Employee => {
 
   return {
     id: dto.id,
+    userId: dto.user_id,
     employeeNumber: dto.employee_number,
     name: dto.name,
     roleName: dto.role_name,

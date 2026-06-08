@@ -459,26 +459,44 @@ export default function EmployeeMasterView({ onTriggerNotification }: EmployeeMa
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-650 text-slate-700">Jabatan Pekerjaan *</label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="Contoh: Tukang Cetak"
                     value={roleName}
                     onChange={(e) => setRoleName(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
-                  />
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                  >
+                    <option value="">-- Pilih Jabatan --</option>
+                    <option value="Tukang Cetak">Tukang Cetak</option>
+                    <option value="Tukang Besi">Tukang Besi</option>
+                    <option value="Helper">Helper / Kenek</option>
+                    <option value="Mandor">Mandor</option>
+                    <option value="Supir Logistik">Supir Logistik</option>
+                    <option value="Admin Gudang">Admin Gudang</option>
+                    <option value="Kepala Gudang">Kepala Gudang</option>
+                    <option value="Admin Sales">Admin Sales</option>
+                    <option value="Finance">Finance / Akuntan</option>
+                    <option value="HRD">HRD & General Affair</option>
+                    <option value="Manager Operasional">Manager Operasional</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-650 text-slate-700">Divisi Departemen *</label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="Contoh: Workshop"
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
-                  />
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                  >
+                    <option value="">-- Pilih Divisi --</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Logistik">Logistik</option>
+                    <option value="Gudang">Gudang</option>
+                    <option value="Sales & Marketing">Sales & Marketing</option>
+                    <option value="Keuangan">Keuangan (Finance)</option>
+                    <option value="HRD & GA">HRD & GA</option>
+                    <option value="Manajemen">Manajemen</option>
+                  </select>
                 </div>
               </div>
 

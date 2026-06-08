@@ -183,6 +183,7 @@ export interface Rfq {
 export interface GoodsReceiptNoteItem {
   id: string;
   productId: string;
+  productSku?: string;
   productName: string;
   receivedQty: number;
   rejectedQty: number;
@@ -239,6 +240,7 @@ export interface Project {
 
 export interface Employee {
   id: string;
+  userId?: string | null;
   employeeNumber: string;
   name: string;
   roleName: string;

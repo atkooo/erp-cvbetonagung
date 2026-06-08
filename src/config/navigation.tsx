@@ -81,9 +81,9 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "sales-orders": "Daftar Sales Order (SO)",
   "delivery-orders": "Delivery Order / Surat Jalan",
   returns: "Retur Barang",
-  invoices: "Faktur Penjualan (Invoices)",
-  payments: "Riwayat Pembayaran Customer",
-  "receivables-payables": "Piutang & Hutang",
+  invoices: "Billing (Invoice Customer)",
+  payments: "Kasir (Penerimaan Customer)",
+  "receivables-payables": "Piutang & Hutang (AR / AP)",
   "cash-expense": "Kas & Biaya Operasional",
   "purchase-requests": "Purchase Request (PR)",
   rfq: "Request For Quotation (RFQ)",
@@ -161,13 +161,13 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     items: [
       {
         view: "invoices",
-        label: "Invoice",
+        label: "Billing (Invoice)",
         icon: Receipt,
         requiredModule: "finance",
       },
       {
         view: "payments",
-        label: "Payment",
+        label: "Kasir Customer",
         icon: CreditCard,
         requiredModule: "finance",
       },

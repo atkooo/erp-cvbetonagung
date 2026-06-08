@@ -1,5 +1,5 @@
-import { PurchaseOrder, PurchaseRequest, PurchaseRequestItem } from '../../types';
-import { PurchaseOrderDto, ReturnItemDto, ReturnItem, ReturnDto, Return, PurchaseRequestDto, PurchaseRequestItemDto } from './types';
+import { GoodsReceiptNote, PurchaseOrder, PurchaseRequest, PurchaseRequestItem } from '../../types';
+import { GoodsReceiptNoteDto, GoodsReceiptNoteItemDto, PurchaseOrderDto, ReturnItemDto, ReturnItem, ReturnDto, Return, PurchaseRequestDto, PurchaseRequestItemDto } from './types';
 
 export const mapPurchaseRequestItemFromDto = (dto: PurchaseRequestItemDto): PurchaseRequestItem => ({
   id: dto.id,
@@ -25,7 +25,7 @@ export const mapPurchaseRequestFromDto = (dto: PurchaseRequestDto): PurchaseRequ
 
 export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder => ({
   id: dto.id,
-  poNumber: dto.purchase_number || `PO-${dto.id.substring(0, 8)}`,
+  poNumber: dto.purchase_number || dto.po_number || `PO-${dto.id.substring(0, 8)}`,
   supplierName: dto.supplier?.name || 'Unknown Supplier',
   date: (dto as any).po_date || dto.order_date,
   total: Number(dto.total) || (dto.items || []).reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_price)), 0),
@@ -36,7 +36,7 @@ export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder =>
     productSku: item.product?.sku || '',
     productName: item.product?.name || item.description || 'Unknown Product',
     quantity: Number(item.quantity),
-    receivedQty: Number(item.received_quantity || 0),
+    receivedQty: Number(item.received_quantity ?? item.received_qty ?? 0),
     price: Number(item.unit_price)
   }))
 });
@@ -46,10 +46,36 @@ const mapPurchaseOrderStatus = (status: string): PurchaseOrder['status'] => {
   if (s === 'draft') return 'Draft';
   if (s === 'ordered' || s === 'dipesan') return 'Dipesan';
   if (s === 'partially_received' || s === 'diterima sebagian') return 'Diterima Sebagian';
-  if (s === 'received' || s === 'diterima penuh') return 'Diterima Penuh';
+  if (s === 'received' || s === 'fully_received' || s === 'diterima penuh') return 'Diterima Penuh';
   if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
   return 'Draft'; // fallback
 };
+
+export const mapGoodsReceiptNoteItemFromDto = (dto: GoodsReceiptNoteItemDto) => ({
+  id: dto.id,
+  productId: dto.product_id,
+  productSku: dto.product?.sku || '',
+  productName: dto.product?.name || 'Produk Tidak Dikenal',
+  receivedQty: Number(dto.received_quantity || 0),
+  rejectedQty: Number(dto.rejected_quantity || 0),
+  notes: dto.notes || undefined,
+});
+
+export const mapGoodsReceiptNoteFromDto = (dto: GoodsReceiptNoteDto): GoodsReceiptNote => ({
+  id: dto.id,
+  grnNumber: dto.grn_number,
+  purchaseOrderId: dto.purchase_order_id || '',
+  poNumber: dto.purchase_order?.purchase_number,
+  warehouseId: dto.warehouse_id || dto.to_location_id || undefined,
+  warehouseName: dto.warehouse?.name || dto.to_location?.name,
+  receivedBy: dto.received_by || '',
+  receiverName: dto.receiver?.name,
+  receiptDate: dto.receipt_date,
+  deliveryOrderNumber: dto.delivery_order_number || undefined,
+  status: dto.status,
+  notes: dto.notes || undefined,
+  items: (dto.items || []).map(mapGoodsReceiptNoteItemFromDto),
+});
 
 export const mapReturnItemFromDto = (dto: ReturnItemDto): ReturnItem => ({
   id: dto.id,

@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign } from '@/src/components/icons';
 import { Invoice, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
+import { formatDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 
 interface InvoicesViewProps {
@@ -19,13 +21,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-
-  // Payment states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [payAmount, setPayAmount] = useState(0);
-  const [payMethod, setPayMethod] = useState<'cash' | 'transfer' | 'qris'>('transfer');
-  const [payNotes, setPayNotes] = useState('');
-  const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // API states
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -52,47 +48,19 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (selectedInvoice) {
-      setPayAmount(selectedInvoice.total - selectedInvoice.paidAmount);
-      setPayNotes(`Penerimaan pembayaran faktur ${selectedInvoice.invoiceNumber}`);
-    }
-  }, [selectedInvoice]);
-
-  const handleRecordPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedInvoice) return;
-
-    if (payAmount <= 0) {
-      onTriggerNotification('Gagal: Nominal pembayaran harus lebih besar dari 0!');
-      return;
-    }
-
-    setIsSavingPayment(true);
-    try {
-      const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
-
-      await financeApi.createPayment({
-        invoice_id: selectedInvoice.id,
-        payment_date: todayStr,
-        method: payMethod,
-        amount: payAmount,
-        notes: payNotes,
-      });
-
-      onTriggerNotification(`Berhasil merekam pembayaran untuk invoice ${selectedInvoice.invoiceNumber}`);
-      setShowPaymentModal(false);
-      setSelectedInvoice(null);
-      await loadData();
-    } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menyimpan pembayaran');
-    } finally {
-      setIsSavingPayment(false);
-    }
-  };
-
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+  };
+
+  const handlePrintAction = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: selectedInvoice?.invoiceNumber || 'invoice-cv-beton-agung',
+  });
+
+  const handlePrintInvoice = () => {
+    if (!selectedInvoice) return;
+    onTriggerNotification(`Menyiapkan invoice ${selectedInvoice.invoiceNumber} untuk dicetak / PDF...`);
+    setTimeout(() => handlePrintAction(), 150);
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -200,8 +168,8 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                           <span>{inv.invoiceNumber}</span>
                         </td>
                         <td className="p-3.5 font-bold text-slate-700">{inv.customerName}</td>
-                        <td className="p-3.5 font-mono text-slate-500">{inv.date}</td>
-                        <td className="p-3.5 font-mono font-medium text-amber-600">{inv.dueDate}</td>
+                        <td className="p-3.5 font-mono text-slate-500">{formatDate(inv.date)}</td>
+                        <td className="p-3.5 font-mono font-medium text-amber-600">{formatDate(inv.dueDate)}</td>
                         <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(inv.total)}</td>
                         <td className="p-3.5 font-mono text-emerald-600 font-bold">{formatIDR(inv.paidAmount)}</td>
                         <td className="p-3.5">
@@ -258,8 +226,8 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 <div className="text-right">
                   <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-1">Detail Dokumen Faktur</p>
                   <strong className="text-cyan-600 block text-xs">{selectedInvoice.invoiceNumber}</strong>
-                  <span className="text-slate-500 block">Tanggal: <strong className="text-slate-600">{selectedInvoice.date}</strong></span>
-                  <span className="text-rose-600 font-bold block">Jatuh Tempo: {selectedInvoice.dueDate}</span>
+                  <span className="text-slate-500 block">Tanggal: <strong className="text-slate-600">{formatDate(selectedInvoice.date)}</strong></span>
+                  <span className="text-rose-600 font-bold block">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</span>
                 </div>
               </div>
 
@@ -293,20 +261,8 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
             {/* Actions */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 text-xs font-bold">
-              {selectedInvoice.status !== 'Lunas' && (
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow"
-                >
-                  <DollarSign size={13} className="text-white" />
-                  <span>Catat Pembayaran</span>
-                </button>
-              )}
-
               <button
-                onClick={() => {
-                  onTriggerNotification(`Mencetak invoice slip ${selectedInvoice.invoiceNumber}...`);
-                }}
+                onClick={handlePrintInvoice}
                 className="px-3.5 py-1.5 border hover:bg-slate-100 rounded-lg flex items-center gap-1.5 text-slate-650 cursor-pointer"
               >
                 <Printer size={13} />
@@ -334,76 +290,98 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
         </div>
       )}
 
-      {/* 5. Catat Pembayaran Modal Form */}
-      {showPaymentModal && selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <DollarSign size={18} className="text-cyan-400" />
-                <h3 className="font-bold text-sm">Catat Pembayaran Baru</h3>
-              </div>
-              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleRecordPayment} className="p-5 space-y-4">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Faktur / Invoice</span>
-                <p className="font-bold text-slate-800 text-xs">{selectedInvoice.invoiceNumber} - {selectedInvoice.customerName}</p>
-                <div className="flex justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-200 mt-1">
-                  <span>Total Tagihan: {formatIDR(selectedInvoice.total)}</span>
-                  <span>Sisa Piutang: <strong className="text-indigo-700">{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</strong></span>
+      <div className="hidden">
+        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+          {selectedInvoice && (
+            <div className="w-full max-w-[800px] mx-auto">
+              <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
+                <div>
+                  <h1 className="text-3xl font-black tracking-tight uppercase">CV Beton Agung Solusi</h1>
+                  <p className="text-sm font-bold mt-1">Penyedia Kubah Masjid & Precast Beton Jawa Timur</p>
+                  <p className="text-xs mt-1 text-slate-700 max-w-sm">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest border border-slate-300 inline-block px-4 py-1">
+                    INVOICE
+                  </h2>
+                  <p className="font-mono font-bold mt-2 text-lg">{selectedInvoice.invoiceNumber}</p>
+                  <p className="text-sm">Tanggal: {formatDate(selectedInvoice.date)}</p>
+                  <p className="text-sm">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</p>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Metode Setoran</label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                >
-                  <option value="transfer">Bank Transfer (Giro BCA)</option>
-                  <option value="cash">Cash / Tunai Fisik</option>
-                  <option value="qris">QRIS Standar Mandiri</option>
-                </select>
+              <div className="grid grid-cols-2 gap-6 mb-8">
+                <div className="border border-black rounded-md p-4">
+                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest uppercase mb-1">Ditagihkan Kepada</p>
+                  <p className="font-bold text-lg">{selectedInvoice.customerName}</p>
+                  <p className="mt-2 text-xs text-slate-700">Mitra Pembangunan Daerah</p>
+                </div>
+                <div className="border border-black rounded-md p-4">
+                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest uppercase mb-2">Status Pembayaran</p>
+                  <p>Status: <strong>{selectedInvoice.status}</strong></p>
+                  <p>Total Dibayar: <strong>{formatIDR(selectedInvoice.paidAmount)}</strong></p>
+                  <p>Sisa Tagihan: <strong>{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</strong></p>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Nominal Pembayaran (Rp)</label>
-                <input
-                  type="number"
-                  required
-                  max={selectedInvoice.total - selectedInvoice.paidAmount}
-                  value={payAmount || ''}
-                  onChange={(e) => setPayAmount(Number(e.target.value))}
-                  placeholder="Masukkan nominal setoran..."
-                  className="w-full px-3 py-2 border border-slate-200 focus:outline-none"
-                />
+              <table className="w-full mb-8 border-collapse border border-black">
+                <thead>
+                  <tr className="bg-slate-100 uppercase text-xs">
+                    <th className="p-3 border border-black text-left w-12">No</th>
+                    <th className="p-3 border border-black text-left">Uraian Tagihan</th>
+                    <th className="p-3 border border-black text-right w-48">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-3 border border-black text-center">1</td>
+                    <td className="p-3 border border-black">
+                      <p className="font-bold">Paket Konstruksi Terintegrasi</p>
+                      <p className="text-xs text-slate-600 mt-1">Komponen Beton Pracetak standardisasi SNI CV Beton Agung</p>
+                    </td>
+                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2} className="p-3 border border-black text-right font-bold">TOTAL TAGIHAN</td>
+                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={2} className="p-3 border border-black text-right font-bold">TELAH DIBAYAR</td>
+                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.paidAmount)}</td>
+                  </tr>
+                  <tr className="bg-slate-100">
+                    <td colSpan={2} className="p-3 border border-black text-right font-black">SISA TAGIHAN</td>
+                    <td className="p-3 border border-black text-right font-mono font-black text-lg">
+                      {formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              <div className="text-xs leading-relaxed mb-12">
+                <p><strong>Catatan:</strong> Mohon lakukan pembayaran sebelum tanggal jatuh tempo. Simpan dokumen ini sebagai bukti tagihan resmi.</p>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Catatan Pembayaran</label>
-                <textarea
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="Keterangan setoran..."
-                  className="w-full px-3 py-2 border border-slate-200 focus:outline-none h-16 resize-none"
-                />
+              <div className="grid grid-cols-2 gap-20 mt-12 text-center text-xs">
+                <div>
+                  <p>Diterima Oleh,</p>
+                  <div className="h-24"></div>
+                  <p className="border-t border-black pt-2 font-bold">{selectedInvoice.customerName}</p>
+                </div>
+                <div>
+                  <p>Hormat Kami,</p>
+                  <div className="h-24"></div>
+                  <p className="border-t border-black pt-2 font-bold">Finance Dept.</p>
+                  <p>CV Beton Agung Solusi</p>
+                </div>
               </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                <button type="button" onClick={() => setShowPaymentModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
-                <button type="submit" disabled={isSavingPayment} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50">
-                  {isSavingPayment ? 'Menyimpan...' : 'Simpan Pembayaran'}
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
     </div>
   );
 }

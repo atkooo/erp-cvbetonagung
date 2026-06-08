@@ -20,13 +20,14 @@ import {
   ClipboardCheck,
   X,
 } from "@/src/components/icons";
-import { Product, StockMovement } from "../types";
-import { apiClient } from "../services/api";
+import { GoodsReceiptNote, Product, StockMovement } from "../types";
+import { apiClient, authStorage } from "../services/api";
 import { productsApi } from "../features/products/api";
 import { inventoryApi } from "../features/inventory/api";
 import { purchasingApi } from "../features/purchasing/api";
 import { salesApi } from "../features/sales/api";
-import { PurchaseOrder, SalesOrder } from "../types";
+import { employeesApi } from "../features/employees/api";
+import { PurchaseOrder, SalesOrder, Employee } from "../types";
 import { LocationDto, ProductStockDto } from "../features/inventory/types";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
 import ReferencePicker from "./ReferencePicker";
@@ -96,24 +97,29 @@ export default function InventoryView({
   const [productStocks, setProductStocks] = useState<ProductStockDto[]>([]);
   const [locations, setLocations] = useState<LocationDto[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [goodsReceipts, setGoodsReceipts] = useState<GoodsReceiptNote[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fetchedPoDetailIds = React.useRef<Set<string>>(new Set());
 
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [prods, stocks, movs, locRes, pos, sos] = await Promise.all([
+      const [prods, stocks, movs, grns, locRes, pos, sos, emps] = await Promise.all([
         productsApi.getProducts(),
         inventoryApi.getProductStocks(),
         inventoryApi.getStockMovements(),
+        purchasingApi.getGoodsReceiptNotes(),
         apiClient.get<{ data: LocationDto[] }>(
           "/master-data/storage-locations",
         ),
         purchasingApi.getPurchaseOrders(),
         salesApi.getSalesOrders(),
+        employeesApi.getEmployees(),
       ]);
 
       const combinedProds = prods.map((p) => {
@@ -153,8 +159,10 @@ export default function InventoryView({
       setProductStocks(stocks);
       setLocations(locRes.data);
       setStockMovements(movs);
+      setGoodsReceipts(grns);
       setPurchaseOrders(pos);
       setSalesOrders(sos);
+      setEmployees(emps);
 
       if (combinedProds.length > 0) {
         setInSku((prev) => prev || combinedProds[0].sku);
@@ -175,6 +183,41 @@ export default function InventoryView({
   React.useEffect(() => {
     loadData();
   }, []);
+
+  React.useEffect(() => {
+    const selectedPo = purchaseOrders.find((po) => po.poNumber === inDoc);
+
+    if (
+      !selectedPo ||
+      selectedPo.items?.length > 0 ||
+      fetchedPoDetailIds.current.has(selectedPo.id)
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    fetchedPoDetailIds.current.add(selectedPo.id);
+
+    purchasingApi.getPurchaseOrder(selectedPo.id)
+      .then((poWithItems) => {
+        if (cancelled) return;
+
+        setPurchaseOrders((prev) =>
+          prev.map((po) => (po.id === poWithItems.id ? poWithItems : po)),
+        );
+      })
+      .catch((err) => {
+        onTriggerNotification(
+          err instanceof Error
+            ? err.message
+            : "Gagal memuat detail item Purchase Order",
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inDoc, purchaseOrders, onTriggerNotification]);
 
   const getProductStocks = (product: Product | null) => {
     if (!product) return [];
@@ -244,36 +287,57 @@ export default function InventoryView({
     }
 
     const matchedPO = purchaseOrders.find((po) => po.poNumber === inDoc);
+    const selectedReceiver = employees.find((emp) => emp.name === inHandler);
+    const receiverId = selectedReceiver?.userId || authStorage.getUser()?.id || null;
 
     if (matchedPO) {
       // MODE PO
       const itemsToReceive = matchedPO.items?.filter((item) => {
-        const inputQty = inPoItemsQty[item.id!] || 0;
+        const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
+        const inputQty = inPoItemsQty[item.id!] !== undefined ? inPoItemsQty[item.id!] : remaining;
         return inputQty > 0;
       }) || [];
 
       if (itemsToReceive.length === 0) {
+        const hasItems = (matchedPO.items || []).length > 0;
         onTriggerNotification(
-          "Gagal: Harus ada minimal 1 item yang diterima dengan jumlah lebih dari 0.",
+          hasItems
+            ? "Gagal: Semua item PO ini sudah diterima penuh."
+            : "Gagal: Detail item PO belum tersedia. Muat ulang data atau cek item PO di backend.",
         );
         return;
       }
 
       try {
-        const payloadItems = itemsToReceive.map((item) => ({
-          id: item.id!,
-          quantity: inPoItemsQty[item.id!],
-        }));
+        const payloadItems = itemsToReceive.map((item) => {
+          const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
+          return {
+            id: item.id!,
+            quantity: inPoItemsQty[item.id!] !== undefined ? inPoItemsQty[item.id!] : remaining,
+          };
+        });
 
-        await purchasingApi.receivePurchaseOrder(matchedPO.id, {
+        await purchasingApi.createGoodsReceiptNote({
+          purchase_order_id: matchedPO.id,
           to_location_id: inLocationId,
+          received_by: receiverId,
+          receipt_date: new Date().toISOString().split("T")[0],
+          status: "posted",
           notes: inNotes,
-          items: payloadItems,
-          movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          items: payloadItems.map((payloadItem) => {
+            const poItem = matchedPO.items.find((item) => item.id === payloadItem.id);
+            return {
+              purchase_order_item_id: payloadItem.id,
+              product_id: poItem?.productId || "",
+              received_quantity: payloadItem.quantity,
+              rejected_quantity: 0,
+              notes: inNotes || null,
+            };
+          }).filter((item) => item.product_id),
         });
 
         onTriggerNotification(
-          `Sukses menerima ${itemsToReceive.length} jenis item dari PO [${inDoc}]`,
+          `GRN penerimaan untuk PO [${inDoc}] berhasil dibuat dengan ${itemsToReceive.length} item.`,
         );
         await loadData();
       } catch (err) {
@@ -294,16 +358,26 @@ export default function InventoryView({
       if (!matchedProd) return;
 
       try {
-        await inventoryApi.receiveGoods({
-          product_id: matchedProd.id,
-          quantity: inQty,
-          location_id: inLocationId,
-          reference_type: "PO",
-          reference_number: inDoc,
+        await purchasingApi.createGoodsReceiptNote({
+          purchase_order_id: null,
+          to_location_id: inLocationId,
+          received_by: receiverId,
+          receipt_date: new Date().toISOString().split("T")[0],
+          delivery_order_number: inDoc,
+          status: "posted",
           notes: inNotes,
+          items: [
+            {
+              purchase_order_item_id: null,
+              product_id: matchedProd.id,
+              received_quantity: inQty,
+              rejected_quantity: 0,
+              notes: inNotes || null,
+            },
+          ],
         });
         onTriggerNotification(
-          `Sukses menerima ${inQty} ${matchedProd.unit} untuk SKU [${inSku}] via API`,
+          `GRN penerimaan manual untuk SKU [${inSku}] berhasil dibuat.`,
         );
         await loadData();
       } catch (err) {
@@ -414,7 +488,7 @@ export default function InventoryView({
   };
 
   const poOptions = purchaseOrders
-    .filter(po => po.status !== 'Dibatalkan')
+    .filter(po => po.status === 'Dipesan' || po.status === 'Diterima Sebagian')
     .map(po => ({
       id: po.id,
       number: po.poNumber,
@@ -427,6 +501,11 @@ export default function InventoryView({
     number: so.orderNumber,
     label: so.customerName,
     subLabel: so.status
+  }));
+
+  const employeeOptions = employees.map(emp => ({
+    value: emp.name,
+    label: `${emp.name} (${emp.roleName})`
   }));
 
   return (
@@ -514,7 +593,7 @@ export default function InventoryView({
           )}
 
           {activeTab === "masuk" && (
-            <InwardTab stockMovements={stockMovements} search={search} />
+            <InwardTab goodsReceipts={goodsReceipts} locations={locations} search={search} />
           )}
 
           {activeTab === "keluar" && (
@@ -585,6 +664,7 @@ export default function InventoryView({
         getStockLocationOptions={getStockLocationOptions}
         getDefaultStockLocationId={getDefaultStockLocationId}
         handleOutwardSubmit={handleOutwardSubmit}
+        employeeOptions={employeeOptions}
       />
     </div>
   );

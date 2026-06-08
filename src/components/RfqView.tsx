@@ -29,6 +29,7 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
   const [rfqs, setRfqs] = useState<Rfq[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [creatingPoRfqId, setCreatingPoRfqId] = useState<string | null>(null);
 
   // Form State
   const [supplierId, setSupplierId] = useState('');
@@ -124,6 +125,11 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
   };
 
   const handleCreatePo = async (rfq: any) => {
+    if (creatingPoRfqId) {
+      return;
+    }
+
+    setCreatingPoRfqId(rfq.id);
     try {
       const d = new Date();
       const todayStr = d.toISOString().split('T')[0];
@@ -150,6 +156,8 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
     } catch (err) {
       console.error(err);
       onTriggerNotification(err instanceof Error ? err.message : `Gagal membuat PO dari tawaran ${rfq.rfqNumber}`);
+    } finally {
+      setCreatingPoRfqId(null);
     }
   };
 
@@ -251,7 +259,13 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
                               </>
                             )}
                             {rfq.status === 'Diterima' && (
-                              <button onClick={() => handleCreatePo(rfq)} className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded mr-2 text-[10px] font-bold shadow-sm">Pilih Tawaran</button>
+                              <button
+                                onClick={() => handleCreatePo(rfq)}
+                                disabled={creatingPoRfqId !== null}
+                                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded mr-2 text-[10px] font-bold shadow-sm disabled:opacity-50"
+                              >
+                                {creatingPoRfqId === rfq.id ? 'Memproses...' : 'Pilih Tawaran'}
+                              </button>
                             )}
                             <button onClick={() => {
                               if (expandedRfqId !== rfq.id) {

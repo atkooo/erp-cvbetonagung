@@ -129,16 +129,32 @@ export default function PurchaseView({
 
   const handleReceiveGoods = async (poId: string, poNum: string, items: any[]) => {
     try {
-      const d = new Date();
-      const todayStr = d.toISOString().split('T')[0];
-      
-      await purchasingApi.receivePurchaseOrder(poId, {
-        movement_at: new Date().toISOString(),
+      const po = purchaseOrders.find((purchaseOrder) => purchaseOrder.id === poId);
+      const receiptItems = (po?.items || items || [])
+        .map((item: any) => ({
+          purchase_order_item_id: item.id,
+          product_id: item.productId,
+          received_quantity: Math.max(0, item.quantity - (item.receivedQty || 0)),
+          rejected_quantity: 0,
+          notes: `Diterima dari PO ${poNum}`,
+        }))
+        .filter((item: any) => item.purchase_order_item_id && item.product_id && item.received_quantity > 0);
+
+      if (receiptItems.length === 0) {
+        onTriggerNotification(`Tidak ada sisa item yang perlu diterima untuk PO ${poNum}.`);
+        return;
+      }
+
+      await purchasingApi.createGoodsReceiptNote({
+        purchase_order_id: poId,
+        receipt_date: new Date().toISOString().split('T')[0],
         to_location_id: '019e9ad6-c8d2-7170-9090-1def3d995d06', // HARDCODED for now as there's no location picker yet
-        notes: `Barang diterima dari PO ${poNum}`
+        status: 'posted',
+        notes: `Barang diterima dari PO ${poNum}`,
+        items: receiptItems,
       });
       
-      onTriggerNotification(`Konfirmasi penerimaan stok gudang berhasil untuk PO ${poNum}. Cek di menu Hutang & Inventory.`);
+      onTriggerNotification(`GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan (GRN).`);
       await loadData();
     } catch (err) {
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
@@ -396,17 +412,7 @@ export default function PurchaseView({
                                   ))}
                                 </div>
 
-                                {po.status === 'Dipesan' && (
-                                  <div className="pt-3 border-t flex justify-end">
-                                    <button
-                                      onClick={() => handleReceiveGoods(po.id, po.poNumber, po.items)}
-                                      className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-bold flex items-center gap-1 shadow transition-colors"
-                                    >
-                                      <PackageCheck size={11} className="stroke-[2.5]" />
-                                      <span>Konfirmasi Terima Gudang</span>
-                                    </button>
-                                  </div>
-                                )}
+
                               </div>
                             </td>
                           </tr>

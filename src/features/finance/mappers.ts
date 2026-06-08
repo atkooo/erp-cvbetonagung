@@ -39,8 +39,15 @@ export const mapSupplierPayableFromDto = (dto: SupplierPayableDto): SupplierPaya
   dueDate: dto.due_date || '-',
   amount: Number(dto.amount),
   paidAmount: Number(dto.paid_amount),
-  status: dto.status.toLowerCase() === 'paid' ? 'Lunas' : 'Open',
+  status: mapSupplierPayableStatus(dto.status),
 });
+
+const mapSupplierPayableStatus = (status: string): SupplierPayable['status'] => {
+  const s = status.toLowerCase();
+  if (s === 'paid' || s === 'lunas') return 'Lunas';
+  if (s === 'partial' || s === 'partially_paid' || s === 'sebagian dibayar') return 'Sebagian Dibayar';
+  return 'Open';
+};
 
 const mapInvoiceStatus = (status: string): Invoice['status'] => {
   const s = status.toLowerCase();
@@ -58,4 +65,3 @@ const mapPaymentStatus = (status: string): Payment['status'] => {
   if (s === 'failed' || s === 'gagal') return 'Gagal';
   return 'Pending'; // fallback
 };
-
