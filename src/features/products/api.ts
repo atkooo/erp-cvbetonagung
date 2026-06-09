@@ -64,7 +64,7 @@ export const productsApi = {
   // Products
   async getProducts(): Promise<Product[]> {
     const [productsResponse, units] = await Promise.all([
-      apiClient.get<{ data: ProductDto[] }>('/master-data/products'),
+      apiClient.get<{ data: ProductDto[] }>('/master/products'),
       productsApi.getUnits(),
     ]);
     return productsResponse.data.map((product) => mapProductFromDto(product, units));

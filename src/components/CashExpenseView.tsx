@@ -43,12 +43,9 @@ export default function CashExpenseView({ onTriggerNotification }: CashExpenseVi
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [accs, trans] = await Promise.all([
-        financeApi.getAccounts(),
-        financeApi.getCashTransactions()
-      ]);
-      setAccounts(accs);
-      setTransactions(trans);
+      const cashBank = await financeApi.getCashBank();
+      setAccounts(cashBank.accounts);
+      setTransactions(cashBank.cashTransactions);
     } catch (error) {
       console.error('Error fetching cash data:', error);
       onTriggerNotification('Gagal memuat data kas & biaya.');

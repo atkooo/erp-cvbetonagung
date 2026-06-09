@@ -110,7 +110,7 @@ export const purchasingApi = {
   },
 
   async getGoodsReceiptNotes(): Promise<GoodsReceiptNote[]> {
-    const response = await apiClient.get<{ data: GoodsReceiptNoteDto[] }>('/purchasing/goods-receipts?include=purchase_order,warehouse,receiver,items.product&sort=-receipt_date');
+    const response = await apiClient.get<{ data: GoodsReceiptNoteDto[] }>('/purchasing/receivings');
     return response.data.map(mapGoodsReceiptNoteFromDto);
   },
 

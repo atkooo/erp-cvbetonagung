@@ -23,7 +23,7 @@ export const salesApi = {
   },
 
   async getSalesOrders(): Promise<SalesOrder[]> {
-    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/sales-orders?include=customer,items.product,quotation');
+    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/orders');
     return response.data.map(mapSalesOrderFromDto);
   },
 

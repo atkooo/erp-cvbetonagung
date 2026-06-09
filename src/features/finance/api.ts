@@ -5,7 +5,7 @@ import { mapInvoiceFromDto, mapPaymentFromDto, mapSupplierPayableFromDto } from 
 
 export const financeApi = {
   async getInvoices(): Promise<Invoice[]> {
-    const response = await apiClient.get<{ data: InvoiceDto[] }>('/finance/invoices?include=customer');
+    const response = await apiClient.get<{ data: InvoiceDto[] }>('/finance/billing');
     return response.data.map(mapInvoiceFromDto);
   },
 
@@ -20,7 +20,7 @@ export const financeApi = {
   },
 
   async getPayments(): Promise<Payment[]> {
-    const response = await apiClient.get<{ data: PaymentDto[] }>('/finance/payments?include=invoice.customer');
+    const response = await apiClient.get<{ data: PaymentDto[] }>('/finance/cashier');
     return response.data.map(mapPaymentFromDto);
   },
 
@@ -33,7 +33,7 @@ export const financeApi = {
   },
 
   async getSupplierPayables(): Promise<SupplierPayable[]> {
-    const response = await apiClient.get<{ data: SupplierPayableDto[] }>('/purchasing/supplier-payables?include=supplier,purchase_order');
+    const response = await apiClient.get<{ data: SupplierPayableDto[] }>('/finance/account-payable');
     return response.data.map(mapSupplierPayableFromDto);
   },
 
@@ -50,6 +50,14 @@ export const financeApi = {
   async getCashTransactions(): Promise<CashTransactionDto[]> {
     const response = await apiClient.get<{ data: CashTransactionDto[] }>('/finance/cash-transactions?include=account');
     return response.data;
+  },
+
+  async getCashBank(): Promise<{ accounts: AccountDto[]; cashTransactions: CashTransactionDto[] }> {
+    const response = await apiClient.get<{ data: { accounts: AccountDto[]; cash_transactions: CashTransactionDto[] } }>('/finance/cash-bank');
+    return {
+      accounts: response.data.accounts,
+      cashTransactions: response.data.cash_transactions,
+    };
   },
 
   async createCashTransaction(data: CreateCashTransactionDto): Promise<CashTransactionDto> {

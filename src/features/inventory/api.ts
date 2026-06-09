@@ -13,7 +13,7 @@ import {
 export const inventoryApi = {
   // Product Stocks
   async getProductStocks(): Promise<ProductStockDto[]> {
-    const response = await apiClient.get<{ data: ProductStockDto[] }>('/inventory/product-stocks?include=product,location');
+    const response = await apiClient.get<{ data: ProductStockDto[] }>('/inventory/stocks');
     return response.data;
   },
 
@@ -28,6 +28,16 @@ export const inventoryApi = {
   // Stock Movements
   async getStockMovements(): Promise<StockMovement[]> {
     const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-movements?include=product,handledBy&sort=-movement_at');
+    return response.data.map(mapStockMovementFromDto);
+  },
+
+  async getStockIns(): Promise<StockMovement[]> {
+    const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-ins');
+    return response.data.map(mapStockMovementFromDto);
+  },
+
+  async getStockOuts(): Promise<StockMovement[]> {
+    const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-outs');
     return response.data.map(mapStockMovementFromDto);
   },
 
@@ -159,4 +169,3 @@ export const inventoryApi = {
     return mapApprovalRequestFromDto(response.data);
   },
 };
-

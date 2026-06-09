@@ -76,14 +76,17 @@ export default function SalesView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [qs, sos, custsRes, prods] = await Promise.all([
-        salesApi.getQuotations(),
-        salesApi.getSalesOrders(),
+      const [docs, custsRes, prods] = await Promise.all([
+        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders(),
         customersApi.listCustomers(),
         productsApi.getProducts()
       ]);
-      setQuotations(qs);
-      setSalesOrders(sos);
+      if (isQuotation) {
+        setQuotations(docs as Quotation[]);
+        setSalesOrders([]);
+      } else {
+        setSalesOrders(docs as SalesOrder[]);
+      }
       setCustomers(custsRes.customers);
       setProducts(prods);
 
@@ -105,6 +108,25 @@ export default function SalesView({
   useEffect(() => {
     loadData();
   }, [type]);
+
+  useEffect(() => {
+    if (!showAddForm || isQuotation || quotations.length > 0) {
+      return;
+    }
+
+    let cancelled = false;
+    salesApi.getQuotations()
+      .then((qs) => {
+        if (!cancelled) setQuotations(qs);
+      })
+      .catch((err) => {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal memuat referensi quotation');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showAddForm, isQuotation, quotations.length, onTriggerNotification]);
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);

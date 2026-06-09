@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import type { AuthSession, AuthUser, Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
 import { authApi, authStorage } from './services/api';
+import { DEFAULT_AUTHENTICATED_VIEW, normalizePath, pathForView, viewFromPath } from './routes';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -13,24 +14,24 @@ import Topbar from './components/Topbar';
 // Feature sub-modules
 import LoginView from './components/LoginView';
 
-const DashboardView = React.lazy(() => import('./components/DashboardView'));
+const DashboardView = React.lazy(() => import('./pages/dashboard'));
 const EmployeeDashboardView = React.lazy(() => import('./components/EmployeeDashboardView'));
-const CustomersView = React.lazy(() => import('./components/CustomersView'));
-const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
-const ProductsView = React.lazy(() => import('./components/ProductsView'));
+const CustomersView = React.lazy(() => import('./pages/master/customer'));
+const SuppliersView = React.lazy(() => import('./pages/master/supplier'));
+const ProductsView = React.lazy(() => import('./pages/master/product'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
 const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
-const InventoryView = React.lazy(() => import('./components/InventoryView'));
-const SalesView = React.lazy(() => import('./components/SalesView'));
-const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
-const PaymentsView = React.lazy(() => import('./components/PaymentsView'));
-const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
+const InventoryView = React.lazy(() => import('./pages/inventory/stock'));
+const SalesView = React.lazy(() => import('./pages/sales/quotation'));
+const InvoicesView = React.lazy(() => import('./pages/finance/billing'));
+const PaymentsView = React.lazy(() => import('./pages/finance/cashier'));
+const PurchaseView = React.lazy(() => import('./pages/purchasing/po'));
 const PurchaseRequestView = React.lazy(() => import('./components/PurchaseRequestView'));
 const RfqView = React.lazy(() => import('./components/RfqView'));
 const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
 const QrView = React.lazy(() => import('./components/QrView'));
-const FinanceReportView = React.lazy(() => import('./components/FinanceReportView'));
+const FinanceReportView = React.lazy(() => import('./pages/reports'));
 const InventoryReportView = React.lazy(() => import('./components/InventoryReportView'));
 const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
@@ -50,8 +51,8 @@ const DocumentExportsView = React.lazy(() => import('./components/DocumentExport
 const ReturnsView = React.lazy(() => import('./components/ReturnsView'));
 const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudgetingView'));
 const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
-const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
-const CashExpenseView = React.lazy(() => import('./components/CashExpenseView'));
+const ReceivablesPayablesView = React.lazy(() => import('./pages/finance/account-payable'));
+const CashExpenseView = React.lazy(() => import('./pages/finance/cash-bank'));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 
 import { CheckCircle2, WifiOff } from '@/src/components/icons';
@@ -59,7 +60,8 @@ import { CheckCircle2, WifiOff } from '@/src/components/icons';
 export default function App() {
   // Authentication & Security state
   const storedUser = authStorage.getUser();
-  const [currentView, setCurrentView] = useState<ViewType>(storedUser ? 'dashboard' : 'login');
+  const initialRouteView = viewFromPath(window.location.pathname);
+  const [currentView, setCurrentView] = useState<ViewType>(storedUser ? (initialRouteView || DEFAULT_AUTHENTICATED_VIEW) : 'login');
   const [userRole, setUserRole] = useState(storedUser?.role?.name || 'User');
   const [userRoleCode, setUserRoleCode] = useState(storedUser?.role?.code || 'admin');
   const [userEmail, setUserEmail] = useState(storedUser?.email || '');
@@ -89,6 +91,14 @@ export default function App() {
   };
 
   useEffect(() => {
+    const handlePopState = () => {
+      const routeView = viewFromPath(window.location.pathname);
+      if (routeView) {
+        setCurrentView(routeView);
+      } else if (authStorage.getToken()) {
+        setCurrentView(DEFAULT_AUTHENTICATED_VIEW);
+      }
+    };
     const handleOnline = () => {
       setIsOnline(true);
       triggerNotification('Koneksi internet terhubung kembali.');
@@ -104,16 +114,32 @@ export default function App() {
       triggerNotification('Sesi Anda telah berakhir. Silakan masuk kembali.');
     };
 
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('auth:unauthorized', handleUnauthorized);
 
     return () => {
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentView === 'login') {
+      if (normalizePath(window.location.pathname) !== '/') {
+        window.history.replaceState(null, '', '/');
+      }
+      return;
+    }
+
+    const nextPath = pathForView(currentView);
+    if (normalizePath(window.location.pathname) !== nextPath) {
+      window.history.pushState(null, '', nextPath);
+    }
+  }, [currentView]);
 
   useEffect(() => {
     if (!authStorage.getToken()) {
@@ -128,7 +154,8 @@ export default function App() {
         setUserEmail(user.email);
         setUserRole(user.role?.name || 'User');
         setUserRoleCode(user.role?.code || 'admin');
-        const defaultView = user.role?.code === 'employee' ? 'employee-dashboard' : 'dashboard';
+        const routeView = viewFromPath(window.location.pathname);
+        const defaultView = user.role?.code === 'employee' ? 'employee-dashboard' : (routeView || DEFAULT_AUTHENTICATED_VIEW);
         setCurrentView((view) => (view === 'login' ? defaultView : view));
       })
       .catch((error: Error) => {

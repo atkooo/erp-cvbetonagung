@@ -109,17 +109,33 @@ export default function InventoryView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [prods, stocks, movs, grns, locRes, pos, sos, emps] = await Promise.all([
-        productsApi.getProducts(),
-        inventoryApi.getProductStocks(),
-        inventoryApi.getStockMovements(),
-        purchasingApi.getGoodsReceiptNotes(),
-        apiClient.get<{ data: LocationDto[] }>(
-          "/master-data/storage-locations",
-        ),
-        purchasingApi.getPurchaseOrders(),
-        salesApi.getSalesOrders(),
-        employeesApi.getEmployees(),
+      const needsProducts = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsStocks = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsLocations = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsInbound = activeTab === "masuk";
+      const needsOutbound = activeTab === "keluar";
+      const needsHistory = activeTab === "riwayat";
+
+      const [
+        prods,
+        stocks,
+        movs,
+        grns,
+        locRes,
+        pos,
+        sos,
+        emps,
+      ] = await Promise.all([
+        needsProducts ? productsApi.getProducts() : Promise.resolve(products),
+        needsStocks ? inventoryApi.getProductStocks() : Promise.resolve(productStocks),
+        needsHistory ? inventoryApi.getStockMovements() : needsOutbound ? inventoryApi.getStockOuts() : Promise.resolve([]),
+        needsInbound ? purchasingApi.getGoodsReceiptNotes() : Promise.resolve([]),
+        needsLocations
+          ? apiClient.get<{ data: LocationDto[] }>("/master-data/storage-locations")
+          : Promise.resolve({ data: locations }),
+        needsInbound ? purchasingApi.getPurchaseOrders() : Promise.resolve([]),
+        needsOutbound ? salesApi.getSalesOrders() : Promise.resolve([]),
+        needsInbound || needsOutbound ? employeesApi.getEmployees() : Promise.resolve([]),
       ]);
 
       const combinedProds = prods.map((p) => {
@@ -139,18 +155,19 @@ export default function InventoryView({
         const locationNames = stockRows
           .filter((s) => Number(s.quantity || 0) > 0)
           .map((s) => s.location?.name)
-          .filter(Boolean);
+          .filter((name): name is string => Boolean(name));
         const uniqueLocationNames = Array.from(new Set(locationNames));
+        const locationLabel =
+          uniqueLocationNames.length === 0
+            ? "Belum ada stok"
+            : uniqueLocationNames.length === 1
+              ? uniqueLocationNames[0] || "Belum ada stok"
+              : `${uniqueLocationNames.length} lokasi`;
 
         return {
           ...p,
           stock: totalStock,
-          location:
-            uniqueLocationNames.length === 0
-              ? "Belum ada stok"
-              : uniqueLocationNames.length === 1
-                ? uniqueLocationNames[0]
-                : `${uniqueLocationNames.length} lokasi`,
+          location: locationLabel,
           status: stockStatus,
         };
       });
