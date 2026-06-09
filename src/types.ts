@@ -68,7 +68,7 @@ export interface SalesOrder {
   customerName: string;
   date: string;
   total: number;
-  status: 'Draft' | 'Diproses' | 'Selesai' | 'Dibatalkan';
+  status: 'Draft' | 'Diproses' | 'Disetujui' | 'Selesai' | 'Dibatalkan';
   items: {
     productName: string;
     quantity: number;

@@ -258,15 +258,7 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
                                 <button onClick={() => handleUpdateStatus(rfq.id, 'Ditolak')} className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm">Tolak</button>
                               </>
                             )}
-                            {rfq.status === 'Diterima' && (
-                              <button
-                                onClick={() => handleCreatePo(rfq)}
-                                disabled={creatingPoRfqId !== null}
-                                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded mr-2 text-[10px] font-bold shadow-sm disabled:opacity-50"
-                              >
-                                {creatingPoRfqId === rfq.id ? 'Memproses...' : 'Pilih Tawaran'}
-                              </button>
-                            )}
+
                             <button onClick={() => {
                               if (expandedRfqId !== rfq.id) {
                                 setExpandedRfqId(rfq.id);

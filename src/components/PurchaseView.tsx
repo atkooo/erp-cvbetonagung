@@ -4,13 +4,15 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck, FileText } from '@/src/components/icons';
+import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck, FileText, Trash2 } from '@/src/components/icons';
 import { PurchaseOrder, Supplier, Product } from '../types';
 import { authStorage } from '../services/api';
 import { purchasingApi } from '../features/purchasing/api';
 import { suppliersApi } from '../features/suppliers/api';
 import { productsApi } from '../features/products/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import RfqPicker from './RfqPicker';
+import ProductPicker from './ProductPicker';
 import { useReactToPrint } from 'react-to-print';
 import { formatDate } from '../utils/date';
 import Swal from 'sweetalert2';
@@ -43,9 +45,11 @@ export default function PurchaseView({
 
   // New PO States
   const [supplierId, setSupplierId] = useState('');
-  const [productId, setProductId] = useState('');
-  const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState(0);
+  const [rfqId, setRfqId] = useState<string>('');
+  const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>('');
+  const [formItems, setFormItems] = useState<{ id: string; productId: string; quantity: number; price: number; unit?: string }[]>([
+    { id: '1', productId: '', quantity: 1, price: 0 }
+  ]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -61,10 +65,6 @@ export default function PurchaseView({
       setProducts(prods);
 
       if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
-      if (prods.length > 0 && !productId) {
-        setProductId(prods[0].id);
-        setPrice(prods[0].costPrice || 0); // usually we use cost price for PO
-      }
     } catch (err) {
       console.error('Failed to load purchasing data', err);
       const msg = err instanceof Error ? err.message : 'Gagal memuat data pembelian';
@@ -78,6 +78,20 @@ export default function PurchaseView({
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleAddItem = () => {
+    setFormItems([...formItems, { id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    if (formItems.length > 1) {
+      setFormItems(formItems.filter(item => item.id !== id));
+    }
+  };
+
+  const handleItemChange = (id: string, field: string, value: any) => {
+    setFormItems(formItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -95,8 +109,8 @@ export default function PurchaseView({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (qty <= 0 || price <= 0) {
-      onTriggerNotification('Gagal: Kuantitas dan harga bahan baku harus positif!');
+    if (formItems.some(item => !item.productId || item.quantity <= 0 || item.price < 0)) {
+      onTriggerNotification('Gagal: Pastikan semua item memiliki produk, kuantitas positif, dan harga valid!');
       return;
     }
 
@@ -108,17 +122,22 @@ export default function PurchaseView({
 
       await purchasingApi.createPurchaseOrder({
         supplier_id: supplierId,
+        rfq_id: rfqId || undefined,
         order_date: todayStr,
         expected_date: expectedDate.toISOString().split('T')[0],
-        items: [
-          {
-            product_id: productId,
-            quantity: qty,
-            unit_price: price,
-          }
-        ]
+        items: formItems.map(it => ({
+          product_id: it.productId,
+          quantity: it.quantity,
+          unit_price: it.price,
+        }))
       });
       onTriggerNotification(`Sukses menerbitkan PO via API`);
+      
+      // Reset form
+      setFormItems([{ id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
+      setRfqId('');
+      setRfqNumberDisplay('');
+      
       await loadData();
     } catch (err) {
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen PO');
@@ -443,78 +462,136 @@ export default function PurchaseView({
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier</label>
-                {suppliers.length > 0 ? (
-                  <select
-                    value={supplierId}
-                    onChange={(e) => setSupplierId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
-                  >
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
-                    ))}
-                  </select>
-                ) : (
-                  <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
-                    <option>Memuat Supplier...</option>
-                  </select>
-                )}
-              </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier *</label>
+                  {suppliers.length > 0 ? (
+                    <select
+                      value={supplierId}
+                      onChange={(e) => setSupplierId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded bg-white focus:outline-none focus:border-cyan-500 disabled:bg-slate-100 disabled:text-slate-500"
+                      required
+                      disabled={!!rfqId}
+                    >
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
+                      <option>Memuat Supplier...</option>
+                    </select>
+                  )}
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Komponen Produk Penunjang</label>
-                {products.length > 0 ? (
-                  <select
-                    value={productId}
-                    onChange={(e) => {
-                      setProductId(e.target.value);
-                      const prod = products.find(p => p.id === e.target.value);
-                      if (prod) {
-                        setPrice(prod.costPrice || 0);
-                        setQty(1);
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi RFQ</label>
+                  <RfqPicker 
+                    value={rfqNumberDisplay}
+                    onChange={(rfq) => {
+                      setRfqId(rfq.id);
+                      setRfqNumberDisplay(rfq.rfqNumber);
+                      setSupplierId(rfq.supplierId); // Auto-select supplier
+                      if (rfq.items && rfq.items.length > 0) {
+                        setFormItems(rfq.items.map((item, index) => ({
+                          id: `form-item-${Date.now()}-${index}`,
+                          productId: item.productId,
+                          quantity: item.quantity,
+                          price: item.quotedUnitPrice || products.find(p => p.id === item.productId)?.costPrice || 0,
+                          unit: item.unit
+                        })));
                       }
                     }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white"
-                  >
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (HPP: {formatIDR(p.costPrice || 0)})</option>
-                    ))}
-                  </select>
-                ) : (
-                  <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
-                    <option>Memuat Item...</option>
-                  </select>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Kuantitas Pembelian</label>
-                  <input
-                    type="number"
-                    required
-                    value={qty || ''}
-                    onChange={(e) => setQty(Number(e.target.value))}
-                    className="w-full px-3 py-2 border"
+                    onClear={() => {
+                      setRfqId('');
+                      setRfqNumberDisplay('');
+                      setSupplierId('');
+                      setFormItems([{ id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
+                    }}
+                    statusFilter="Diterima"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Harga Satuan (Rp)</label>
-                  <input
-                    type="number"
-                    required
-                    value={price || ''}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border"
-                  />
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-slate-800 text-sm">Daftar Item PO</h4>
+                  <button type="button" onClick={handleAddItem} className="px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border rounded font-bold flex items-center gap-1 transition-colors text-[10px]">
+                    <Plus size={12} /> Tambah
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 border rounded-xl overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-500 border-b">
+                      <tr>
+                        <th className="p-2 w-1/2">Material / Produk</th>
+                        <th className="p-2 w-1/4">Qty</th>
+                        <th className="p-2 w-1/4">Harga Satuan (Rp)</th>
+                        <th className="p-2 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {formItems.map((item) => (
+                        <tr key={item.id} className="bg-white">
+                          <td className="p-2">
+                            <ProductPicker
+                              value={item.productId}
+                              onChange={(prod) => {
+                                handleItemChange(item.id, 'productId', prod.id);
+                                handleItemChange(item.id, 'unit', prod.unit);
+                                handleItemChange(item.id, 'price', prod.costPrice || 0);
+                              }}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <div className="flex items-center gap-1">
+                              <input 
+                                type="number" 
+                                min="1" 
+                                className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
+                                value={item.quantity}
+                                onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                required
+                              />
+                              <span className="text-[10px] text-slate-500 font-bold uppercase w-6">
+                                {item.unit || '-'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-2">
+                            <input 
+                              type="number" 
+                              min="0" 
+                              className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
+                              value={item.price}
+                              onChange={(e) => handleItemChange(item.id, 'price', parseInt(e.target.value) || 0)}
+                              required
+                            />
+                          </td>
+                          <td className="p-2 text-center">
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveItem(item.id)}
+                              disabled={formItems.length === 1}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
               <div className="p-3.5 bg-slate-50 border rounded-xl">
                 <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Total Borongan PO</span>
-                <p className="text-sm font-black font-mono text-cyan-600 mt-1">{formatIDR(qty * price)}</p>
+                <p className="text-sm font-black font-mono text-cyan-600 mt-1">
+                  {formatIDR(formItems.reduce((acc, curr) => acc + (curr.quantity * curr.price), 0))}
+                </p>
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
