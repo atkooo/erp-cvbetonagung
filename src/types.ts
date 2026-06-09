@@ -74,6 +74,7 @@ export interface SalesOrder {
     quantity: number;
     price: number;
   }[];
+  hasPaidInvoice?: boolean;
 }
 
 export interface Quotation {

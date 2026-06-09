@@ -22,6 +22,14 @@ export const salesApi = {
     return mapSalesOrderFromDto(response.data);
   },
 
+  async approveSalesOrder(id: string): Promise<SalesOrder> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/sales-orders/${id}/approve`, {
+      invoice_date: todayStr
+    });
+    return mapSalesOrderFromDto(response.data);
+  },
+
   async getSalesOrders(): Promise<SalesOrder[]> {
     const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/orders');
     return response.data.map(mapSalesOrderFromDto);

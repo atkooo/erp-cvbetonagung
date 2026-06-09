@@ -207,6 +207,18 @@ export default function SalesView({
     setSelectedDoc(null);
   };
 
+  const handleApproveSalesOrder = async (docId: string, docNum: string) => {
+    try {
+      await salesApi.approveSalesOrder(docId);
+      onTriggerNotification(`Sukses approve Sales Order ${docNum} dan menerbitkan tagihan (Invoice) otomatis.`);
+      await loadData();
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve sales order');
+    }
+    onNavigate('invoices');
+    setSelectedDoc(null);
+  };
+
   return (
     <div className="space-y-6 relative">
       {/* 1. Header Banner */}
@@ -268,6 +280,7 @@ export default function SalesView({
               <>
                 <option value="Draft">Draft</option>
                 <option value="Diproses">Diproses</option>
+                <option value="Disetujui">Disetujui</option>
                 <option value="Selesai">Selesai</option>
                 <option value="Dibatalkan">Dibatalkan</option>
               </>
@@ -312,6 +325,7 @@ export default function SalesView({
                       Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Ditolak: 'bg-red-100 text-red-700',
                       Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                      Disetujui: 'bg-indigo-100 text-indigo-700 border-indigo-200',
                       Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Dibatalkan: 'bg-slate-100 text-slate-400',
                     };
@@ -435,64 +449,44 @@ export default function SalesView({
                     <FileCheck size={13} className="text-white" />
                     <span>Approve to SO</span>
                   </button>
-                ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
+                ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                   <div className="flex flex-col gap-2 w-full">
-                    {selectedDoc.status === 'Draft' && (
+                    {selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' ? (
+                      <button
+                        onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                      >
+                        <Receipt size={13} className="text-white" />
+                        <span>Approve & Terbitkan Invoice</span>
+                      </button>
+                    ) : null}
+
+                    {selectedDoc.status === 'Disetujui' && (
                       <button
                         onClick={async () => {
                           try {
                             const todayStr = new Date().toISOString().split('T')[0];
-                            const dueDate = new Date();
-                            dueDate.setDate(dueDate.getDate() + 14);
-                            const dueDateStr = dueDate.toISOString().split('T')[0];
+                            const doNum = `DO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-                            await financeApi.createInvoice({
-                              customer_id: selectedDoc.customerId || '',
-                              sales_order_id: selectedDoc.id,
-                              invoice_date: todayStr,
-                              due_date: dueDateStr,
-                              total: selectedDoc.total,
-                              status: 'unpaid'
+                            await salesApi.createDeliveryOrder(selectedDoc.id, {
+                              delivery_number: doNum,
+                              delivery_date: todayStr,
+                              notes: `Surat jalan otomatis dari Sales Order ${selectedDoc.orderNumber}`
                             });
 
-                            onTriggerNotification(`Berhasil menerbitkan Draft Invoice untuk sales order ${selectedDoc.orderNumber}`);
-                            onNavigate('invoices');
+                            onTriggerNotification(`Berhasil menerbitkan Surat Jalan ${doNum} untuk sales order ${selectedDoc.orderNumber}`);
+                            onNavigate('delivery-orders');
                           } catch (err) {
-                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
+                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan Surat Jalan. Pastikan invoice sudah dibayar (minimal sebagian).');
                           }
                           setSelectedDoc(null);
                         }}
-                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
                       >
-                        <Receipt size={13} className="text-white" />
-                        <span>Terbitkan Invoice</span>
+                        <Truck size={13} className="text-white" />
+                        <span>Terbitkan Surat Jalan (DO)</span>
                       </button>
                     )}
-
-                    <button
-                      onClick={async () => {
-                        try {
-                          const todayStr = new Date().toISOString().split('T')[0];
-                          const doNum = `DO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-
-                          await salesApi.createDeliveryOrder(selectedDoc.id, {
-                            delivery_number: doNum,
-                            delivery_date: todayStr,
-                            notes: `Surat jalan otomatis dari Sales Order ${selectedDoc.orderNumber}`
-                          });
-
-                          onTriggerNotification(`Berhasil menerbitkan Surat Jalan ${doNum} untuk sales order ${selectedDoc.orderNumber}`);
-                          onNavigate('delivery-orders');
-                        } catch (err) {
-                          onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan Surat Jalan. Cek apakah sudah memiliki DO.');
-                        }
-                        setSelectedDoc(null);
-                      }}
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
-                    >
-                      <Truck size={13} className="text-white" />
-                      <span>Terbitkan Surat Jalan (DO)</span>
-                    </button>
 
                     <button
                       onClick={() => setSelectedDoc(null)}

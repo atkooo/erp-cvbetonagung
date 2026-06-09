@@ -493,16 +493,16 @@ export default function DeliveryOrdersView({ onTriggerNotification }: DeliveryOr
                   onChange={(e) => setSelectedSalesOrderId(e.target.value)}
                   className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-cyan-400"
                 >
-                  <option value="">-- Pilih Sales Order Active --</option>
+                  <option value="">-- Pilih Sales Order Active (Lunas/Sebagian) --</option>
                   {salesOrders
-                    .filter(so => so.status !== 'Dibatalkan' && so.status !== 'Selesai')
+                    .filter(so => so.status === 'Disetujui' && so.hasPaidInvoice)
                     .map(so => (
                       <option key={so.id} value={so.id}>
                         {so.orderNumber} - {so.customerName}
                       </option>
                     ))}
-                  {salesOrders.length === 0 && (
-                    <option value="" disabled>Tidak ada Sales Order aktif untuk dikirim</option>
+                  {salesOrders.filter(so => so.status === 'Disetujui' && so.hasPaidInvoice).length === 0 && (
+                    <option value="" disabled>Tidak ada Sales Order siap kirim (belum dibayar/approve)</option>
                   )}
                 </select>
               </div>

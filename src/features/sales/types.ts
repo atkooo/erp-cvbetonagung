@@ -62,6 +62,10 @@ export interface SalesOrderDto {
     name: string;
   };
   items?: SalesOrderItemDto[];
+  invoices?: {
+    id: string;
+    paid_amount: string | number;
+  }[];
 }
 
 export interface CreateQuotationDto {

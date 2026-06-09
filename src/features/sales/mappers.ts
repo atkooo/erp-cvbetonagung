@@ -59,7 +59,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     productName: item.product?.name || item.description || 'Unknown Product',
     quantity: Number(item.quantity),
     price: Number(item.unit_price)
-  }))
+  })),
+  hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0)
 });
 
 // Helper for status translations
@@ -72,10 +73,11 @@ const mapQuotationStatus = (status: string): Quotation['status'] => {
   return 'Draft'; // default fallback
 };
 
-const mapSalesOrderStatus = (status: string): SalesOrder['status'] => {
+const mapSalesOrderStatus = (status: string): SalesOrder['status'] | any => {
   const s = status.toLowerCase();
   if (s === 'draft') return 'Draft';
   if (s === 'processing' || s === 'diproses') return 'Diproses';
+  if (s === 'approved' || s === 'disetujui') return 'Disetujui';
   if (s === 'completed' || s === 'selesai') return 'Selesai';
   if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
   return 'Draft'; // default fallback
