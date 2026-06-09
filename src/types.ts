@@ -28,6 +28,7 @@ export interface Supplier {
 export interface Product {
   id: string;
   sku: string;
+  type: 'raw_material' | 'finished_good' | 'service';
   name: string;
   category: string;
   costPrice: number;

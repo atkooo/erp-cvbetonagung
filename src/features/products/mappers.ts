@@ -18,6 +18,7 @@ export const mapCategoryToDto = (formData: CategoryFormData): Partial<CategoryDt
 export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Product => ({
   id: dto.id,
   sku: dto.sku,
+  type: dto.type,
   name: dto.name,
   category: dto.category?.name || 'Uncategorized',
   unit: dto.unit?.code || units.find((unit) => unit.id === dto.unit_id)?.code || '',
@@ -33,6 +34,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
 
 export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> => ({
   sku: formData.sku,
+  type: formData.type || 'finished_good',
   name: formData.name,
   category_id: formData.category_id,
   unit_id: formData.unit_id,

@@ -12,7 +12,8 @@ import { inventoryApi } from '../features/inventory/api';
 interface ProductPickerProps {
   value?: string; // Product ID that is currently selected
   onChange: (product: Product) => void;
-  categoryFilter?: string; // e.g. "Bahan Baku" or "Barang Jadi"
+  categoryFilter?: string; // Deprecated: Use typeFilter instead
+  typeFilter?: 'raw_material' | 'finished_good' | 'service';
   placeholder?: string;
   className?: string;
 }
@@ -21,6 +22,7 @@ export default function ProductPicker({
   value,
   onChange,
   categoryFilter,
+  typeFilter,
   placeholder = 'Pilih Produk / Material...',
   className = ''
 }: ProductPickerProps) {
@@ -28,7 +30,7 @@ export default function ProductPicker({
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
-  
+
   // To display the selected product name in the button
   const selectedProduct = products.find(p => p.id === value);
 
@@ -45,17 +47,21 @@ export default function ProductPicker({
         productsApi.getProducts(),
         inventoryApi.getProductStocks()
       ]);
-      
+
       const productsWithStock = prods.map(p => {
         const productStocks = stocks.filter(s => s.product_id === p.id);
         const totalStock = productStocks.reduce((sum, s) => sum + Number(s.quantity || 0), 0);
         return { ...p, stock: totalStock };
       });
 
-      // Apply category filter if provided
-      const filtered = categoryFilter 
-        ? productsWithStock.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase())
-        : productsWithStock;
+      // Apply filters if provided
+      let filtered = productsWithStock;
+      if (categoryFilter) {
+        filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
+      }
+      if (typeFilter) {
+        filtered = filtered.filter(p => p.type === typeFilter);
+      }
       setProducts(filtered);
     } catch (error) {
       console.error('Failed to load products', error);
@@ -64,8 +70,8 @@ export default function ProductPicker({
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase()) ||
     p.category.toLowerCase().includes(search.toLowerCase())
   );
@@ -79,7 +85,7 @@ export default function ProductPicker({
   return (
     <>
       {/* Trigger Button */}
-      <div 
+      <div
         onClick={() => setIsOpen(true)}
         className={`w-full p-2.5 border rounded-lg flex items-center justify-between cursor-pointer bg-white hover:bg-slate-50 transition-colors ${className}`}
       >
@@ -99,7 +105,7 @@ export default function ProductPicker({
       {isOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
-            
+
             {/* Header */}
             <div className="p-4 border-b flex items-center justify-between bg-slate-50 rounded-t-xl">
               <div className="flex items-center gap-2">
@@ -107,7 +113,7 @@ export default function ProductPicker({
                   <Package size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Pilih Data {categoryFilter ? categoryFilter : 'Produk/Material'}</h3>
+                  <h3 className="font-bold text-slate-800 text-sm">Pilih Data {typeFilter === 'raw_material' ? 'Material Baku' : categoryFilter ? categoryFilter : 'Produk/Material'}</h3>
                   <p className="text-[10px] text-slate-500">Pilih dari daftar master data gudang</p>
                 </div>
               </div>
@@ -120,11 +126,11 @@ export default function ProductPicker({
             <div className="p-4 border-b bg-white">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari berdasarkan nama, SKU, atau kategori..." 
+                  placeholder="Cari berdasarkan nama, SKU, atau kategori..."
                   className="w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   autoFocus
                 />
@@ -140,12 +146,12 @@ export default function ProductPicker({
               ) : (
                 <div className="grid grid-cols-1 gap-2">
                   {filteredProducts.map(product => (
-                    <div 
+                    <div
                       key={product.id}
                       onClick={() => handleSelect(product)}
                       className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between
-                        ${value === product.id 
-                          ? 'bg-cyan-50 border-cyan-300 ring-1 ring-cyan-500' 
+                        ${value === product.id
+                          ? 'bg-cyan-50 border-cyan-300 ring-1 ring-cyan-500'
                           : 'bg-white border-slate-200 hover:border-cyan-300 hover:shadow-sm'
                         }`}
                     >
@@ -180,7 +186,7 @@ export default function ProductPicker({
                 </div>
               )}
             </div>
-            
+
           </div>
         </div>
       )}

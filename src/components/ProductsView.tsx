@@ -22,10 +22,13 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // New product states
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
+  const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
   const [category, setCategory] = useState('');
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
@@ -115,6 +118,10 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     fetchData();
   }, []);
 
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, statusFilter]);
+
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
@@ -122,6 +129,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const resetForm = () => {
     setSku('');
     setName('');
+    setType('finished_good');
     setCategory(categories[0]?.id || '');
     setCostPrice(0);
     setSellingPrice(0);
@@ -144,6 +152,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setEditingProduct(product);
     setSku(product.sku);
     setName(product.name);
+    setType(product.type || 'finished_good');
     setCategory(selectedCategory?.id || categories[0]?.id || '');
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
@@ -169,6 +178,12 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !costPrice || !sellingPrice) {
@@ -186,6 +201,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       const payload = {
         sku,
         name,
+        type,
         category_id: category, // The category select holds the ID
         unit_id: unit,
         cost_price: costPrice,
@@ -353,7 +369,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((p) => (
+                  paginatedProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
                       <td className="p-3.5 pl-5 font-mono font-bold text-slate-700 bg-slate-50/20">
                         {p.sku}
@@ -366,6 +382,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                           <Tag size={10} className="text-slate-400" />
                           <span>{p.category}</span>
                         </span>
+                        <div className="text-[9px] text-slate-400 mt-0.5 capitalize">{p.type?.replace('_', ' ')}</div>
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
                         {formatIDR(p.costPrice)}
@@ -416,8 +433,32 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
           {/* Catalog pagination summary */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[11px]">
-            <span>Menampilkan {filteredProducts.length} dari total {products.length} SKU katalog terdaftar</span>
-            <span className="font-medium text-slate-400">CV Beton Agung Admin Desk</span>
+            <span>
+              Menampilkan {paginatedProducts.length} dari total {filteredProducts.length} SKU katalog terdaftar
+            </span>
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded shadow-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                >
+                  Prev
+                </button>
+                <span className="px-2 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1 bg-white border border-slate-200 rounded shadow-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            ) : (
+              <span className="font-medium text-slate-400">CV Beton Agung Admin Desk</span>
+            )}
           </div>
         </div>
       )}
@@ -471,16 +512,30 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Deskripsi / Nama Varian Item</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Kubah GRC Motif Madinah Diameter 5M dengan Rangka Baja"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                />
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Tipe Produk</label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
+                  >
+                    <option value="raw_material">Raw Material (Bahan Baku)</option>
+                    <option value="finished_good">Finished Good (Barang Jadi)</option>
+                    <option value="service">Service (Jasa)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Deskripsi / Nama Varian Item</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Kubah GRC Motif Madinah..."
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">

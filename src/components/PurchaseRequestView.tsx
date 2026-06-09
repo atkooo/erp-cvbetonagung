@@ -269,7 +269,7 @@ export default function PurchaseRequestView({ onTriggerNotification }: PurchaseR
                           newItems[index].productId = product.id;
                           setFormItems(newItems);
                         }}
-                        categoryFilter="Bahan Baku"
+                        typeFilter="raw_material"
                         placeholder="Pilih Material..."
                       />
                     </div>

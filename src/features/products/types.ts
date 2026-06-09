@@ -27,6 +27,7 @@ export interface UnitFormData {
 export interface ProductDto {
   id: string;
   sku: string;
+  type: 'raw_material' | 'finished_good' | 'service';
   name: string;
   category_id: string;
   unit_id: string;
@@ -44,6 +45,7 @@ export interface ProductDto {
 
 export interface ProductFormData {
   sku?: string;
+  type?: 'raw_material' | 'finished_good' | 'service';
   name: string;
   category_id: string;
   unit_id: string;
