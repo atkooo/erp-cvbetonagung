@@ -29,6 +29,7 @@ import { customersApi } from '../features/customers/api';
 import { productsApi } from '../features/products/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
+import ProductPicker from './ProductPicker';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -666,30 +667,17 @@ export default function SalesView({
               )}
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk Borongan</label>
-                {products.length > 0 ? (
-                  <SearchableSelect
-                    value={productId}
-                    onChange={(val) => {
-                      setProductId(val);
-                      const selProd = products.find(p => p.id === val);
-                      if (selProd) {
-                        setItemPrice(selProd.sellingPrice || 0);
-                        setItemQty(1);
-                      }
-                    }}
-                    options={products.map(p => ({ value: p.id, label: `${p.name} (${formatIDR(p.sellingPrice)})` }))}
-                    placeholder="Pilih Produk..."
-                  />
-                ) : (
-                  <SearchableSelect
-                    value=""
-                    onChange={() => {}}
-                    options={[]}
-                    placeholder="Memuat Produk..."
-                    disabled
-                  />
-                )}
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
+                <ProductPicker
+                  value={productId}
+                  onChange={(product) => {
+                    setProductId(product.id);
+                    setItemPrice(product.sellingPrice || 0);
+                    setItemQty(1);
+                  }}
+                  typeFilter={isQuotation ? undefined : "finished_good"}
+                  placeholder="Pilih Produk..."
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">

@@ -13,6 +13,7 @@ import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';
 import { Bom, BomItem, Product } from '../types';
 import { ErrorCard } from './Skeleton';
+import ProductPicker from './ProductPicker';
 import Swal from 'sweetalert2';
 
 interface BomCostingViewProps {
@@ -518,17 +519,12 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Produk Akhir Beton *</label>
-                  <select
-                    required
+                  <ProductPicker
                     value={productId}
-                    onChange={(e) => setProductId(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-cyan-400"
-                  >
-                    <option value="">-- Pilih Produk --</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>
-                    ))}
-                  </select>
+                    onChange={(product) => setProductId(product.id)}
+                    typeFilter="finished_good"
+                    placeholder="-- Pilih Produk --"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -583,23 +579,15 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
                   {tempIsMaterial ? (
                     <div className="md:col-span-4 space-y-1">
                       <label className="block font-bold text-slate-700">Pilih Material *</label>
-                      <select
+                      <ProductPicker
                         value={tempProductId}
-                        onChange={(e) => {
-                          setTempProductId(e.target.value);
-                          // Auto set unit cost based on product purchase / cost
-                          const prod = products.find(p => p.id === e.target.value);
-                          if (prod) {
-                            setTempUnitCost(Math.round(prod.sellingPrice * 0.65)); // Mock cost calculation
-                          }
+                        onChange={(product) => {
+                          setTempProductId(product.id);
+                          setTempUnitCost(Math.round((product.sellingPrice || 0) * 0.65));
                         }}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                      >
-                        <option value="">-- Pilih --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>
-                        ))}
-                      </select>
+                        typeFilter="raw_material"
+                        placeholder="-- Pilih Material --"
+                      />
                     </div>
                   ) : (
                     <div className="md:col-span-4 space-y-1">

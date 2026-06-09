@@ -4,6 +4,7 @@ import { Product, StockMovement } from "../../types";
 import { LocationDto as Location, ProductStockDto as ProductStock } from "../../features/inventory/types";
 import ReferencePicker from "../ReferencePicker";
 import SearchableSelect from "../SearchableSelect";
+import ProductPicker from "../ProductPicker";
 
 interface InventoryModalsProps {
   // Common
@@ -306,26 +307,16 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600">
-                      Pilih Item SKU
+                      Pilih Item Produk
                     </label>
-                    <select
-                      value={inSku}
-                      onChange={(e) => {
-                        const nextSku = e.target.value;
-                        const nextProduct = getProductBySku(nextSku);
-                        setInSku(nextSku);
-                        setSelectedProduct(nextProduct);
-                        setInLocationId(getDefaultIncomingLocationId(nextProduct));
+                    <ProductPicker
+                      value={selectedProduct?.id || ''}
+                      onChange={(product) => {
+                        setInSku(product.sku);
+                        setSelectedProduct(product);
+                        setInLocationId(getDefaultIncomingLocationId(product));
                       }}
-                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
-                      required={!selectedPO}
-                    >
-                      {products.map((p, idx) => (
-                        <option key={idx} value={p.sku}>
-                          {p.sku} | {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600">
@@ -527,25 +518,16 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
             >
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">
-                  Pilih Item SKU
+                  Pilih Item Produk
                 </label>
-                <select
-                  value={outSku}
-                  onChange={(e) => {
-                    const nextSku = e.target.value;
-                    const nextProduct = getProductBySku(nextSku);
-                    setOutSku(nextSku);
-                    setSelectedProduct(nextProduct);
-                    setOutLocationId(getDefaultStockLocationId(nextProduct));
+                <ProductPicker
+                  value={selectedProduct?.id || ''}
+                  onChange={(product) => {
+                    setOutSku(product.sku);
+                    setSelectedProduct(product);
+                    setOutLocationId(getDefaultStockLocationId(product));
                   }}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg"
-                >
-                  {products.map((p, idx) => (
-                    <option key={idx} value={p.sku}>
-                      {p.sku} | {p.name} (Sisa: {p.stock})
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="space-y-1">
