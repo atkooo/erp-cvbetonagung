@@ -326,7 +326,6 @@ export default function SalesView({
                       Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Ditolak: 'bg-red-100 text-red-700',
                       Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
-                      Disetujui: 'bg-indigo-100 text-indigo-700 border-indigo-200',
                       Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Dibatalkan: 'bg-slate-100 text-slate-400',
                     };

@@ -5,17 +5,29 @@ import {
 } from './types';
 import { StockMovement } from '../../types';
 
-export const mapStockMovementFromDto = (dto: StockMovementDto): StockMovement => ({
-  id: dto.id,
-  sku: dto.product?.sku || 'Unknown',
-  productName: dto.product?.name || 'Unknown Product',
-  type: dto.type === 'in' ? 'Masuk' : 'Keluar',
-  quantity: Number(dto.quantity),
-  referenceDoc: dto.reference_number || dto.reference_type || '-',
+export const mapStockMovementFromDto = (dto: StockMovementDto): StockMovement => {
+  let mappedType: 'Masuk' | 'Keluar' = 'Keluar';
+  if (dto.type === 'in' || (dto.type === 'adjustment' && dto.to_location_id !== null)) {
+    mappedType = 'Masuk';
+  } else if (dto.type === 'out' || (dto.type === 'adjustment' && dto.from_location_id !== null)) {
+    mappedType = 'Keluar';
+  } else if (dto.type === 'transfer') {
+    // If we are looking from the perspective of the whole warehouse, transfer is a move, but let's just default to Keluar for simplicity or determine by user context.
+    mappedType = 'Keluar';
+  }
+
+  return {
+    id: dto.id,
+    sku: dto.product?.sku || 'Unknown',
+    productName: dto.product?.name || 'Unknown Product',
+    type: mappedType,
+    quantity: Number(dto.quantity),
+    referenceDoc: dto.reference_number || dto.reference_type || '-',
   date: dto.movement_at ? dto.movement_at.split('T')[0] : (dto.created_at?.split('T')[0] || ''),
   handler: dto.handledBy?.name || 'Sistem',
   notes: dto.notes || '-',
-});
+  };
+};
 
 // Assuming we map it to our backend form requests
 export const mapMovementToDto = (formData: MovementFormData): any => ({
@@ -58,6 +70,7 @@ export const mapStockOpnameItemFromDto = (dto: StockOpnameItemDto): StockOpnameI
   notes: dto.notes || '',
   approvalRequestId: dto.approval_request_id,
   approvalStatus: dto.approval_request?.status,
+  isAdjusted: dto.is_adjusted || false,
 });
 
 export const mapApprovalRequestFromDto = (dto: ApprovalRequestDto): ApprovalRequest => ({

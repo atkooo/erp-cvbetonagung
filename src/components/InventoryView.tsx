@@ -74,8 +74,7 @@ export default function InventoryView({
   );
 
   // Form states - Barang Masuk
-  const [inSku, setInSku] = useState("");
-  const [inQty, setInQty] = useState(0);
+  const [inManualItems, setInManualItems] = useState<{ sku: string; qty: number }[]>([{ sku: "", qty: 0 }]);
   const [inDoc, setInDoc] = useState("");
   const [inLocationId, setInLocationId] = useState("");
   const [inHandler, setInHandler] = useState("Gudang - Wahyu");
@@ -182,7 +181,7 @@ export default function InventoryView({
       setEmployees(emps);
 
       if (combinedProds.length > 0) {
-        setInSku((prev) => prev || combinedProds[0].sku);
+        setInManualItems((prev) => prev.length > 0 && prev[0].sku ? prev : [{ sku: combinedProds[0].sku, qty: 0 }]);
         setOutSku((prev) => prev || combinedProds[0].sku);
       }
       if (locRes.data.length > 0) {
@@ -275,7 +274,7 @@ export default function InventoryView({
   const openInwardModal = (product?: Product) => {
     const target = product || selectedProduct || products[0] || null;
     setSelectedProduct(target);
-    if (target) setInSku(target.sku);
+    if (target) setInManualItems([{ sku: target.sku, qty: 0 }]);
     setInLocationId(getDefaultIncomingLocationId(target));
     setShowInwardModal(true);
   };
@@ -364,17 +363,26 @@ export default function InventoryView({
       }
     } else {
       // MODE MANUAL
-      if (!inSku || inQty <= 0 || !inDoc) {
+      const validItems = inManualItems.filter(item => item.sku && item.qty > 0);
+      if (validItems.length === 0 || !inDoc) {
         onTriggerNotification(
-          "Gagal: Kolom SKU, Jumlah, dan Dokumen Referensi harus diisi!",
+          "Gagal: Setidaknya satu item dengan kuantitas > 0 dan Dokumen Referensi harus diisi!",
         );
         return;
       }
 
-      const matchedProd = products.find((p) => p.sku === inSku);
-      if (!matchedProd) return;
-
       try {
+        const payloadItems = validItems.map(item => {
+          const matchedProd = products.find((p) => p.sku === item.sku);
+          return {
+            purchase_order_item_id: null,
+            product_id: matchedProd?.id || "",
+            received_quantity: item.qty,
+            rejected_quantity: 0,
+            notes: inNotes || null,
+          };
+        }).filter(item => item.product_id);
+
         await purchasingApi.createGoodsReceiptNote({
           purchase_order_id: null,
           to_location_id: inLocationId,
@@ -383,18 +391,10 @@ export default function InventoryView({
           delivery_order_number: inDoc,
           status: "posted",
           notes: inNotes,
-          items: [
-            {
-              purchase_order_item_id: null,
-              product_id: matchedProd.id,
-              received_quantity: inQty,
-              rejected_quantity: 0,
-              notes: inNotes || null,
-            },
-          ],
+          items: payloadItems,
         });
         onTriggerNotification(
-          `GRN penerimaan manual untuk SKU [${inSku}] berhasil dibuat.`,
+          `GRN penerimaan manual berhasil dibuat untuk ${payloadItems.length} item.`,
         );
         await loadData();
       } catch (err) {
@@ -404,7 +404,7 @@ export default function InventoryView({
       }
     }
 
-    setInQty(0);
+    setInManualItems([{ sku: "", qty: 0 }]);
     setInDoc("");
     setInNotes("");
     setInPoItemsQty({});
@@ -635,10 +635,8 @@ export default function InventoryView({
         getProductStocks={getProductStocks}
         showInwardModal={showInwardModal}
         setShowInwardModal={setShowInwardModal}
-        inSku={inSku}
-        setInSku={setInSku}
-        inQty={inQty}
-        setInQty={setInQty}
+        inManualItems={inManualItems}
+        setInManualItems={setInManualItems}
         inDoc={inDoc}
         setInDoc={setInDoc}
         inHandler={inHandler}

@@ -1,5 +1,5 @@
 import React from "react";
-import { X, ArrowDownCircle, ArrowUpCircle } from "../icons";
+import { X, ArrowDownCircle, ArrowUpCircle, Trash2, Plus } from "../icons";
 import { Product, StockMovement } from "../../types";
 import { LocationDto as Location, ProductStockDto as ProductStock } from "../../features/inventory/types";
 import ReferencePicker from "../ReferencePicker";
@@ -23,10 +23,8 @@ interface InventoryModalsProps {
   // Inward Modal
   showInwardModal: boolean;
   setShowInwardModal: (show: boolean) => void;
-  inSku: string;
-  setInSku: (val: string) => void;
-  inQty: number;
-  setInQty: (val: number) => void;
+  inManualItems?: { sku: string; qty: number }[];
+  setInManualItems?: React.Dispatch<React.SetStateAction<{ sku: string; qty: number }[]>>;
   inDoc: string;
   setInDoc: (val: string) => void;
   inHandler: string;
@@ -81,7 +79,7 @@ interface InventoryModalsProps {
 export const InventoryModals: React.FC<InventoryModalsProps> = ({
   products, locations, selectedProduct, setSelectedProduct, getProductBySku, getLocationName,
   showStockDetailModal, setShowStockDetailModal, getProductStocks,
-  showInwardModal, setShowInwardModal, inSku, setInSku, inQty, setInQty, inDoc, setInDoc, inHandler, setInHandler, inNotes, setInNotes, inLocationId, setInLocationId, poOptions, purchaseOrders, inPoItemsQty, setInPoItemsQty, getIncomingLocationOptions, getDefaultIncomingLocationId, handleInwardSubmit,
+  showInwardModal, setShowInwardModal, inManualItems, setInManualItems, inDoc, setInDoc, inHandler, setInHandler, inNotes, setInNotes, inLocationId, setInLocationId, poOptions, purchaseOrders, inPoItemsQty, setInPoItemsQty, getIncomingLocationOptions, getDefaultIncomingLocationId, handleInwardSubmit,
   showCorrectionModal, setShowCorrectionModal, correctionQty, setCorrectionQty, correctionLocationId, setCorrectionLocationId, correctionNotes, setCorrectionNotes, handleCorrectionSubmit,
   showOutwardModal, setShowOutwardModal, outSku, setOutSku, outQty, setOutQty, outDoc, setOutDoc, outHandler, setOutHandler, outNotes, setOutNotes, outLocationId, setOutLocationId, soOptions, getStockLocationOptions, getDefaultStockLocationId, handleOutwardSubmit,
   employeeOptions,
@@ -304,33 +302,77 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">
-                      Pilih Item Produk
-                    </label>
-                    <ProductPicker
-                      value={selectedProduct?.id || ''}
-                      onChange={(product) => {
-                        setInSku(product.sku);
-                        setSelectedProduct(product);
-                        setInLocationId(getDefaultIncomingLocationId(product));
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">
-                      Kuantitas Masuk
-                    </label>
-                    <input
-                      type="number"
-                      required={!selectedPO}
-                      value={inQty || ""}
-                      onChange={(e) => setInQty(Number(e.target.value))}
-                      placeholder="Contoh: 150"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                    />
-                  </div>
+                <div className="space-y-3">
+                  <label className="text-[11px] font-bold text-slate-600 mb-2 block border-b pb-1">
+                    Daftar Item Manual
+                  </label>
+                  {inManualItems?.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <ProductPicker
+                          value={getProductBySku(item.sku)?.id || ''}
+                          onChange={(product) => {
+                            if (setInManualItems) {
+                              setInManualItems(prev => {
+                                const next = [...prev];
+                                next[idx].sku = product.sku;
+                                return next;
+                              });
+                            }
+                            if (idx === 0) {
+                              setSelectedProduct(product);
+                              setInLocationId(getDefaultIncomingLocationId(product));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          required={!selectedPO}
+                          value={item.qty || ""}
+                          min={0}
+                          onChange={(e) => {
+                            if (setInManualItems) {
+                              setInManualItems(prev => {
+                                const next = [...prev];
+                                next[idx].qty = Number(e.target.value);
+                                return next;
+                              });
+                            }
+                          }}
+                          placeholder="Qty"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-right"
+                        />
+                      </div>
+                      {inManualItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (setInManualItems) {
+                              setInManualItems(prev => prev.filter((_, i) => i !== idx));
+                            }
+                          }}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (setInManualItems) {
+                        setInManualItems(prev => [...prev, { sku: "", qty: 0 }]);
+                      }
+                    }}
+                    className="w-full py-2 border border-dashed border-slate-300 text-slate-500 hover:text-cyan-700 hover:border-cyan-300 hover:bg-cyan-50 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Plus size={14} />
+                    Tambah Item Produk
+                  </button>
                 </div>
               )}
 

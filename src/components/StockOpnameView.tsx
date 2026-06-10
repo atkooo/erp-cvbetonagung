@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   PackageCheck, Plus, CheckCircle2, AlertCircle, X, Search,
-  Warehouse, Eye, Clock, Check, RefreshCw, AlertTriangle
+  Warehouse, Eye, Clock, Check, RefreshCw, AlertTriangle, Send, Edit2
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { inventoryApi } from '../features/inventory/api';
@@ -244,10 +244,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     setEditingNotes(item.notes);
   };
 
-  const handleStatusChange = async (status: 'in_progress' | 'completed' | 'canceled') => {
+  const handleStatusChange = async (status: 'in_progress' | 'closed' | 'cancelled') => {
     if (!selectedSession) return;
 
-    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'completed' ? 'Selesaikan Audit' : 'Batalkan Sesi';
+    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'closed' ? 'Selesaikan Audit' : 'Batalkan Sesi';
     const result = await Swal.fire({
       title: `${actionText}?`,
       text: `Status sesi akan diubah menjadi ${status}.`,
@@ -452,13 +452,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   {selectedSession.status === 'in_progress' && (
                     <>
                       <button
-                        onClick={() => handleStatusChange('completed')}
+                        onClick={() => handleStatusChange('closed')}
                         className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition"
                       >
                         Selesaikan Audit
                       </button>
                       <button
-                        onClick={() => handleStatusChange('canceled')}
+                        onClick={() => handleStatusChange('cancelled')}
                         className="px-3 py-1.5 border bg-white text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold transition"
                       >
                         Batalkan Sesi
@@ -466,7 +466,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     </>
                   )}
 
-                  {selectedSession.status === 'completed' && (
+                  {selectedSession.status === 'closed' && (
                     <span className="text-amber-600 font-bold flex items-center gap-1.5">
                       <AlertTriangle size={14} />
                       <span>Selesai Audit. Menunggu penyelesaian seluruh selisih.</span>
@@ -574,66 +574,71 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                               )}
                             </td>
                             <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                              {/* If session is in_progress, can edit quantities */}
-                              {selectedSession.status === 'in_progress' && (
-                                <>
-                                  {isEditing ? (
-                                    <div className="flex justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* If session is in_progress, can edit quantities */}
+                                {selectedSession.status === 'in_progress' && (
+                                  <>
+                                    {isEditing ? (
+                                      <>
+                                        <button
+                                          onClick={() => handleUpdateItem(item.id)}
+                                          className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                          title="Simpan"
+                                        >
+                                          <Check size={12} />
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingItemId(null)}
+                                          className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
+                                          title="Batal"
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      </>
+                                    ) : (
                                       <button
-                                        onClick={() => handleUpdateItem(item.id)}
-                                        className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600"
-                                        title="Simpan"
+                                        onClick={() => handleStartEditing(item)}
+                                        title="Input Fisik"
+                                        className="p-1.5 border rounded bg-white hover:bg-slate-50 text-slate-600 transition"
                                       >
-                                        <Check size={12} />
+                                        <Edit2 size={14} />
                                       </button>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* If session is completed/closed/in_progress, look at adjustments */}
+                                {selectedSession.status !== 'draft' && !isEditing && (
+                                  <>
+                                    {hasDifference && !item.approvalRequestId && (
                                       <button
-                                        onClick={() => setEditingItemId(null)}
-                                        className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
-                                        title="Batal"
+                                        onClick={() => handleRequestApproval(item)}
+                                        title="Ajukan Approval"
+                                        className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded transition"
                                       >
-                                        <X size={12} />
+                                        <Send size={14} />
                                       </button>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleStartEditing(item)}
-                                      className="px-2.5 py-1 border rounded bg-white hover:bg-slate-50 text-[10px] font-bold text-slate-600"
-                                    >
-                                      Input Fisik
-                                    </button>
-                                  )}
-                                </>
-                              )}
+                                    )}
 
-                              {/* If session is completed/closed, look at adjustments */}
-                              {selectedSession.status !== 'draft' && !isEditing && (
-                                <div className="flex justify-end gap-1">
-                                  {hasDifference && !item.approvalRequestId && (
-                                    <button
-                                      onClick={() => handleRequestApproval(item)}
-                                      className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded"
-                                    >
-                                      Ajukan Approval
-                                    </button>
-                                  )}
-
-                                  {item.approvalStatus === 'approved' && !item.isAdjusted && (
-                                    <button
-                                      onClick={() => handleAdjustStock(item)}
-                                      className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded"
-                                    >
-                                      Sesuaikan Stok
-                                    </button>
-                                  )}
-                                  
-                                  {item.approvalStatus === 'approved' && item.isAdjusted && (
-                                    <span className="text-emerald-600 font-bold flex items-center gap-0.5">
-                                      <CheckCircle2 size={12} />
-                                      <span>Sudah Selesai</span>
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                                    {item.approvalStatus === 'approved' && !item.isAdjusted && (
+                                      <button
+                                        onClick={() => handleAdjustStock(item)}
+                                        title="Sesuaikan Stok"
+                                        className="p-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded transition"
+                                      >
+                                        <RefreshCw size={14} />
+                                      </button>
+                                    )}
+                                    
+                                    {item.approvalStatus === 'approved' && item.isAdjusted && (
+                                      <span className="text-emerald-600 font-bold flex items-center gap-0.5 ml-2">
+                                        <CheckCircle2 size={12} />
+                                        <span>Selesai</span>
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

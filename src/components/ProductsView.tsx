@@ -156,9 +156,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setCategory(selectedCategory?.id || categories[0]?.id || '');
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
-    setStock(product.stock);
+    setStock(0);
     setUnit(selectedUnit?.id || visibleUnits[0]?.id || '');
-    setLocation(product.location);
+    setLocation(storageLocations[0]?.id || '');
     setMinStock(product.minStock);
     setShowAddModal(true);
   };
@@ -212,7 +212,25 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
       if (editingProduct) {
         const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
-        setProducts((prev) => prev.map((prod) => (prod.id === editingProduct.id ? updatedProduct : prod)));
+        setProducts((prev) => prev.map((prod) => {
+          if (prod.id !== editingProduct.id) {
+            return prod;
+          }
+
+          const liveStock = prod.stock;
+          const stockStatus: Product['status'] = liveStock <= 0
+            ? 'Habis'
+            : liveStock <= updatedProduct.minStock
+              ? 'Menipis'
+              : 'Aman';
+
+          return {
+            ...updatedProduct,
+            stock: liveStock,
+            location: prod.location,
+            status: stockStatus,
+          };
+        }));
         onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name}`);
       } else {
         const newProd = await productsApi.createProduct(payload);
@@ -561,16 +579,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Stok Awal</label>
-                  <input
-                    type="number"
-                    value={stock || ''}
-                    onChange={(e) => setStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Satuan</label>
                   <select
@@ -597,21 +606,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Lokasi Penempatan Rak</label>
-                <select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                >
-                  {storageLocations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
-                  ))}
-                </select>
-                {storageLocations.length === 0 && (
-                  <p className="text-[10px] text-amber-600 font-semibold mt-1">Master lokasi rak belum tersedia di database.</p>
-                )}
-              </div>
+
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button

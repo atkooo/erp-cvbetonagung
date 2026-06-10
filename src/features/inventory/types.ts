@@ -85,6 +85,7 @@ export interface StockOpnameItemDto {
   difference_qty: string | number;
   notes: string | null;
   approval_request_id: string | null;
+  is_adjusted?: boolean;
   session?: StockOpnameSessionDto;
   product?: ProductDto;
   location?: LocationDto;

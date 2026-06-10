@@ -97,15 +97,17 @@ export const inventoryApi = {
   },
 
   async createStockOpnameSession(data: { warehouse_id: string; notes?: string }): Promise<StockOpnameSession> {
+    const opname_number = `OPN-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     const response = await apiClient.post<{ data: StockOpnameSessionDto }>('/inventory/stock-opname-sessions', {
       ...data,
+      opname_number,
       status: 'draft',
       started_at: new Date().toISOString(),
     });
     return mapStockOpnameSessionFromDto(response.data);
   },
 
-  async updateStockOpnameSessionStatus(id: string, status: 'draft' | 'in_progress' | 'completed' | 'canceled' | 'closed'): Promise<StockOpnameSession> {
+  async updateStockOpnameSessionStatus(id: string, status: 'draft' | 'in_progress' | 'closed' | 'cancelled'): Promise<StockOpnameSession> {
     const response = await apiClient.put<{ data: StockOpnameSessionDto }>(`/inventory/stock-opname-sessions/${id}`, {
       status
     });
@@ -161,8 +163,10 @@ export const inventoryApi = {
     change_summary: string;
     amount?: number;
   }): Promise<ApprovalRequest> {
+    const approval_number = `APP-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     const response = await apiClient.post<{ data: ApprovalRequestDto }>('/inventory/approval-requests', {
       ...data,
+      approval_number,
       status: 'pending',
       requested_at: new Date().toISOString(),
     });
