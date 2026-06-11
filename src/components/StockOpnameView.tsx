@@ -91,6 +91,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
+  const availableItemLocations = selectedSession
+    ? locations.filter((location) => location.warehouse_id === selectedSession.warehouseId)
+    : [];
+
   // Load baseline data
   useEffect(() => {
     fetchSessions();
@@ -104,6 +108,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     } else {
       setSessionItems([]);
     }
+    setNewItemLocationId('');
   }, [selectedSession]);
 
   const fetchSessions = async () => {
@@ -181,6 +186,12 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     e.preventDefault();
     if (!selectedSession || !newItemProductId || !newItemLocationId) {
       Swal.fire('Error', 'Pilih produk dan lokasi penyimpanan.', 'error');
+      return;
+    }
+
+    const selectedLocation = availableItemLocations.find((location) => location.id === newItemLocationId);
+    if (!selectedLocation) {
+      Swal.fire('Error', 'Lokasi penyimpanan harus berasal dari gudang sesi stock opname.', 'error');
       return;
     }
 
@@ -435,7 +446,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   {selectedSession.status === 'draft' && (
                     <>
                       <button
-                        onClick={() => setShowAddItemModal(true)}
+                        onClick={() => {
+                          setNewItemLocationId('');
+                          setShowAddItemModal(true);
+                        }}
                         className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition"
                       >
                         Tambah Item
@@ -493,7 +507,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   <p>Belum ada item barang dalam sesi audit ini.</p>
                   {selectedSession.status === 'draft' && (
                     <button
-                      onClick={() => setShowAddItemModal(true)}
+                      onClick={() => {
+                        setNewItemLocationId('');
+                        setShowAddItemModal(true);
+                      }}
                       className="text-cyan-600 font-bold hover:underline"
                     >
                       Tambahkan item pertama
@@ -750,10 +767,15 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   required
                 >
                   <option value="">-- Pilih Lokasi --</option>
-                  {locations.map(loc => (
+                  {availableItemLocations.map(loc => (
                     <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
                   ))}
                 </select>
+                {availableItemLocations.length === 0 && (
+                  <p className="text-[10px] text-amber-600 font-semibold">
+                    Belum ada rak/lokasi untuk gudang {selectedSession.warehouseName}.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
