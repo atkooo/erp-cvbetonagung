@@ -9,7 +9,7 @@ import {
   FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2 
 } from '@/src/components/icons';
 import SearchableSelect from './SearchableSelect';
-import { authStorage } from '../services/api';
+import { authStorage, apiClient } from '../services/api';
 import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';
 import { employeesApi } from '../features/employees/api';
@@ -31,6 +31,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,22 +65,31 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   // Form States - Update Stage
   const [updateStageValue, setUpdateStageValue] = useState('Cetak');
 
+  // Form States - Receive Stock
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [receiveQty, setReceiveQty] = useState(0);
+  const [receiveTargetLocationId, setReceiveTargetLocationId] = useState('');
+  const [receiveSourceLocationId, setReceiveSourceLocationId] = useState('');
+  const [receiveNotes, setReceiveNotes] = useState('');
+
   const fetchData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [wos, prods, emps, projs, sos] = await Promise.all([
+      const [wos, prods, emps, projs, sos, locRes] = await Promise.all([
         productionApi.getWorkOrders(),
         productsApi.getProducts(),
         employeesApi.getEmployees(),
         projectsApi.getProjects(),
-        salesApi.getSalesOrders()
+        salesApi.getSalesOrders(),
+        apiClient.get<{ data: any[] }>('/master-data/storage-locations')
       ]);
       setWorkOrders(wos);
       setProducts(prods);
       setEmployees(emps.filter(e => e.status === 'Aktif'));
       setProjects(projs);
       setSalesOrders(sos);
+      setLocations(locRes.data || []);
 
       if (initialWoId) {
         setSelectedWoId(initialWoId);
@@ -230,6 +240,39 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     } catch (err) {
       console.error('Failed to update WO stage', err);
       onTriggerNotification('Gagal mengubah tahap produksi.');
+    }
+  };
+
+  const handleOpenReceiveModal = () => {
+    if (!selectedWo) return;
+    const remainingToReceive = totalOk - selectedWo.completedQty;
+    setReceiveQty(remainingToReceive > 0 ? remainingToReceive : 0);
+    setReceiveTargetLocationId('');
+    setReceiveSourceLocationId('');
+    setReceiveNotes('');
+    setIsReceiveModalOpen(true);
+  };
+
+  const handleReceiveStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWoId || !selectedWo || receiveQty <= 0 || !receiveTargetLocationId) {
+      onTriggerNotification('Mohon lengkapi qty dan lokasi tujuan dengan benar.');
+      return;
+    }
+
+    try {
+      const updated = await productionApi.receiveWorkOrder(selectedWoId, {
+        quantity: receiveQty,
+        target_location_id: receiveTargetLocationId,
+        source_location_id: receiveSourceLocationId || undefined,
+        notes: receiveNotes
+      });
+      setWorkOrders(prev => prev.map(w => w.id === selectedWoId ? updated : w));
+      onTriggerNotification(`Stok berhasil masuk ke gudang untuk WO ${selectedWo.workOrderNumber}`);
+      setIsReceiveModalOpen(false);
+    } catch (err) {
+      console.error('Failed to receive stock', err);
+      onTriggerNotification('Gagal menerima stok ke gudang.');
     }
   };
 
@@ -470,6 +513,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all"
                         >
                           Input Hasil Harian
+                        </button>
+                        <button
+                          onClick={handleOpenReceiveModal}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all"
+                        >
+                          Terima Stok
                         </button>
                         <button
                           onClick={() => handleDeleteWo(selectedWo.id, selectedWo.workOrderNumber)}
@@ -926,6 +975,104 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Ubah Tahap
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Terima Stok Gudang */}
+      {isReceiveModalOpen && selectedWo && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 bg-emerald-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-300" />
+                <h3 className="font-bold text-sm">Terima Stok Hasil Produksi</h3>
+              </div>
+              <button onClick={() => setIsReceiveModalOpen(false)} className="text-emerald-200 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleReceiveStock} className="p-5 space-y-4">
+              <div className="p-3 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-100 text-[11px]">
+                Anda akan menerima produk jadi <strong>{selectedWo.productName}</strong> ke dalam inventori, sekaligus memotong bahan baku sesuai dengan Bill of Materials (BOM) jika ada.
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Jumlah Diterima (Pcs) *</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    required
+                    min={0.1}
+                    step={0.1}
+                    value={receiveQty}
+                    onChange={(e) => setReceiveQty(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 font-mono text-lg font-bold text-emerald-700"
+                  />
+                  <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                    Total OK: {totalOk} pcs<br/>
+                    Sdh Terima: {selectedWo.completedQty} pcs
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Tujuan Lokasi Penyimpanan (Barang Jadi) *</label>
+                <select
+                  required
+                  value={receiveTargetLocationId}
+                  onChange={(e) => setReceiveTargetLocationId(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                >
+                  <option value="">-- Pilih Lokasi Target --</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Asal Gudang Bahan Baku (Opsional)</label>
+                <select
+                  value={receiveSourceLocationId}
+                  onChange={(e) => setReceiveSourceLocationId(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                >
+                  <option value="">-- Lokasi Default / Tidak Dipotong --</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-slate-400">Pilih dari mana bahan baku dikurangi (jika produk memiliki BOM).</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Catatan Penerimaan</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Penerimaan Batch Siang"
+                  value={receiveNotes}
+                  onChange={(e) => setReceiveNotes(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReceiveModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  Konfirmasi Penerimaan
                 </button>
               </div>
             </form>

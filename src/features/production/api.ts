@@ -43,6 +43,14 @@ export const productionApi = {
     await apiClient.delete(`/production/work-orders/${id}`);
   },
 
+  async receiveWorkOrder(id: string, data: { quantity: number; target_location_id: string; source_location_id?: string; notes?: string }): Promise<ProductionWorkOrder> {
+    const response = await apiClient.post<{ data: ProductionWorkOrderDto }>(
+      `/production/work-orders/${id}/receive`,
+      data
+    );
+    return mapWorkOrderFromDto(response.data);
+  },
+
   // Work Logs
   async createWorkLog(data: CreateWorkLogDto): Promise<ProductionWorkLog> {
     const response = await apiClient.post<{ data: ProductionWorkLogDto }>(
