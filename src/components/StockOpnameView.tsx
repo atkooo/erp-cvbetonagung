@@ -260,7 +260,21 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const handleStatusChange = async (status: 'in_progress' | 'closed' | 'cancelled') => {
     if (!selectedSession) return;
 
-    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'closed' ? 'Selesaikan Audit' : 'Batalkan Sesi';
+    if (status === 'closed') {
+      const hasUnresolved = sessionItems.some(
+        (item) => item.differenceQty !== 0 && !item.isAdjusted
+      );
+      if (hasUnresolved) {
+        Swal.fire(
+          'Tidak Dapat Menutup Sesi',
+          'Masih ada selisih stok yang belum diselesaikan (butuh approval dan penyesuaian).',
+          'error'
+        );
+        return;
+      }
+    }
+
+    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'closed' ? 'Tutup Sesi' : 'Batalkan Sesi';
     const result = await Swal.fire({
       title: `${actionText}?`,
       text: `Status sesi akan diubah menjadi ${status}.`,
@@ -470,7 +484,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                         onClick={() => handleStatusChange('closed')}
                         className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition"
                       >
-                        Selesaikan Audit
+                        Tutup Sesi
                       </button>
                       <button
                         onClick={() => handleStatusChange('cancelled')}
@@ -479,13 +493,6 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                         Batalkan Sesi
                       </button>
                     </>
-                  )}
-
-                  {selectedSession.status === 'closed' && (
-                    <span className="text-amber-600 font-bold flex items-center gap-1.5">
-                      <AlertTriangle size={14} />
-                      <span>Selesai Audit. Menunggu penyelesaian seluruh selisih.</span>
-                    </span>
                   )}
 
                   {selectedSession.status === 'closed' && (
