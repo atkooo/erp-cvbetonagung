@@ -130,6 +130,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
 
   const fetchSessionItems = async (sessionId: string) => {
     setIsLoadingItems(true);
+    setSessionItems([]); // Clear items to prevent showing previous session's items
     try {
       const data = await inventoryApi.getStockOpnameItems(sessionId);
       setSessionItems(data);
