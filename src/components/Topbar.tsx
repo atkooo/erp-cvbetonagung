@@ -112,7 +112,14 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
         </div>
 
         {/* Profile Info */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+        <div 
+          className="flex items-center gap-2 pl-2 border-l border-slate-200 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
+          onClick={() => {
+            // Trigger navigation to profile
+            window.dispatchEvent(new CustomEvent('navigate', { detail: 'profile' }));
+          }}
+          title="Buka Profil Saya"
+        >
           <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-semibold text-xs">
             <User size={16} />
           </div>

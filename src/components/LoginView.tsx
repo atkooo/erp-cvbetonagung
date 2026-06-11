@@ -67,9 +67,16 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || (!password && !otp)) {
-      showLoginError(showOtpField ? 'Isi email dan OTP untuk melanjutkan.' : 'Isi email dan password untuk melanjutkan.');
-      return;
+    if (showOtpField) {
+      if (!otp) {
+        showLoginError('Isi OTP untuk melanjutkan.');
+        return;
+      }
+    } else {
+      if (!email || !password) {
+        showLoginError('Isi email dan password untuk melanjutkan.');
+        return;
+      }
     }
 
     setErrorMessage('');
@@ -134,43 +141,45 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Email Address</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                    <Mail size={13} />
-                  </span>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@betonagung.co.id"
-                    autoComplete="email"
-                    className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
-                  />
-                </div>
-              </div>
-
               {!showOtpField && (
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Email Address</label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                        <Mail size={13} />
+                      </span>
+                      <input
+                        type="email"
+                        required={!showOtpField}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="nama@betonagung.co.id"
+                        autoComplete="email"
+                        className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
+                      />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                      <KeyRound size={13} />
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                      className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
-                    />
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                        <KeyRound size={13} />
+                      </span>
+                      <input
+                        type="password"
+                        required={!showOtpField}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="current-password"
+                        className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               {showOtpField && (

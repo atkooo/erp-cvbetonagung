@@ -438,4 +438,5 @@ export type ViewType =
   | 'employee-loans'
   | 'attendance-scanner'
   | 'settings'
+  | 'profile'
   | 'users';

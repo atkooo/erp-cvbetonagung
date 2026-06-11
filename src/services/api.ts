@@ -168,4 +168,53 @@ export const authApi = {
       authStorage.clear();
     }
   },
+  async updateProfile(data: { name: string; password?: string; current_password?: string; password_confirmation?: string }) {
+    const response = await apiClient.put<ApiEnvelope<AuthUser>>('/auth/profile', data);
+    
+    // Update local user storage
+    const session = {
+      token: authStorage.getToken() || '',
+      user: response.data,
+    };
+    authStorage.setSession(session);
+    
+    return response.data;
+  },
+};
+
+export const systemApi = {
+  async downloadBackup() {
+    const token = authStorage.getToken();
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/system/backup`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Gagal mengunduh backup.' }));
+      throw new Error(error.message || 'Gagal mengunduh backup.');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `cvba-backup-${new Date().getTime()}.sql`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch && filenameMatch.length === 2) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
 };

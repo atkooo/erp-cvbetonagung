@@ -111,6 +111,8 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "payroll-management": "Sistem Penggajian Dasar",
   "employee-loans": "Kasbon & Pinjaman Karyawan",
   settings: "Pengaturan Sistem ERP",
+  profile: "Profil & Akun Saya",
+  users: "Manajemen User & Akun",
 };
 
 // Dynamic RBAC: Backend Modules -> users, roles, employees, customers, suppliers, products, inventory, sales, purchasing, projects, finance, production, approvals, reports, settings

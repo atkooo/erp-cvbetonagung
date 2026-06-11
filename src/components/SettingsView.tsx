@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck } from '@/src/components/icons';
+import { systemApi } from '../services/api';
 
 interface SettingsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -186,8 +187,14 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
                   </div>
 
                   <button
-                    onClick={() => {
-                      onTriggerNotification('Berhasil mengekspor cadangan database CV_BETON_AGUNG_BACKUP.sql (4.2 MB)');
+                    onClick={async () => {
+                      try {
+                        onTriggerNotification('Memulai ekspor database... Mohon tunggu.');
+                        await systemApi.downloadBackup();
+                        onTriggerNotification('Berhasil mengekspor cadangan database CV_BETON_AGUNG_BACKUP.sql');
+                      } catch (err: any) {
+                        onTriggerNotification(err.message || 'Gagal mengekspor database. Pastikan mysqldump tersedia.');
+                      }
                     }}
                     className="w-full py-2 bg-slate-900 text-white font-bold rounded hover:bg-slate-800 transition-colors text-center block"
                   >

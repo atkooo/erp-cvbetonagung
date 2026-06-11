@@ -55,6 +55,7 @@ const ReceivablesPayablesView = React.lazy(() => import('./pages/finance/account
 const CashExpenseView = React.lazy(() => import('./pages/finance/cash-bank'));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 const UsersView = React.lazy(() => import('./components/UsersView'));
+const ProfileView = React.lazy(() => import('./components/ProfileView'));
 
 import { CheckCircle2, WifiOff } from '@/src/components/icons';
 
@@ -115,17 +116,33 @@ export default function App() {
       setCurrentView('login');
       triggerNotification('Sesi Anda telah berakhir. Silakan masuk kembali.');
     };
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setCurrentView(customEvent.detail as ViewType);
+      }
+    };
+    const handleProfileUpdated = () => {
+      const updatedUser = authStorage.getUser();
+      if (updatedUser) {
+        setAuthUser(updatedUser);
+      }
+    };
 
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('auth:unauthorized', handleUnauthorized);
+    window.addEventListener('navigate', handleNavigate);
+    window.addEventListener('profile:updated', handleProfileUpdated);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('navigate', handleNavigate);
+      window.removeEventListener('profile:updated', handleProfileUpdated);
     };
   }, []);
 
@@ -478,6 +495,8 @@ export default function App() {
         return <InventoryReportView onTriggerNotification={triggerNotification} />;
       case 'settings':
         return <SettingsView onTriggerNotification={triggerNotification} />;
+      case 'profile':
+        return <ProfileView onTriggerNotification={triggerNotification} />;
 
       default:
         return (
