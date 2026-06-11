@@ -92,7 +92,7 @@ export const inventoryApi = {
   },
 
   async getStockOpnameItems(sessionId: string): Promise<StockOpnameItem[]> {
-    const response = await apiClient.get<{ data: StockOpnameItemDto[] }>(`/inventory/stock-opname-items?filter[session_id]=${sessionId}&include=product,location,approvalRequest`);
+    const response = await apiClient.get<{ data: StockOpnameItemDto[] }>(`/inventory/stock-opname-items?session_id=${sessionId}`);
     return response.data.map(mapStockOpnameItemFromDto);
   },
 
