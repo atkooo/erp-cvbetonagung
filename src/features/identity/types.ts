@@ -42,3 +42,25 @@ export interface Role {
   description: string;
   permissions: Permission[];
 }
+
+export interface UserDto {
+  id: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive';
+  last_login_at: string | null;
+  role_id: string;
+  role?: RoleDto;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface IdentityUser {
+  id: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive';
+  lastLoginAt: string | null;
+  roleId: string;
+  roleName: string;
+}

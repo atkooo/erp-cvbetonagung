@@ -5,7 +5,7 @@
 
 import { apiClient } from '../../services/api';
 import { RoleDto, PermissionDto, Role, Permission } from './types';
-import { mapRoleFromDto, mapPermissionFromDto } from './mappers';
+import { mapRoleFromDto, mapPermissionFromDto, mapUserFromDto } from './mappers';
 
 export const identityApi = {
   async getRoles(): Promise<Role[]> {
@@ -28,5 +28,24 @@ export const identityApi = {
 
   async deleteRolePermission(roleId: string, permissionId: string): Promise<void> {
     await apiClient.delete(`/identity/role-permissions/${roleId}/${permissionId}`);
+  },
+
+  async getUsers(): Promise<any[]> {
+    const response = await apiClient.get<{ data: any[] }>('/identity/users?include=role&per_page=100');
+    return response.data.map(mapUserFromDto);
+  },
+
+  async createUser(data: any): Promise<any> {
+    const response = await apiClient.post<{ data: any }>('/identity/users', data);
+    return mapUserFromDto(response.data);
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await apiClient.put<{ data: any }>(`/identity/users/${id}`, data);
+    return mapUserFromDto(response.data);
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    await apiClient.delete(`/identity/users/${id}`);
   }
 };

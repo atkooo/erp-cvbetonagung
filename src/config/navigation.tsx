@@ -270,49 +270,49 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   //   ],
   // },
 
-  {
-    id: "hrd",
-    title: "HRD & Personalia",
-    collapsible: true,
-    items: [
-      {
-        view: "employees",
-        label: "Master Karyawan",
-        icon: UserCog,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-dashboard",
-        label: "Dashboard Absensi",
-        icon: CalendarCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "attendance-scanner",
-        label: "Scan Absensi (QR)",
-        icon: Scan,
-        requiredModule: "employees",
-      },
-      {
-        view: "leave-management",
-        label: "Pengajuan Cuti",
-        icon: FileCheck,
-        requiredModule: "employees",
-      },
-      {
-        view: "payroll-management",
-        label: "Payroll",
-        icon: Calculator,
-        requiredModule: "finance",
-      },
-      {
-        view: "employee-loans",
-        label: "Pinjaman Karyawan",
-        icon: Handshake,
-        requiredModule: "finance",
-      },
-    ],
-  },
+  // {
+  //   id: "hrd",
+  //   title: "HRD & Personalia",
+  //   collapsible: true,
+  //   items: [
+  //     {
+  //       view: "employees",
+  //       label: "Master Karyawan",
+  //       icon: UserCog,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "attendance-dashboard",
+  //       label: "Dashboard Absensi",
+  //       icon: CalendarCheck,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "attendance-scanner",
+  //       label: "Scan Absensi (QR)",
+  //       icon: Scan,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "leave-management",
+  //       label: "Pengajuan Cuti",
+  //       icon: FileCheck,
+  //       requiredModule: "employees",
+  //     },
+  //     {
+  //       view: "payroll-management",
+  //       label: "Payroll",
+  //       icon: Calculator,
+  //       requiredModule: "finance",
+  //     },
+  //     {
+  //       view: "employee-loans",
+  //       label: "Pinjaman Karyawan",
+  //       icon: Handshake,
+  //       requiredModule: "finance",
+  //     },
+  //   ],
+  // },
   {
     id: "inventory",
     title: "Inventory",
@@ -408,6 +408,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "role-permissions",
         label: "Role & Permission",
         icon: ShieldCheck,
+        requiredModule: "roles",
+      },
+      {
+        view: "users",
+        label: "Master User / Akun",
+        icon: Users,
         requiredModule: "roles",
       },
       {

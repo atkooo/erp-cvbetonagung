@@ -272,7 +272,7 @@ export default function BomCostingView({ onTriggerNotification }: BomCostingView
   );
 
   const relatedProduct = products.find(p => p.id === selectedBom?.productId);
-  const sellingPrice = relatedProduct?.sellingPrice || 2500000;
+  const sellingPrice = relatedProduct?.sellingPrice || 0;
   const totalCost = selectedBom?.totalCost || 0;
   const margin = sellingPrice - totalCost;
   const marginPercentage = sellingPrice ? Math.round((margin / sellingPrice) * 100) : 0;

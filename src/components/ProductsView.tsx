@@ -26,7 +26,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const itemsPerPage = 10;
 
   // New product states
-  const [sku, setSku] = useState('');
+  const [sku, setSku] = useState('AUTO GENERATED');
   const [name, setName] = useState('');
   const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
   const [category, setCategory] = useState('');
@@ -127,7 +127,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   };
 
   const resetForm = () => {
-    setSku('');
+    setSku('AUTO GENERATED');
     setName('');
     setType('finished_good');
     setCategory(categories[0]?.id || '');
@@ -509,13 +509,13 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU Produk</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU (Otomatis)</label>
                   <input
                     type="text"
-                    placeholder="Otomatis (atau isi manual)"
+                    readOnly
+                    disabled
                     value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-lg text-xs font-mono cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1">

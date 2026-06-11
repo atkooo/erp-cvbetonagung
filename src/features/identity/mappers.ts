@@ -20,3 +20,13 @@ export const mapRoleFromDto = (dto: RoleDto): Role => ({
   description: dto.description || '',
   permissions: dto.permissions ? dto.permissions.map(mapPermissionFromDto) : [],
 });
+
+export const mapUserFromDto = (dto: any): any => ({
+  id: dto.id,
+  name: dto.name,
+  email: dto.email,
+  status: dto.status,
+  lastLoginAt: dto.last_login_at,
+  roleId: dto.role_id,
+  roleName: dto.role?.name || '-',
+});

@@ -54,6 +54,7 @@ const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseV
 const ReceivablesPayablesView = React.lazy(() => import('./pages/finance/account-payable'));
 const CashExpenseView = React.lazy(() => import('./pages/finance/cash-bank'));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
+const UsersView = React.lazy(() => import('./components/UsersView'));
 
 import { CheckCircle2, WifiOff } from '@/src/components/icons';
 
@@ -73,6 +74,7 @@ export default function App() {
 
   // Focus detail page state modifiers
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
   const [scannedSku, setScannedSku] = useState<string | null>(null);
 
   // Central Notification Toast engine
@@ -349,6 +351,18 @@ export default function App() {
             onTriggerNotification={triggerNotification}
           />
         );
+      case 'approval-workflows':
+        return (
+          <ApprovalWorkflowView
+            onTriggerNotification={triggerNotification}
+          />
+        );
+      case 'users':
+        return (
+          <UsersView
+            onTriggerNotification={triggerNotification}
+          />
+        );
       case 'purchase-orders':
         return (
           <PurchaseView
@@ -390,7 +404,16 @@ export default function App() {
       case 'audit-logs':
         return <AuditLogView onTriggerNotification={triggerNotification} />;
       case 'production-work-orders':
-        return <ProductionWorkOrderView onTriggerNotification={triggerNotification} />;
+        return (
+          <ProductionWorkOrderView 
+            initialWoId={selectedWorkOrderId}
+            onNavigateToProject={(projectId) => {
+              setSelectedProjectId(projectId);
+              setCurrentView('project-detail');
+            }}
+            onTriggerNotification={triggerNotification} 
+          />
+        );
       case 'bom-costing':
         return <BomCostingView onTriggerNotification={triggerNotification} />;
 
@@ -402,6 +425,10 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProjectId={setSelectedProjectId}
             onNavigate={setCurrentView}
+            onNavigateToWorkOrder={(woId) => {
+              setSelectedWorkOrderId(woId);
+              setCurrentView('production-work-orders');
+            }}
             onTriggerNotification={triggerNotification}
           />
         );

@@ -76,8 +76,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   };
 
   const generateCustomerCode = () => {
-    const timestamp = Date.now().toString().slice(-8);
-    return `CUST${timestamp}`;
+    return 'AUTO GENERATED';
   };
 
   const handleOpenAddModal = () => {

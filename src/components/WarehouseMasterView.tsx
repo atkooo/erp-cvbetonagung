@@ -23,7 +23,7 @@ interface WarehouseDto {
 
 const emptyWarehouse = {
   id: '',
-  code: '',
+  code: 'AUTO GENERATED',
   name: '',
   type: 'Internal',
   address: '',
@@ -32,7 +32,7 @@ const emptyWarehouse = {
 const emptyLocation = {
   id: '',
   warehouse_id: '',
-  code: '',
+  code: 'AUTO GENERATED',
   name: '',
   description: '',
 };
@@ -102,7 +102,7 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
     setLocationForm({
       id: location.id,
       warehouse_id: location.warehouse_id || selectedWarehouseId,
-      code: location.code,
+      code: location.code || 'AUTO GENERATED',
       name: location.name,
       description: location.description || '',
     });
@@ -117,7 +117,7 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
     }
 
     const payload = {
-      code: warehouseForm.code.trim().toUpperCase(),
+      code: warehouseForm.code === 'AUTO GENERATED' ? '' : warehouseForm.code.trim().toUpperCase(),
       name: warehouseForm.name.trim(),
       type: warehouseForm.type.trim() || 'Internal',
       address: warehouseForm.address.trim() || null,
@@ -148,7 +148,7 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
 
     const payload = {
       warehouse_id: locationForm.warehouse_id,
-      code: locationForm.code.trim().toUpperCase(),
+      code: locationForm.code === 'AUTO GENERATED' ? '' : locationForm.code.trim().toUpperCase(),
       name: locationForm.name.trim(),
       description: locationForm.description.trim() || null,
     };
@@ -343,8 +343,8 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
             <form onSubmit={handleSaveWarehouse} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
-                  <span className="font-bold text-slate-700 block">Kode (Otomatis/Manual)</span>
-                  <input value={warehouseForm.code} placeholder="Otomatis" onChange={e => setWarehouseForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" />
+                  <span className="font-bold text-slate-700 block">Kode (Otomatis)</span>
+                  <input value={warehouseForm.code} readOnly disabled className="w-full px-3 py-2 border rounded-lg font-mono uppercase bg-slate-100 text-slate-500 cursor-not-allowed" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="font-bold text-slate-700 block">Tipe</span>
@@ -394,7 +394,7 @@ export default function WarehouseMasterView({ onTriggerNotification }: Warehouse
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
                   <span className="font-bold text-slate-700 block">Kode Rak (Otomatis)</span>
-                  <input value={locationForm.code} placeholder="Otomatis" onChange={e => setLocationForm(prev => ({ ...prev, code: e.target.value }))} className="w-full px-3 py-2 border rounded-lg font-mono uppercase" />
+                  <input value={locationForm.code} readOnly disabled className="w-full px-3 py-2 border rounded-lg font-mono uppercase bg-slate-100 text-slate-500 cursor-not-allowed" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="font-bold text-slate-700 block">Nama Lokasi</span>

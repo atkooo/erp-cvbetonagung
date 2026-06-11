@@ -8,6 +8,7 @@ import {
   Factory, Plus, Search, CheckCircle2, X, Clock, HelpCircle, 
   FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2 
 } from '@/src/components/icons';
+import SearchableSelect from './SearchableSelect';
 import { authStorage } from '../services/api';
 import { productionApi } from '../features/production/api';
 import { productsApi } from '../features/products/api';
@@ -19,10 +20,12 @@ import { ProductionWorkOrder, ProductionWorkLog, Employee, Product, Project, Sal
 import Swal from 'sweetalert2';
 
 interface ProductionWorkOrderViewProps {
+  initialWoId?: string | null;
+  onNavigateToProject?: (projectId: string) => void;
   onTriggerNotification: (message: string) => void;
 }
 
-export default function ProductionWorkOrderView({ onTriggerNotification }: ProductionWorkOrderViewProps) {
+export default function ProductionWorkOrderView({ initialWoId, onNavigateToProject, onTriggerNotification }: ProductionWorkOrderViewProps) {
   const [workOrders, setWorkOrders] = useState<ProductionWorkOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -40,7 +43,7 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
   const [isUpdateStageModalOpen, setIsUpdateStageModalOpen] = useState(false);
 
   // Form States - Create WO
-  const [newWoNumber, setNewWoNumber] = useState('');
+  const [newWoNumber, setNewWoNumber] = useState('AUTO GENERATED');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedSalesOrderId, setSelectedSalesOrderId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -78,7 +81,9 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
       setProjects(projs);
       setSalesOrders(sos);
 
-      if (wos.length > 0) {
+      if (initialWoId) {
+        setSelectedWoId(initialWoId);
+      } else if (wos.length > 0) {
         setSelectedWoId(wos[0].id);
       }
     } catch (err) {
@@ -95,9 +100,14 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (initialWoId) {
+      setSelectedWoId(initialWoId);
+    }
+  }, [initialWoId]);
+
   const handleOpenCreateModal = () => {
-    const nextNum = workOrders.length + 1;
-    setNewWoNumber(`WO-2026-06${nextNum < 10 ? '0' + nextNum : nextNum}`);
+    setNewWoNumber('AUTO GENERATED');
     setSelectedProductId('');
     setSelectedSalesOrderId('');
     setSelectedProjectId('');
@@ -431,6 +441,16 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
                           <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
                             {selectedWo.stage}
                           </span>
+                          {selectedWo.projectId && (
+                            <button
+                              onClick={() => onNavigateToProject && onNavigateToProject(selectedWo.projectId!)}
+                              className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Buka Detail Proyek Induk"
+                            >
+                              <CheckCircle2 size={10} />
+                              <span>Proyek Induk</span>
+                            </button>
+                          )}
                         </div>
                         <h3 className="font-sans font-black text-slate-800 text-base mt-2">{selectedWo.productName}</h3>
                         <p className="text-[10px] text-slate-400 mt-0.5">
@@ -600,13 +620,14 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
             <form onSubmit={handleCreateWo} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">No. Work Order *</label>
+                  <label className="block font-bold text-slate-700">No. Work Order (Otomatis)</label>
                   <input
                     type="text"
                     required
+                    readOnly
+                    disabled
                     value={newWoNumber}
-                    onChange={(e) => setNewWoNumber(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400 font-mono"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono cursor-not-allowed"
                   />
                 </div>
 
@@ -628,17 +649,14 @@ export default function ProductionWorkOrderView({ onTriggerNotification }: Produ
 
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">Produk yang Dicetak *</label>
-                <select
-                  required
+                <SearchableSelect
                   value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-cyan-400"
-                >
-                  <option value="">-- Pilih Produk --</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedProductId(val)}
+                  options={products
+                    .filter(p => p.type !== 'raw_material' && p.type !== 'service')
+                    .map(p => ({ value: p.id, label: `${p.sku} - ${p.name}` }))}
+                  placeholder="-- Ketik Nama atau SKU Produk Jadi --"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

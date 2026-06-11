@@ -152,7 +152,7 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
         setSuppliers((prev) => prev.map((s) => (s.id === editingSupplier.id ? updated : s)));
         onTriggerNotification(`Sukses memperbarui Supplier: ${updated.name}`);
       } else {
-        const nextCode = `SPL00${suppliers.length + 1}`;
+        const nextCode = 'AUTO GENERATED';
         const newSupp = await suppliersApi.createSupplier({
           code: nextCode,
           name,

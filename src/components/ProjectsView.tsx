@@ -25,17 +25,20 @@ import {
   Truck,
   Wrench,
   X,
-  Plus
+  Plus,
+  Factory
 } from '@/src/components/icons';
-import { Project, ViewType, Customer } from '../types';
+import { Project, ViewType, Customer, ProductionWorkOrder } from '../types';
 import { authStorage } from '../services/api';
 import { projectsApi } from '../features/projects/api';
 import { customersApi } from '../features/customers/api';
+import { productionApi } from '../features/production/api';
 
 interface ProjectsViewProps {
   selectedProjectId: string | null;
   onSelectProjectId: (id: string | null) => void;
   onNavigate: (view: ViewType) => void;
+  onNavigateToWorkOrder?: (woId: string) => void;
   onTriggerNotification: (message: string) => void;
 }
 
@@ -43,6 +46,7 @@ export default function ProjectsView({
   selectedProjectId,
   onSelectProjectId,
   onNavigate,
+  onNavigateToWorkOrder,
   onTriggerNotification,
 }: ProjectsViewProps) {
   const [showEventAddModal, setShowEventAddModal] = useState(false);
@@ -54,7 +58,7 @@ export default function ProjectsView({
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [projName, setProjName] = useState('');
   const [custId, setCustId] = useState('');
-  const [projCode, setProjCode] = useState('');
+  const [projCode, setProjCode] = useState('AUTO GENERATED');
   const [location, setLocation] = useState('');
   const [projType, setProjType] = useState('Kubah Masjid');
   const [projSpec, setProjSpec] = useState('');
@@ -64,17 +68,20 @@ export default function ProjectsView({
 
   // API states
   const [projects, setProjects] = useState<Project[]>([]);
+  const [workOrders, setWorkOrders] = useState<ProductionWorkOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [projData, custData] = await Promise.all([
+      const [projData, custData, woData] = await Promise.all([
         projectsApi.getProjects(),
-        customersApi.listCustomers()
+        customersApi.listCustomers(),
+        productionApi.getWorkOrders()
       ]);
       setProjects(projData);
       setCustomers(custData.customers || []);
+      setWorkOrders(woData);
       if (custData.customers && custData.customers.length > 0 && !custId) {
         setCustId(custData.customers[0].id);
       }
@@ -113,7 +120,7 @@ export default function ProjectsView({
 
       onTriggerNotification(`Proyek ${created.projectName} berhasil didaftarkan`);
       setShowAddProjectModal(false);
-      
+
       // Clear form
       setProjName('');
       setProjCode('');
@@ -157,6 +164,7 @@ export default function ProjectsView({
 
   // Find selected project
   const project = projects.find((p) => p.id === selectedProjectId);
+  const projectWorkOrders = workOrders.filter((wo) => wo.projectId === selectedProjectId);
 
   const handleAddTimeline = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +172,7 @@ export default function ProjectsView({
 
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      
+
       // Map stage to database status and progress
       let progress = project.progress;
       let status = 'production'; // default
@@ -233,7 +241,7 @@ export default function ProjectsView({
         {/* Top summary card */}
         <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
           <div className="absolute right-0 top-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-          
+
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -316,9 +324,8 @@ export default function ProjectsView({
                       </div>
                       <div className="text-right space-y-1">
                         <p className="font-mono font-bold text-slate-900 leading-none">{formatIDR(term.amount)}</p>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${
-                          term.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border' : 'bg-rose-100 text-rose-800'
-                        }`}>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${term.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border' : 'bg-rose-100 text-rose-800'
+                          }`}>
                           {term.status}
                         </span>
                       </div>
@@ -349,6 +356,58 @@ export default function ProjectsView({
                       <div className="p-2 text-[10px]">
                         <strong className="text-slate-700 block truncate" title={doc.title}>{doc.title}</strong>
                         <span className="text-slate-400 font-mono text-[9px] mt-0.5 block">{doc.date}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Block 3: Workshop Production Work Orders */}
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between border-b pb-3 mb-3">
+                <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">Daftar SPK Produksi Workshop</h3>
+                <button
+                  onClick={() => onNavigate('production-work-orders')}
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Factory size={12} />
+                  Buka Modul Workshop
+                </button>
+              </div>
+              <div className="space-y-2">
+                {projectWorkOrders.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-xs">Belum ada SPK Produksi untuk proyek ini.</div>
+                ) : (
+                  projectWorkOrders.map((wo) => (
+                    <div key={wo.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between transition-colors">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-cyan-700 font-mono text-[11px]">{wo.workOrderNumber}</strong>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                              wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                  'bg-cyan-50 text-cyan-700 border-cyan-100'
+                            }`}>
+                            {wo.stage}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-bold truncate max-w-[200px]">{wo.productName}</p>
+                      </div>
+                      <div className="text-right space-y-1.5 flex flex-col items-end">
+                        <div className="text-[10px] font-mono text-slate-500">
+                          {wo.completedQty} / {wo.targetQty} pcs
+                        </div>
+                        <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-cyan-500" style={{ width: `${wo.progress}%` }} />
+                        </div>
+                        <button
+                          onClick={() => onNavigateToWorkOrder && onNavigateToWorkOrder(wo.id)}
+                          className="mt-1 text-[9px] font-bold text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Lihat Detail SPK</span>
+                          <ChevronRight size={10} />
+                        </button>
                       </div>
                     </div>
                   ))
@@ -421,6 +480,7 @@ export default function ProjectsView({
         </div>
         <button
           onClick={() => {
+            setProjCode('AUTO GENERATED');
             setShowAddProjectModal(true);
           }}
           className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
@@ -467,9 +527,8 @@ export default function ProjectsView({
                     <span className="font-mono text-[10px] bg-slate-100 text-slate-400 font-bold px-1.5 py-0.5 rounded border">
                       {proj.code}
                     </span>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                      statusColors[proj.status] || 'bg-slate-100'
-                    }`}>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${statusColors[proj.status] || 'bg-slate-100'
+                      }`}>
                       {proj.status}
                     </span>
                   </div>
@@ -580,13 +639,14 @@ export default function ProjectsView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Kode Proyek (Opsional)</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Kode Proyek (Otomatis)</label>
                   <input
                     type="text"
-                    placeholder="PRJ-2026-XXXX"
+                    readOnly
+                    disabled
+                    required
                     value={projCode}
-                    onChange={(e) => setProjCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none font-mono"
+                    className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-50 text-slate-500 cursor-not-allowed font-mono"
                   />
                 </div>
                 <div className="space-y-1">
