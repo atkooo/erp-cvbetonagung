@@ -51,6 +51,13 @@ export default function PurchaseView({
     { id: '1', productId: '', quantity: 1, price: 0 }
   ]);
 
+  // Quick add supplier states
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupName, setNewSupName] = useState('');
+  const [newSupPhone, setNewSupPhone] = useState('');
+  const [newSupCity, setNewSupCity] = useState('');
+  const [newSupAddress, setNewSupAddress] = useState('');
+
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -144,6 +151,35 @@ export default function PurchaseView({
     }
 
     setShowAddModal(false);
+  };
+
+  const handleQuickAddSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupName) return;
+
+    try {
+      const code = `SUP-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newSupplier = await suppliersApi.createSupplier({
+        code,
+        name: newSupName,
+        phone: newSupPhone,
+        city: newSupCity,
+        address: newSupAddress,
+        status: 'active'
+      });
+
+      setSuppliers(prev => [...prev, newSupplier]);
+      setSupplierId(newSupplier.id);
+      setShowAddSupplier(false);
+      onTriggerNotification(`Berhasil menambahkan supplier baru: ${newSupplier.name}`);
+      
+      setNewSupName('');
+      setNewSupPhone('');
+      setNewSupCity('');
+      setNewSupAddress('');
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menambah supplier');
+    }
   };
 
   const handleReceiveGoods = async (poId: string, poNum: string, items: any[]) => {
@@ -465,7 +501,12 @@ export default function PurchaseView({
             <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier *</label>
+                    <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-cyan-600 font-bold hover:text-cyan-800 flex items-center gap-1 cursor-pointer">
+                      <Plus size={10} /> Tambah Baru
+                    </button>
+                  </div>
                   {suppliers.length > 0 ? (
                     <select
                       value={supplierId}
@@ -692,6 +733,45 @@ export default function PurchaseView({
           })()}
         </div>
       </div>
+
+      {/* Quick Add Supplier Modal */}
+      {showAddSupplier && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 font-sans text-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-4 py-3 bg-cyan-50 border-b border-cyan-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingCart size={16} className="text-cyan-600" />
+                <h3 className="font-bold text-cyan-900 text-sm">Tambah Supplier Baru</h3>
+              </div>
+              <button onClick={() => setShowAddSupplier(false)} className="text-cyan-400 hover:text-cyan-600">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleQuickAddSupplier} className="p-4 space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Nama Supplier *</label>
+                <input required type="text" value={newSupName} onChange={e => setNewSupName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
+                <input type="text" value={newSupPhone} onChange={e => setNewSupPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Kota</label>
+                <input type="text" value={newSupCity} onChange={e => setNewSupCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
+                <textarea rows={2} value={newSupAddress} onChange={e => setNewSupAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none resize-none" />
+              </div>
+              <div className="pt-2 border-t flex justify-end gap-2 text-xs font-bold mt-2">
+                <button type="button" onClick={() => setShowAddSupplier(false)} className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
+                <button type="submit" className="px-4 py-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 shadow-sm cursor-pointer">Simpan Supplier</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
