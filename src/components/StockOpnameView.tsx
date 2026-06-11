@@ -16,6 +16,7 @@ import {
   StockOpnameSession, StockOpnameItem, LocationDto, ProductStockDto
 } from '../features/inventory/types';
 import { Product } from '../types';
+import ProductPicker from './ProductPicker';
 
 interface StockOpnameViewProps {
   onTriggerNotification: (message: string) => void;
@@ -401,11 +402,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   <div
                     key={session.id}
                     onClick={() => setSelectedSession(session)}
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition ${
-                      selectedSession?.id === session.id
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedSession?.id === session.id
                         ? 'border-cyan-500 bg-cyan-50/30'
                         : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-mono font-bold text-slate-800">{session.opnameNumber}</span>
@@ -558,13 +558,12 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                 <span>{item.physicalQty}</span>
                               )}
                             </td>
-                            <td className={`p-3.5 text-center font-mono font-black ${
-                              item.differenceQty === 0
+                            <td className={`p-3.5 text-center font-mono font-black ${item.differenceQty === 0
                                 ? 'text-emerald-600'
                                 : item.differenceQty > 0
-                                ? 'text-blue-600'
-                                : 'text-rose-600'
-                            }`}>
+                                  ? 'text-blue-600'
+                                  : 'text-rose-600'
+                              }`}>
                               {item.differenceQty > 0 ? `+${item.differenceQty}` : item.differenceQty}
                             </td>
                             <td className="p-3.5">
@@ -647,7 +646,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                         <RefreshCw size={14} />
                                       </button>
                                     )}
-                                    
+
                                     {item.approvalStatus === 'approved' && item.isAdjusted && (
                                       <span className="text-emerald-600 font-bold flex items-center gap-0.5 ml-2">
                                         <CheckCircle2 size={12} />
@@ -746,17 +745,11 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
             <form onSubmit={handleAddItem} className="p-5 space-y-4">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block">Pilih Produk</label>
-                <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                <ProductPicker
                   value={newItemProductId}
-                  onChange={(e) => setNewItemProductId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Pilih Produk --</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                  ))}
-                </select>
+                  onChange={(product) => setNewItemProductId(product.id)}
+                  placeholder="Pilih produk untuk diopname..."
+                />
               </div>
 
               <div className="space-y-1.5">
