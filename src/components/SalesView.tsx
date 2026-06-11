@@ -73,6 +73,13 @@ export default function SalesView({
   const [itemQty, setItemQty] = useState(1);
   const [itemPrice, setItemPrice] = useState(0);
 
+  // Quick add customer states
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustCity, setNewCustCity] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -194,6 +201,36 @@ export default function SalesView({
 
     setQuotationId('');
     setShowAddForm(false);
+  };
+
+  const handleQuickAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName) return;
+
+    try {
+      const code = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newCustomer = await customersApi.createCustomer({
+        code,
+        name: newCustName,
+        phone: newCustPhone,
+        email: '',
+        city: newCustCity,
+        address: newCustAddress,
+        status: 'Aktif'
+      });
+
+      setCustomers(prev => [...prev, newCustomer]);
+      setCustId(newCustomer.id);
+      setShowAddCustomer(false);
+      onTriggerNotification(`Berhasil menambahkan customer baru: ${newCustomer.name}`);
+      
+      setNewCustName('');
+      setNewCustPhone('');
+      setNewCustCity('');
+      setNewCustAddress('');
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menambah customer');
+    }
   };
 
   const handleApproveQuotation = async (docId: string, quoteNum: string) => {
@@ -615,7 +652,12 @@ export default function SalesView({
 
             <form onSubmit={handleCreateDocument} className="p-5 space-y-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
+                  <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+                    <Plus size={10} /> Tambah Baru
+                  </button>
+                </div>
                 {customers.length > 0 ? (
                   <SearchableSelect
                     value={custId}
@@ -710,6 +752,45 @@ export default function SalesView({
               <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
                 <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
                 <button type="submit" className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg">Penerbitan Draft</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Quick Add Customer Modal */}
+      {showAddCustomer && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 font-sans text-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-4 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 size={16} className="text-indigo-600" />
+                <h3 className="font-bold text-indigo-900 text-sm">Tambah Customer Baru</h3>
+              </div>
+              <button onClick={() => setShowAddCustomer(false)} className="text-indigo-400 hover:text-indigo-600">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleQuickAddCustomer} className="p-4 space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Nama Customer *</label>
+                <input required type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
+                <input type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Kota</label>
+                <input type="text" value={newCustCity} onChange={e => setNewCustCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
+                <textarea rows={2} value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none resize-none" />
+              </div>
+              <div className="pt-2 border-t flex justify-end gap-2 text-xs font-bold mt-2">
+                <button type="button" onClick={() => setShowAddCustomer(false)} className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm cursor-pointer">Simpan Customer</button>
               </div>
             </form>
           </div>
