@@ -954,11 +954,25 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   onChange={(e) => setUpdateStageValue(e.target.value)}
                   className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                 >
-                  <option value="Draft">Draft (Dalam Rencana)</option>
-                  <option value="Cetak">Cetak (Proses Pembuatan)</option>
-                  <option value="Curing">Curing (Proses Pengeringan)</option>
-                  <option value="Finishing">Finishing (Proses Pemolesan)</option>
-                  <option value="QC">QC & Siap (Selesai QC / Siap Kirim)</option>
+                  {(() => {
+                    const stages = [
+                      { value: 'Draft', label: 'Draft (Dalam Rencana)' },
+                      { value: 'Cetak', label: 'Cetak (Proses Pembuatan)' },
+                      { value: 'Curing', label: 'Curing (Proses Pengeringan)' },
+                      { value: 'Finishing', label: 'Finishing (Proses Pemolesan)' },
+                      { value: 'QC', label: 'QC & Siap (Selesai QC / Siap Kirim)' }
+                    ];
+                    const currentIndex = stages.findIndex(s => s.value === selectedWo.stage);
+                    
+                    return stages.map((s, index) => {
+                      const isDisabled = index > currentIndex + 1;
+                      return (
+                        <option key={s.value} value={s.value} disabled={isDisabled}>
+                          {s.label} {isDisabled ? '(Terkunci - Lalui tahap sebelumnya)' : ''}
+                        </option>
+                      );
+                    });
+                  })()}
                 </select>
               </div>
 
