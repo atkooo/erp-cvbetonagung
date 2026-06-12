@@ -101,7 +101,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   reminders: "Notifikasi & Reminder",
   "document-exports": "Export / Print Dokumen",
   "qr-products": "Daftar QR Code Produk",
-  "scan-qr-product": "Scanner QR Produk (Simulasi Kamera)",
+  "scan-qr-product": "Scanner QR Produk",
   "scanned-product-detail": "Detail Produk Hasil Scan QR",
   "finance-reports": "Laporan Keuangan & Omset",
   "inventory-reports": "Mutasi & Turnover Stok",
@@ -251,26 +251,26 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       },
     ],
   },
-  // {
-  //   id: "qr",
-  //   title: "QR Code Utility",
-  //   collapsible: true,
-  //   items: [
-  //     {
-  //       view: "qr-products",
-  //       label: "Daftar QR Produk",
-  //       icon: QrCode,
-  //       requiredModule: "inventory",
-  //     },
-  //     {
-  //       view: "scan-qr-product",
-  //       label: "Scan QR Produk",
-  //       icon: Scan,
-  //       activeViews: ["scanned-product-detail"],
-  //       requiredModule: "inventory",
-  //     },
-  //   ],
-  // },
+  {
+    id: "qr",
+    title: "QR Code Utility",
+    collapsible: true,
+    items: [
+      {
+        view: "qr-products",
+        label: "Daftar QR Produk",
+        icon: QrCode,
+        requiredModule: "inventory",
+      },
+      {
+        view: "scan-qr-product",
+        label: "Scan QR Produk",
+        icon: Scan,
+        activeViews: ["scanned-product-detail"],
+        requiredModule: "inventory",
+      },
+    ],
+  },
 
   // {
   //   id: "hrd",

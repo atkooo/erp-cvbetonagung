@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   QrCode,
   Scan,
@@ -27,6 +27,60 @@ import {
 import { Product, ViewType, StockMovement } from '../types';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
+import { QRCodeSVG } from 'qrcode.react';
+import { Html5Qrcode } from 'html5-qrcode';
+
+
+function RealScanner({ onScan }: { onScan: (text: string) => void }) {
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initScanner = async () => {
+      try {
+        if (!scannerRef.current) {
+          scannerRef.current = new Html5Qrcode('reader');
+        }
+        
+        // Wait a small tick to ensure the DOM element exists
+        setTimeout(async () => {
+          if (!isMounted || !scannerRef.current) return;
+          try {
+            await scannerRef.current.start(
+              { facingMode: 'environment' },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              (decodedText) => {
+                onScan(decodedText);
+                if (scannerRef.current?.isScanning) {
+                  scannerRef.current.stop().catch(console.error);
+                }
+              },
+              (errorMessage) => {}
+            );
+          } catch (err) {
+            console.error("Failed to start camera", err);
+          }
+        }, 100);
+      } catch (err) {
+        console.error("Error initializing scanner", err);
+      }
+    };
+
+    initScanner();
+
+    return () => {
+      isMounted = false;
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().then(() => {
+           scannerRef.current?.clear();
+        }).catch(console.error);
+      }
+    };
+  }, []);
+
+  return <div id="reader" className="w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden aspect-square border-4 border-slate-800" />;
+}
 
 interface QrViewProps {
   currentSubView: 'list' | 'scanner' | 'detail';
@@ -141,46 +195,18 @@ export default function QrView({
     return () => clearInterval(interval);
   }, [scanTriggered]);
 
-  // Generate a mock custom SVG QR Code to ensure visual perfection without external scripts failing
-  const drawMockQrCode = (text: string, isBig: boolean = false) => {
+  // Generate a real QR Code using qrcode.react
+  const drawQrCode = (text: string, isBig: boolean = false) => {
     const size = isBig ? 150 : 44;
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" className="bg-white p-1 rounded-lg border border-slate-200 shadow-inner">
-        {/* Anchor squares */}
-        <rect x="5" y="5" width="25" height="25" rx="2" fill="#0f172a" />
-        <rect x="10" y="10" width="15" height="15" rx="1" fill="#ffffff" />
-        <rect x="13" y="13" width="9" height="9" fill="#06b6d4" />
-
-        <rect x="70" y="5" width="25" height="25" rx="2" fill="#0f172a" />
-        <rect x="75" y="10" width="15" height="15" rx="1" fill="#ffffff" />
-        <rect x="78" y="13" width="9" height="9" fill="#06b6d4" />
-
-        <rect x="5" y="70" width="25" height="25" rx="2" fill="#0f172a" />
-        <rect x="10" y="75" width="15" height="15" rx="1" fill="#ffffff" />
-        <rect x="13" y="78" width="9" height="9" fill="#06b6d4" />
-
-        {/* Dynamic looking random QR dots representing the text */}
-        <rect x="40" y="5" width="8" height="8" fill="#1e293b" />
-        <rect x="55" y="12" width="6" height="12" fill="#475569" />
-        <rect x="42" y="24" width="14" height="6" fill="#0f172a" />
-        
-        <rect x="45" y="40" width="10" height="10" rx="1" fill="#0f172a" />
-        <rect x="12" y="42" width="16" height="8" fill="#1e293b" />
-        <rect x="20" y="55" width="8" height="10" fill="#475569" />
-
-        <rect x="68" y="45" width="14" height="6" fill="#1e293b" />
-        <rect x="85" y="40" width="10" height="15" fill="#0f172a" />
-        <rect x="72" y="65" width="12" height="10" fill="#475569" />
-
-        <rect x="38" y="72" width="10" height="10" fill="#1e293b" />
-        <rect x="52" y="80" width="15" height="8" fill="#0891b2" />
-        <rect x="40" y="88" width="22" height="6" fill="#0f172a" />
-      </svg>
+      <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-inner flex items-center justify-center">
+        <QRCodeSVG value={text} size={size} />
+      </div>
     );
   };
 
   // Find the scanned product details
-  const scannedProduct = products.find(p => p.sku === scannedSku);
+  const scannedProduct = products.find(p => p.qrValue === scannedSku || p.sku === scannedSku);
 
   // -------------------------------------------------------------
   // 1. DETAIL SCAN VIEW DESIGN
@@ -340,7 +366,7 @@ export default function QrView({
   }
 
   // -------------------------------------------------------------
-  // 2. SCANNER SIMULATION DESIGN
+  // 2. SCANNER DESIGN
   // -------------------------------------------------------------
   if (currentSubView === 'scanner') {
     return (
@@ -349,73 +375,42 @@ export default function QrView({
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
           <Scan size={36} className="text-cyan-500" />
           <div className="space-y-1">
-            <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian QR Code Produk (Simulasi Kamera)</h3>
+            <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian QR Code Produk</h3>
             <p className="text-[10px] text-slate-450 text-slate-500 max-w-sm">
-              Gunakan perangkat kamera internal untuk memindai lembaran QR Code di rak gudang atau di kemasan beton CV Beton Agung untuk memantau sisa stok otomatis.
+              Gunakan perangkat kamera untuk memindai label QR Code di rak gudang atau di kemasan beton CV Beton Agung.
             </p>
           </div>
         </div>
 
-        {/* Live camera area simulation container */}
-        <div className="relative bg-slate-950 aspect-square md:aspect-video rounded-2xl border-2 border-slate-850 overflow-hidden shadow-2xl shrink-0 flex flex-col justify-between p-4">
-          {/* Neon Scanner corners */}
-          <div className="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-cyan-400 rounded-tl" />
-          <div className="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-cyan-400 rounded-tr" />
-          <div className="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-cyan-400 rounded-bl" />
-          <div className="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-cyan-400 rounded-br" />
-
-          {/* Animated red laser sweeping line */}
-          {scanTriggered && (
-            <div className="absolute left-0 w-full h-1 bg-rose-500/85 shadow-[0_0_15px_#f43f5e] z-10 animate-pulse top-1/2" style={{ transform: 'translateY(-50%)' }} />
-          )}
-
-          {/* Centering Camera aperture target wire */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={`w-40 h-40 border-2 border-dashed rounded-xl transition-colors ${
-              scanTriggered ? 'border-rose-400 animate-pulse bg-slate-900/10' : 'border-white/20'
-            } flex items-center justify-center`}>
-              {scanTriggered ? (
-                <div className="text-center font-mono text-[10px] text-rose-450 text-pink-400 font-bold space-y-2">
-                  <Compass size={24} className="mx-auto animate-spin" />
-                  <p>Membaca QR {scanProgress}%</p>
-                </div>
-              ) : (
-                <Camera size={28} className="text-white/10" />
-              )}
-            </div>
-          </div>
-
-          {/* Top text status overlay */}
-          <div className="relative z-10 flex justify-between items-center bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-slate-300">
-            <span className="flex items-center gap-1 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-              <span>KAMERA SIMULATOR AKTIF</span>
-            </span>
-            <span>PROTOTYPE ONLY</span>
-          </div>
-
-          {/* Bottom quick hints instruction */}
-          <div className="relative z-10 text-center text-[10px] text-slate-400 bg-slate-900/80 backdrop-blur rounded px-4 py-2 mt-auto">
-            Klik salah satu tombol <strong>"Simulasikan Pindai SKU"</strong> di bawah untuk menguji proses autofill parser.
-          </div>
+        {/* Live camera area */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+          <RealScanner
+            onScan={(text) => {
+              onTriggerNotification(`Berhasil memindai kode: ${text}`);
+              onNavigateSubView('detail', text);
+            }}
+          />
         </div>
 
         {/* Dynamic testing list of triggers */}
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-[10px] uppercase font-mono font-bold text-slate-400 tracking-wider mb-3">Simulasi Preset Lembar Label QR</p>
+          <p className="text-[10px] uppercase font-mono font-bold text-slate-400 tracking-wider mb-3">Pindai Cepat (Untuk Testing)</p>
           <div className="grid grid-cols-2 gap-2.5">
             {products.slice(0, 4).map((p, pIdx) => (
               <button
                 key={pIdx}
                 disabled={!!scanTriggered}
-                onClick={() => setScanTriggered(p.sku)}
+                onClick={() => {
+                  onTriggerNotification(`Berhasil memindai kode: ${p.qrValue || p.sku}`);
+                  onNavigateSubView('detail', p.qrValue || p.sku);
+                }}
                 className="p-3 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 hover:border-slate-350 rounded-xl transition-all shadow-sm text-left flex items-center justify-between gap-1"
               >
                 <div>
-                  <span className="font-mono text-[9px] text-cyan-600 font-black">{p.sku}</span>
+                  <span className="font-mono text-[9px] text-cyan-600 font-black">{p.qrValue || p.sku}</span>
                   <strong className="text-slate-850 block mt-0.5 truncate max-w-[120px]">{p.name}</strong>
                 </div>
-                {drawMockQrCode(p.sku)}
+                {drawQrCode(p.qrValue || p.sku)}
               </button>
             ))}
           </div>
@@ -459,7 +454,7 @@ export default function QrView({
           <table className="w-full text-left font-sans text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">SKU No.</th>
+                <th className="p-3.5 pl-5">SKU No. / QR Value</th>
                 <th className="p-3.5">Nama Item Produk</th>
                 <th className="p-3.5">Sisa Kuantitas</th>
                 <th className="p-3.5">Visual QR Code Label</th>
@@ -472,12 +467,15 @@ export default function QrView({
                 .filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()))
                 .map((p, idx) => (
                   <tr key={p.id} className="hover:bg-slate-50/40">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">{p.sku}</td>
+                    <td className="p-3.5 pl-5">
+                      <span className="font-mono font-bold text-slate-800 block">{p.sku}</span>
+                      <span className="text-[10px] text-indigo-600 font-mono font-semibold block mt-0.5">QR: {p.qrValue || p.sku}</span>
+                    </td>
                     <td className="p-3.5 font-bold text-slate-700">{p.name}</td>
                     <td className="p-3.5 font-mono text-slate-500">{p.stock} {p.unit}</td>
                     <td className="p-3.5">
                       <div className="py-1 flex items-center gap-2">
-                        {drawMockQrCode(p.sku)}
+                        {drawQrCode(p.qrValue || p.sku)}
                         <span className="text-[10px] font-mono text-slate-400">Label format: G1-A</span>
                       </div>
                     </td>
@@ -533,12 +531,15 @@ export default function QrView({
               
               {/* Massive QR drawing */}
               <div className="p-3 bg-slate-50 rounded-2xl border shadow-inner">
-                {drawMockQrCode(showQrModal.sku, true)}
+                {drawQrCode(showQrModal.qrValue || showQrModal.sku, true)}
               </div>
 
               <div className="space-y-1.5 text-center">
                 <strong className="text-base font-sans font-black text-slate-800 tracking-tight leading-tight">{showQrModal.sku}</strong>
                 <p className="text-xs font-bold text-slate-650 text-slate-500 max-w-[200px] leading-snug">{showQrModal.name}</p>
+                <div className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono inline-block border border-slate-200 mt-1">
+                  QR Value: <strong className="text-slate-800">{showQrModal.qrValue || showQrModal.sku}</strong>
+                </div>
                 <div className="pt-2 text-[9px] font-mono text-slate-400">
                   Storage Rak: <strong className="text-slate-600">{showQrModal.location}</strong>
                 </div>
