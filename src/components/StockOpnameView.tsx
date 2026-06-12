@@ -85,6 +85,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const [newItemPhysicalQty, setNewItemPhysicalQty] = useState<number>(0);
   const [newItemNotes, setNewItemNotes] = useState('');
 
+  const [itemSearch, setItemSearch] = useState('');
+  const [itemRowsPerPage, setItemRowsPerPage] = useState(10);
+  const [itemCurrentPage, setItemCurrentPage] = useState(1);
+
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingPhysicalQty, setEditingPhysicalQty] = useState<number>(0);
   const [editingNotes, setEditingNotes] = useState('');
@@ -95,6 +99,26 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const availableItemLocations = selectedSession
     ? locations.filter((location) => location.warehouse_id === selectedSession.warehouseId)
     : [];
+  const selectedSessionProductIds = sessionItems.map((item) => item.productId);
+  const normalizedItemSearch = itemSearch.trim().toLowerCase();
+  const filteredSessionItems = sessionItems.filter((item) => {
+    if (!normalizedItemSearch) {
+      return true;
+    }
+
+    return (
+      item.productName.toLowerCase().includes(normalizedItemSearch) ||
+      item.sku.toLowerCase().includes(normalizedItemSearch) ||
+      item.locationName.toLowerCase().includes(normalizedItemSearch) ||
+      item.notes.toLowerCase().includes(normalizedItemSearch) ||
+      (item.approvalStatus || '').toLowerCase().includes(normalizedItemSearch)
+    );
+  });
+  const itemTotalPages = Math.max(1, Math.ceil(filteredSessionItems.length / itemRowsPerPage));
+  const itemPageStartIndex = (itemCurrentPage - 1) * itemRowsPerPage;
+  const paginatedSessionItems = filteredSessionItems.slice(itemPageStartIndex, itemPageStartIndex + itemRowsPerPage);
+  const itemShowingStart = filteredSessionItems.length === 0 ? 0 : itemPageStartIndex + 1;
+  const itemShowingEnd = Math.min(itemPageStartIndex + itemRowsPerPage, filteredSessionItems.length);
 
   // Load baseline data
   useEffect(() => {
@@ -111,6 +135,14 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     }
     setNewItemLocationId('');
   }, [selectedSession]);
+
+  useEffect(() => {
+    setItemCurrentPage(1);
+  }, [selectedSession?.id, itemSearch, itemRowsPerPage]);
+
+  useEffect(() => {
+    setItemCurrentPage((page) => Math.min(page, itemTotalPages));
+  }, [itemTotalPages]);
 
   const fetchSessions = async () => {
     setIsLoading(true);
@@ -188,6 +220,11 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     e.preventDefault();
     if (!selectedSession || !newItemProductId || !newItemLocationId) {
       Swal.fire('Error', 'Pilih produk dan lokasi penyimpanan.', 'error');
+      return;
+    }
+
+    if (sessionItems.some((item) => item.productId === newItemProductId)) {
+      Swal.fire('Error', 'Produk ini sudah masuk ke daftar item stock opname.', 'error');
       return;
     }
 
@@ -526,149 +563,209 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[700px]">
-                    <thead>
-                      <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                        <th className="p-3.5 pl-5">Barang</th>
-                        <th className="p-3.5">Lokasi Simpan</th>
-                        <th className="p-3.5 text-center">Stok Sistem</th>
-                        <th className="p-3.5 text-center">Stok Fisik</th>
-                        <th className="p-3.5 text-center">Selisih</th>
-                        <th className="p-3.5">Status Approval</th>
-                        <th className="p-3.5">Catatan</th>
-                        <th className="p-3.5 pr-5 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {sessionItems.map((item) => {
-                        const isEditing = editingItemId === item.id;
-                        const hasDifference = item.differenceQty !== 0;
+                <div>
+                  <div className="p-4 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-md">
+                      <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={itemSearch}
+                        onChange={(e) => setItemSearch(e.target.value)}
+                        placeholder="Cari item, SKU, lokasi, catatan, approval..."
+                        className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span>Tampilkan</span>
+                      <select
+                        value={itemRowsPerPage}
+                        onChange={(e) => setItemRowsPerPage(Number(e.target.value))}
+                        className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      >
+                        {[10, 25, 50, 100].map((rows) => (
+                          <option key={rows} value={rows}>{rows}</option>
+                        ))}
+                      </select>
+                      <span>baris</span>
+                    </div>
+                  </div>
 
-                        return (
-                          <tr key={item.id} className="hover:bg-slate-50/50">
-                            <td className="p-3.5 pl-5">
-                              <span className="font-bold text-slate-800 block">{item.productName}</span>
-                              <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
-                            </td>
-                            <td className="p-3.5 font-mono text-slate-600">{item.locationName}</td>
-                            <td className="p-3.5 text-center font-mono text-slate-700">{item.systemQty}</td>
-                            <td className="p-3.5 text-center font-mono font-bold">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  className="w-16 px-1.5 py-1 border rounded text-center"
-                                  value={editingPhysicalQty}
-                                  onChange={(e) => setEditingPhysicalQty(Number(e.target.value))}
-                                />
-                              ) : (
-                                <span>{item.physicalQty}</span>
-                              )}
-                            </td>
-                            <td className={`p-3.5 text-center font-mono font-black ${item.differenceQty === 0
-                                ? 'text-emerald-600'
-                                : item.differenceQty > 0
-                                  ? 'text-blue-600'
-                                  : 'text-rose-600'
-                              }`}>
-                              {item.differenceQty > 0 ? `+${item.differenceQty}` : item.differenceQty}
-                            </td>
-                            <td className="p-3.5">
-                              {item.approvalRequestId ? (
-                                <StatusPill tone={getApprovalTone(item.approvalStatus || 'pending')}>
-                                  {item.approvalStatus || 'pending'}
-                                </StatusPill>
-                              ) : hasDifference ? (
-                                <span className="text-amber-500 font-bold">Butuh Approval</span>
-                              ) : (
-                                <span className="text-slate-400">-</span>
-                              )}
-                            </td>
-                            <td className="p-3.5 text-slate-500">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  className="px-2 py-1 border rounded w-full min-w-[120px]"
-                                  value={editingNotes}
-                                  onChange={(e) => setEditingNotes(e.target.value)}
-                                  placeholder="Catatan..."
-                                />
-                              ) : (
-                                <span>{item.notes || '-'}</span>
-                              )}
-                            </td>
-                            <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-1.5">
-                                {/* If session is in_progress, can edit quantities */}
-                                {selectedSession.status === 'in_progress' && (
-                                  <>
-                                    {isEditing ? (
-                                      <>
-                                        <button
-                                          onClick={() => handleUpdateItem(item.id)}
-                                          className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600"
-                                          title="Simpan"
-                                        >
-                                          <Check size={12} />
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingItemId(null)}
-                                          className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
-                                          title="Batal"
-                                        >
-                                          <X size={12} />
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <button
-                                        onClick={() => handleStartEditing(item)}
-                                        title="Input Fisik"
-                                        className="p-1.5 border rounded bg-white hover:bg-slate-50 text-slate-600 transition"
-                                      >
-                                        <Edit2 size={14} />
-                                      </button>
-                                    )}
-                                  </>
-                                )}
-
-                                {/* If session is completed/closed/in_progress, look at adjustments */}
-                                {selectedSession.status !== 'draft' && !isEditing && (
-                                  <>
-                                    {hasDifference && !item.approvalRequestId && (
-                                      <button
-                                        onClick={() => handleRequestApproval(item)}
-                                        title="Ajukan Approval"
-                                        className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded transition"
-                                      >
-                                        <Send size={14} />
-                                      </button>
-                                    )}
-
-                                    {item.approvalStatus === 'approved' && !item.isAdjusted && (
-                                      <button
-                                        onClick={() => handleAdjustStock(item)}
-                                        title="Sesuaikan Stok"
-                                        className="p-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded transition"
-                                      >
-                                        <RefreshCw size={14} />
-                                      </button>
-                                    )}
-
-                                    {item.approvalStatus === 'approved' && item.isAdjusted && (
-                                      <span className="text-emerald-600 font-bold flex items-center gap-0.5 ml-2">
-                                        <CheckCircle2 size={12} />
-                                        <span>Selesai</span>
-                                      </span>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </td>
+                  {filteredSessionItems.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      Tidak ada item stock opname yang cocok dengan pencarian.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                            <th className="p-3.5 pl-5">Barang</th>
+                            <th className="p-3.5">Lokasi Simpan</th>
+                            <th className="p-3.5 text-center">Stok Sistem</th>
+                            <th className="p-3.5 text-center">Stok Fisik</th>
+                            <th className="p-3.5 text-center">Selisih</th>
+                            <th className="p-3.5">Status Approval</th>
+                            <th className="p-3.5">Catatan</th>
+                            <th className="p-3.5 pr-5 text-right">Aksi</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {paginatedSessionItems.map((item) => {
+                            const isEditing = editingItemId === item.id;
+                            const hasDifference = item.differenceQty !== 0;
+
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-50/50">
+                                <td className="p-3.5 pl-5">
+                                  <span className="font-bold text-slate-800 block">{item.productName}</span>
+                                  <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
+                                </td>
+                                <td className="p-3.5 font-mono text-slate-600">{item.locationName}</td>
+                                <td className="p-3.5 text-center font-mono text-slate-700">{item.systemQty}</td>
+                                <td className="p-3.5 text-center font-mono font-bold">
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      className="w-16 px-1.5 py-1 border rounded text-center"
+                                      value={editingPhysicalQty}
+                                      onChange={(e) => setEditingPhysicalQty(Number(e.target.value))}
+                                    />
+                                  ) : (
+                                    <span>{item.physicalQty}</span>
+                                  )}
+                                </td>
+                                <td className={`p-3.5 text-center font-mono font-black ${item.differenceQty === 0
+                                    ? 'text-emerald-600'
+                                    : item.differenceQty > 0
+                                      ? 'text-blue-600'
+                                      : 'text-rose-600'
+                                  }`}>
+                                  {item.differenceQty > 0 ? `+${item.differenceQty}` : item.differenceQty}
+                                </td>
+                                <td className="p-3.5">
+                                  {item.approvalRequestId ? (
+                                    <StatusPill tone={getApprovalTone(item.approvalStatus || 'pending')}>
+                                      {item.approvalStatus || 'pending'}
+                                    </StatusPill>
+                                  ) : hasDifference ? (
+                                    <span className="text-amber-500 font-bold">Butuh Approval</span>
+                                  ) : (
+                                    <span className="text-slate-400">-</span>
+                                  )}
+                                </td>
+                                <td className="p-3.5 text-slate-500">
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      className="px-2 py-1 border rounded w-full min-w-[120px]"
+                                      value={editingNotes}
+                                      onChange={(e) => setEditingNotes(e.target.value)}
+                                      placeholder="Catatan..."
+                                    />
+                                  ) : (
+                                    <span>{item.notes || '-'}</span>
+                                  )}
+                                </td>
+                                <td className="p-3.5 pr-5 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {selectedSession.status === 'in_progress' && (
+                                      <>
+                                        {isEditing ? (
+                                          <>
+                                            <button
+                                              onClick={() => handleUpdateItem(item.id)}
+                                              className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                              title="Simpan"
+                                            >
+                                              <Check size={12} />
+                                            </button>
+                                            <button
+                                              onClick={() => setEditingItemId(null)}
+                                              className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
+                                              title="Batal"
+                                            >
+                                              <X size={12} />
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleStartEditing(item)}
+                                            title="Input Fisik"
+                                            className="p-1.5 border rounded bg-white hover:bg-slate-50 text-slate-600 transition"
+                                          >
+                                            <Edit2 size={14} />
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {selectedSession.status !== 'draft' && !isEditing && (
+                                      <>
+                                        {hasDifference && !item.approvalRequestId && (
+                                          <button
+                                            onClick={() => handleRequestApproval(item)}
+                                            title="Ajukan Approval"
+                                            className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded transition"
+                                          >
+                                            <Send size={14} />
+                                          </button>
+                                        )}
+
+                                        {item.approvalStatus === 'approved' && !item.isAdjusted && (
+                                          <button
+                                            onClick={() => handleAdjustStock(item)}
+                                            title="Sesuaikan Stok"
+                                            className="p-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded transition"
+                                          >
+                                            <RefreshCw size={14} />
+                                          </button>
+                                        )}
+
+                                        {item.approvalStatus === 'approved' && item.isAdjusted && (
+                                          <span className="text-emerald-600 font-bold flex items-center gap-0.5 ml-2">
+                                            <CheckCircle2 size={12} />
+                                            <span>Selesai</span>
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-3 text-[11px] text-slate-500">
+                    <span>
+                      Menampilkan {itemShowingStart}-{itemShowingEnd} dari {filteredSessionItems.length} item
+                      {filteredSessionItems.length !== sessionItems.length ? ` (filter dari ${sessionItems.length} total)` : ''}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setItemCurrentPage((page) => Math.max(1, page - 1))}
+                        disabled={itemCurrentPage === 1}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded shadow-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                      >
+                        Prev
+                      </button>
+                      <span className="px-2 font-medium text-slate-600">
+                        Page {itemCurrentPage} of {itemTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setItemCurrentPage((page) => Math.min(itemTotalPages, page + 1))}
+                        disabled={itemCurrentPage === itemTotalPages}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded shadow-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </Panel>
@@ -755,6 +852,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                 <ProductPicker
                   value={newItemProductId}
                   onChange={(product) => setNewItemProductId(product.id)}
+                  excludedProductIds={selectedSessionProductIds}
                   placeholder="Pilih produk untuk diopname..."
                 />
               </div>

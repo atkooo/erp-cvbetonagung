@@ -14,6 +14,7 @@ interface ProductPickerProps {
   onChange: (product: Product) => void;
   categoryFilter?: string; // Deprecated: Use typeFilter instead
   typeFilter?: 'raw_material' | 'finished_good' | 'service';
+  excludedProductIds?: string[];
   placeholder?: string;
   className?: string;
 }
@@ -23,6 +24,7 @@ export default function ProductPicker({
   onChange,
   categoryFilter,
   typeFilter,
+  excludedProductIds = [],
   placeholder = 'Pilih Produk / Material...',
   className = ''
 }: ProductPickerProps) {
@@ -70,11 +72,18 @@ export default function ProductPicker({
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    p.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const excludedProductIdSet = new Set(excludedProductIds);
+  const filteredProducts = products.filter((p) => {
+    if (excludedProductIdSet.has(p.id) && p.id !== value) {
+      return false;
+    }
+
+    return (
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      p.category.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   const handleSelect = (product: Product) => {
     onChange(product);

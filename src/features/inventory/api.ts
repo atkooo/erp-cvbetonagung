@@ -10,6 +10,8 @@ import {
   mapStockOpnameSessionFromDto, mapStockOpnameItemFromDto, mapApprovalRequestFromDto
 } from './mappers';
 
+const STOCK_OPNAME_ITEM_PAGE_SIZE = 100;
+
 export const inventoryApi = {
   // Product Stocks
   async getProductStocks(): Promise<ProductStockDto[]> {
@@ -92,8 +94,30 @@ export const inventoryApi = {
   },
 
   async getStockOpnameItems(sessionId: string): Promise<StockOpnameItem[]> {
-    const response = await apiClient.get<{ data: StockOpnameItemDto[] }>(`/inventory/stock-opname-items?session_id=${sessionId}`);
-    return response.data.map(mapStockOpnameItemFromDto);
+    const firstParams = new URLSearchParams({
+      session_id: sessionId,
+      per_page: String(STOCK_OPNAME_ITEM_PAGE_SIZE),
+    });
+    const firstResponse = await apiClient.get<{
+      data: StockOpnameItemDto[];
+      meta?: { current_page: number; last_page: number };
+    }>(`/inventory/stock-opname-items?${firstParams.toString()}`);
+    const items = [...firstResponse.data];
+    const lastPage = firstResponse.meta?.last_page || 1;
+
+    for (let page = 2; page <= lastPage; page += 1) {
+      const params = new URLSearchParams({
+        session_id: sessionId,
+        per_page: String(STOCK_OPNAME_ITEM_PAGE_SIZE),
+        page: String(page),
+      });
+      const response = await apiClient.get<{ data: StockOpnameItemDto[] }>(
+        `/inventory/stock-opname-items?${params.toString()}`
+      );
+      items.push(...response.data);
+    }
+
+    return items.map(mapStockOpnameItemFromDto);
   },
 
   async createStockOpnameSession(data: { warehouse_id: string; notes?: string }): Promise<StockOpnameSession> {

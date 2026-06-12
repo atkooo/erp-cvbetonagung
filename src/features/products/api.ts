@@ -20,6 +20,26 @@ const normalizeListResponse = <T>(response: { data?: T[] } | T[]): T[] => {
   return Array.isArray(response.data) ? response.data : [];
 };
 
+const PRODUCT_PAGE_SIZE = 100;
+
+const getAllProductDtos = async (): Promise<ProductDto[]> => {
+  const firstResponse = await apiClient.get<{
+    data: ProductDto[];
+    meta?: { current_page: number; last_page: number };
+  }>(`/master/products?per_page=${PRODUCT_PAGE_SIZE}`);
+  const products = [...firstResponse.data];
+  const lastPage = firstResponse.meta?.last_page || 1;
+
+  for (let page = 2; page <= lastPage; page += 1) {
+    const response = await apiClient.get<{ data: ProductDto[] }>(
+      `/master/products?per_page=${PRODUCT_PAGE_SIZE}&page=${page}`
+    );
+    products.push(...response.data);
+  }
+
+  return products;
+};
+
 export const productsApi = {
   // Categories
   async getCategories(): Promise<Category[]> {
@@ -63,11 +83,11 @@ export const productsApi = {
 
   // Products
   async getProducts(): Promise<Product[]> {
-    const [productsResponse, units] = await Promise.all([
-      apiClient.get<{ data: ProductDto[] }>('/master/products'),
+    const [productDtos, units] = await Promise.all([
+      getAllProductDtos(),
       productsApi.getUnits(),
     ]);
-    return productsResponse.data.map((product) => mapProductFromDto(product, units));
+    return productDtos.map((product) => mapProductFromDto(product, units));
   },
 
   async getProduct(id: string): Promise<Product> {
