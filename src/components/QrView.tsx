@@ -27,8 +27,10 @@ import {
 import { Product, ViewType, StockMovement } from '../types';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
-import { QRCodeSVG } from 'qrcode.react';
+import Barcode from 'react-barcode';
 import { Html5Qrcode } from 'html5-qrcode';
+import html2canvas from 'html2canvas';
+import { useReactToPrint } from 'react-to-print';
 
 
 function RealScanner({ onScan }: { onScan: (text: string) => void }) {
@@ -100,6 +102,30 @@ export default function QrView({
   const [cameraActive, setCameraActive] = useState(true);
   const [scanProgress, setScanProgress] = useState(0); // 0 to 100 for simulated camera scan delay
   const [scanTriggered, setScanTriggered] = useState<string | null>(null);
+
+  const stickerRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPng = async () => {
+    if (!stickerRef.current || !showQrModal) return;
+    try {
+      const canvas = await html2canvas(stickerRef.current, { scale: 3, backgroundColor: '#ffffff' });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Barcode-${showQrModal.sku}.png`;
+      link.href = dataUrl;
+      link.click();
+      onTriggerNotification(`Berhasil mendownload sticker asset Barcode-${showQrModal.sku}.png`);
+    } catch (e) {
+      console.error(e);
+      onTriggerNotification(`Gagal mendownload sticker asset.`);
+    }
+  };
+
+  const handlePrint = useReactToPrint({
+    contentRef: stickerRef,
+    documentTitle: showQrModal ? `Barcode-${showQrModal.sku}` : 'Barcode',
+    onAfterPrint: () => onTriggerNotification(`Berhasil mengirim stiker Barcode [${showQrModal?.sku}] ke printer.`),
+  });
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,12 +221,10 @@ export default function QrView({
     return () => clearInterval(interval);
   }, [scanTriggered]);
 
-  // Generate a real QR Code using qrcode.react
-  const drawQrCode = (text: string, isBig: boolean = false) => {
-    const size = isBig ? 150 : 44;
+  const drawBarcode = (value: string, large = false) => {
     return (
-      <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-inner flex items-center justify-center">
-        <QRCodeSVG value={text} size={size} />
+      <div className={`bg-white p-2 border border-slate-200 rounded ${large ? 'shadow-sm' : ''} inline-block`}>
+        <Barcode value={value || 'EMPTY'} width={large ? 2 : 1.2} height={large ? 60 : 35} fontSize={large ? 14 : 10} margin={0} background="#ffffff" lineColor="#0f172a" />
       </div>
     );
   };
@@ -232,7 +256,7 @@ export default function QrView({
           </button>
 
           <span className="text-[10px] uppercase font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-            QR CODE MATCH : OK
+            BARCODE MATCH : OK
           </span>
         </div>
 
@@ -375,9 +399,9 @@ export default function QrView({
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
           <Scan size={36} className="text-cyan-500" />
           <div className="space-y-1">
-            <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian QR Code Produk</h3>
+            <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian Barcode Produk</h3>
             <p className="text-[10px] text-slate-450 text-slate-500 max-w-sm">
-              Gunakan perangkat kamera untuk memindai label QR Code di rak gudang atau di kemasan beton CV Beton Agung.
+              Gunakan perangkat kamera untuk memindai label Barcode di rak gudang atau di kemasan beton CV Beton Agung.
             </p>
           </div>
         </div>
@@ -410,7 +434,7 @@ export default function QrView({
                   <span className="font-mono text-[9px] text-cyan-600 font-black">{p.qrValue || p.sku}</span>
                   <strong className="text-slate-850 block mt-0.5 truncate max-w-[120px]">{p.name}</strong>
                 </div>
-                {drawQrCode(p.qrValue || p.sku)}
+                {drawBarcode(p.qrValue || p.sku)}
               </button>
             ))}
           </div>
@@ -420,7 +444,7 @@ export default function QrView({
   }
 
   // -------------------------------------------------------------
-  // 3. DAFTAR QR PRODUK LIST DESIGN
+  // 3. DAFTAR BARCODE PRODUK LIST DESIGN
   // -------------------------------------------------------------
   return (
     <div className="space-y-6">
@@ -434,7 +458,7 @@ export default function QrView({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search SKU atau Nama Produk untuk mencetak stiker QR..."
+            placeholder="Search SKU atau Nama Produk untuk mencetak stiker Barcode..."
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs"
           />
         </div>
@@ -448,18 +472,18 @@ export default function QrView({
         </button>
       </div>
 
-      {/* Main product listings table displaying QRs */}
+      {/* Main product listings table displaying Barcodes */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-sans text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">SKU No. / QR Value</th>
+                <th className="p-3.5 pl-5">SKU No. / Barcode</th>
                 <th className="p-3.5">Nama Item Produk</th>
                 <th className="p-3.5">Sisa Kuantitas</th>
-                <th className="p-3.5">Visual QR Code Label</th>
+                <th className="p-3.5">Visual Barcode Label</th>
                 <th className="p-3.5">Kondisi Stok</th>
-                <th className="p-3.5 pr-5 text-right">Aksi Tempelan QR</th>
+                <th className="p-3.5 pr-5 text-right">Aksi Tempelan Barcode</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -469,13 +493,13 @@ export default function QrView({
                   <tr key={p.id} className="hover:bg-slate-50/40">
                     <td className="p-3.5 pl-5">
                       <span className="font-mono font-bold text-slate-800 block">{p.sku}</span>
-                      <span className="text-[10px] text-indigo-600 font-mono font-semibold block mt-0.5">QR: {p.qrValue || p.sku}</span>
+                      <span className="text-[10px] text-indigo-600 font-mono font-semibold block mt-0.5">Barcode: {p.qrValue || p.sku}</span>
                     </td>
                     <td className="p-3.5 font-bold text-slate-700">{p.name}</td>
                     <td className="p-3.5 font-mono text-slate-500">{p.stock} {p.unit}</td>
                     <td className="p-3.5">
                       <div className="py-1 flex items-center gap-2">
-                        {drawQrCode(p.qrValue || p.sku)}
+                        {drawBarcode(p.qrValue || p.sku)}
                         <span className="text-[10px] font-mono text-slate-400">Label format: G1-A</span>
                       </div>
                     </td>
@@ -487,24 +511,28 @@ export default function QrView({
                         {p.status}
                       </span>
                     </td>
-                    <td className="p-3.5 pr-5 text-right space-x-1">
-                      <button
-                        onClick={() => {
-                          setShowQrModal(p);
-                          onTriggerNotification(`Membuka popup sticker QR ${p.sku}`);
-                        }}
-                        className="p-1 px-2 border hover:border-slate-350 text-[10px] bg-slate-50 hover:bg-slate-100 text-slate-700 rounded transition-colors"
-                      >
-                        Lihat QR
-                      </button>
-                      <button
-                        onClick={() => {
-                          onTriggerNotification(`Mengirim cetak stiker QR [${p.sku}] ke printer zebra harian`);
-                        }}
-                        className="p-1 px-2 border border-cyan-200 text-cyan-700 hover:bg-cyan-50 text-[10px] rounded transition-colors font-semibold"
-                      >
-                        Cetak QR
-                      </button>
+                    <td className="p-3.5 pr-5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setShowQrModal(p);
+                            onTriggerNotification(`Membuka popup sticker Barcode ${p.sku}`);
+                          }}
+                          className="px-2 py-1.5 border border-slate-200 hover:border-slate-300 text-[10px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 rounded flex items-center gap-1.5 transition-colors"
+                        >
+                          <Eye size={12} />
+                          <span>Lihat</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onTriggerNotification(`Mengirim cetak stiker Barcode [${p.sku}] ke printer zebra harian`);
+                          }}
+                          className="px-2 py-1.5 border border-cyan-200 text-[10px] font-semibold text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 rounded flex items-center gap-1.5 transition-colors"
+                        >
+                          <Printer size={12} />
+                          <span>Cetak</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -513,32 +541,33 @@ export default function QrView({
         </div>
       </div>
 
-      {/* Modal View QR Sticker layout */}
+      {/* Modal View Barcode Sticker layout */}
       {showQrModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
             {/* Header modal */}
             <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
-              <h4 className="font-bold">Kartu Sticker QR Code</h4>
+              <h4 className="font-bold">Kartu Sticker Barcode</h4>
               <button onClick={() => setShowQrModal(null)} className="text-slate-400 hover:text-white">
                 <X size={18} />
               </button>
             </div>
 
             {/* Sticker panel display */}
-            <div className="p-8 text-center space-y-5 flex flex-col items-center">
+            <div ref={stickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white">
               <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">CV BETON AGUNG LOGISTIC</p>
               
-              {/* Massive QR drawing */}
-              <div className="p-3 bg-slate-50 rounded-2xl border shadow-inner">
-                {drawQrCode(showQrModal.qrValue || showQrModal.sku, true)}
+              <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
+                <div className="relative group">
+                  {drawBarcode(showQrModal.qrValue || showQrModal.sku, true)}
+                </div>
               </div>
 
               <div className="space-y-1.5 text-center">
                 <strong className="text-base font-sans font-black text-slate-800 tracking-tight leading-tight">{showQrModal.sku}</strong>
                 <p className="text-xs font-bold text-slate-650 text-slate-500 max-w-[200px] leading-snug">{showQrModal.name}</p>
                 <div className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono inline-block border border-slate-200 mt-1">
-                  QR Value: <strong className="text-slate-800">{showQrModal.qrValue || showQrModal.sku}</strong>
+                  Barcode: <strong className="text-slate-800">{showQrModal.qrValue || showQrModal.sku}</strong>
                 </div>
                 <div className="pt-2 text-[9px] font-mono text-slate-400">
                   Storage Rak: <strong className="text-slate-600">{showQrModal.location}</strong>
@@ -549,18 +578,14 @@ export default function QrView({
             {/* Buttons action */}
             <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-1.5 text-xs font-bold">
               <button
-                onClick={() => {
-                  onTriggerNotification(`Mendownload sticker asset ${showQrModal.sku}.png ke folder local.`);
-                }}
+                onClick={handleDownloadPng}
                 className="px-3 py-1.5 border hover:bg-slate-150 rounded-lg flex items-center gap-1 text-slate-650"
               >
                 <Download size={13} />
                 <span>Download PNG</span>
               </button>
               <button
-                onClick={() => {
-                  onTriggerNotification(`Mengirim stiker QR [${showQrModal.sku}] ke Printer Zebra Label.`);
-                }}
+                onClick={handlePrint}
                 className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1"
               >
                 <Printer size={13} />
