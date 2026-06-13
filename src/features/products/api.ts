@@ -21,6 +21,7 @@ const normalizeListResponse = <T>(response: { data?: T[] } | T[]): T[] => {
 };
 
 const PRODUCT_PAGE_SIZE = 100;
+const CATEGORY_PAGE_SIZE = 100;
 
 const getAllProductDtos = async (): Promise<ProductDto[]> => {
   const firstResponse = await apiClient.get<{
@@ -40,11 +41,29 @@ const getAllProductDtos = async (): Promise<ProductDto[]> => {
   return products;
 };
 
+const getAllCategoryDtos = async (): Promise<CategoryDto[]> => {
+  const firstResponse = await apiClient.get<{
+    data: CategoryDto[];
+    meta?: { current_page: number; last_page: number };
+  }>(`/master-data/product-categories?per_page=${CATEGORY_PAGE_SIZE}`);
+  const categories = [...firstResponse.data];
+  const lastPage = firstResponse.meta?.last_page || 1;
+
+  for (let page = 2; page <= lastPage; page += 1) {
+    const response = await apiClient.get<{ data: CategoryDto[] }>(
+      `/master-data/product-categories?per_page=${CATEGORY_PAGE_SIZE}&page=${page}`
+    );
+    categories.push(...response.data);
+  }
+
+  return categories;
+};
+
 export const productsApi = {
   // Categories
   async getCategories(): Promise<Category[]> {
-    const response = await apiClient.get<{ data: CategoryDto[] }>('/master-data/product-categories');
-    return response.data.map(mapCategoryFromDto);
+    const categories = await getAllCategoryDtos();
+    return categories.map(mapCategoryFromDto);
   },
 
   async createCategory(data: CategoryFormData): Promise<Category> {
