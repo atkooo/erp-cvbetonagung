@@ -449,6 +449,43 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     }
   };
 
+  const handleBulkAdjustStock = async () => {
+    if (!selectedSession || selectedItemIds.length === 0) return;
+
+    const itemsToAdjust = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'approved' && !i.isAdjusted);
+
+    const result = await Swal.fire({
+      title: 'Sesuaikan Stok Massal?',
+      text: `Menyesuaikan stok sistem untuk ${itemsToAdjust.length} item? Tindakan ini akan mencatat log mutasi secara permanen.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Sesuaikan',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      setIsSubmittingBulk(true);
+      let successCount = 0;
+      try {
+        for (const item of itemsToAdjust) {
+          await inventoryApi.adjustStockOpnameItem(item.id, item.notes);
+          successCount++;
+        }
+        Swal.fire('Sukses', `${successCount} stok berhasil disesuaikan di database!`, 'success');
+        onTriggerNotification(`${successCount} item disesuaikan secara permanen.`);
+        setSelectedItemIds([]);
+        fetchSessionItems(selectedSession.id);
+        fetchSessions();
+      } catch (error) {
+        console.error('Error adjusting bulk stock:', error);
+        Swal.fire('Info', `Hanya ${successCount} dari ${itemsToAdjust.length} yang berhasil disesuaikan karena terjadi kesalahan.`, 'warning');
+        fetchSessionItems(selectedSession.id);
+      } finally {
+        setIsSubmittingBulk(false);
+      }
+    }
+  };
+
   // Status mapping to tone
   const getSessionTone = (status: string) => {
     switch (status) {
@@ -626,16 +663,35 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                         className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                       />
                     </div>
-                    {selectedItemIds.length > 0 && selectedSession?.status === 'in_progress' && (
-                      <button
-                        onClick={handleBulkRequestApproval}
-                        disabled={isSubmittingBulk}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition disabled:opacity-50"
-                      >
-                        <Send size={14} />
-                        <span>Ajukan Approval ({selectedItemIds.length})</span>
-                      </button>
-                    )}
+                    {(() => {
+                      const selectedApprovable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && !i.approvalRequestId);
+                      const selectedAdjustable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'approved' && !i.isAdjusted);
+                      
+                      return (selectedApprovable.length > 0 || selectedAdjustable.length > 0) && selectedSession?.status === 'in_progress' ? (
+                        <div className="flex gap-2">
+                          {selectedApprovable.length > 0 && (
+                            <button
+                              onClick={handleBulkRequestApproval}
+                              disabled={isSubmittingBulk}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition disabled:opacity-50 whitespace-nowrap"
+                            >
+                              <Send size={14} />
+                              <span>Ajukan Approval ({selectedApprovable.length})</span>
+                            </button>
+                          )}
+                          {selectedAdjustable.length > 0 && (
+                            <button
+                              onClick={handleBulkAdjustStock}
+                              disabled={isSubmittingBulk}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition disabled:opacity-50 whitespace-nowrap"
+                            >
+                              <RefreshCw size={14} />
+                              <span>Sesuaikan Stok ({selectedAdjustable.length})</span>
+                            </button>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span>Tampilkan</span>
                       <select
@@ -698,7 +754,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                               <tr key={item.id} className="hover:bg-slate-50/50">
                                 {selectedSession.status === 'in_progress' && (
                                   <td className="p-3.5 pl-5">
-                                    {hasDifference && !item.approvalRequestId && !isEditing && (
+                                    {((hasDifference && !item.approvalRequestId) || (item.approvalStatus === 'approved' && !item.isAdjusted)) && !isEditing && (
                                       <input
                                         type="checkbox"
                                         className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"

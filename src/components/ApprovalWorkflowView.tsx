@@ -68,6 +68,9 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
   const [decisionNotes, setDecisionNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -117,6 +120,48 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
       } catch (error) {
         console.error('Error deciding request:', error);
         Swal.fire('Gagal', 'Terjadi kesalahan saat memproses keputusan.', 'error');
+      }
+    }
+  };
+
+  const handleBulkDecision = async (status: 'approved' | 'rejected') => {
+    if (selectedRequestIds.length === 0) return;
+
+    const actionText = status === 'approved' ? 'Menyetujui' : 'Menolak';
+    const confirmButtonColor = status === 'approved' ? '#0891b2' : '#e11d48';
+
+    const result = await Swal.fire({
+      title: `${actionText} Massal?`,
+      text: `Apakah Anda yakin ingin ${status === 'approved' ? 'menyetujui' : 'menolak'} ${selectedRequestIds.length} pengajuan sekaligus?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: status === 'approved' ? 'Ya, Setujui' : 'Ya, Tolak',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: confirmButtonColor
+    });
+
+    if (result.isConfirmed) {
+      setIsSubmittingBulk(true);
+      let successCount = 0;
+      try {
+        for (const reqId of selectedRequestIds) {
+          await inventoryApi.updateApprovalRequest(reqId, status, '');
+          successCount++;
+        }
+        Swal.fire(
+          status === 'approved' ? 'Disetujui' : 'Ditolak',
+          `${successCount} pengajuan berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}.`,
+          'success'
+        );
+        onTriggerNotification(`${successCount} pengajuan ${status === 'approved' ? 'DISETUJUI' : 'DITOLAK'}.`);
+        setSelectedRequestIds([]);
+        fetchRequests();
+      } catch (error) {
+        console.error('Error deciding bulk requests:', error);
+        Swal.fire('Info', `Hanya ${successCount} dari ${selectedRequestIds.length} pengajuan yang berhasil diproses.`, 'warning');
+        fetchRequests();
+      } finally {
+        setIsSubmittingBulk(false);
       }
     }
   };
@@ -195,6 +240,27 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
             />
           </div>
           
+          {selectedRequestIds.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleBulkDecision('rejected')}
+                disabled={isSubmittingBulk}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg font-bold hover:bg-rose-700 transition disabled:opacity-50 text-[11px]"
+              >
+                <XCircle size={14} />
+                <span>Tolak ({selectedRequestIds.length})</span>
+              </button>
+              <button
+                onClick={() => handleBulkDecision('approved')}
+                disabled={isSubmittingBulk}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition disabled:opacity-50 text-[11px]"
+              >
+                <CheckCircle2 size={14} />
+                <span>Setujui ({selectedRequestIds.length})</span>
+              </button>
+            </div>
+          )}
+
           <button 
             onClick={fetchRequests}
             className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
@@ -218,7 +284,22 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                  <th className="p-3.5 pl-5">No Approval</th>
+                  <th className="p-3.5 pl-5 w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      checked={selectedRequestIds.length > 0 && filteredRequests.filter(r => r.status === 'pending').length > 0 && filteredRequests.filter(r => r.status === 'pending').every(r => selectedRequestIds.includes(r.id))}
+                      onChange={(e) => {
+                        const pendingIds = filteredRequests.filter(r => r.status === 'pending').map(r => r.id);
+                        if (e.target.checked) {
+                          setSelectedRequestIds(prev => Array.from(new Set([...prev, ...pendingIds])));
+                        } else {
+                          setSelectedRequestIds(prev => prev.filter(id => !pendingIds.includes(id)));
+                        }
+                      }}
+                    />
+                  </th>
+                  <th className="p-3.5">No Approval</th>
                   <th className="p-3.5">Jenis Request</th>
                   <th className="p-3.5">Pemohon</th>
                   <th className="p-3.5">Referensi</th>
@@ -231,7 +312,23 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
               <tbody className="divide-y divide-slate-100">
                 {filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">{req.approvalNumber}</td>
+                    <td className="p-3.5 pl-5">
+                      {req.status === 'pending' && (
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                          checked={selectedRequestIds.includes(req.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedRequestIds(prev => [...prev, req.id]);
+                            } else {
+                              setSelectedRequestIds(prev => prev.filter(id => id !== req.id));
+                            }
+                          }}
+                        />
+                      )}
+                    </td>
+                    <td className="p-3.5 font-mono font-bold text-slate-800">{req.approvalNumber}</td>
                     <td className="p-3.5 font-bold text-slate-700">{getRequestTypeLabel(req.requestType)}</td>
                     <td className="p-3.5 text-slate-600">{req.requesterName}</td>
                     <td className="p-3.5 font-mono text-cyan-600">{req.referenceNumber}</td>
