@@ -231,18 +231,13 @@ export default function SalesView({
       })
       .find(item => item.availableStock <= 0 || item.requestedQty > item.availableStock);
 
-    if (insufficientStock) {
-      onTriggerNotification(
-        `Info: Stok ${insufficientStock.productName} belum cukup. Diminta ${insufficientStock.requestedQty} ${insufficientStock.unit}, tersedia ${insufficientStock.availableStock} ${insufficientStock.unit}. Lanjutkan proses produksi/restock sebelum pengiriman.`
-      );
-    }
-
     try {
       const d = new Date();
       const todayStr = d.toISOString().split('T')[0];
       const validUntil = new Date(d);
       validUntil.setDate(d.getDate() + 14); // 14 days valid
 
+      let successMsg = "";
       if (isQuotation) {
         await salesApi.createQuotation({
           customer_id: custId,
@@ -258,7 +253,7 @@ export default function SalesView({
             description: item.description
           }))
         });
-        onTriggerNotification(`Sukses menerbitkan Quotation via API`);
+        successMsg = `Sukses menerbitkan Quotation.`;
       } else {
         await salesApi.createSalesOrder({
           customer_id: custId,
@@ -274,8 +269,13 @@ export default function SalesView({
             description: item.description
           }))
         });
-        onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
+        successMsg = `Sukses menerbitkan Sales Order.`;
       }
+
+      if (insufficientStock) {
+        successMsg += ` (⚠️ Peringatan: Stok ${insufficientStock.productName} kurang. Butuh ${insufficientStock.requestedQty}, sisa ${insufficientStock.availableStock}. Perlu diproduksi/restock.)`;
+      }
+      onTriggerNotification(successMsg);
       await loadData();
     } catch (err) {
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
@@ -575,6 +575,11 @@ export default function SalesView({
                             <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
                           )}
                           <span className="text-slate-400 text-[11px] font-mono block">
+                            {item.pieceCount && item.length ? (
+                              <span className="text-indigo-600 font-bold mr-1">
+                                [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
+                              </span>
+                            ) : null}
                             {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
                           </span>
                         </div>
@@ -703,6 +708,9 @@ export default function SalesView({
                         <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
                         <td className="border border-black p-2 align-top">
                           <span className="font-bold block">{item.productName}</span>
+                          {item.pieceCount && item.length && (
+                            <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
+                          )}
                           {item.description && (
                             <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
                           )}
@@ -771,6 +779,51 @@ export default function SalesView({
 
             <form onSubmit={handleCreateDocument} className="flex flex-col flex-1 overflow-hidden">
               <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                {!isQuotation && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
+                    <SearchableSelect
+                      value={quotationId}
+                      onChange={(qId) => {
+                        setQuotationId(qId);
+                        if (qId) {
+                          const selectedQuo = quotations.find(q => q.id === qId);
+                          if (selectedQuo) {
+                            if (selectedQuo.customerId) setCustId(selectedQuo.customerId);
+                            if (selectedQuo.items && selectedQuo.items.length > 0) {
+                              setFormItems(selectedQuo.items.map(item => {
+                                const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
+                                return {
+                                  productId: product?.id || item.productId || '',
+                                  quantity: item.quantity,
+                                  unitPrice: item.price,
+                                  unit: product?.unit,
+                                  stock: product?.stock,
+                                  description: item.description,
+                                  isCustomizable: product?.isCustomizable,
+                                  pricingMethod: product?.pricingMethod,
+                                  pieceCount: item.pieceCount,
+                                  length: item.length,
+                                };
+                              }));
+                            }
+                          }
+                        } else {
+                          resetFormItems();
+                          setCustId('');
+                        }
+                      }}
+                      options={[
+                        { value: "", label: "-- Tanpa Referensi Quotation --" },
+                        ...quotations
+                          .filter(q => q.status === 'Disetujui')
+                          .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${q.customerName} - ${formatIDR(q.total)}` }))
+                      ]}
+                      placeholder="Pilih Referensi Quotation..."
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
@@ -795,43 +848,6 @@ export default function SalesView({
                     />
                   )}
                 </div>
-
-                {!isQuotation && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
-                    <SearchableSelect
-                      value={quotationId}
-                      onChange={(qId) => {
-                        setQuotationId(qId);
-                        if (qId) {
-                          const selectedQuo = quotations.find(q => q.id === qId);
-                          if (selectedQuo && selectedQuo.items && selectedQuo.items.length > 0) {
-                            setFormItems(selectedQuo.items.map(item => {
-                              const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
-                              return {
-                                productId: product?.id || item.productId || '',
-                                quantity: item.quantity,
-                                unitPrice: item.price,
-                                unit: product?.unit,
-                                stock: product?.stock,
-                                description: item.description,
-                              };
-                            }));
-                          }
-                        } else {
-                          resetFormItems();
-                        }
-                      }}
-                      options={[
-                        { value: "", label: "-- Tanpa Referensi Quotation --" },
-                        ...quotations
-                          .filter(q => q.customerId === custId && q.status === 'Disetujui')
-                          .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${formatIDR(q.total)}` }))
-                      ]}
-                      placeholder="Pilih Referensi Quotation..."
-                    />
-                  </div>
-                )}
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
