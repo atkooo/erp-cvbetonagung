@@ -42,10 +42,14 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   status: mapQuotationStatus(dto.status),
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
-    productId: item.product_id,
+    productId: item.product_id || item.product?.id || '',
     productName: item.product?.name || item.description || 'Unknown Product',
+    pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
+    length: item.length != null ? Number(item.length) : undefined,
+    specification: item.specification || undefined,
     quantity: Number(item.quantity),
-    price: Number(item.unit_price)
+    price: Number(item.unit_price),
+    unit: item.product?.unit?.name
   }))
 });
 
@@ -59,10 +63,14 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   status: mapSalesOrderStatus(dto.status),
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
-    productId: item.product_id,
+    productId: item.product_id || item.product?.id || '',
     productName: item.product?.name || item.description || 'Unknown Product',
+    pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
+    length: item.length != null ? Number(item.length) : undefined,
+    specification: item.specification || undefined,
     quantity: Number(item.quantity),
-    price: Number(item.unit_price)
+    price: Number(item.unit_price),
+    unit: item.product?.unit?.name
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0)
 });

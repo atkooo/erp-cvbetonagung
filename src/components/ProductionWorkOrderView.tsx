@@ -830,7 +830,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         .find(so => so.id === selectedSalesOrderId)
                         ?.items?.map((item, index) => (
                           <option key={`${item.productId || item.productName}-${index}`} value={index}>
-                            {item.productName} - kebutuhan {item.quantity}
+                            {item.productName}
+                            {item.specification ? ` (${item.specification})` : ''}
+                            {item.length ? ` - ukuran ${item.length}` : ''}
+                            {' '} - kebutuhan {item.quantity}
                           </option>
                         ))}
                     </select>

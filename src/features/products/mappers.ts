@@ -21,7 +21,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   type: dto.type,
   name: dto.name,
   category: dto.category?.name || 'Uncategorized',
-  unit: dto.unit?.code || units.find((unit) => unit.id === dto.unit_id)?.code || '',
+  unit: dto.unit?.name || units.find((unit) => unit.id === dto.unit_id)?.name || dto.unit?.code || '',
   unitId: dto.unit_id,
   stock: 0, // Product list might not return live stock by default unless eager loaded
   minStock: Number(dto.min_stock),

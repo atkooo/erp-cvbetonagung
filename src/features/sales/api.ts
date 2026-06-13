@@ -6,7 +6,7 @@ import { mapQuotationFromDto, mapSalesOrderFromDto, mapDeliveryOrderFromDto } fr
 
 export const salesApi = {
   async getQuotations(): Promise<Quotation[]> {
-    const response = await apiClient.get<{ data: QuotationDto[] }>('/sales/quotations?include=customer,items.product');
+    const response = await apiClient.get<{ data: QuotationDto[] }>('/sales/quotations?include=customer,items.product.unit');
     return response.data.map(mapQuotationFromDto);
   },
 
@@ -30,7 +30,7 @@ export const salesApi = {
   },
 
   async getSalesOrders(): Promise<SalesOrder[]> {
-    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/orders?include=customer,quotation,items.product,invoices');
+    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/sales-orders?include=customer,quotation,items.product.unit,invoices');
     return response.data.map(mapSalesOrderFromDto);
   },
 
@@ -40,7 +40,7 @@ export const salesApi = {
   },
 
   async getDeliveryOrders(): Promise<DeliveryOrder[]> {
-    const response = await apiClient.get<{ data: DeliveryOrderDto[] }>('/sales/delivery-orders?include=salesOrder,customer,items.product');
+    const response = await apiClient.get<{ data: DeliveryOrderDto[] }>('/sales/delivery-orders?include=salesOrder,customer,items.product.unit');
     return response.data.map(mapDeliveryOrderFromDto);
   },
 

@@ -3,6 +3,9 @@ export interface QuotationItemDto {
   quotation_id: string;
   product_id: string;
   description: string | null;
+  piece_count: number | null;
+  length: number | null;
+  specification: string | null;
   quantity: number;
   unit_price: number;
   subtotal: number;
@@ -10,6 +13,10 @@ export interface QuotationItemDto {
     id: string;
     sku: string;
     name: string;
+    unit?: {
+      code: string;
+      name: string;
+    };
   };
 }
 
@@ -36,6 +43,9 @@ export interface SalesOrderItemDto {
   sales_order_id: string;
   product_id: string;
   description: string | null;
+  piece_count: number | null;
+  length: number | null;
+  specification: string | null;
   quantity: number;
   unit_price: number;
   subtotal: number;
@@ -43,6 +53,10 @@ export interface SalesOrderItemDto {
     id: string;
     sku: string;
     name: string;
+    unit?: {
+      code: string;
+      name: string;
+    };
   };
 }
 
@@ -75,6 +89,9 @@ export interface CreateQuotationDto {
   notes?: string;
   items: {
     product_id: string;
+    piece_count?: number;
+    length?: number;
+    specification?: string;
     quantity: number;
     unit_price: number;
     description?: string;
@@ -88,6 +105,9 @@ export interface CreateSalesOrderDto {
   notes?: string;
   items: {
     product_id: string;
+    piece_count?: number;
+    length?: number;
+    specification?: string;
     quantity: number;
     unit_price: number;
     description?: string;
@@ -104,6 +124,10 @@ export interface DeliveryOrderItemDto {
     id: string;
     sku: string;
     name: string;
+    unit?: {
+      code: string;
+      name: string;
+    };
   };
 }
 
@@ -129,4 +153,3 @@ export interface DeliveryOrderDto {
   };
   items?: DeliveryOrderItemDto[];
 }
-

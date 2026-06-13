@@ -12,8 +12,12 @@ export interface SalesOrder {
   items: {
     productId?: string;
     productName: string;
+    pieceCount?: number;
+    length?: number;
+    specification?: string;
     quantity: number;
     price: number;
+    unit?: string;
   }[];
   hasPaidInvoice?: boolean;
 }
@@ -31,8 +35,12 @@ export interface Quotation {
   items: {
     productId?: string;
     productName: string;
+    pieceCount?: number;
+    length?: number;
+    specification?: string;
     quantity: number;
     price: number;
+    unit?: string;
   }[];
 }
 

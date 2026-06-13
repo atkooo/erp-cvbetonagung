@@ -190,7 +190,7 @@ export default function SalesView({
     const matchesSearch =
       docNum.toLowerCase().includes(search.toLowerCase()) ||
       doc.customerName.toLowerCase().includes(search.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'All' || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -295,7 +295,7 @@ export default function SalesView({
       setCustId(newCustomer.id);
       setShowAddCustomer(false);
       onTriggerNotification(`Berhasil menambahkan customer baru: ${newCustomer.name}`);
-      
+
       setNewCustName('');
       setNewCustPhone('');
       setNewCustCity('');
@@ -527,7 +527,7 @@ export default function SalesView({
                       <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs">
                         <div>
                           <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
-                          <span className="text-slate-400 text-[11px] font-mono">{item.quantity} Unit x {formatIDR(item.price)}</span>
+                          <span className="text-slate-400 text-[11px] font-mono">{item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}</span>
                         </div>
                         <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
                       </div>
@@ -668,7 +668,7 @@ export default function SalesView({
                       <tr key={`${item.productName}-${idx}`}>
                         <td className="border border-black p-2 text-center">{idx + 1}</td>
                         <td className="border border-black p-2 font-bold">{item.productName}</td>
-                        <td className="border border-black p-2 text-right font-mono">{item.quantity}</td>
+                        <td className="border border-black p-2 text-right font-mono">{item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span></td>
                         <td className="border border-black p-2 text-right font-mono">{formatIDR(item.price)}</td>
                         <td className="border border-black p-2 text-right font-mono font-bold">{formatIDR(item.quantity * item.price)}</td>
                       </tr>
@@ -746,7 +746,7 @@ export default function SalesView({
                 ) : (
                   <SearchableSelect
                     value=""
-                    onChange={() => {}}
+                    onChange={() => { }}
                     options={[]}
                     placeholder="Memuat Customer..."
                     disabled
@@ -804,69 +804,69 @@ export default function SalesView({
 
                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                   {formItems.map((item, index) => (
-                      <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeFormItem(index)}
-                            disabled={formItems.length === 1}
-                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
-                            title="Hapus baris"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                    <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFormItem(index)}
+                          disabled={formItems.length === 1}
+                          className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
+                          title="Hapus baris"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+
+                      <ProductPicker
+                        value={item.productId}
+                        showCategoryFilter
+                        onChange={(product) => {
+                          updateFormItem(index, {
+                            productId: product.id,
+                            unitPrice: product.sellingPrice || 0,
+                            quantity: item.quantity > 0 ? item.quantity : 1,
+                            unit: product.unit,
+                            stock: product.stock,
+                          });
+                        }}
+                        typeFilter={isQuotation ? undefined : "finished_good"}
+                        placeholder="Pilih Produk..."
+                      />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-600">
+                            Kuantitas {item.unit ? `(${item.unit})` : ''}
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            value={item.quantity || ''}
+                            onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                          />
+                          {typeof item.stock === 'number' && (
+                            <p className="text-[10px] text-slate-400">
+                              Stok tersedia: {item.stock} {item.unit || 'unit'}
+                            </p>
+                          )}
                         </div>
-
-                        <ProductPicker
-                          value={item.productId}
-                          showCategoryFilter
-                          onChange={(product) => {
-                            updateFormItem(index, {
-                              productId: product.id,
-                              unitPrice: product.sellingPrice || 0,
-                              quantity: item.quantity > 0 ? item.quantity : 1,
-                              unit: product.unit,
-                              stock: product.stock,
-                            });
-                          }}
-                          typeFilter={isQuotation ? undefined : "finished_good"}
-                          placeholder="Pilih Produk..."
-                        />
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-600">
-                              Kuantitas {item.unit ? `(${item.unit})` : ''}
-                            </label>
-                            <input
-                              type="number"
-                              required
-                              min="1"
-                              value={item.quantity || ''}
-                              onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                            />
-                            {typeof item.stock === 'number' && (
-                              <p className="text-[10px] text-slate-400">
-                                Stok tersedia: {item.stock} {item.unit || 'unit'}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan (Rp)</label>
-                            <input
-                              type="number"
-                              required
-                              min="1"
-                              value={item.unitPrice || ''}
-                              onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                            />
-                          </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan (Rp)</label>
+                          <input
+                            type="number"
+                            required
+                            min="1"
+                            value={item.unitPrice || ''}
+                            onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                          />
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
               </div>
 
