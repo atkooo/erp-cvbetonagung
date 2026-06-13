@@ -30,7 +30,7 @@ export const salesApi = {
   },
 
   async getSalesOrders(): Promise<SalesOrder[]> {
-    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/orders');
+    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/orders?include=customer,quotation,items.product,invoices');
     return response.data.map(mapSalesOrderFromDto);
   },
 

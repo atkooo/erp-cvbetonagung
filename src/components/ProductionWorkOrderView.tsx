@@ -47,6 +47,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const [newWoNumber, setNewWoNumber] = useState('AUTO GENERATED');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedSalesOrderId, setSelectedSalesOrderId] = useState('');
+  const [selectedSalesOrderItemIndex, setSelectedSalesOrderItemIndex] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [sourceLabel, setSourceLabel] = useState('');
   const [targetQty, setTargetQty] = useState(1);
@@ -116,10 +117,21 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     }
   }, [initialWoId]);
 
+  const applySalesOrderItemToForm = (salesOrder: SalesOrder, itemIndex: number) => {
+    const item = salesOrder.items?.[itemIndex];
+    if (!item?.productId) return;
+
+    setSelectedSalesOrderItemIndex(String(itemIndex));
+    setSelectedProductId(item.productId);
+    setTargetQty(item.quantity);
+    setSourceLabel(salesOrder.orderNumber);
+  };
+
   const handleOpenCreateModal = () => {
     setNewWoNumber('AUTO GENERATED');
     setSelectedProductId('');
     setSelectedSalesOrderId('');
+    setSelectedSalesOrderItemIndex('');
     setSelectedProjectId('');
     setSourceLabel('');
     setTargetQty(100);
@@ -134,12 +146,21 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
       onTriggerNotification('Mohon lengkapi semua field utama.');
       return;
     }
+    const selectedSalesOrder = salesOrders.find(s => s.id === selectedSalesOrderId);
+    const selectedSalesOrderItem = selectedSalesOrderItemIndex !== ''
+      ? selectedSalesOrder?.items?.[Number(selectedSalesOrderItemIndex)]
+      : undefined;
+    if (selectedSalesOrderItem && targetQty < selectedSalesOrderItem.quantity) {
+      onTriggerNotification(
+        `Target produksi tidak boleh kurang dari kebutuhan SO: ${selectedSalesOrderItem.quantity}.`
+      );
+      return;
+    }
 
     try {
       let label = sourceLabel;
       if (!label && selectedSalesOrderId) {
-        const so = salesOrders.find(s => s.id === selectedSalesOrderId);
-        label = so ? so.orderNumber : '';
+        label = selectedSalesOrder ? selectedSalesOrder.orderNumber : '';
       } else if (!label && selectedProjectId) {
         const pr = projects.find(p => p.id === selectedProjectId);
         label = pr ? pr.projectName : '';
@@ -316,6 +337,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   // Calculations & Filtering
   const selectedWo = workOrders.find(wo => wo.id === selectedWoId);
+  const selectedCreateProduct = products.find(p => p.id === selectedProductId);
+  const selectedCreateSalesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
+  const selectedCreateSalesOrderItem = selectedSalesOrderItemIndex !== ''
+    ? selectedCreateSalesOrder?.items?.[Number(selectedSalesOrderItemIndex)]
+    : undefined;
+  const targetUnit = selectedCreateProduct?.unit || 'pcs';
 
   const filteredWos = workOrders.filter(w => 
     w.workOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -710,15 +737,20 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Target Qty (pcs) *</label>
+                  <label className="block font-bold text-slate-700">Target Produksi ({targetUnit}) *</label>
                   <input
                     type="number"
                     required
-                    min={1}
+                    min={selectedCreateSalesOrderItem?.quantity || 1}
                     value={targetQty}
                     onChange={(e) => setTargetQty(Number(e.target.value))}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400 font-mono"
                   />
+                  {selectedCreateSalesOrderItem && (
+                    <p className="text-[10px] text-slate-400">
+                      Kebutuhan SO: {selectedCreateSalesOrderItem.quantity} {targetUnit}. Boleh produksi lebih untuk stok gudang.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -744,8 +776,14 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     <select
                       value={selectedSalesOrderId}
                       onChange={(e) => {
-                        setSelectedSalesOrderId(e.target.value);
+                        const salesOrderId = e.target.value;
+                        setSelectedSalesOrderId(salesOrderId);
                         setSelectedProjectId('');
+                        setSelectedSalesOrderItemIndex('');
+                        const salesOrder = salesOrders.find(so => so.id === salesOrderId);
+                        if (salesOrder?.items?.length) {
+                          applySalesOrderItemToForm(salesOrder, 0);
+                        }
                       }}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                     >
@@ -763,6 +801,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                       onChange={(e) => {
                         setSelectedProjectId(e.target.value);
                         setSelectedSalesOrderId('');
+                        setSelectedSalesOrderItemIndex('');
                       }}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                     >
@@ -773,6 +812,33 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     </select>
                   </div>
                 </div>
+
+                {selectedSalesOrderId && (
+                  <div className="space-y-1">
+                    <label className="block font-bold text-slate-700">Item Sales Order</label>
+                    <select
+                      value={selectedSalesOrderItemIndex}
+                      onChange={(e) => {
+                        const salesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
+                        if (salesOrder) {
+                          applySalesOrderItemToForm(salesOrder, Number(e.target.value));
+                        }
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                    >
+                      {salesOrders
+                        .find(so => so.id === selectedSalesOrderId)
+                        ?.items?.map((item, index) => (
+                          <option key={`${item.productId || item.productName}-${index}`} value={index}>
+                            {item.productName} - kebutuhan {item.quantity}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-[10px] text-slate-400">
+                      Produk dan target otomatis mengikuti item SO. Target boleh dinaikkan untuk stok gudang, tapi tidak boleh di bawah kebutuhan SO.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Sumber Keterangan Kustom</label>

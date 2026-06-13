@@ -28,6 +28,7 @@ import { salesApi } from '../features/sales/api';
 import { financeApi } from '../features/finance/api';
 import { customersApi } from '../features/customers/api';
 import { productsApi } from '../features/products/api';
+import { inventoryApi } from '../features/inventory/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
 import ProductPicker from './ProductPicker';
@@ -43,6 +44,7 @@ interface SalesFormItem {
   quantity: number;
   unitPrice: number;
   unit?: string;
+  stock?: number;
 }
 
 export default function SalesView({
@@ -93,11 +95,17 @@ export default function SalesView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [docs, custsRes, prods] = await Promise.all([
+      const [docs, custsRes, prods, stocks] = await Promise.all([
         isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders(),
         customersApi.listCustomers(),
-        productsApi.getProducts()
+        productsApi.getProducts(),
+        inventoryApi.getProductStocks()
       ]);
+      const productsWithStock = prods.map((product) => {
+        const productStocks = stocks.filter((stock) => stock.product_id === product.id);
+        const totalStock = productStocks.reduce((sum, stock) => sum + Number(stock.quantity || 0), 0);
+        return { ...product, stock: totalStock };
+      });
       if (isQuotation) {
         setQuotations(docs as Quotation[]);
         setSalesOrders([]);
@@ -105,14 +113,14 @@ export default function SalesView({
         setSalesOrders(docs as SalesOrder[]);
       }
       setCustomers(custsRes.customers);
-      setProducts(prods);
+      setProducts(productsWithStock);
 
       if (custsRes.customers.length > 0 && !custId) setCustId(custsRes.customers[0].id);
       setFormItems((prev) => {
         if (prev.length > 0 && prev.some(item => item.productId)) return prev;
-        const defaultProduct = prods.find(p => !isQuotation ? p.type === 'finished_good' : true) || prods[0];
+        const defaultProduct = productsWithStock.find(p => !isQuotation ? p.type === 'finished_good' : true) || productsWithStock[0];
         return defaultProduct
-          ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit }]
+          ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit, stock: defaultProduct.stock }]
           : prev;
       });
     } catch (err) {
@@ -171,7 +179,7 @@ export default function SalesView({
   const resetFormItems = () => {
     const defaultProduct = products.find(p => (isQuotation ? true : p.type === 'finished_good')) || products[0];
     setFormItems(defaultProduct
-      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit }]
+      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit, stock: defaultProduct.stock }]
       : [{ productId: '', quantity: 1, unitPrice: 0 }]
     );
   };
@@ -198,6 +206,29 @@ export default function SalesView({
     if (validItems.some(item => item.quantity <= 0 || item.unitPrice <= 0)) {
       onTriggerNotification('Gagal: Kuantitas dan harga semua produk harus positif!');
       return;
+    }
+    const requestedByProduct = validItems.reduce<Record<string, number>>((acc, item) => {
+      acc[item.productId] = (acc[item.productId] || 0) + item.quantity;
+      return acc;
+    }, {});
+    const insufficientStock = Object.entries(requestedByProduct)
+      .map(([productId, requestedQty]) => {
+        const item = validItems.find(formItem => formItem.productId === productId);
+        const product = products.find(p => p.id === productId);
+        const availableStock = item?.stock ?? product?.stock ?? 0;
+        return {
+          productName: product?.name || 'Produk',
+          unit: item?.unit || product?.unit || 'unit',
+          requestedQty,
+          availableStock,
+        };
+      })
+      .find(item => item.availableStock <= 0 || item.requestedQty > item.availableStock);
+
+    if (insufficientStock) {
+      onTriggerNotification(
+        `Info: Stok ${insufficientStock.productName} belum cukup. Diminta ${insufficientStock.requestedQty} ${insufficientStock.unit}, tersedia ${insufficientStock.availableStock} ${insufficientStock.unit}. Lanjutkan proses produksi/restock sebelum pengiriman.`
+      );
     }
 
     try {
@@ -740,6 +771,7 @@ export default function SalesView({
                               quantity: item.quantity,
                               unitPrice: item.price,
                               unit: product?.unit,
+                              stock: product?.stock,
                             };
                           }));
                         }
@@ -795,6 +827,7 @@ export default function SalesView({
                               unitPrice: product.sellingPrice || 0,
                               quantity: item.quantity > 0 ? item.quantity : 1,
                               unit: product.unit,
+                              stock: product.stock,
                             });
                           }}
                           typeFilter={isQuotation ? undefined : "finished_good"}
@@ -814,6 +847,11 @@ export default function SalesView({
                               onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
                               className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
                             />
+                            {typeof item.stock === 'number' && (
+                              <p className="text-[10px] text-slate-400">
+                                Stok tersedia: {item.stock} {item.unit || 'unit'}
+                              </p>
+                            )}
                           </div>
                           <div className="space-y-1">
                             <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan (Rp)</label>
