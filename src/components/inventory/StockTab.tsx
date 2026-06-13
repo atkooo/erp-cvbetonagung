@@ -6,6 +6,7 @@ interface StockTabProps {
   products: Product[];
   search: string;
   stockStatusFilter: string;
+  categoryFilter: string;
   openStockActionId: string | null;
   setOpenStockActionId: (id: string | null) => void;
   openStockDetailModal: (product: Product) => void;
@@ -16,6 +17,7 @@ export const StockTab: React.FC<StockTabProps> = ({
   products,
   search,
   stockStatusFilter,
+  categoryFilter,
   openStockActionId,
   setOpenStockActionId,
   openStockDetailModal,
@@ -45,7 +47,10 @@ export const StockTab: React.FC<StockTabProps> = ({
               const matchStt =
                 stockStatusFilter === "All" ||
                 p.status === stockStatusFilter;
-              return matchSrc && matchStt;
+              const matchCat =
+                categoryFilter === "All" ||
+                p.category === categoryFilter;
+              return matchSrc && matchStt && matchCat;
             })
             .map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/40">

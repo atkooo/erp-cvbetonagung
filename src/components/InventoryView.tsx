@@ -546,6 +546,17 @@ export default function InventoryView({
             <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
               <Filter size={13} className="text-slate-400" />
               <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none cursor-pointer font-sans"
+              >
+                <option value="All">Semua Kategori</option>
+                {Array.from(new Set(products.map(p => p.category).filter(Boolean))).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <div className="w-px h-4 bg-slate-300 mx-1"></div>
+              <select
                 value={stockStatusFilter}
                 onChange={(e) => setStockStatusFilter(e.target.value)}
                 className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none cursor-pointer font-sans"
@@ -602,6 +613,7 @@ export default function InventoryView({
               products={products}
               search={search}
               stockStatusFilter={stockStatusFilter}
+              categoryFilter={categoryFilter}
               openStockActionId={openStockActionId}
               setOpenStockActionId={setOpenStockActionId}
               openStockDetailModal={openStockDetailModal}
