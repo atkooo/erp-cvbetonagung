@@ -1,4 +1,4 @@
-import type { AuthSession, AuthUser } from '../types';
+import type { AuthSession, AuthUser } from '../types/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const TOKEN_STORAGE_KEY = 'cvba_api_token';
@@ -129,10 +129,10 @@ export const apiClient = {
   async get<T>(path: string, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'GET' });
   },
-  async post<T>(path: string, body?: any, options?: RequestInit) {
+  async post<T>(path: string, body?: unknown, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body) });
   },
-  async put<T>(path: string, body?: any, options?: RequestInit) {
+  async put<T>(path: string, body?: unknown, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
   },
   async delete<T>(path: string, options?: RequestInit) {

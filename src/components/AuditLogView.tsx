@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileSearch, FileClock, Search, FileDown, RefreshCw, AlertTriangle
 } from '@/src/components/icons';
@@ -63,11 +63,7 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
   const [searchQuery, setSearchQuery] = useState('');
   const [filterAction, setFilterAction] = useState('ALL');
 
-  useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await supportApi.getAuditLogs();
@@ -78,7 +74,11 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onTriggerNotification]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return;

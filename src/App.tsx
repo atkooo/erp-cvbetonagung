@@ -4,16 +4,16 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import type { AuthSession, AuthUser, Customer, Supplier, Product, StockMovement, SalesOrder, Quotation, Invoice, Payment, PurchaseOrder, Project, ViewType } from './types';
+import type { AuthSession, AuthUser, ViewType } from './types';
 import { authApi, authStorage } from './services/api';
 import { DEFAULT_AUTHENTICATED_VIEW, normalizePath, pathForView, viewFromPath } from './routes';
+import { useToast } from './hooks/useToast';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
-
-// Feature sub-modules
 import LoginView from './components/LoginView';
 
+// Lazy-loaded view modules — code split per route untuk performa optimal
 const DashboardView = React.lazy(() => import('./pages/dashboard'));
 const EmployeeDashboardView = React.lazy(() => import('./components/EmployeeDashboardView'));
 const CustomersView = React.lazy(() => import('./pages/master/customer'));
@@ -22,7 +22,7 @@ const ProductsView = React.lazy(() => import('./pages/master/product'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
 const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
-const InventoryView = React.lazy(() => import('./pages/inventory/stock'));
+const InventoryView = React.lazy(() => import('./components/InventoryView'));
 const SalesView = React.lazy(() => import('./pages/sales/quotation'));
 const InvoicesView = React.lazy(() => import('./pages/finance/billing'));
 const PaymentsView = React.lazy(() => import('./pages/finance/cashier'));
@@ -60,39 +60,37 @@ const ProfileView = React.lazy(() => import('./components/ProfileView'));
 import { CheckCircle2, WifiOff } from '@/src/components/icons';
 
 export default function App() {
-  // Authentication & Security state
+  // --- Auth state ---
   const storedUser = authStorage.getUser();
   const initialRouteView = viewFromPath(window.location.pathname);
-  const [currentView, setCurrentView] = useState<ViewType>(storedUser ? (initialRouteView || DEFAULT_AUTHENTICATED_VIEW) : 'login');
-  const [userRole, setUserRole] = useState(storedUser?.role?.name || 'User');
-  const [userRoleCode, setUserRoleCode] = useState(storedUser?.role?.code || 'admin');
-  const [userEmail, setUserEmail] = useState(storedUser?.email || '');
+
   const [authUser, setAuthUser] = useState<AuthUser | null>(storedUser);
-  const [isRestoringSession, setIsRestoringSession] = useState(Boolean(storedUser && authStorage.getToken()));
-  
-  // Connection / Online state
+  const [isRestoringSession, setIsRestoringSession] = useState(
+    Boolean(storedUser && authStorage.getToken())
+  );
+
+  // Derived values — tidak butuh useState terpisah, cukup compute dari authUser
+  const userRole = authUser?.role?.name ?? 'User';
+  const userRoleCode = authUser?.role?.code ?? 'admin';
+  const userEmail = authUser?.email ?? '';
+
+  // --- Navigation state ---
+  const [currentView, setCurrentView] = useState<ViewType>(
+    storedUser ? (initialRouteView || DEFAULT_AUTHENTICATED_VIEW) : 'login'
+  );
+
+  // --- Connection state ---
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  // Focus detail page state modifiers
+  // --- Detail/sub-navigation state ---
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string | null>(null);
   const [scannedSku, setScannedSku] = useState<string | null>(null);
 
-  // Central Notification Toast engine
-  const [toast, setToast] = useState<string | null>(null);
-  const [toastTimeout, setToastTimeout] = useState<any>(null);
+  // --- Toast notification (extracted hook) ---
+  const { toast, triggerNotification } = useToast();
 
-  const triggerNotification = (message: string) => {
-    setToast(message);
-    if (toastTimeout) {
-      clearTimeout(toastTimeout);
-    }
-    const timeout = setTimeout(() => {
-      setToast(null);
-    }, 4000);
-    setToastTimeout(timeout);
-  };
-
+  // --- Global event listeners ---
   useEffect(() => {
     const handlePopState = () => {
       const routeView = viewFromPath(window.location.pathname);
@@ -102,26 +100,30 @@ export default function App() {
         setCurrentView(DEFAULT_AUTHENTICATED_VIEW);
       }
     };
+
     const handleOnline = () => {
       setIsOnline(true);
       triggerNotification('Koneksi internet terhubung kembali.');
     };
+
     const handleOffline = () => {
       setIsOnline(false);
       triggerNotification('Koneksi internet terputus.');
     };
+
     const handleUnauthorized = () => {
       setAuthUser(null);
-      setUserEmail('');
       setCurrentView('login');
       triggerNotification('Sesi Anda telah berakhir. Silakan masuk kembali.');
     };
+
     const handleNavigate = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
       if (customEvent.detail) {
         setCurrentView(customEvent.detail as ViewType);
       }
     };
+
     const handleProfileUpdated = () => {
       const updatedUser = authStorage.getUser();
       if (updatedUser) {
@@ -144,8 +146,9 @@ export default function App() {
       window.removeEventListener('navigate', handleNavigate);
       window.removeEventListener('profile:updated', handleProfileUpdated);
     };
-  }, []);
+  }, [triggerNotification]);
 
+  // --- Sync URL dengan currentView ---
   useEffect(() => {
     if (currentView === 'login') {
       if (normalizePath(window.location.pathname) !== '/') {
@@ -160,6 +163,7 @@ export default function App() {
     }
   }, [currentView]);
 
+  // --- Restore session dari stored token ---
   useEffect(() => {
     if (!authStorage.getToken()) {
       setIsRestoringSession(false);
@@ -170,31 +174,26 @@ export default function App() {
       .me()
       .then((user) => {
         setAuthUser(user);
-        setUserEmail(user.email);
-        setUserRole(user.role?.name || 'User');
-        setUserRoleCode(user.role?.code || 'admin');
         const routeView = viewFromPath(window.location.pathname);
-        const defaultView = user.role?.code === 'employee' ? 'employee-dashboard' : (routeView || DEFAULT_AUTHENTICATED_VIEW);
+        const defaultView: ViewType =
+          user.role?.code === 'employee'
+            ? 'employee-dashboard'
+            : (routeView || DEFAULT_AUTHENTICATED_VIEW);
         setCurrentView((view) => (view === 'login' ? defaultView : view));
       })
       .catch((error: Error) => {
         setAuthUser(null);
-        setUserEmail('');
         setCurrentView('login');
         triggerNotification(error.message);
       })
       .finally(() => setIsRestoringSession(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentional: only on mount
 
-  const applyAuthUser = (user: AuthUser) => {
-    setAuthUser(user);
-    setUserRole(user.role?.name || 'User');
-    setUserRoleCode(user.role?.code || 'admin');
-  };
-
+  // --- Auth handlers ---
   const handleLoginSuccess = (session: AuthSession) => {
-    applyAuthUser(session.user);
-    const defaultView = session.user.role?.code === 'employee' ? 'employee-dashboard' : 'dashboard';
+    setAuthUser(session.user);
+    const defaultView: ViewType =
+      session.user.role?.code === 'employee' ? 'employee-dashboard' : 'dashboard';
     setCurrentView(defaultView);
   };
 
@@ -203,14 +202,15 @@ export default function App() {
       try {
         await authApi.logout();
       } catch (error) {
-        triggerNotification(error instanceof Error ? error.message : 'Logout gagal. Silakan coba lagi.');
+        triggerNotification(
+          error instanceof Error ? error.message : 'Logout gagal. Silakan coba lagi.'
+        );
       }
     } else {
       authStorage.clear();
     }
 
     setAuthUser(null);
-    setUserEmail('');
     setCurrentView('login');
     triggerNotification('Sampai jumpa! Anda berhasil logout.');
   };
@@ -218,7 +218,6 @@ export default function App() {
   // -------------------------------------------------------------
   // CENTRAL VIEW RENDERING MATRIX
   // -------------------------------------------------------------
-
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -238,57 +237,44 @@ export default function App() {
           />
         );
       case 'employee-dashboard':
-        return (
-          <EmployeeDashboardView
-            onNavigate={setCurrentView}
-          />
-        );
+        return <EmployeeDashboardView onNavigate={setCurrentView} />;
+
       case 'customers':
-        return (
-          <CustomersView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <CustomersView onTriggerNotification={triggerNotification} />;
+
       case 'employees':
         return <EmployeeMasterView onTriggerNotification={triggerNotification} />;
+
       case 'attendance-dashboard':
         return <AttendanceDashboardView onTriggerNotification={triggerNotification} />;
+
       case 'leave-management':
         return <LeaveManagementView onTriggerNotification={triggerNotification} />;
+
       case 'payroll-management':
         return <PayrollManagementView onTriggerNotification={triggerNotification} />;
+
       case 'employee-loans':
         return <EmployeeLoanView onTriggerNotification={triggerNotification} />;
+
       case 'attendance-scanner':
         return <AttendanceScannerView onTriggerNotification={triggerNotification} />;
+
       case 'suppliers':
-        return (
-          <SuppliersView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <SuppliersView onTriggerNotification={triggerNotification} />;
+
       case 'products':
-        return (
-          <ProductsView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <ProductsView onTriggerNotification={triggerNotification} />;
+
       case 'categories':
-        return (
-          <CategoriesView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <CategoriesView onTriggerNotification={triggerNotification} />;
+
       case 'units':
-        return (
-          <UnitsView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <UnitsView onTriggerNotification={triggerNotification} />;
+
       case 'warehouses':
         return <WarehouseMasterView onTriggerNotification={triggerNotification} />;
 
-      // Inventory Views mapping to direct tabs
       case 'stock-management':
         return (
           <InventoryView
@@ -298,6 +284,7 @@ export default function App() {
           />
         );
       case 'incoming-goods':
+      case 'goods-receipts':
         return (
           <InventoryView
             initialTab="masuk"
@@ -322,7 +309,6 @@ export default function App() {
           />
         );
 
-      // Quotations & Sales
       case 'quotations':
         return (
           <SalesView
@@ -340,7 +326,6 @@ export default function App() {
           />
         );
 
-      // Invoicing
       case 'invoices':
         return (
           <InvoicesView
@@ -349,91 +334,77 @@ export default function App() {
           />
         );
       case 'payments':
-        return (
-          <PaymentsView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <PaymentsView onTriggerNotification={triggerNotification} />;
 
-      // Purchasing & Procurement
       case 'purchase-requests':
-        return (
-          <PurchaseRequestView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <PurchaseRequestView onTriggerNotification={triggerNotification} />;
+
       case 'rfq':
-        return (
-          <RfqView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <RfqView onTriggerNotification={triggerNotification} />;
+
       case 'approval-workflows':
-        return (
-          <ApprovalWorkflowView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <ApprovalWorkflowView onTriggerNotification={triggerNotification} />;
+
       case 'users':
-        return (
-          <UsersView
-            onTriggerNotification={triggerNotification}
-          />
-        );
+        return <UsersView onTriggerNotification={triggerNotification} />;
+
       case 'purchase-orders':
+        return <PurchaseView onTriggerNotification={triggerNotification} />;
+
+      case 'purchase-returns':
+      case 'returns':
+        return <ReturnsView onTriggerNotification={triggerNotification} />;
+
+      case 'receivables-payables':
+        return <ReceivablesPayablesView onTriggerNotification={triggerNotification} />;
+
+      case 'cash-expense':
+        return <CashExpenseView onTriggerNotification={triggerNotification} />;
+
+      case 'delivery-orders':
+        return <DeliveryOrdersView onTriggerNotification={triggerNotification} />;
+
+      case 'multi-warehouse':
         return (
-          <PurchaseView
-            onTriggerNotification={triggerNotification}
-          />
-        );
-      case 'goods-receipts':
-        return (
-          <InventoryView
-            initialTab="masuk"
+          <MultiWarehouseView
             onTriggerNotification={triggerNotification}
             onNavigate={setCurrentView}
           />
         );
-      case 'purchase-returns':
-        return <ReturnsView onTriggerNotification={triggerNotification} />;
-      case 'receivables-payables':
-        return <ReceivablesPayablesView onTriggerNotification={triggerNotification} />;
-      case 'cash-expense':
-        return <CashExpenseView onTriggerNotification={triggerNotification} />;
-      case 'delivery-orders':
-        return <DeliveryOrdersView onTriggerNotification={triggerNotification} />;
-      case 'returns':
-        return <ReturnsView onTriggerNotification={triggerNotification} />;
-      case 'multi-warehouse':
-        return <MultiWarehouseView onTriggerNotification={triggerNotification} onNavigate={setCurrentView} />;
+
       case 'project-budgeting':
         return <ProjectBudgetingView onTriggerNotification={triggerNotification} />;
+
       case 'reminders':
         return <RemindersView onTriggerNotification={triggerNotification} />;
+
       case 'document-exports':
         return <DocumentExportsView onTriggerNotification={triggerNotification} />;
+
       case 'role-permissions':
         return <RolePermissionView onTriggerNotification={triggerNotification} />;
 
       case 'stock-opname':
         return <StockOpnameView onTriggerNotification={triggerNotification} />;
+
       case 'audit-logs':
         return <AuditLogView onTriggerNotification={triggerNotification} />;
+
       case 'production-work-orders':
         return (
-          <ProductionWorkOrderView 
+          <ProductionWorkOrderView
             initialWoId={selectedWorkOrderId}
             onNavigateToProject={(projectId) => {
               setSelectedProjectId(projectId);
               setCurrentView('project-detail');
             }}
-            onTriggerNotification={triggerNotification} 
+            onTriggerNotification={triggerNotification}
           />
         );
+
       case 'bom-costing':
         return <BomCostingView onTriggerNotification={triggerNotification} />;
 
-      // Project tracker
       case 'projects':
       case 'project-detail':
         return (
@@ -449,7 +420,6 @@ export default function App() {
           />
         );
 
-      // QR Code Utility suite
       case 'qr-products':
         return (
           <QrView
@@ -457,13 +427,9 @@ export default function App() {
             scannedSku={scannedSku}
             onNavigateSubView={(sub, sku) => {
               setScannedSku(sku || null);
-              if (sub === 'list') {
-                setCurrentView('qr-products');
-              } else if (sub === 'scanner') {
-                setCurrentView('scan-qr-product');
-              } else {
-                setCurrentView('scanned-product-detail');
-              }
+              if (sub === 'list') setCurrentView('qr-products');
+              else if (sub === 'scanner') setCurrentView('scan-qr-product');
+              else setCurrentView('scanned-product-detail');
             }}
             onTriggerNotification={triggerNotification}
           />
@@ -476,13 +442,9 @@ export default function App() {
             scannedSku={scannedSku}
             onNavigateSubView={(sub, sku) => {
               setScannedSku(sku || null);
-              if (sub === 'list') {
-                setCurrentView('qr-products');
-              } else if (sub === 'scanner') {
-                setCurrentView('scan-qr-product');
-              } else {
-                setCurrentView('scanned-product-detail');
-              }
+              if (sub === 'list') setCurrentView('qr-products');
+              else if (sub === 'scanner') setCurrentView('scan-qr-product');
+              else setCurrentView('scanned-product-detail');
             }}
             onTriggerNotification={triggerNotification}
           />
@@ -490,23 +452,26 @@ export default function App() {
 
       case 'finance-reports':
         return <FinanceReportView onTriggerNotification={triggerNotification} />;
+
       case 'inventory-reports':
         return <InventoryReportView onTriggerNotification={triggerNotification} />;
+
       case 'settings':
         return <SettingsView onTriggerNotification={triggerNotification} />;
+
       case 'profile':
         return <ProfileView onTriggerNotification={triggerNotification} />;
 
       default:
         return (
           <div className="p-8 text-center text-slate-500 font-sans">
-            Halaman sedang dalam konstruksi pra-cetak.
+            Halaman sedang dalam konstruksi.
           </div>
         );
     }
   };
 
-  // Render pure Login layout if view equals 'login'
+  // --- Login layout ---
   if (currentView === 'login') {
     return (
       <LoginView
@@ -516,6 +481,7 @@ export default function App() {
     );
   }
 
+  // --- Session restore loading ---
   if (isRestoringSession) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
@@ -527,7 +493,7 @@ export default function App() {
     );
   }
 
-  // Mobile Layout for Employee
+  // --- Mobile layout untuk role employee ---
   if (userRoleCode === 'employee') {
     return (
       <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
@@ -537,12 +503,12 @@ export default function App() {
             <span>Mode Offline</span>
           </div>
         )}
-        
+
         {/* Simple Mobile Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
           <div className="flex items-center gap-3">
             {currentView !== 'employee-dashboard' && (
-              <button 
+              <button
                 onClick={() => setCurrentView('employee-dashboard')}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition-colors"
                 title="Kembali ke Beranda"
@@ -555,12 +521,14 @@ export default function App() {
               <span className="text-xs font-bold text-slate-800">Portal Karyawan</span>
             </div>
           </div>
-          <button onClick={handleLogout} className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">
+          <button
+            onClick={handleLogout}
+            className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
+          >
             Keluar
           </button>
         </div>
 
-        {/* Dynamic viewport scroll canvas container */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
           <React.Suspense fallback={
             <div className="py-12 text-center">
@@ -571,7 +539,6 @@ export default function App() {
           </React.Suspense>
         </div>
 
-        {/* Floating System-wide toast notification overlay */}
         {toast && (
           <div className="fixed top-5 right-5 bg-slate-900 text-white rounded-full shadow-xl px-5 py-2.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200 whitespace-nowrap">
             <CheckCircle2 size={15} className="text-white stroke-[3]" />
@@ -582,18 +549,14 @@ export default function App() {
     );
   }
 
-  // Render Full Dashboard Layout with Sidebar and Topbar Navigation
+  // --- Full admin dashboard layout ---
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
-      {/* 1. Left Fixed Sidebar */}
       <Sidebar
         currentView={currentView}
         onViewChange={(v) => {
           setCurrentView(v);
-          // Auto-reset filters
-          if (v === 'projects') {
-            setSelectedProjectId(null);
-          }
+          if (v === 'projects') setSelectedProjectId(null);
         }}
         onLogout={handleLogout}
         userRoleName={userRole}
@@ -601,7 +564,6 @@ export default function App() {
         userPermissions={authUser?.role?.permissions}
       />
 
-      {/* 2. Main content block viewport container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {!isOnline && (
           <div className="bg-rose-600 text-white text-[10px] font-sans font-bold text-center py-1.5 px-4 flex items-center justify-center gap-2 shrink-0 animate-in slide-in-from-top duration-300">
@@ -609,7 +571,7 @@ export default function App() {
             <span>Koneksi internet terputus. Bekerja dalam mode offline.</span>
           </div>
         )}
-        {/* Top Header bar */}
+
         <Topbar
           currentView={currentView}
           userRole={userRole}
@@ -618,7 +580,6 @@ export default function App() {
           userName={authUser?.name}
         />
 
-        {/* Dynamic viewport scroll canvas container */}
         <div className="flex-1 overflow-y-auto p-6 bg-[#f8fafc]">
           <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
             <React.Suspense fallback={
@@ -633,7 +594,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Floating System-wide toast notification overlay */}
       {toast && (
         <div className="fixed top-5 right-5 bg-slate-900 text-white rounded-lg shadow-xl p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200">
           <CheckCircle2 size={15} className="text-white stroke-[3]" />

@@ -1,7 +1,8 @@
 import { apiClient } from '../../services/api';
-import { 
-  AuditLogDto, ReminderDto, DocumentExportDto, 
-  AuditLog, Reminder, DocumentExport 
+import { formatDateTime, formatDateTimeShort } from '../../utils/date';
+import {
+  AuditLogDto, ReminderDto, DocumentExportDto,
+  AuditLog, Reminder, DocumentExport
 } from './types';
 
 export const mapAuditLogFromDto = (dto: AuditLogDto): AuditLog => ({
@@ -13,7 +14,7 @@ export const mapAuditLogFromDto = (dto: AuditLogDto): AuditLog => ({
   ipAddress: dto.ip_address || '-',
   userName: dto.user?.name || 'Sistem',
   roleName: dto.role?.name || '-',
-  createdAt: dto.created_at ? dto.created_at.replace('T', ' ').replace('.000000Z', '').substring(0, 19) : '',
+  createdAt: formatDateTime(dto.created_at),
 });
 
 export const mapReminderFromDto = (dto: ReminderDto): Reminder => ({
@@ -22,11 +23,11 @@ export const mapReminderFromDto = (dto: ReminderDto): Reminder => ({
   referenceType: dto.reference_type || '-',
   referenceNumber: dto.reference_number || '-',
   division: dto.division || '-',
-  scheduleAt: dto.schedule_at ? dto.schedule_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '-',
+  scheduleAt: formatDateTimeShort(dto.schedule_at),
   priority: dto.priority,
   status: dto.status,
   assignedToName: dto.assignedTo?.name || dto.assigned_to_user?.name || 'Sistem',
-  createdAt: dto.created_at ? dto.created_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '',
+  createdAt: formatDateTimeShort(dto.created_at),
 });
 
 export const mapDocumentExportFromDto = (dto: DocumentExportDto): DocumentExport => ({
@@ -37,7 +38,7 @@ export const mapDocumentExportFromDto = (dto: DocumentExportDto): DocumentExport
   exportFormat: dto.export_format.toUpperCase(),
   division: dto.division || '-',
   exportedByName: dto.exportedBy?.name || dto.exported_by_user?.name || 'Sistem',
-  exportedAt: dto.exported_at ? dto.exported_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '',
+  exportedAt: formatDateTimeShort(dto.exported_at),
 });
 
 export const supportApi = {

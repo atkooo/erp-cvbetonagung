@@ -1,16 +1,33 @@
-import { apiClient } from '../../services/api';
-import { 
+import { apiClient, authStorage } from '../../services/api';
+import { toApiDate, toApiDateTime } from '../../utils/date';
+import {
   ProductStockDto, StockMovementDto, MovementFormData,
   StockOpnameSessionDto, StockOpnameItemDto, ApprovalRequestDto,
   StockOpnameSession, StockOpnameItem, ApprovalRequest
 } from './types';
 import { StockMovement } from '../../types';
-import { 
+import {
   mapStockMovementFromDto, mapMovementToDto,
   mapStockOpnameSessionFromDto, mapStockOpnameItemFromDto, mapApprovalRequestFromDto
 } from './mappers';
 
 const STOCK_OPNAME_ITEM_PAGE_SIZE = 100;
+
+/** Generate nomor opname lokal (fallback jika backend tidak mengenerate otomatis). */
+const generateOpnameNumber = (): string => {
+  const now = new Date();
+  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `OPN-${ym}-${rand}`;
+};
+
+/** Generate nomor approval lokal (fallback jika backend tidak mengenerate otomatis). */
+const generateApprovalNumber = (): string => {
+  const now = new Date();
+  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `APP-${ym}-${rand}`;
+};
 
 export const inventoryApi = {
   // Product Stocks
@@ -57,7 +74,7 @@ export const inventoryApi = {
       type: 'transfer',
       quantity: data.quantity,
       notes: data.notes || 'Transfer stok antar rak',
-      movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      movement_at: toApiDateTime(),
     });
   },
 
@@ -70,7 +87,7 @@ export const inventoryApi = {
       reference_type: data.reference_type,
       reference_number: data.reference_number,
       notes: data.notes,
-      movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      movement_at: toApiDateTime(),
     });
   },
 
@@ -83,7 +100,7 @@ export const inventoryApi = {
       reference_type: data.reference_type,
       reference_number: data.reference_number,
       notes: data.notes,
-      movement_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      movement_at: toApiDateTime(),
     });
   },
 
@@ -103,8 +120,9 @@ export const inventoryApi = {
       data: StockOpnameItemDto[];
       meta?: { current_page: number; last_page: number };
     }>(`/inventory/stock-opname-items?${firstParams.toString()}`);
+
     const items = [...firstResponse.data];
-    const lastPage = firstResponse.meta?.last_page || 1;
+    const lastPage = firstResponse.meta?.last_page ?? 1;
 
     for (let page = 2; page <= lastPage; page += 1) {
       const params = new URLSearchParams({
@@ -123,17 +141,19 @@ export const inventoryApi = {
   },
 
   async createStockOpnameSession(data: { warehouse_id: string; notes?: string }): Promise<StockOpnameSession> {
-    const opname_number = `OPN-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     const response = await apiClient.post<{ data: StockOpnameSessionDto }>('/inventory/stock-opname-sessions', {
       ...data,
-      opname_number,
+      opname_number: generateOpnameNumber(),
       status: 'draft',
       started_at: new Date().toISOString(),
     });
     return mapStockOpnameSessionFromDto(response.data);
   },
 
-  async updateStockOpnameSessionStatus(id: string, status: 'draft' | 'in_progress' | 'closed' | 'cancelled'): Promise<StockOpnameSession> {
+  async updateStockOpnameSessionStatus(
+    id: string,
+    status: 'draft' | 'in_progress' | 'closed' | 'cancelled'
+  ): Promise<StockOpnameSession> {
     const response = await apiClient.put<{ data: StockOpnameSessionDto }>(`/inventory/stock-opname-sessions/${id}`, {
       status
     });
@@ -153,20 +173,21 @@ export const inventoryApi = {
     return mapStockOpnameItemFromDto(response.data);
   },
 
-  async updateStockOpnameItem(id: string, data: Partial<{ physical_qty: number; difference_qty: number; notes: string; approval_request_id: string }>): Promise<StockOpnameItem> {
+  async updateStockOpnameItem(
+    id: string,
+    data: Partial<{ physical_qty: number; difference_qty: number; notes: string; approval_request_id: string }>
+  ): Promise<StockOpnameItem> {
     const response = await apiClient.put<{ data: StockOpnameItemDto }>(`/inventory/stock-opname-items/${id}`, data);
     return mapStockOpnameItemFromDto(response.data);
   },
 
   async adjustStockOpnameItem(id: string, notes?: string): Promise<StockOpnameItem> {
     const response = await apiClient.post<{ data: StockOpnameItemDto }>(`/inventory/stock-opname-items/${id}/adjust`, {
-      movement_at: new Date().toISOString().split('T')[0],
+      movement_at: toApiDate(),
       notes: notes || 'Stock opname adjustment',
     });
     return mapStockOpnameItemFromDto(response.data);
   },
-
-
 
   // Approval Requests
   async getApprovalRequests(): Promise<ApprovalRequest[]> {
@@ -175,14 +196,14 @@ export const inventoryApi = {
       sort: '-requested_at',
       per_page: '100',
     });
-    
-    const firstResponse = await apiClient.get<{ 
+
+    const firstResponse = await apiClient.get<{
       data: ApprovalRequestDto[];
       meta?: { current_page: number; last_page: number };
     }>(`/inventory/approval-requests?${firstParams.toString()}`);
-    
+
     const requests = [...firstResponse.data];
-    const lastPage = firstResponse.meta?.last_page || 1;
+    const lastPage = firstResponse.meta?.last_page ?? 1;
 
     for (let page = 2; page <= lastPage; page += 1) {
       const params = new URLSearchParams({
@@ -202,7 +223,7 @@ export const inventoryApi = {
     const response = await apiClient.put<{ data: ApprovalRequestDto }>(`/inventory/approval-requests/${id}`, {
       status,
       decision_notes: notes || '',
-      decided_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      decided_at: toApiDateTime(),
     });
     return mapApprovalRequestFromDto(response.data);
   },
@@ -215,17 +236,16 @@ export const inventoryApi = {
     change_summary: string;
     amount?: number;
   }): Promise<ApprovalRequest> {
-    const approval_number = `APP-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const authUserStr = window.localStorage.getItem('cvba_api_user');
-    const authUser = authUserStr ? JSON.parse(authUserStr) : null;
-    const requester_id = authUser ? authUser.id : undefined;
+    // Ambil user dari authStorage — bukan langsung dari localStorage
+    const authUser = authStorage.getUser();
+    const requester_id = authUser?.id;
 
     const response = await apiClient.post<{ data: ApprovalRequestDto }>('/inventory/approval-requests', {
       ...data,
-      approval_number,
+      approval_number: generateApprovalNumber(),
       requester_id,
       status: 'pending',
-      requested_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      requested_at: toApiDateTime(),
     });
     return mapApprovalRequestFromDto(response.data);
   },

@@ -1,4 +1,5 @@
 import { apiClient } from '../../services/api';
+import { toApiDate } from '../../utils/date';
 import { Quotation, SalesOrder, DeliveryOrder } from '../../types';
 import { QuotationDto, SalesOrderDto, DeliveryOrderDto, CreateQuotationDto, CreateSalesOrderDto } from './types';
 import { mapQuotationFromDto, mapSalesOrderFromDto, mapDeliveryOrderFromDto } from './mappers';
@@ -15,17 +16,15 @@ export const salesApi = {
   },
 
   async approveQuotation(id: string): Promise<SalesOrder> {
-    const todayStr = new Date().toISOString().split('T')[0];
     const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/quotations/${id}/approve`, {
-      order_date: todayStr
+      order_date: toApiDate(),
     });
     return mapSalesOrderFromDto(response.data);
   },
 
   async approveSalesOrder(id: string): Promise<SalesOrder> {
-    const todayStr = new Date().toISOString().split('T')[0];
     const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/sales-orders/${id}/approve`, {
-      invoice_date: todayStr
+      invoice_date: toApiDate(),
     });
     return mapSalesOrderFromDto(response.data);
   },
@@ -45,17 +44,31 @@ export const salesApi = {
     return response.data.map(mapDeliveryOrderFromDto);
   },
 
-  async createDeliveryOrder(salesOrderId: string, payload: { delivery_number: string; delivery_date?: string; receiver_name?: string; notes?: string }): Promise<DeliveryOrder> {
+  async createDeliveryOrder(
+    salesOrderId: string,
+    payload: { delivery_number: string; delivery_date?: string; receiver_name?: string; notes?: string }
+  ): Promise<DeliveryOrder> {
     const response = await apiClient.post<{ data: DeliveryOrderDto }>(`/sales/sales-orders/${salesOrderId}/deliver`, payload);
     return mapDeliveryOrderFromDto(response.data);
   },
 
-  async shipDeliveryOrder(id: string, payload: { from_location_id: string; handled_by?: string; notes?: string; movement_at: string }): Promise<DeliveryOrder> {
+  async shipDeliveryOrder(
+    id: string,
+    payload: { from_location_id: string; handled_by?: string; notes?: string; movement_at: string }
+  ): Promise<DeliveryOrder> {
     const response = await apiClient.post<{ data: DeliveryOrderDto }>(`/sales/delivery-orders/${id}/ship`, payload);
     return mapDeliveryOrderFromDto(response.data);
   },
 
-  async updateDeliveryOrderStatus(id: string, payload: { status?: 'ready_to_load' | 'shipped' | 'received' | 'cancelled'; receiver_name?: string | null; received_at?: string | null; notes?: string | null }): Promise<DeliveryOrder> {
+  async updateDeliveryOrderStatus(
+    id: string,
+    payload: {
+      status?: 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+      receiver_name?: string | null;
+      received_at?: string | null;
+      notes?: string | null;
+    }
+  ): Promise<DeliveryOrder> {
     const response = await apiClient.put<{ data: DeliveryOrderDto }>(`/sales/delivery-orders/${id}`, payload);
     return mapDeliveryOrderFromDto(response.data);
   }

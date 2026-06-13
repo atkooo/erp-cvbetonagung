@@ -19,13 +19,6 @@ interface TopbarProps {
 export default function Topbar({ currentView, userRole, onTriggerNotification, userEmail, userName }: TopbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const notifications = [
-    { id: 1, text: 'Stok menipis: Lisplang Beton Minimalis M20 sisa 45 Meter!', type: 'warning' },
-    { id: 2, text: 'Pembayaran Termin 1 Masjid Baiturrahman lunas divalidasi.', type: 'info' },
-    { id: 3, text: 'Invoice INV-2026-05-106 (H. Ahmad Syukur) melewati jatuh tempo!', type: 'danger' },
-    { id: 4, text: 'Proyek workshop Baiturrahman memasuki tahap produksi.', type: 'project' },
-  ];
-
   const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
 
   return (
@@ -60,51 +53,18 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-30">
               <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
                 <span className="font-bold text-slate-800 text-xs">Pemberitahuan Sistem ERP</span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 font-bold rounded">
-                  4 Baru
-                </span>
               </div>
-              <div className="max-h-72 overflow-y-auto">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    onClick={() => {
-                      onTriggerNotification(`Membuka detail alert: ${notif.text.substring(0, 30)}...`);
-                      setShowNotifications(false);
-                    }}
-                    className="p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex gap-2.5 transition-colors"
-                  >
-                    <div className="mt-0.5 shrink-0">
-                      {notif.type === 'danger' ? (
-                        <div className="p-1 rounded bg-red-50 text-red-500">
-                          <AlertTriangle size={14} />
-                        </div>
-                      ) : notif.type === 'warning' ? (
-                        <div className="p-1 rounded bg-amber-50 text-amber-500">
-                          <AlertTriangle size={14} />
-                        </div>
-                      ) : (
-                        <div className="p-1 rounded bg-slate-50 text-slate-500">
-                          <Bell size={14} />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[11px] text-slate-700 leading-relaxed">{notif.text}</p>
-                      <span className="text-[9px] text-slate-400 font-mono mt-1 block">Baru saja</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-2 border-t border-slate-100 text-center">
+              <div className="py-8 text-center">
+                <Bell size={24} className="mx-auto mb-2 text-slate-200" />
+                <p className="text-[11px] text-slate-400">Belum ada notifikasi baru.</p>
                 <button
                   onClick={() => {
                     setShowNotifications(false);
-                    onTriggerNotification('Semua notifikasi ditandai telah dibaca');
+                    window.dispatchEvent(new CustomEvent('navigate', { detail: 'reminders' }));
                   }}
-                  className="text-[10px] text-slate-900 hover:text-slate-700 font-bold"
+                  className="mt-3 text-[10px] text-indigo-600 hover:text-indigo-800 font-bold"
                 >
-                  Tandai Semua Selesai dibaca
+                  Lihat Semua Pengingat →
                 </button>
               </div>
             </div>
