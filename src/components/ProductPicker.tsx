@@ -83,7 +83,7 @@ export default function ProductPicker({
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
       p.category.toLowerCase().includes(search.toLowerCase())
     );
-  });
+  }).sort((a, b) => a.category.localeCompare(b.category));
 
   const handleSelect = (product: Product) => {
     onChange(product);

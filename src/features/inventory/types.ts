@@ -112,6 +112,7 @@ export interface StockOpnameItem {
   productId: string;
   sku: string;
   productName: string;
+  categoryName: string;
   locationId: string;
   locationName: string;
   systemQty: number;

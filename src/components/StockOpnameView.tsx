@@ -96,6 +96,9 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
 
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+
   const availableItemLocations = selectedSession
     ? locations.filter((location) => location.warehouse_id === selectedSession.warehouseId)
     : [];
@@ -126,7 +129,6 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     loadMasterData();
   }, []);
 
-  // Fetch items when selected session changes
   useEffect(() => {
     if (selectedSession) {
       fetchSessionItems(selectedSession.id);
@@ -134,6 +136,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
       setSessionItems([]);
     }
     setNewItemLocationId('');
+    setSelectedItemIds([]);
   }, [selectedSession]);
 
   useEffect(() => {
@@ -372,6 +375,54 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     }
   };
 
+  const handleBulkRequestApproval = async () => {
+    if (!selectedSession || selectedItemIds.length === 0) return;
+
+    const itemsToApprove = sessionItems.filter(i => selectedItemIds.includes(i.id));
+
+    const result = await Swal.fire({
+      title: 'Ajukan Approval Massal?',
+      text: `Ajukan penyesuaian selisih untuk ${itemsToApprove.length} item ke pihak berwenang?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ajukan',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      setIsSubmittingBulk(true);
+      let successCount = 0;
+      try {
+        for (const item of itemsToApprove) {
+          const appReq = await inventoryApi.createApprovalRequest({
+            request_type: 'stock_opname_adjustment',
+            reference_type: 'stock_opname_item',
+            reference_id: item.id,
+            reference_number: selectedSession.opnameNumber,
+            change_summary: `Koreksi stok ${item.productName} di ${item.locationName}: sistem ${item.systemQty}, fisik ${item.physicalQty} (selisih ${item.differenceQty})`,
+            amount: 0
+          });
+
+          await inventoryApi.updateStockOpnameItem(item.id, {
+            approval_request_id: appReq.id
+          });
+          successCount++;
+        }
+
+        Swal.fire('Sukses', `${successCount} permintaan approval berhasil diajukan.`, 'success');
+        onTriggerNotification(`${successCount} permintaan approval diajukan.`);
+        setSelectedItemIds([]);
+        fetchSessionItems(selectedSession.id);
+      } catch (error) {
+        console.error('Error submitting bulk approval:', error);
+        Swal.fire('Info', `Hanya ${successCount} dari ${itemsToApprove.length} yang berhasil diajukan karena terjadi kesalahan.`, 'warning');
+        fetchSessionItems(selectedSession.id);
+      } finally {
+        setIsSubmittingBulk(false);
+      }
+    }
+  };
+
   const handleAdjustStock = async (item: StockOpnameItem) => {
     if (!selectedSession) return;
 
@@ -575,6 +626,16 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                         className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                       />
                     </div>
+                    {selectedItemIds.length > 0 && selectedSession?.status === 'in_progress' && (
+                      <button
+                        onClick={handleBulkRequestApproval}
+                        disabled={isSubmittingBulk}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition disabled:opacity-50"
+                      >
+                        <Send size={14} />
+                        <span>Ajukan Approval ({selectedItemIds.length})</span>
+                      </button>
+                    )}
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                       <span>Tampilkan</span>
                       <select
@@ -599,7 +660,26 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                       <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                           <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                            <th className="p-3.5 pl-5">Barang</th>
+                            {selectedSession.status === 'in_progress' && (
+                              <th className="p-3.5 pl-5 w-10">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                  checked={selectedItemIds.length > 0 && paginatedSessionItems.filter(i => i.differenceQty !== 0 && !i.approvalRequestId).every(i => selectedItemIds.includes(i.id))}
+                                  onChange={(e) => {
+                                    const approvableIds = paginatedSessionItems
+                                      .filter(i => i.differenceQty !== 0 && !i.approvalRequestId)
+                                      .map(i => i.id);
+                                    if (e.target.checked) {
+                                      setSelectedItemIds(prev => Array.from(new Set([...prev, ...approvableIds])));
+                                    } else {
+                                      setSelectedItemIds(prev => prev.filter(id => !approvableIds.includes(id)));
+                                    }
+                                  }}
+                                />
+                              </th>
+                            )}
+                            <th className={selectedSession.status === 'in_progress' ? "p-3.5" : "p-3.5 pl-5"}>Barang</th>
                             <th className="p-3.5">Lokasi Simpan</th>
                             <th className="p-3.5 text-center">Stok Sistem</th>
                             <th className="p-3.5 text-center">Stok Fisik</th>
@@ -616,9 +696,30 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
 
                             return (
                               <tr key={item.id} className="hover:bg-slate-50/50">
-                                <td className="p-3.5 pl-5">
+                                {selectedSession.status === 'in_progress' && (
+                                  <td className="p-3.5 pl-5">
+                                    {hasDifference && !item.approvalRequestId && !isEditing && (
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                        checked={selectedItemIds.includes(item.id)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSelectedItemIds(prev => [...prev, item.id]);
+                                          } else {
+                                            setSelectedItemIds(prev => prev.filter(id => id !== item.id));
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                  </td>
+                                )}
+                                <td className={selectedSession.status === 'in_progress' ? "p-3.5" : "p-3.5 pl-5"}>
                                   <span className="font-bold text-slate-800 block">{item.productName}</span>
-                                  <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
+                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{item.categoryName}</span>
+                                  </div>
                                 </td>
                                 <td className="p-3.5 font-mono text-slate-600">{item.locationName}</td>
                                 <td className="p-3.5 text-center font-mono text-slate-700">{item.systemQty}</td>

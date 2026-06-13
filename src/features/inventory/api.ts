@@ -97,6 +97,7 @@ export const inventoryApi = {
     const firstParams = new URLSearchParams({
       session_id: sessionId,
       per_page: String(STOCK_OPNAME_ITEM_PAGE_SIZE),
+      sort: '-created_at',
     });
     const firstResponse = await apiClient.get<{
       data: StockOpnameItemDto[];
@@ -110,6 +111,7 @@ export const inventoryApi = {
         session_id: sessionId,
         per_page: String(STOCK_OPNAME_ITEM_PAGE_SIZE),
         page: String(page),
+        sort: '-created_at',
       });
       const response = await apiClient.get<{ data: StockOpnameItemDto[] }>(
         `/inventory/stock-opname-items?${params.toString()}`

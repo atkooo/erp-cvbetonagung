@@ -62,6 +62,7 @@ export const mapStockOpnameItemFromDto = (dto: StockOpnameItemDto): StockOpnameI
   productId: dto.product_id,
   sku: dto.product?.sku || 'Unknown',
   productName: dto.product?.name || 'Unknown Product',
+  categoryName: dto.product?.category?.name || 'Uncategorized',
   locationId: dto.location_id,
   locationName: dto.location?.name || 'Default',
   systemQty: Number(dto.system_qty),
