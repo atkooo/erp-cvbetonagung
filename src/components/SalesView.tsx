@@ -781,6 +781,7 @@ export default function SalesView({
 
                         <ProductPicker
                           value={item.productId}
+                          showCategoryFilter
                           onChange={(product) => {
                             updateFormItem(index, {
                               productId: product.id,

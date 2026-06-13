@@ -15,6 +15,7 @@ interface ProductPickerProps {
   categoryFilter?: string; // Deprecated: Use typeFilter instead
   typeFilter?: 'raw_material' | 'finished_good' | 'service';
   excludedProductIds?: string[];
+  showCategoryFilter?: boolean;
   placeholder?: string;
   className?: string;
 }
@@ -25,6 +26,7 @@ export default function ProductPicker({
   categoryFilter,
   typeFilter,
   excludedProductIds = [],
+  showCategoryFilter = false,
   placeholder = 'Pilih Produk / Material...',
   className = ''
 }: ProductPickerProps) {
@@ -32,6 +34,7 @@ export default function ProductPicker({
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // To display the selected product name in the button
   const selectedProduct = products.find(p => p.id === value);
@@ -72,9 +75,16 @@ export default function ProductPicker({
     }
   };
 
+  const categories = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
   const excludedProductIdSet = new Set(excludedProductIds);
   const filteredProducts = products.filter((p) => {
     if (excludedProductIdSet.has(p.id) && p.id !== value) {
+      return false;
+    }
+    if (selectedCategory && p.category !== selectedCategory) {
       return false;
     }
 
@@ -131,18 +141,34 @@ export default function ProductPicker({
               </button>
             </div>
 
-            {/* Search Bar */}
+            {/* Search and Category Filters */}
             <div className="p-4 border-b bg-white">
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari berdasarkan nama, SKU, atau kategori..."
-                  className="w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                  autoFocus
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari berdasarkan nama, SKU, atau kategori..."
+                    className="w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    autoFocus
+                  />
+                </div>
+                {showCategoryFilter && (
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  >
+                    <option value="">Semua Kategori</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 

@@ -763,6 +763,7 @@ export default function PurchaseView({
                           <td className="p-2">
                             <ProductPicker
                               value={item.productId}
+                              showCategoryFilter
                               onChange={(prod) => {
                                 handleItemChange(item.id, "productId", prod.id);
                                 handleItemChange(item.id, "unit", prod.unit);
