@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ClipboardCheck, Clock, CheckCircle2, XCircle, AlertTriangle, Eye, X, RefreshCw, Search
+  ClipboardCheck, Clock, CheckCircle2, XCircle, AlertTriangle, Eye, X, RefreshCw, Search, ChevronLeft, ChevronRight
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { inventoryApi } from '../features/inventory/api';
@@ -68,6 +68,8 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
   const [decisionNotes, setDecisionNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
@@ -179,6 +181,10 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
     r.changeSummary.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + rowsPerPage);
+
   const getRequestTypeLabel = (type: string) => {
     switch (type) {
       case 'stock_opname_adjustment': return 'Koreksi Stok Opname';
@@ -236,7 +242,7 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
               placeholder="Cari pengajuan..."
               className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-xs"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
           
@@ -310,7 +316,7 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRequests.map((req) => (
+                {paginatedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/50">
                     <td className="p-3.5 pl-5">
                       {req.status === 'pending' && (
@@ -355,6 +361,51 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Info */}
+        {!isLoading && filteredRequests.length > 0 && (
+          <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-slate-500 font-mono">Tampilkan:</span>
+              <select
+                className="text-[10px] border-slate-300 rounded px-2 py-1 focus:ring-cyan-500 focus:border-cyan-500"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={10}>10 Baris</option>
+                <option value={20}>20 Baris</option>
+                <option value={50}>50 Baris</option>
+                <option value={100}>100 Baris</option>
+              </select>
+              <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + rowsPerPage, filteredRequests.length)} dari {filteredRequests.length} data
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-[10px] font-mono font-bold px-2 text-slate-600">
+                Hal {currentPage} / {totalPages || 1}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </Panel>

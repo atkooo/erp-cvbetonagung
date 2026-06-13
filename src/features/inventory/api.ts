@@ -168,7 +168,7 @@ export const inventoryApi = {
 
   // Approval Requests
   async getApprovalRequests(): Promise<ApprovalRequest[]> {
-    const response = await apiClient.get<{ data: ApprovalRequestDto[] }>('/inventory/approval-requests?include=requester,approver&sort=-requested_at');
+    const response = await apiClient.get<{ data: ApprovalRequestDto[] }>('/inventory/approval-requests?include=requester,approver&sort=-requested_at&per_page=1000');
     return response.data.map(mapApprovalRequestFromDto);
   },
 
