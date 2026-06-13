@@ -8,6 +8,7 @@ export interface SalesOrder {
   date: string;
   total: number;
   status: 'Draft' | 'Diproses' | 'Disetujui' | 'Selesai' | 'Dibatalkan';
+  notes?: string;
   items: {
     productId?: string;
     productName: string;
@@ -26,6 +27,7 @@ export interface Quotation {
   validUntil: string;
   total: number;
   status: 'Draft' | 'Terkirim' | 'Disetujui' | 'Ditolak';
+  notes?: string;
   items: {
     productId?: string;
     productName: string;

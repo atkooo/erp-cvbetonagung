@@ -40,6 +40,7 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   validUntil: dto.valid_until ? dto.valid_until.split('T')[0] : '',
   total: Number(dto.total),
   status: mapQuotationStatus(dto.status),
+  notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     productId: item.product_id,
     productName: item.product?.name || item.description || 'Unknown Product',
@@ -56,6 +57,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   date: dto.order_date ? dto.order_date.split('T')[0] : '',
   total: Number(dto.total),
   status: mapSalesOrderStatus(dto.status),
+  notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     productId: item.product_id,
     productName: item.product?.name || item.description || 'Unknown Product',

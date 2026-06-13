@@ -76,6 +76,7 @@ export default function SalesView({
   // Form states to create a quick document
   const [custId, setCustId] = useState('');
   const [quotationId, setQuotationId] = useState('');
+  const [documentNotes, setDocumentNotes] = useState('');
   const [formItems, setFormItems] = useState<SalesFormItem[]>([
     { productId: '', quantity: 1, unitPrice: 0 }
   ]);
@@ -209,6 +210,7 @@ export default function SalesView({
           customer_id: custId,
           quotation_date: todayStr,
           valid_until: validUntil.toISOString().split('T')[0],
+          notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,
             quantity: item.quantity,
@@ -221,6 +223,7 @@ export default function SalesView({
           customer_id: custId,
           quotation_id: quotationId ? quotationId : undefined,
           order_date: todayStr,
+          notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,
             quantity: item.quantity,
@@ -235,6 +238,7 @@ export default function SalesView({
     }
 
     setQuotationId('');
+    setDocumentNotes('');
     resetFormItems();
     setShowAddForm(false);
   };
@@ -476,6 +480,12 @@ export default function SalesView({
                   <span className="text-slate-400 font-medium">Status Dokumen:</span>
                   <span className="font-bold text-indigo-700">{selectedDoc.status}</span>
                 </div>
+                {selectedDoc.notes && (
+                  <div className="border-b border-slate-150 pb-2">
+                    <span className="text-slate-400 font-medium block mb-1">Catatan:</span>
+                    <p className="text-slate-700 leading-relaxed whitespace-pre-line">{selectedDoc.notes}</p>
+                  </div>
+                )}
 
                 {/* Items loop */}
                 <div className="mt-6">
@@ -644,7 +654,7 @@ export default function SalesView({
                 </table>
 
                 <p className="text-[11px] mt-6">
-                  <strong>Catatan:</strong> Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.
+                  <strong>Catatan:</strong> {selectedDoc.notes || 'Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.'}
                 </p>
 
                 <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
@@ -759,12 +769,7 @@ export default function SalesView({
                 </div>
 
                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {formItems.map((item, index) => {
-                    const selectedProductIds = formItems
-                      .map((formItem, itemIndex) => itemIndex === index ? '' : formItem.productId)
-                      .filter(Boolean);
-
-                    return (
+                  {formItems.map((item, index) => (
                       <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
@@ -790,7 +795,6 @@ export default function SalesView({
                             });
                           }}
                           typeFilter={isQuotation ? undefined : "finished_good"}
-                          excludedProductIds={selectedProductIds}
                           placeholder="Pilih Produk..."
                         />
 
@@ -819,9 +823,21 @@ export default function SalesView({
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
+                </label>
+                <textarea
+                  value={documentNotes}
+                  onChange={(e) => setDocumentNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
               </div>
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
