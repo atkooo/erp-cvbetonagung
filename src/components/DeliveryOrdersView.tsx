@@ -854,7 +854,7 @@ export default function DeliveryOrdersView({
                       const stockRecord = allStocks.find(s => s.location_id === loc.id && s.product_id === item.productId);
                       const available = stockRecord ? Number(stockRecord.quantity) : 0;
                       const required = Number(item.quantity);
-                      return { name: item.productName, required, available };
+                      return { name: item.productName, required, available, length: item.length };
                     });
                     
                     return (
@@ -884,7 +884,10 @@ export default function DeliveryOrdersView({
                         <div className="pl-6 space-y-1.5">
                           {itemStockDetails.map((detail, idx) => (
                             <div key={idx} className="flex justify-between items-start text-[10px] bg-white p-2 rounded border border-slate-100 shadow-sm gap-2">
-                              <span className="text-slate-600 font-bold leading-tight flex-1">{detail.name}</span>
+                              <span className="text-slate-600 font-bold leading-tight flex-1">
+                                {detail.name}
+                                {detail.length && <span className="ml-1 font-normal text-slate-400">({detail.length}m)</span>}
+                              </span>
                               <div className="flex items-center gap-2 font-mono shrink-0 mt-0.5">
                                 <span className="text-slate-500">Butuh: {detail.required}</span>
                                 <span className={detail.available >= detail.required ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
