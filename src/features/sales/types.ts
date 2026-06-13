@@ -75,6 +75,10 @@ export interface SalesOrderDto {
     id: string;
     name: string;
   };
+  quotation?: {
+    id: string;
+    quotation_number: string;
+  };
   items?: SalesOrderItemDto[];
   invoices?: {
     id: string;
@@ -129,6 +133,7 @@ export interface DeliveryOrderItemDto {
       name: string;
     };
   };
+  sales_order_item?: SalesOrderItemDto;
 }
 
 export interface DeliveryOrderDto {

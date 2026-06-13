@@ -3,6 +3,7 @@
 export interface SalesOrder {
   id: string;
   orderNumber: string;
+  quotationNumber?: string;
   customerId?: string;
   customerName: string;
   date: string;
@@ -21,6 +22,7 @@ export interface SalesOrder {
     unit?: string;
   }[];
   hasPaidInvoice?: boolean;
+  hasInvoice?: boolean;
 }
 
 export interface Quotation {
@@ -46,9 +48,23 @@ export interface Quotation {
   }[];
 }
 
+export interface InvoiceItem {
+  id: string;
+  productId?: string;
+  productName: string;
+  description?: string;
+  pieceCount?: number;
+  length?: number;
+  unit?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  salesOrderNumber?: string;
   customerName: string;
   customerPhone?: string;
   date: string;
@@ -56,6 +72,7 @@ export interface Invoice {
   total: number;
   paidAmount: number;
   status: 'Belum Lunas' | 'Sebagian Dibayar' | 'Lunas' | 'Overdue';
+  items?: InvoiceItem[];
 }
 
 export interface Payment {
@@ -75,6 +92,7 @@ export interface DeliveryOrderItem {
   productName: string;
   productSku: string;
   quantity: number;
+  length?: number;
 }
 
 export interface DeliveryOrder {

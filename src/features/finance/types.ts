@@ -17,6 +17,28 @@ export interface InvoiceDto {
     name: string;
     phone?: string;
   };
+  sales_order?: {
+    id: string;
+    order_number: string;
+  };
+  items?: {
+    id: string;
+    product_id: string | null;
+    description: string | null;
+    piece_count?: number | string;
+    length?: number | string;
+    quantity: number | string;
+    unit_price: number | string;
+    subtotal: number | string;
+    product?: {
+      id: string;
+      name: string;
+      unit?: {
+        id: string;
+        name: string;
+      };
+    };
+  }[];
 }
 
 export interface PaymentDto {

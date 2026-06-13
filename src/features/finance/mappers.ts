@@ -4,6 +4,7 @@ import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable } from './t
 export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   id: dto.id,
   invoiceNumber: dto.invoice_number,
+  salesOrderNumber: dto.sales_order?.order_number || undefined,
   customerName: dto.customer?.name || 'Unknown Customer',
   customerPhone: dto.customer?.phone || undefined,
   date: dto.invoice_date,
@@ -11,6 +12,18 @@ export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   total: Number(dto.total),
   paidAmount: Number(dto.paid_amount),
   status: mapInvoiceStatus(dto.status),
+  items: dto.items?.map(item => ({
+    id: item.id,
+    productId: item.product_id || undefined,
+    productName: item.product?.name || item.description || 'Item Tanpa Nama',
+    description: item.description || undefined,
+    pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
+    length: item.length != null ? Number(item.length) : undefined,
+    unit: item.product?.unit?.name,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unit_price),
+    subtotal: Number(item.subtotal),
+  })),
 });
 
 const mapPaymentMethod = (method: string): Payment['method'] => {

@@ -114,7 +114,7 @@ export default function ProductPicker({
             <div className="h-4 bg-slate-200 animate-pulse rounded w-2/3"></div>
           ) : (
             <span className={`text-xs truncate ${selectedProduct ? 'text-slate-800 font-bold' : 'text-slate-400'}`}>
-              {selectedProduct ? `${selectedProduct.name}${selectedProduct.length ? ` (${selectedProduct.length})` : ''}${selectedProduct.motif ? ` - ${selectedProduct.motif}` : ''}` : placeholder}
+              {selectedProduct ? `${selectedProduct.name}${(selectedProduct as any).length ? ` (${(selectedProduct as any).length})` : ''}${(selectedProduct as any).motif ? ` - ${(selectedProduct as any).motif}` : ''}` : placeholder}
             </span>
           )}
         </div>
@@ -198,10 +198,10 @@ export default function ProductPicker({
                           <div className="font-bold text-xs text-slate-800">
                             {product.name}
                           </div>
-                          {(product.length || product.motif) && (
+                          {((product as any).length || (product as any).motif) && (
                             <div className="text-[10px] text-slate-500 font-medium">
-                              {product.length ? `Ukuran: ${product.length} ` : ''}
-                              {product.motif ? `Motif: ${product.motif}` : ''}
+                              {(product as any).length ? `Ukuran: ${(product as any).length} ` : ''}
+                              {(product as any).motif ? `Motif: ${(product as any).motif}` : ''}
                             </div>
                           )}
                           <div className="flex items-center gap-2 mt-1">

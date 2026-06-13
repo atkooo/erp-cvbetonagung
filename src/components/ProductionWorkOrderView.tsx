@@ -58,6 +58,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [logWorkDate, setLogWorkDate] = useState(new Date().toISOString().split('T')[0]);
   const [logStage, setLogStage] = useState('Cetak');
+  const [logMaxQty, setLogMaxQty] = useState<number | null>(null);
   const [madeQty, setMadeQty] = useState(0);
   const [rejectQty, setRejectQty] = useState(0);
   const [okQty, setOkQty] = useState(0);
@@ -117,14 +118,38 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     }
   }, [initialWoId]);
 
+  const getItemOutstandingQty = React.useCallback((soId: string, item: any) => {
+    if (!item.productId) return 0;
+    const itemWos = workOrders.filter(wo => wo.salesOrderId === soId && wo.productId === item.productId);
+    let totalExpectedYield = 0;
+    for (const wo of itemWos) {
+      const totalReject = wo.logs?.reduce((sum, l) => sum + l.rejectQty, 0) || 0;
+      totalExpectedYield += Math.max(0, wo.targetQty - totalReject);
+    }
+    const requiredQty = item.pieceCount || item.quantity;
+    return Math.max(0, requiredQty - totalExpectedYield);
+  }, [workOrders]);
+
+  const activeSalesOrders = React.useMemo(() => {
+    return salesOrders.filter(so => {
+      if (!so.items || so.items.length === 0) return false;
+      return so.items.some(item => getItemOutstandingQty(so.id, item) > 0);
+    });
+  }, [salesOrders, getItemOutstandingQty]);
+
   const applySalesOrderItemToForm = (salesOrder: SalesOrder, itemIndex: number) => {
     const item = salesOrder.items?.[itemIndex];
     if (!item?.productId) return;
 
     setSelectedSalesOrderItemIndex(String(itemIndex));
     setSelectedProductId(item.productId);
-    setTargetQty(item.quantity);
-    setSourceLabel(salesOrder.orderNumber);
+    setTargetQty(item.pieceCount || item.quantity);
+    
+    let label = `SO: ${salesOrder.orderNumber}`;
+    if (item.pieceCount && item.length) {
+      label += ` [${item.pieceCount} Fisik @ ${item.length} M]`;
+    }
+    setSourceLabel(label);
   };
 
   const handleOpenCreateModal = () => {
@@ -150,9 +175,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     const selectedSalesOrderItem = selectedSalesOrderItemIndex !== ''
       ? selectedSalesOrder?.items?.[Number(selectedSalesOrderItemIndex)]
       : undefined;
-    if (selectedSalesOrderItem && targetQty < selectedSalesOrderItem.quantity) {
+    const requiredQty = selectedSalesOrderItem?.pieceCount || selectedSalesOrderItem?.quantity || 0;
+    if (selectedSalesOrderItem && targetQty < requiredQty) {
       onTriggerNotification(
-        `Target produksi tidak boleh kurang dari kebutuhan SO: ${selectedSalesOrderItem.quantity}.`
+        `Target produksi tidak boleh kurang dari kebutuhan SO: ${requiredQty}.`
       );
       return;
     }
@@ -201,12 +227,17 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   const handleMadeQtyChange = (val: number) => {
     setMadeQty(val);
-    setOkQty(Math.max(0, val - rejectQty));
+    let newReject = rejectQty;
+    if (newReject > val) newReject = val; // Force reject to not exceed madeQty
+    setRejectQty(newReject);
+    setOkQty(Math.max(0, val - newReject));
   };
 
   const handleRejectQtyChange = (val: number) => {
-    setRejectQty(val);
-    setOkQty(Math.max(0, madeQty - val));
+    let newReject = val;
+    if (newReject > madeQty) newReject = madeQty; // Reject cannot exceed total made
+    setRejectQty(newReject);
+    setOkQty(Math.max(0, madeQty - newReject));
   };
 
   const handleCreateWorkLog = async (e: React.FormEvent) => {
@@ -351,17 +382,55 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   );
 
   // Group counts
+  const getWoStatus = (wo: ProductionWorkOrder) => {
+    // 1. Fulfilled target
+    if (wo.completedQty >= wo.targetQty) return 'Closed';
+    
+    if (wo.tasks && wo.tasks.length > 0) {
+      // 2. All tasks officially completed
+      if (wo.tasks.every(t => t.status === 'Completed')) return 'Closed';
+
+      // 3. Check if WO is "Exhausted" (dead end due to rejects)
+      // A WO is exhausted if the first task has processed all target items (completed + reject),
+      // AND every subsequent task has processed all available items from the previous task.
+      let isExhausted = true;
+      const firstTask = wo.tasks[0];
+      if ((firstTask.completedQty + firstTask.rejectQty) < firstTask.targetQty) {
+        isExhausted = false;
+      } else {
+        for (let i = 1; i < wo.tasks.length; i++) {
+          const currentTask = wo.tasks[i];
+          const prevTask = wo.tasks[i - 1];
+          if ((currentTask.completedQty + currentTask.rejectQty) < prevTask.completedQty) {
+            isExhausted = false;
+            break;
+          }
+        }
+      }
+      
+      if (isExhausted) return 'Closed';
+      
+      // 4. If not closed, check if it has started
+      const isStarted = wo.tasks.some(t => t.status !== 'Pending');
+      return isStarted ? 'In Progress' : 'Open';
+    }
+
+    return 'Open';
+  };
+
   const countDraft = workOrders.filter(w => w.stage === 'Draft').length;
-  const countCetak = workOrders.filter(w => w.stage === 'Cetak').length;
-  const countCuring = workOrders.filter(w => w.stage === 'Curing').length;
-  const countFinishing = workOrders.filter(w => w.stage === 'Finishing').length;
-  const countQC = workOrders.filter(w => w.stage === 'QC').length;
+  const countOpen = workOrders.filter(w => w.stage !== 'Draft' && getWoStatus(w) === 'Open').length;
+  const countInProgress = workOrders.filter(w => w.stage !== 'Draft' && getWoStatus(w) === 'In Progress').length;
+  const countClosed = workOrders.filter(w => w.stage !== 'Draft' && getWoStatus(w) === 'Closed').length;
 
   // Worker rekap summary for selected WO
   const logsList = selectedWo?.logs || [];
-  const totalMade = logsList.reduce((sum, l) => sum + l.madeQty, 0);
+  // Total barang yang diciptakan hanya dihitung dari tahap Cetak
+  const totalMade = logsList.filter(l => l.stage === 'Cetak').reduce((sum, l) => sum + l.madeQty, 0);
+  // Total reject dihitung dari seluruh tahap (Cetak, Finishing, QC, dll)
   const totalReject = logsList.reduce((sum, l) => sum + l.rejectQty, 0);
-  const totalOk = logsList.reduce((sum, l) => sum + l.okQty, 0);
+  // Total Bagus (OK) adalah barang yang dicetak dikurangi semua reject di sepanjang proses
+  const totalOk = Math.max(0, totalMade - totalReject);
 
   const workerSummary = logsList.reduce<Record<string, { made: number; ok: number; reject: number }>>((acc, log) => {
     const worker = log.employeeName || 'Unknown';
@@ -401,8 +470,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
       {isLoading ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
             <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
             <div className="h-20 bg-slate-100 rounded-xl animate-pulse" />
@@ -417,16 +485,15 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
         <ErrorCard message={errorMessage} onRetry={fetchData} />
       ) : (
         <>
-          {/* Stage KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Status KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Draft', count: countDraft, color: 'text-slate-500 bg-slate-50' },
-              { label: 'Cetak', count: countCetak, color: 'text-cyan-600 bg-cyan-50' },
-              { label: 'Curing', count: countCuring, color: 'text-amber-600 bg-amber-50' },
-              { label: 'Finishing', count: countFinishing, color: 'text-indigo-600 bg-indigo-50' },
-              { label: 'QC & Siap', count: countQC, color: 'text-emerald-600 bg-emerald-50' },
+              { label: 'Open (Baru)', count: countOpen, color: 'text-slate-700 bg-slate-100 border-slate-200' },
+              { label: 'In Progress', count: countInProgress, color: 'text-cyan-700 bg-cyan-50 border-cyan-200' },
+              { label: 'Selesai (Closed)', count: countClosed, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
             ].map((stageItem) => (
-              <div key={stageItem.label} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+              <div key={stageItem.label} className={`bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center ${stageItem.color.includes('border') ? stageItem.color.split(' ').find(c => c.startsWith('border')) : 'border-slate-200'}`}>
                 <div>
                   <span className="text-[10px] uppercase font-mono font-bold text-slate-400">{stageItem.label}</span>
                   <h4 className="text-lg font-black text-slate-800 mt-1">{stageItem.count} SPK</h4>
@@ -467,16 +534,24 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-cyan-600">{wo.workOrderNumber}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                            wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                              wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                'bg-cyan-50 text-cyan-700 border-cyan-100'
-                          }`}>
-                          {wo.stage}
-                        </span>
+                        {(() => {
+                          const status = getWoStatus(wo);
+                          
+                          if (status === 'Closed') {
+                            return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">Selesai (Closed)</span>;
+                          } else if (status === 'In Progress') {
+                            return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-cyan-50 text-cyan-700 border-cyan-100">In Progress</span>;
+                          } else {
+                            return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-slate-50 text-slate-700 border-slate-200">Open</span>;
+                          }
+                        })()}
                       </div>
                       <h4 className="font-bold text-slate-800">{wo.productName}</h4>
-                      <p className="text-[10px] text-slate-500 font-medium">Order: {wo.sourceLabel || 'Stok'}</p>
+                      {wo.sourceLabel?.includes('[') ? (
+                        <p className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1 py-0.5 rounded w-fit mt-0.5">Ref: {wo.sourceLabel}</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Order: {wo.sourceLabel || 'Stok'}</p>
+                      )}
                     </div>
 
                     <div className="text-right shrink-0">
@@ -506,9 +581,17 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           <span className="font-mono text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">
                             {selectedWo.workOrderNumber}
                           </span>
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
-                            {selectedWo.stage}
-                          </span>
+                          {(() => {
+                            const status = getWoStatus(selectedWo);
+                            
+                            if (status === 'Closed') {
+                              return <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">Selesai (Closed)</span>;
+                            } else if (status === 'In Progress') {
+                              return <span className="px-2 py-0.5 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-[10px] font-bold">In Progress</span>;
+                            } else {
+                              return <span className="px-2 py-0.5 bg-slate-50 text-slate-700 border border-slate-200 rounded text-[10px] font-bold">Open</span>;
+                            }
+                          })()}
                           {selectedWo.projectId && (
                             <button
                               onClick={() => onNavigateToProject && onNavigateToProject(selectedWo.projectId!)}
@@ -521,36 +604,37 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           )}
                         </div>
                         <h3 className="font-sans font-black text-slate-800 text-base mt-2">{selectedWo.productName}</h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          Sumber Order: <span className="font-semibold text-slate-700">{selectedWo.sourceLabel || 'Stok Gudang'}</span>
-                          {selectedWo.dueDate && ` | Target Selesai: ${selectedWo.dueDate}`}
-                        </p>
+                        <div className="mt-1">
+                          {selectedWo.sourceLabel?.includes('[') ? (
+                            <span className="inline-block px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded font-bold text-[11px] mb-1">
+                              Ref: {selectedWo.sourceLabel}
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-[10px] text-slate-700">Sumber: {selectedWo.sourceLabel || 'Stok Gudang'}</span>
+                          )}
+                          <span className="text-[10px] text-slate-400 ml-2">
+                            {selectedWo.dueDate && `Target Selesai: ${selectedWo.dueDate}`}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={handleOpenUpdateStageModal}
-                          className="px-3 py-1.5 border border-slate-200 bg-slate-50 hover:bg-white text-slate-650 font-bold rounded-lg transition-all"
-                        >
-                          Ubah Tahap
-                        </button>
-                        <button
-                          onClick={handleOpenLogModal}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-all"
-                        >
-                          Input Hasil Harian
-                        </button>
-                        <button
-                          onClick={handleOpenReceiveModal}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all"
-                        >
-                          Terima Stok
-                        </button>
-                        <button
-                          onClick={() => handleDeleteWo(selectedWo.id, selectedWo.workOrderNumber)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {(() => {
+                          const qcTask = selectedWo.tasks?.find(t => t.taskName === 'QC');
+                          const readyQty = qcTask ? qcTask.completedQty : 0;
+                          const unreceivedQty = readyQty - selectedWo.completedQty;
+                          const isReadyForWarehouse = unreceivedQty > 0;
+                          
+                          return (
+                            <button
+                              onClick={handleOpenReceiveModal}
+                              disabled={!isReadyForWarehouse}
+                              title={!isReadyForWarehouse ? 'Tidak ada barang yang siap dimasukkan ke gudang (Harus lolos QC terlebih dahulu)' : ''}
+                              className={`px-3 py-1.5 font-bold rounded-lg transition-all ${isReadyForWarehouse ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                            >
+                              Terima Stok ({unreceivedQty > 0 ? unreceivedQty : 0} pcs)
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -568,6 +652,70 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         </div>
                       ))}
                     </div>
+
+                    {/* Tasklist (Routing) UI */}
+                    {selectedWo.tasks && selectedWo.tasks.length > 0 && (
+                      <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Clipboard size={14} className="text-cyan-600" />
+                          <h4 className="font-bold text-slate-800">Tasklist Produksi (Routing)</h4>
+                        </div>
+                        <div className="space-y-3">
+                          {selectedWo.tasks.map((task, index) => {
+                            const isCompleted = task.status === 'Completed';
+                            const isInProgress = task.status === 'In Progress';
+                            const isPending = task.status === 'Pending';
+                            
+                            return (
+                              <div key={task.id} className={`p-3 rounded-lg border ${isCompleted ? 'bg-emerald-50 border-emerald-100' : isInProgress ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200'} flex items-center justify-between`}>
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                    {isCompleted ? <CheckCircle2 size={12} /> : index + 1}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-[10px] font-bold text-slate-500">{task.taskCode}</span>
+                                      <h5 className={`font-bold text-sm ${isCompleted ? 'text-emerald-800' : isInProgress ? 'text-amber-800' : 'text-slate-700'}`}>{task.taskName}</h5>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                      Status: <span className="font-bold">{task.status}</span> | Selesai: {task.completedQty} / {task.targetQty} pcs
+                                      {task.rejectQty > 0 && <span className="text-rose-500 ml-1">| Reject: {task.rejectQty} pcs</span>}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      let max = task.targetQty - (task.completedQty + task.rejectQty);
+                                      if (index > 0) {
+                                        const prevTask = selectedWo.tasks![index - 1];
+                                        max = prevTask.completedQty - (task.completedQty + task.rejectQty);
+                                      }
+                                      setLogMaxQty(max > 0 ? max : 0);
+                                      setLogStage(task.taskName);
+                                      setMadeQty(0);
+                                      setRejectQty(0);
+                                      setOkQty(0);
+                                      setLogNotes('');
+                                      setIsLogModalOpen(true);
+                                    }}
+                                    disabled={
+                                      (task.completedQty + task.rejectQty) >= task.targetQty || 
+                                      (index > 0 && selectedWo.tasks![index - 1].completedQty === 0) ||
+                                      (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty)
+                                    }
+                                    title={(task.completedQty + task.rejectQty) >= task.targetQty ? 'Tahap ini sudah memenuhi target (Termasuk Reject).' : index > 0 && selectedWo.tasks![index - 1].completedQty === 0 ? 'Tunggu tahap sebelumnya menghasilkan barang.' : index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty ? 'Seluruh hasil dari tahap sebelumnya sudah diproses di tahap ini.' : ''}
+                                    className={`px-3 py-1.5 text-[10px] font-bold rounded border transition-colors ${(task.completedQty + task.rejectQty) >= task.targetQty || (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty) ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                                  >
+                                    Input Hasil
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="p-5">
                       <div className="flex items-center justify-between mb-2">
@@ -705,7 +853,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         applySalesOrderItemToForm(salesOrder, 0);
                       }
                     }}
-                    options={salesOrders.map(so => ({
+                    options={activeSalesOrders.map(so => ({
                       value: so.id,
                       label: `${so.orderNumber} (${so.customerName})`
                     }))}
@@ -747,14 +895,18 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   >
                     {salesOrders
                       .find(so => so.id === selectedSalesOrderId)
-                      ?.items?.map((item, index) => (
-                        <option key={`${item.productId || item.productName}-${index}`} value={index}>
-                          {item.productName}
-                          {item.specification ? ` (${item.specification})` : ''}
-                          {item.length ? ` - ukuran ${item.length}` : ''}
-                          {' '} - kebutuhan {item.quantity}
-                        </option>
-                      ))}
+                      ?.items?.map((item, index) => {
+                        const outQty = getItemOutstandingQty(selectedSalesOrderId, item);
+                        const disabled = outQty <= 0;
+                        return (
+                          <option key={`${item.productId || item.productName}-${index}`} value={index} disabled={disabled}>
+                            {item.productName}
+                            {item.specification ? ` (${item.specification})` : ''}
+                            {item.pieceCount && item.length ? ` [${item.pieceCount} Fisik @ ${item.length} M]` : (item.length ? ` - ukuran ${item.length}` : '')}
+                            {' '} - {disabled ? 'Terpenuhi' : `Sisa Kebutuhan: ${outQty} dari ${item.pieceCount ? item.pieceCount : item.quantity}`}
+                          </option>
+                        );
+                      })}
                   </select>
 
                 </div>
@@ -781,7 +933,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     .filter(p => p.type !== 'raw_material' && p.type !== 'service')
                     .map(p => ({ 
                       value: p.id, 
-                      label: `${p.sku} - ${p.name}${p.length ? ` (${p.length})` : ''}${p.motif ? ` - ${p.motif}` : ''}` 
+                      label: `${p.sku} - ${p.name}` 
                     }))}
                   placeholder="-- Ketik Nama atau SKU Produk Jadi --"
                   disabled={!!selectedSalesOrderId}
@@ -790,11 +942,11 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Target Produksi ({targetUnit}) *</label>
+                  <label className="block font-bold text-slate-700">Target Produksi ({selectedCreateSalesOrderItem?.pieceCount ? 'Fisik' : targetUnit}) *</label>
                   <input
                     type="number"
                     required
-                    min={selectedCreateSalesOrderItem?.quantity || 1}
+                    min={selectedCreateSalesOrderItem?.pieceCount || selectedCreateSalesOrderItem?.quantity || 1}
                     value={targetQty}
                     onChange={(e) => setTargetQty(Number(e.target.value))}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400 font-mono"
@@ -894,26 +1046,32 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   <label className="block font-bold text-slate-700">Tahap SPK *</label>
                   <select
                     value={logStage}
-                    onChange={(e) => setLogStage(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                    disabled
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none"
                   >
                     <option value="Cetak">Cetak</option>
                     <option value="Curing">Curing</option>
                     <option value="Finishing">Finishing</option>
                     <option value="QC">QC</option>
+                    <option value="Siap Gudang">Siap Gudang</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3 border-y border-slate-100 py-3">
                 <div className="space-y-1 text-center">
-                  <label className="block font-bold text-slate-700">Dibuat *</label>
+                  <label className="block font-bold text-slate-700">Dibuat * {logMaxQty !== null && <span className="text-slate-400 font-normal text-[10px]">(Max: {logMaxQty})</span>}</label>
                   <input
                     type="number"
                     required
                     min={0}
+                    max={logMaxQty !== null ? logMaxQty : undefined}
                     value={madeQty}
-                    onChange={(e) => handleMadeQtyChange(Number(e.target.value))}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (logMaxQty !== null && val > logMaxQty) val = logMaxQty;
+                      handleMadeQtyChange(val);
+                    }}
                     className="w-full px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none text-center font-mono text-slate-800"
                   />
                 </div>
@@ -1074,32 +1232,29 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">Tujuan Lokasi Penyimpanan (Barang Jadi) *</label>
-                <select
-                  required
+                <SearchableSelect
                   value={receiveTargetLocationId}
-                  onChange={(e) => setReceiveTargetLocationId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                >
-                  <option value="">-- Pilih Lokasi Target --</option>
-                  {locations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
-                  ))}
-                </select>
+                  onChange={(val) => setReceiveTargetLocationId(val)}
+                  options={locations.map(loc => ({
+                    value: loc.id,
+                    label: `${loc.warehouse?.name ? loc.warehouse.name + ' - ' : ''}${loc.name} (${loc.code})`
+                  }))}
+                  placeholder="-- Pilih Lokasi Target --"
+                />
               </div>
 
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">Asal Gudang Bahan Baku (Opsional)</label>
-                <select
+                <SearchableSelect
                   value={receiveSourceLocationId}
-                  onChange={(e) => setReceiveSourceLocationId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                >
-                  <option value="">-- Lokasi Default / Tidak Dipotong --</option>
-                  {locations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name} ({loc.code})</option>
-                  ))}
-                </select>
-                <p className="text-[9px] text-slate-400">Pilih dari mana bahan baku dikurangi (jika produk memiliki BOM).</p>
+                  onChange={(val) => setReceiveSourceLocationId(val)}
+                  options={locations.map(loc => ({
+                    value: loc.id,
+                    label: `${loc.warehouse?.name ? loc.warehouse.name + ' - ' : ''}${loc.name} (${loc.code})`
+                  }))}
+                  placeholder="-- Lokasi Default / Tidak Dipotong --"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">Pilih dari mana bahan baku dikurangi (jika produk memiliki BOM).</p>
               </div>
 
               <div className="space-y-1">

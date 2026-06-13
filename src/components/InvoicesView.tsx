@@ -64,7 +64,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     try {
       const data = await salesApi.getSalesOrders();
       // Only get Approved (Disetujui) sales orders that don't have invoices yet
-      const approvedSOs = data.filter(so => so.status === 'Disetujui' && !so.hasPaidInvoice); // actually, we can just show Disetujui
+      const approvedSOs = data.filter(so => so.status === 'Disetujui' && !so.hasInvoice);
       setSalesOrders(approvedSOs);
     } catch (err) {
       onTriggerNotification('Gagal memuat daftar Sales Order untuk invoice');
@@ -293,6 +293,9 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 <div className="text-right">
                   <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-1">Detail Dokumen Faktur</p>
                   <strong className="text-cyan-600 block text-xs">{selectedInvoice.invoiceNumber}</strong>
+                  {selectedInvoice.salesOrderNumber && (
+                    <span className="text-slate-500 block">Ref. SO: <strong className="text-slate-600">{selectedInvoice.salesOrderNumber}</strong></span>
+                  )}
                   <span className="text-slate-500 block">Tanggal: <strong className="text-slate-600">{formatDate(selectedInvoice.date)}</strong></span>
                   <span className="text-rose-600 font-bold block">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</span>
                 </div>
@@ -300,13 +303,33 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
               {/* Items row */}
               <div className="space-y-3">
-                <p className="text-slate-400 uppercase tracking-widest font-mono text-[9px] font-bold">Rekapitulasi Borongan Terkait</p>
-                <div className="p-3.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs">
-                  <div>
-                    <h5 className="font-bold text-slate-800">Paket Konstruksi Terintegrasi</h5>
-                    <p className="text-slate-400 text-[10px] mt-0.5">Komponen Beton Pracetak standardisasi SNI CV Beton Agung Java</p>
-                  </div>
-                  <strong className="text-slate-900 font-bold font-mono text-[13px]">{formatIDR(selectedInvoice.total)}</strong>
+                <p className="text-slate-400 uppercase tracking-widest font-mono text-[9px] font-bold">Rincian Item Tagihan</p>
+                <div className="space-y-2">
+                  {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                    selectedInvoice.items.map((item, index) => (
+                      <div key={item.id || index} className="p-3.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs">
+                        <div>
+                          <h5 className="font-bold text-slate-800">{item.productName}</h5>
+                          {item.pieceCount && item.length && (
+                            <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
+                          )}
+                          <p className="text-slate-400 text-[10px] mt-0.5">
+                            {item.quantity} {item.unit || ''} x {formatIDR(item.unitPrice)}
+                            {item.description ? ` - ${item.description}` : ''}
+                          </p>
+                        </div>
+                        <strong className="text-slate-900 font-bold font-mono text-[13px]">{formatIDR(item.subtotal)}</strong>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs">
+                      <div>
+                        <h5 className="font-bold text-slate-800">Paket Konstruksi Terintegrasi</h5>
+                        <p className="text-slate-400 text-[10px] mt-0.5">Komponen Beton Pracetak standardisasi SNI CV Beton Agung Java</p>
+                      </div>
+                      <strong className="text-slate-900 font-bold font-mono text-[13px]">{formatIDR(selectedInvoice.total)}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -384,6 +407,9 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                     INVOICE
                   </h2>
                   <p className="font-mono font-bold mt-2 text-lg">{selectedInvoice.invoiceNumber}</p>
+                  {selectedInvoice.salesOrderNumber && (
+                    <p className="text-sm font-bold text-slate-600">SO: {selectedInvoice.salesOrderNumber}</p>
+                  )}
                   <p className="text-sm">Tanggal: {formatDate(selectedInvoice.date)}</p>
                   <p className="text-sm">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</p>
                 </div>
@@ -412,14 +438,33 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="p-3 border border-black text-center">1</td>
-                    <td className="p-3 border border-black">
-                      <p className="font-bold">Paket Konstruksi Terintegrasi</p>
-                      <p className="text-xs text-slate-600 mt-1">Komponen Beton Pracetak standardisasi SNI CV Beton Agung</p>
-                    </td>
-                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
-                  </tr>
+                  {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                    selectedInvoice.items.map((item, index) => (
+                      <tr key={item.id || index}>
+                        <td className="p-3 border border-black text-center">{index + 1}</td>
+                        <td className="p-3 border border-black">
+                          <p className="font-bold">{item.productName}</p>
+                          {item.pieceCount && item.length && (
+                            <p className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</p>
+                          )}
+                          <p className="text-xs text-slate-600 mt-1">
+                            {item.quantity} {item.unit || ''} x {formatIDR(item.unitPrice)}
+                            {item.description ? ` - ${item.description}` : ''}
+                          </p>
+                        </td>
+                        <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(item.subtotal)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="p-3 border border-black text-center">1</td>
+                      <td className="p-3 border border-black">
+                        <p className="font-bold">Paket Konstruksi Terintegrasi</p>
+                        <p className="text-xs text-slate-600 mt-1">Komponen Beton Pracetak standardisasi SNI CV Beton Agung</p>
+                      </td>
+                      <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
+                    </tr>
+                  )}
                 </tbody>
                 <tfoot>
                   <tr>

@@ -561,6 +561,7 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="border border-black p-2 font-bold">
                         {item.productName}
+                        {item.length && <span className="ml-1 text-slate-500 font-normal">({item.length}m)</span>}
                       </td>
                       <td className="border border-black p-2 text-center font-mono">
                         {item.productSku || "-"}
@@ -666,7 +667,10 @@ export default function DeliveryOrdersView({
                       {selectedDo.items && selectedDo.items.length > 0 ? (
                         selectedDo.items.map((item, idx) => (
                           <tr key={item.id || idx}>
-                            <td className="p-2.5 font-bold text-slate-700">{item.productName}</td>
+                            <td className="p-2.5 font-bold text-slate-700">
+                              {item.productName}
+                              {item.length && <span className="ml-1 text-[10px] text-slate-400 font-normal">({item.length}m)</span>}
+                            </td>
                             <td className="p-2.5 text-center font-mono text-slate-500">{item.productSku || "-"}</td>
                             <td className="p-2.5 text-right font-mono font-bold text-slate-900">{item.quantity} pcs</td>
                           </tr>

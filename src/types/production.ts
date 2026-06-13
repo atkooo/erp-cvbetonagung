@@ -16,6 +16,20 @@ export interface ProductionWorkLog {
   verifiedAt?: string;
 }
 
+export interface ProductionWorkOrderTask {
+  id: string;
+  workOrderId: string;
+  taskCode: string;
+  taskName: string;
+  status: string;
+  assignedTo?: string;
+  assignedEmployeeName?: string;
+  targetQty: number;
+  completedQty: number;
+  rejectQty: number;
+  sequence: number;
+}
+
 export interface ProductionWorkOrder {
   id: string;
   workOrderNumber: string;
@@ -33,6 +47,7 @@ export interface ProductionWorkOrder {
   progress: number;
   dueDate?: string;
   logs?: ProductionWorkLog[];
+  tasks?: ProductionWorkOrderTask[];
 }
 
 export interface BomItem {

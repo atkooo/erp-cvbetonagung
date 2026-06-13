@@ -30,6 +30,23 @@ export interface ProductionWorkLogDto {
   };
 }
 
+export interface ProductionWorkOrderTaskDto {
+  id: string;
+  work_order_id: string;
+  task_code: string;
+  task_name: string;
+  status: string;
+  assigned_to: string | null;
+  target_qty: number;
+  completed_qty: number;
+  reject_qty: number;
+  sequence: number;
+  assigned_employee?: {
+    id: string;
+    name: string;
+  };
+}
+
 export interface ProductionWorkOrderDto {
   id: string;
   work_order_number: string;
@@ -59,6 +76,7 @@ export interface ProductionWorkOrderDto {
   };
   items?: ProductionWorkOrderItemDto[];
   logs?: ProductionWorkLogDto[];
+  tasks?: ProductionWorkOrderTaskDto[];
 }
 
 export interface BomItemDto {

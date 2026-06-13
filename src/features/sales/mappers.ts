@@ -27,7 +27,8 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
     productId: item.product_id,
     productName: item.product?.name || 'Unknown Product',
     productSku: item.product?.sku || '',
-    quantity: Number(item.quantity)
+    quantity: Number(item.quantity),
+    length: item.sales_order_item?.length != null ? Number(item.sales_order_item.length) : undefined
   }))
 });
 
@@ -57,6 +58,7 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
 export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   id: dto.id,
   orderNumber: dto.order_number,
+  quotationNumber: dto.quotation?.quotation_number || undefined,
   customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
   date: dto.order_date ? dto.order_date.split('T')[0] : '',
@@ -74,7 +76,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     price: Number(item.unit_price),
     unit: item.product?.unit?.name
   })),
-  hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0)
+  hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),
+  hasInvoice: (dto.invoices || []).length > 0
 });
 
 // Helper for status translations

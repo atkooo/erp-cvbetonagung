@@ -1,5 +1,6 @@
 import { ProductionWorkOrder, ProductionWorkLog, Bom, BomItem } from '../../types';
-import { ProductionWorkOrderDto, ProductionWorkLogDto, BomDto, BomItemDto } from './types';
+import { ProductionWorkOrderTask } from '../../types/production';
+import { ProductionWorkOrderDto, ProductionWorkLogDto, BomDto, BomItemDto, ProductionWorkOrderTaskDto } from './types';
 
 export const mapWorkLogFromDto = (dto: ProductionWorkLogDto): ProductionWorkLog => ({
   id: dto.id,
@@ -15,6 +16,20 @@ export const mapWorkLogFromDto = (dto: ProductionWorkLogDto): ProductionWorkLog 
   notes: dto.notes || undefined,
   verifiedBy: dto.verified_by || undefined,
   verifiedAt: dto.verified_at || undefined,
+});
+
+export const mapWorkOrderTaskFromDto = (dto: ProductionWorkOrderTaskDto): ProductionWorkOrderTask => ({
+  id: dto.id,
+  workOrderId: dto.work_order_id,
+  taskCode: dto.task_code,
+  taskName: dto.task_name,
+  status: dto.status,
+  assignedTo: dto.assigned_to || undefined,
+  assignedEmployeeName: dto.assigned_employee?.name || undefined,
+  targetQty: Number(dto.target_qty),
+  completedQty: Number(dto.completed_qty),
+  rejectQty: Number(dto.reject_qty),
+  sequence: Number(dto.sequence),
 });
 
 export const mapWorkOrderFromDto = (dto: ProductionWorkOrderDto): ProductionWorkOrder => ({
@@ -34,6 +49,7 @@ export const mapWorkOrderFromDto = (dto: ProductionWorkOrderDto): ProductionWork
   progress: Number(dto.progress),
   dueDate: dto.due_date ? dto.due_date.split('T')[0] : undefined,
   logs: (dto.logs || []).map(mapWorkLogFromDto),
+  tasks: (dto.tasks || []).map(mapWorkOrderTaskFromDto),
 });
 
 export const mapBomItemFromDto = (dto: BomItemDto): BomItem => ({

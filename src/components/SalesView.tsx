@@ -546,12 +546,17 @@ export default function SalesView({
                   <span className="text-slate-400 font-medium">Tanggal Masuk:</span>
                   <span className="font-mono">{selectedDoc.date}</span>
                 </div>
-                {isQuotation && (
+                {isQuotation ? (
                   <div className="flex justify-between border-b border-slate-150 pb-2">
                     <span className="text-slate-400 font-medium">Berlaku Hingga:</span>
                     <span className="font-mono text-amber-600">{selectedDoc.validUntil}</span>
                   </div>
-                )}
+                ) : selectedDoc.quotationNumber ? (
+                  <div className="flex justify-between border-b border-slate-150 pb-2">
+                    <span className="text-slate-400 font-medium">Ref. Quotation:</span>
+                    <strong className="text-slate-800">{selectedDoc.quotationNumber}</strong>
+                  </div>
+                ) : null}
                 <div className="flex justify-between border-b border-slate-150 pb-2">
                   <span className="text-slate-400 font-medium">Status Dokumen:</span>
                   <span className="font-bold text-indigo-700">{selectedDoc.status}</span>
@@ -682,6 +687,9 @@ export default function SalesView({
                   <div className="text-right">
                     <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
                     <p className="font-mono font-bold mt-2 text-lg">{docNumber}</p>
+                    {!isQuotation && selectedDoc.quotationNumber && (
+                      <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber}</p>
+                    )}
                     <p className="text-sm">{docDateLabel}: {selectedDoc.date}</p>
                     {isQuotation && <p className="text-sm">Berlaku Hingga: {selectedDoc.validUntil}</p>}
                   </div>
