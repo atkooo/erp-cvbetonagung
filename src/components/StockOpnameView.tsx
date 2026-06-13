@@ -721,15 +721,19 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                 <input
                                   type="checkbox"
                                   className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-                                  checked={selectedItemIds.length > 0 && paginatedSessionItems.filter(i => i.differenceQty !== 0 && !i.approvalRequestId).every(i => selectedItemIds.includes(i.id))}
+                                  checked={
+                                    selectedItemIds.length > 0 &&
+                                    paginatedSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).length > 0 &&
+                                    paginatedSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).every(i => selectedItemIds.includes(i.id))
+                                  }
                                   onChange={(e) => {
-                                    const approvableIds = paginatedSessionItems
-                                      .filter(i => i.differenceQty !== 0 && !i.approvalRequestId)
+                                    const availableIds = paginatedSessionItems
+                                      .filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted))
                                       .map(i => i.id);
                                     if (e.target.checked) {
-                                      setSelectedItemIds(prev => Array.from(new Set([...prev, ...approvableIds])));
+                                      setSelectedItemIds(prev => Array.from(new Set([...prev, ...availableIds])));
                                     } else {
-                                      setSelectedItemIds(prev => prev.filter(id => !approvableIds.includes(id)));
+                                      setSelectedItemIds(prev => prev.filter(id => !availableIds.includes(id)));
                                     }
                                   }}
                                 />
