@@ -116,6 +116,15 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
       item.notes.toLowerCase().includes(normalizedItemSearch) ||
       (item.approvalStatus || '').toLowerCase().includes(normalizedItemSearch)
     );
+  }).sort((a, b) => {
+    const aNeedsApproval = a.differenceQty !== 0 && !a.approvalRequestId ? 1 : 0;
+    const bNeedsApproval = b.differenceQty !== 0 && !b.approvalRequestId ? 1 : 0;
+    
+    if (aNeedsApproval !== bNeedsApproval) {
+      return bNeedsApproval - aNeedsApproval;
+    }
+    
+    return 0;
   });
   const itemTotalPages = Math.max(1, Math.ceil(filteredSessionItems.length / itemRowsPerPage));
   const itemPageStartIndex = (itemCurrentPage - 1) * itemRowsPerPage;
@@ -723,11 +732,11 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                   className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                                   checked={
                                     selectedItemIds.length > 0 &&
-                                    paginatedSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).length > 0 &&
-                                    paginatedSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).every(i => selectedItemIds.includes(i.id))
+                                    filteredSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).length > 0 &&
+                                    filteredSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).every(i => selectedItemIds.includes(i.id))
                                   }
                                   onChange={(e) => {
-                                    const availableIds = paginatedSessionItems
+                                    const availableIds = filteredSessionItems
                                       .filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted))
                                       .map(i => i.id);
                                     if (e.target.checked) {
