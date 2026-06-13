@@ -166,10 +166,36 @@ export const inventoryApi = {
     return mapStockOpnameItemFromDto(response.data);
   },
 
+
+
   // Approval Requests
   async getApprovalRequests(): Promise<ApprovalRequest[]> {
-    const response = await apiClient.get<{ data: ApprovalRequestDto[] }>('/inventory/approval-requests?include=requester,approver&sort=-requested_at&per_page=1000');
-    return response.data.map(mapApprovalRequestFromDto);
+    const firstParams = new URLSearchParams({
+      include: 'requester,approver',
+      sort: '-requested_at',
+      per_page: '100',
+    });
+    
+    const firstResponse = await apiClient.get<{ 
+      data: ApprovalRequestDto[];
+      meta?: { current_page: number; last_page: number };
+    }>(`/inventory/approval-requests?${firstParams.toString()}`);
+    
+    const requests = [...firstResponse.data];
+    const lastPage = firstResponse.meta?.last_page || 1;
+
+    for (let page = 2; page <= lastPage; page += 1) {
+      const params = new URLSearchParams({
+        include: 'requester,approver',
+        sort: '-requested_at',
+        per_page: '100',
+        page: String(page),
+      });
+      const response = await apiClient.get<{ data: ApprovalRequestDto[] }>(`/inventory/approval-requests?${params.toString()}`);
+      requests.push(...response.data);
+    }
+
+    return requests.map(mapApprovalRequestFromDto);
   },
 
   async updateApprovalRequest(id: string, status: 'approved' | 'rejected', notes?: string): Promise<ApprovalRequest> {
@@ -190,11 +216,16 @@ export const inventoryApi = {
     amount?: number;
   }): Promise<ApprovalRequest> {
     const approval_number = `APP-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const authUserStr = window.localStorage.getItem('cvba_api_user');
+    const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+    const requester_id = authUser ? authUser.id : undefined;
+
     const response = await apiClient.post<{ data: ApprovalRequestDto }>('/inventory/approval-requests', {
       ...data,
       approval_number,
+      requester_id,
       status: 'pending',
-      requested_at: new Date().toISOString(),
+      requested_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
     });
     return mapApprovalRequestFromDto(response.data);
   },
