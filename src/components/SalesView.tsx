@@ -42,6 +42,7 @@ interface SalesFormItem {
   productId: string;
   quantity: number;
   unitPrice: number;
+  unit?: string;
 }
 
 export default function SalesView({
@@ -111,7 +112,7 @@ export default function SalesView({
         if (prev.length > 0 && prev.some(item => item.productId)) return prev;
         const defaultProduct = prods.find(p => !isQuotation ? p.type === 'finished_good' : true) || prods[0];
         return defaultProduct
-          ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0 }]
+          ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit }]
           : prev;
       });
     } catch (err) {
@@ -170,7 +171,7 @@ export default function SalesView({
   const resetFormItems = () => {
     const defaultProduct = products.find(p => (isQuotation ? true : p.type === 'finished_good')) || products[0];
     setFormItems(defaultProduct
-      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0 }]
+      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit }]
       : [{ productId: '', quantity: 1, unitPrice: 0 }]
     );
   };
@@ -738,6 +739,7 @@ export default function SalesView({
                               productId: product?.id || item.productId || '',
                               quantity: item.quantity,
                               unitPrice: item.price,
+                              unit: product?.unit,
                             };
                           }));
                         }
@@ -792,6 +794,7 @@ export default function SalesView({
                               productId: product.id,
                               unitPrice: product.sellingPrice || 0,
                               quantity: item.quantity > 0 ? item.quantity : 1,
+                              unit: product.unit,
                             });
                           }}
                           typeFilter={isQuotation ? undefined : "finished_good"}
@@ -800,7 +803,9 @@ export default function SalesView({
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-600">Kuantitas Unit / Pcs</label>
+                            <label className="text-[11px] font-bold text-slate-600">
+                              Kuantitas {item.unit ? `(${item.unit})` : ''}
+                            </label>
                             <input
                               type="number"
                               required
