@@ -179,12 +179,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: WalletCards,
         requiredModule: "finance",
       },
-      {
-        view: "cash-expense",
-        label: "Kas & Biaya",
-        icon: Calculator,
-        requiredModule: "finance",
-      },
+      // {
+      //   view: "cash-expense",
+      //   label: "Kas & Biaya",
+      //   icon: Calculator,
+      //   requiredModule: "finance",
+      // },
     ],
   },
   {

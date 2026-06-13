@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Factory, Plus, Search, CheckCircle2, X, Clock, HelpCircle, 
-  FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2 
+import {
+  Factory, Plus, Search, CheckCircle2, X, Clock, HelpCircle,
+  FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2
 } from '@/src/components/icons';
 import SearchableSelect from './SearchableSelect';
 import { authStorage, apiClient } from '../services/api';
@@ -15,7 +15,7 @@ import { productsApi } from '../features/products/api';
 import { employeesApi } from '../features/employees/api';
 import { projectsApi } from '../features/projects/api';
 import { salesApi } from '../features/sales/api';
-import { ErrorCard } from './Skeleton';
+import { SkeletonTable, SkeletonCard, ErrorCard } from './Skeleton';
 import { ProductionWorkOrder, ProductionWorkLog, Employee, Product, Project, SalesOrder } from '../types';
 import Swal from 'sweetalert2';
 
@@ -229,7 +229,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
       };
 
       const createdLog = await productionApi.createWorkLog(payload);
-      
+
       // Refresh work orders to recalculate progress & logs
       const refreshedWos = await productionApi.getWorkOrders();
       setWorkOrders(refreshedWos);
@@ -344,7 +344,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     : undefined;
   const targetUnit = selectedCreateProduct?.unit || 'pcs';
 
-  const filteredWos = workOrders.filter(w => 
+  const filteredWos = workOrders.filter(w =>
     w.workOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (w.productName && w.productName.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (w.sourceLabel && w.sourceLabel.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -382,10 +382,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
           </div>
           <div>
             <h3 className="font-sans font-bold text-sm text-slate-800 flex items-center gap-2">
-              Work Order & SPK Cetak
+              Work Order Cetak
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              Keluarkan Surat Perintah Kerja (SPK) untuk tukang, monitor progress cetak harian, hitung persentase barang reject, dan monitor produksi beton secara live.
+              Keluarkan Work Order untuk tukang, monitor progress cetak harian, hitung persentase barang reject, dan monitor produksi beton secara live.
             </p>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
           className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
         >
           <Plus size={14} />
-          <span>Buat SPK / WO</span>
+          <span>Buat Work Order</span>
         </button>
       </div>
 
@@ -458,22 +458,20 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
               <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
                 {filteredWos.map((wo) => (
-                  <div 
+                  <div
                     key={wo.id}
                     onClick={() => setSelectedWoId(wo.id)}
-                    className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${
-                      selectedWoId === wo.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
-                    }`}
+                    className={`p-4 cursor-pointer hover:bg-slate-50/50 transition-colors flex items-center justify-between gap-3 ${selectedWoId === wo.id ? 'bg-cyan-50/45 border-l-4 border-cyan-500 pl-3' : ''
+                      }`}
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-cyan-600">{wo.workOrderNumber}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                          wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                          wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                          wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                          'bg-cyan-50 text-cyan-700 border-cyan-100'
-                        }`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                              wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-cyan-50 text-cyan-700 border-cyan-100'
+                          }`}>
                           {wo.stage}
                         </span>
                       </div>
@@ -638,9 +636,8 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                             <div key={worker} className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px]">
                               <div className="flex items-center justify-between gap-1 font-bold">
                                 <span className="text-slate-800 truncate">{worker}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                                  rejectRate > 4 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                }`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${rejectRate > 4 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                  }`}>
                                   {rejectRate}% reject
                                 </span>
                               </div>
@@ -686,7 +683,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Factory size={16} className="text-cyan-400" />
-                <h3 className="font-bold text-sm">Buat Work Order / SPK</h3>
+                <h3 className="font-bold text-sm">Buat Work Order</h3>
               </div>
               <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
                 <X size={16} />
@@ -694,33 +691,85 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
             </div>
 
             <form onSubmit={handleCreateWo} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">No. Work Order (Otomatis)</label>
-                  <input
-                    type="text"
-                    required
-                    readOnly
-                    disabled
-                    value={newWoNumber}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono cursor-not-allowed"
+                  <label className="block font-bold text-slate-700">Sales Order (Opsional)</label>
+                  <SearchableSelect
+                    value={selectedSalesOrderId}
+                    onChange={(val) => {
+                      setSelectedSalesOrderId(val);
+                      setSelectedProjectId('');
+                      setSelectedSalesOrderItemIndex('');
+                      const salesOrder = salesOrders.find(so => so.id === val);
+                      if (salesOrder?.items?.length) {
+                        applySalesOrderItemToForm(salesOrder, 0);
+                      }
+                    }}
+                    options={salesOrders.map(so => ({
+                      value: so.id,
+                      label: `${so.orderNumber} (${so.customerName})`
+                    }))}
+                    placeholder="-- Cari Sales Order --"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Tahap Awal *</label>
+                  <label className="block font-bold text-slate-700">Proyek Konstruksi</label>
                   <select
-                    value={stage}
-                    onChange={(e) => setStage(e.target.value)}
+                    value={selectedProjectId}
+                    onChange={(e) => {
+                      setSelectedProjectId(e.target.value);
+                      setSelectedSalesOrderId('');
+                      setSelectedSalesOrderItemIndex('');
+                    }}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                   >
-                    <option value="Draft">Draft</option>
-                    <option value="Cetak">Cetak</option>
-                    <option value="Curing">Curing</option>
-                    <option value="Finishing">Finishing</option>
-                    <option value="QC">QC</option>
+                    <option value="">-- Tanpa Proyek --</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.projectName}</option>
+                    ))}
                   </select>
                 </div>
+              </div>
+
+              {selectedSalesOrderId && (
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Item Sales Order</label>
+                  <select
+                    value={selectedSalesOrderItemIndex}
+                    onChange={(e) => {
+                      const salesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
+                      if (salesOrder) {
+                        applySalesOrderItemToForm(salesOrder, Number(e.target.value));
+                      }
+                    }}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                  >
+                    {salesOrders
+                      .find(so => so.id === selectedSalesOrderId)
+                      ?.items?.map((item, index) => (
+                        <option key={`${item.productId || item.productName}-${index}`} value={index}>
+                          {item.productName}
+                          {item.specification ? ` (${item.specification})` : ''}
+                          {item.length ? ` - ukuran ${item.length}` : ''}
+                          {' '} - kebutuhan {item.quantity}
+                        </option>
+                      ))}
+                  </select>
+
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">No. Work Order (Otomatis)</label>
+                <input
+                  type="text"
+                  required
+                  readOnly
+                  disabled
+                  value={newWoNumber}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono cursor-not-allowed"
+                />
               </div>
 
               <div className="space-y-1">
@@ -732,6 +781,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     .filter(p => p.type !== 'raw_material' && p.type !== 'service')
                     .map(p => ({ value: p.id, label: `${p.sku} - ${p.name}` }))}
                   placeholder="-- Ketik Nama atau SKU Produk Jadi --"
+                  disabled={!!selectedSalesOrderId}
                 />
               </div>
 
@@ -746,11 +796,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     onChange={(e) => setTargetQty(Number(e.target.value))}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400 font-mono"
                   />
-                  {selectedCreateSalesOrderItem && (
-                    <p className="text-[10px] text-slate-400">
-                      Kebutuhan SO: {selectedCreateSalesOrderItem.quantity} {targetUnit}. Boleh produksi lebih untuk stok gudang.
-                    </p>
-                  )}
+
                 </div>
 
                 <div className="space-y-1">
@@ -765,94 +811,15 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-3 space-y-3">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Kaitkan Dengan Penjualan / Proyek (Opsional)
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Sales Order</label>
-                    <select
-                      value={selectedSalesOrderId}
-                      onChange={(e) => {
-                        const salesOrderId = e.target.value;
-                        setSelectedSalesOrderId(salesOrderId);
-                        setSelectedProjectId('');
-                        setSelectedSalesOrderItemIndex('');
-                        const salesOrder = salesOrders.find(so => so.id === salesOrderId);
-                        if (salesOrder?.items?.length) {
-                          applySalesOrderItemToForm(salesOrder, 0);
-                        }
-                      }}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                    >
-                      <option value="">-- Tanpa SO --</option>
-                      {salesOrders.map(so => (
-                        <option key={so.id} value={so.id}>{so.orderNumber} ({so.customerName})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Proyek Konstruksi</label>
-                    <select
-                      value={selectedProjectId}
-                      onChange={(e) => {
-                        setSelectedProjectId(e.target.value);
-                        setSelectedSalesOrderId('');
-                        setSelectedSalesOrderItemIndex('');
-                      }}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                    >
-                      <option value="">-- Tanpa Proyek --</option>
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.projectName}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {selectedSalesOrderId && (
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Item Sales Order</label>
-                    <select
-                      value={selectedSalesOrderItemIndex}
-                      onChange={(e) => {
-                        const salesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
-                        if (salesOrder) {
-                          applySalesOrderItemToForm(salesOrder, Number(e.target.value));
-                        }
-                      }}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
-                    >
-                      {salesOrders
-                        .find(so => so.id === selectedSalesOrderId)
-                        ?.items?.map((item, index) => (
-                          <option key={`${item.productId || item.productName}-${index}`} value={index}>
-                            {item.productName}
-                            {item.specification ? ` (${item.specification})` : ''}
-                            {item.length ? ` - ukuran ${item.length}` : ''}
-                            {' '} - kebutuhan {item.quantity}
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-[10px] text-slate-400">
-                      Produk dan target otomatis mengikuti item SO. Target boleh dinaikkan untuk stok gudang, tapi tidak boleh di bawah kebutuhan SO.
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Sumber Keterangan Kustom</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Stok Gudang Utama / GRC Masjid"
-                    value={sourceLabel}
-                    onChange={(e) => setSourceLabel(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Sumber Keterangan Kustom</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Stok Gudang Utama / GRC Masjid"
+                  value={sourceLabel}
+                  onChange={(e) => setSourceLabel(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none"
+                />
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
@@ -867,7 +834,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   type="submit"
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  Simpan SPK
+                  Simpan Work Order
                 </button>
               </div>
             </form>
@@ -1032,7 +999,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                       { value: 'QC', label: 'QC & Siap (Selesai QC / Siap Kirim)' }
                     ];
                     const currentIndex = stages.findIndex(s => s.value === selectedWo.stage);
-                    
+
                     return stages.map((s, index) => {
                       const isDisabled = index > currentIndex + 1;
                       return (
@@ -1096,7 +1063,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 font-mono text-lg font-bold text-emerald-700"
                   />
                   <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
-                    Total OK: {totalOk} pcs<br/>
+                    Total OK: {totalOk} pcs<br />
                     Sdh Terima: {selectedWo.completedQty} pcs
                   </div>
                 </div>

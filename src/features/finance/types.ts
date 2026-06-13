@@ -15,6 +15,7 @@ export interface InvoiceDto {
   customer?: {
     id: string;
     name: string;
+    phone?: string;
   };
 }
 

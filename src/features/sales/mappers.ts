@@ -47,6 +47,7 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
     specification: item.specification || undefined,
+    description: item.description || undefined,
     quantity: Number(item.quantity),
     price: Number(item.unit_price),
     unit: item.product?.unit?.name
@@ -68,6 +69,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
     specification: item.specification || undefined,
+    description: item.description || undefined,
     quantity: Number(item.quantity),
     price: Number(item.unit_price),
     unit: item.product?.unit?.name

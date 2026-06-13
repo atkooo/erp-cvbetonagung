@@ -5,6 +5,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import Swal from 'sweetalert2';
 import {
   FileSpreadsheet,
   FileCheck,
@@ -45,6 +46,10 @@ interface SalesFormItem {
   unitPrice: number;
   unit?: string;
   stock?: number;
+  pieceCount?: number;
+  length?: number;
+  specification?: string;
+  description?: string;
 }
 
 export default function SalesView({
@@ -245,6 +250,10 @@ export default function SalesView({
           notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,
+            piece_count: item.pieceCount,
+            length: item.length,
+            specification: item.specification,
+            description: item.description,
             quantity: item.quantity,
             unit_price: item.unitPrice,
           }))
@@ -258,6 +267,10 @@ export default function SalesView({
           notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,
+            piece_count: item.pieceCount,
+            length: item.length,
+            specification: item.specification,
+            description: item.description,
             quantity: item.quantity,
             unit_price: item.unitPrice,
           }))
@@ -306,27 +319,59 @@ export default function SalesView({
   };
 
   const handleApproveQuotation = async (docId: string, quoteNum: string) => {
-    try {
-      await salesApi.approveQuotation(docId);
-      onTriggerNotification(`Sukses mengonversi Quotation ${quoteNum} menjadi Sales Order (SO)`);
-      await loadData();
-    } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve quotation');
+    const result = await Swal.fire({
+      title: `Approve Quotation ${quoteNum}?`,
+      text: "Quotation ini akan disetujui. Apakah Anda juga ingin mencetaknya?",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0f172a',
+      cancelButtonColor: '#e2e8f0',
+      cancelButtonText: '<span style="color:#475569">Batal</span>',
+      confirmButtonText: 'Ya, Approve'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await salesApi.updateQuotation(docId, { status: 'approved' });
+        onTriggerNotification(`Sukses menyetujui Quotation ${quoteNum}.`);
+        await loadData();
+        
+        handlePrintAction();
+        setTimeout(() => {
+          setSelectedDoc(null);
+        }, 500);
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve quotation');
+      }
     }
-    onNavigate('sales-orders');
-    setSelectedDoc(null);
   };
 
   const handleApproveSalesOrder = async (docId: string, docNum: string) => {
-    try {
-      await salesApi.approveSalesOrder(docId);
-      onTriggerNotification(`Sukses approve Sales Order ${docNum} dan menerbitkan tagihan (Invoice) otomatis.`);
-      await loadData();
-    } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve sales order');
+    const result = await Swal.fire({
+      title: `Approve Sales Order ${docNum}?`,
+      text: "Sales Order ini akan disetujui. Apakah Anda juga ingin mencetaknya?",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0f172a',
+      cancelButtonColor: '#e2e8f0',
+      cancelButtonText: '<span style="color:#475569">Batal</span>',
+      confirmButtonText: 'Ya, Approve'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await salesApi.updateSalesOrder(docId, { status: 'approved' });
+        onTriggerNotification(`Sukses menyetujui Sales Order ${docNum}.`);
+        await loadData();
+
+        handlePrintAction();
+        setTimeout(() => {
+          setSelectedDoc(null);
+        }, 500);
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal approve sales order');
+      }
     }
-    onNavigate('invoices');
-    setSelectedDoc(null);
   };
 
   return (
@@ -527,7 +572,17 @@ export default function SalesView({
                       <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs">
                         <div>
                           <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
-                          <span className="text-slate-400 text-[11px] font-mono">{item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}</span>
+                          {(item.specification || item.description) && (
+                            <div className="text-[10px] text-slate-500 mb-1 leading-tight">
+                              {item.specification && <span className="block border-b border-slate-100 pb-0.5 mb-0.5">Spesifikasi: {item.specification}</span>}
+                              {item.description && <span className="block italic mt-0.5">{item.description}</span>}
+                            </div>
+                          )}
+                          <span className="text-slate-400 text-[11px] font-mono block">
+                            {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
+                            {item.pieceCount ? ` (${item.pieceCount} Batang)` : ''}
+                            {item.length ? ` (${item.length} Meter)` : ''}
+                          </span>
                         </div>
                         <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
                       </div>
@@ -544,26 +599,36 @@ export default function SalesView({
                 <span className="text-indigo-700 font-mono">{formatIDR(selectedDoc.total)}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`);
-                    setTimeout(() => handlePrintAction(), 150);
-                  }}
-                  className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5"
-                >
-                  <Printer size={13} />
-                  <span>Cetak PDF</span>
-                </button>
+              <div className={(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) || (!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}>
+                {!(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && !(!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) && (
+                  <button
+                    onClick={() => {
+                      onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`);
+                      setTimeout(() => handlePrintAction(), 150);
+                    }}
+                    className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5"
+                  >
+                    <Printer size={13} />
+                    <span>Cetak PDF</span>
+                  </button>
+                )}
 
                 {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
-                  <button
-                    onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber)}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <FileCheck size={13} className="text-white" />
-                    <span>Approve to SO</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber)}
+                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <FileCheck size={13} className="text-white" />
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedDoc(null)}
+                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </>
                 ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                   <div className="flex flex-col gap-2 w-full">
                     {selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' ? (
@@ -571,37 +636,12 @@ export default function SalesView({
                         onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
                         className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
                       >
-                        <Receipt size={13} className="text-white" />
-                        <span>Approve & Terbitkan Invoice</span>
+                        <FileCheck size={13} className="text-white" />
+                        <span>Approve</span>
                       </button>
                     ) : null}
 
-                    {selectedDoc.status === 'Disetujui' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            const doNum = `DO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-                            await salesApi.createDeliveryOrder(selectedDoc.id, {
-                              delivery_number: doNum,
-                              delivery_date: todayStr,
-                              notes: `Surat jalan otomatis dari Sales Order ${selectedDoc.orderNumber}`
-                            });
-
-                            onTriggerNotification(`Berhasil menerbitkan Surat Jalan ${doNum} untuk sales order ${selectedDoc.orderNumber}`);
-                            onNavigate('delivery-orders');
-                          } catch (err) {
-                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan Surat Jalan. Pastikan invoice sudah dibayar (minimal sebagian).');
-                          }
-                          setSelectedDoc(null);
-                        }}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
-                      >
-                        <Truck size={13} className="text-white" />
-                        <span>Terbitkan Surat Jalan (DO)</span>
-                      </button>
-                    )}
 
                     <button
                       onClick={() => setSelectedDoc(null)}
@@ -666,11 +706,27 @@ export default function SalesView({
                   <tbody>
                     {selectedDoc.items?.map((item: any, idx: number) => (
                       <tr key={`${item.productName}-${idx}`}>
-                        <td className="border border-black p-2 text-center">{idx + 1}</td>
-                        <td className="border border-black p-2 font-bold">{item.productName}</td>
-                        <td className="border border-black p-2 text-right font-mono">{item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span></td>
-                        <td className="border border-black p-2 text-right font-mono">{formatIDR(item.price)}</td>
-                        <td className="border border-black p-2 text-right font-mono font-bold">{formatIDR(item.quantity * item.price)}</td>
+                        <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
+                        <td className="border border-black p-2 align-top">
+                          <span className="font-bold block">{item.productName}</span>
+                          {(item.specification || item.description) && (
+                            <div className="text-[10px] text-slate-600 mt-1">
+                              {item.specification && <div className="border-b border-slate-200 pb-0.5 mb-0.5 border-dotted">Spek: {item.specification}</div>}
+                              {item.description && <div className="italic">{item.description}</div>}
+                            </div>
+                          )}
+                        </td>
+                        <td className="border border-black p-2 text-right font-mono align-top">
+                          {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
+                          {(item.pieceCount || item.length) && (
+                            <div className="text-[9px] text-slate-500 mt-1">
+                              {item.pieceCount ? <div>{item.pieceCount} Batang</div> : null}
+                              {item.length ? <div>{item.length} Meter</div> : null}
+                            </div>
+                          )}
+                        </td>
+                        <td className="border border-black p-2 text-right font-mono align-top">{formatIDR(item.price)}</td>
+                        <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(item.quantity * item.price)}</td>
                       </tr>
                     ))}
                     {!selectedDoc.items?.length && (
@@ -717,8 +773,8 @@ export default function SalesView({
       {/* 5. Create Draft Modal Form */}
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
+            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Receipt size={18} className="text-cyan-400" />
                 <h3 className="font-bold text-sm">Entri Memo {isQuotation ? 'Quotation Baru' : 'Sales Order Baru'}</h3>
@@ -728,169 +784,237 @@ export default function SalesView({
               </button>
             </div>
 
-            <form onSubmit={handleCreateDocument} className="p-5 space-y-4">
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
-                  <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
-                    <Plus size={10} /> Tambah Baru
-                  </button>
-                </div>
-                {customers.length > 0 ? (
-                  <SearchableSelect
-                    value={custId}
-                    onChange={(val) => setCustId(val)}
-                    options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-                    placeholder="Pilih Customer..."
-                  />
-                ) : (
-                  <SearchableSelect
-                    value=""
-                    onChange={() => { }}
-                    options={[]}
-                    placeholder="Memuat Customer..."
-                    disabled
-                  />
-                )}
-              </div>
-
-              {!isQuotation && (
+            <form onSubmit={handleCreateDocument} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation (Opsional)</label>
-                  <SearchableSelect
-                    value={quotationId}
-                    onChange={(qId) => {
-                      setQuotationId(qId);
-                      if (qId) {
-                        const selectedQuo = quotations.find(q => q.id === qId);
-                        if (selectedQuo && selectedQuo.items && selectedQuo.items.length > 0) {
-                          setFormItems(selectedQuo.items.map(item => {
-                            const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
-                            return {
-                              productId: product?.id || item.productId || '',
-                              quantity: item.quantity,
-                              unitPrice: item.price,
-                              unit: product?.unit,
-                              stock: product?.stock,
-                            };
-                          }));
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
+                    <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+                      <Plus size={10} /> Tambah Baru
+                    </button>
+                  </div>
+                  {customers.length > 0 ? (
+                    <SearchableSelect
+                      value={custId}
+                      onChange={(val) => setCustId(val)}
+                      options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
+                      placeholder="Pilih Customer..."
+                    />
+                  ) : (
+                    <SearchableSelect
+                      value=""
+                      onChange={() => { }}
+                      options={[]}
+                      placeholder="Memuat Customer..."
+                      disabled
+                    />
+                  )}
+                </div>
+
+                {!isQuotation && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
+                    <SearchableSelect
+                      value={quotationId}
+                      onChange={(qId) => {
+                        setQuotationId(qId);
+                        if (qId) {
+                          const selectedQuo = quotations.find(q => q.id === qId);
+                          if (selectedQuo && selectedQuo.items && selectedQuo.items.length > 0) {
+                            setFormItems(selectedQuo.items.map(item => {
+                              const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
+                              return {
+                                productId: product?.id || item.productId || '',
+                                pieceCount: item.pieceCount,
+                                length: item.length,
+                                specification: item.specification,
+                                description: item.description,
+                                quantity: item.quantity,
+                                unitPrice: item.price,
+                                unit: product?.unit,
+                                stock: product?.stock,
+                              };
+                            }));
+                          }
+                        } else {
+                          resetFormItems();
                         }
-                      } else {
-                        resetFormItems();
-                      }
-                    }}
-                    options={[
-                      { value: "", label: "-- Tanpa Referensi Quotation --" },
-                      ...quotations
-                        .filter(q => q.customerId === custId && (q.status === 'Terkirim' || q.status === 'Draft'))
-                        .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${formatIDR(q.total)}` }))
-                    ]}
-                    placeholder="Pilih Referensi Quotation..."
+                      }}
+                      options={[
+                        { value: "", label: "-- Tanpa Referensi Quotation --" },
+                        ...quotations
+                          .filter(q => q.customerId === custId && q.status === 'Disetujui')
+                          .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${formatIDR(q.total)}` }))
+                      ]}
+                      placeholder="Pilih Referensi Quotation..."
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
+                    <button
+                      type="button"
+                      onClick={addFormItem}
+                      className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={10} /> Tambah Baris
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 pr-1">
+                    {formItems.map((item, index) => (
+                      <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFormItem(index)}
+                            disabled={formItems.length === 1}
+                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
+                            title="Hapus baris"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+
+                        <ProductPicker
+                          value={item.productId}
+                          showCategoryFilter
+                          onChange={(product) => {
+                            updateFormItem(index, {
+                              productId: product.id,
+                              unitPrice: product.sellingPrice || 0,
+                              quantity: item.quantity > 0 ? item.quantity : 1,
+                              unit: product.unit,
+                              stock: product.stock,
+                            });
+                          }}
+                          typeFilter={isQuotation ? undefined : "finished_good"}
+                          placeholder="Pilih Produk..."
+                        />
+
+                        <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3 mt-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600">Qty</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.pieceCount || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value ? Number(e.target.value) : undefined;
+                                  const l = item.length || 1;
+                                  const p = val || 1;
+                                  updateFormItem(index, {
+                                    pieceCount: val,
+                                    quantity: parseFloat((p * l).toFixed(2))
+                                  });
+                                }}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                placeholder="Misal: 10 (Batang/Pcs/Zak)"
+                              />
+
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 capitalize">
+                                {item.unit || 'Satuan'}
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.length || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value ? Number(e.target.value) : undefined;
+                                  const p = item.pieceCount || 1;
+                                  const l = val || 1;
+                                  updateFormItem(index, {
+                                    length: val,
+                                    quantity: parseFloat((p * l).toFixed(2))
+                                  });
+                                }}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                placeholder="Opsional (misal: 6.5)"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 border-dashed">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 capitalize">
+                                Total {item.unit || 'Unit'}
+                              </label>
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                step="0.01"
+                                value={item.quantity || ''}
+                                readOnly={true}
+                                className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50/50 border-indigo-100 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                              />
+                              {typeof item.stock === 'number' && (
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                  Stok: {item.stock} {item.unit || 'unit'}
+                                </p>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600">
+                                Harga Satuan (Rp {item.unit ? `/ ${item.unit}` : ''})
+                              </label>
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                value={item.unitPrice || ''}
+                                onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 mt-3">
+                          <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
+                          <input
+                            type="text"
+                            value={item.description || ''}
+                            onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                            placeholder="Opsional (catatan khusus...)"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
+                  </label>
+                  <textarea
+                    value={documentNotes}
+                    onChange={(e) => setDocumentNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
-                  <button
-                    type="button"
-                    onClick={addFormItem}
-                    className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus size={10} /> Tambah Baris
-                  </button>
+              </div>
+              <div className="p-4 border-t bg-slate-50 flex justify-between items-center shrink-0">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Total Proyeksi Kontrak</span>
+                  <p className="text-sm font-black text-indigo-750 font-mono leading-none mt-0.5">{formatIDR(formTotal)}</p>
                 </div>
-
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                  {formItems.map((item, index) => (
-                    <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFormItem(index)}
-                          disabled={formItems.length === 1}
-                          className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
-                          title="Hapus baris"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-
-                      <ProductPicker
-                        value={item.productId}
-                        showCategoryFilter
-                        onChange={(product) => {
-                          updateFormItem(index, {
-                            productId: product.id,
-                            unitPrice: product.sellingPrice || 0,
-                            quantity: item.quantity > 0 ? item.quantity : 1,
-                            unit: product.unit,
-                            stock: product.stock,
-                          });
-                        }}
-                        typeFilter={isQuotation ? undefined : "finished_good"}
-                        placeholder="Pilih Produk..."
-                      />
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-slate-600">
-                            Kuantitas {item.unit ? `(${item.unit})` : ''}
-                          </label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            value={item.quantity || ''}
-                            onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                          />
-                          {typeof item.stock === 'number' && (
-                            <p className="text-[10px] text-slate-400">
-                              Stok tersedia: {item.stock} {item.unit || 'unit'}
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan (Rp)</label>
-                          <input
-                            type="number"
-                            required
-                            min="1"
-                            value={item.unitPrice || ''}
-                            onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex gap-2 text-xs font-bold">
+                  <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-100">Batal</button>
+                  <button type="submit" className="px-5 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-800">Penerbitan Draft</button>
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">
-                  Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
-                </label>
-                <textarea
-                  value={documentNotes}
-                  onChange={(e) => setDocumentNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Total Proyeksi Kontrak</span>
-                <p className="text-sm font-black text-indigo-750 font-mono mt-1">{formatIDR(formTotal)}</p>
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
-                <button type="submit" className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg">Penerbitan Draft</button>
               </div>
             </form>
           </div>

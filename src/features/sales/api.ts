@@ -15,6 +15,11 @@ export const salesApi = {
     return mapQuotationFromDto(response.data);
   },
 
+  async updateQuotation(id: string, data: Partial<CreateQuotationDto & { status: string }>): Promise<Quotation> {
+    const response = await apiClient.put<{ data: QuotationDto }>(`/sales/quotations/${id}`, data);
+    return mapQuotationFromDto(response.data);
+  },
+
   async approveQuotation(id: string): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/quotations/${id}/approve`, {
       order_date: toApiDate(),
@@ -36,6 +41,11 @@ export const salesApi = {
 
   async createSalesOrder(data: CreateSalesOrderDto): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/sales-orders', data);
+    return mapSalesOrderFromDto(response.data);
+  },
+
+  async updateSalesOrder(id: string, data: Partial<CreateSalesOrderDto & { status: string }>): Promise<SalesOrder> {
+    const response = await apiClient.put<{ data: SalesOrderDto }>(`/sales/sales-orders/${id}`, data);
     return mapSalesOrderFromDto(response.data);
   },
 

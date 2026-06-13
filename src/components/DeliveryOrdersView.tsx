@@ -23,6 +23,7 @@ import { authStorage, apiClient } from "../services/api";
 import { salesApi } from "../features/sales/api";
 import { DeliveryOrder, SalesOrder } from "../types";
 import { SkeletonTable, SkeletonCard, ErrorCard } from "./Skeleton";
+import SearchableSelect from "./SearchableSelect";
 
 interface DeliveryOrdersViewProps {
   onTriggerNotification: (message: string) => void;
@@ -32,6 +33,9 @@ interface StorageLocationOption {
   id: string;
   name: string;
   code: string;
+  warehouse?: {
+    name: string;
+  };
 }
 
 export default function DeliveryOrdersView({
@@ -42,6 +46,7 @@ export default function DeliveryOrdersView({
   const [storageLocations, setStorageLocations] = useState<
     StorageLocationOption[]
   >([]);
+  const [allStocks, setAllStocks] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -51,6 +56,7 @@ export default function DeliveryOrdersView({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShipModalOpen, setIsShipModalOpen] = useState(false);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDo, setSelectedDo] = useState<DeliveryOrder | null>(null);
   const [printDoId, setPrintDoId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -78,16 +84,18 @@ export default function DeliveryOrdersView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [dos, sos, locs] = await Promise.all([
+      const [dos, sos, locs, stocksRes] = await Promise.all([
         salesApi.getDeliveryOrders(),
         salesApi.getSalesOrders(),
         apiClient.get<{ data: StorageLocationOption[] }>(
           "/master-data/storage-locations",
         ),
+        apiClient.get<{ data: any[] }>("/inventory/stocks"),
       ]);
       setDeliveryOrders(dos);
       setSalesOrders(sos);
       setStorageLocations(locs.data || []);
+      setAllStocks(stocksRes.data || []);
     } catch (err) {
       console.error("Failed to load delivery order resources", err);
       const msg =
@@ -159,6 +167,9 @@ export default function DeliveryOrdersView({
         `Surat Jalan ${selectedDo.deliveryNumber} status diubah ke: Dikirim`,
       );
       setIsShipModalOpen(false);
+      
+      // Auto-print after shipping
+      handlePrintDo(updated);
     } catch (err) {
       console.error("Failed to ship delivery order", err);
       onTriggerNotification(
@@ -355,7 +366,6 @@ export default function DeliveryOrdersView({
                     <th className="p-3.5">Sales Order</th>
                     <th className="p-3.5">Customer / Relasi</th>
                     <th className="p-3.5">Tanggal Muat</th>
-                    <th className="p-3.5">Detail Muatan</th>
                     <th className="p-3.5">Nama Penerima</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 pr-5 text-right">Aksi</th>
@@ -378,24 +388,6 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
                         {doOrder.deliveryDate}
-                      </td>
-                      <td className="p-3.5 text-slate-600">
-                        {doOrder.items && doOrder.items.length > 0 ? (
-                          <div className="space-y-0.5">
-                            {doOrder.items.map((item) => (
-                              <div
-                                key={item.id}
-                                className="font-semibold text-slate-700"
-                              >
-                                {item.productName} ({item.quantity} pcs)
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">
-                            {doOrder.notes || "Muatan Custom"}
-                          </span>
-                        )}
                       </td>
                       <td className="p-3.5 font-mono text-slate-650 text-slate-700">
                         {doOrder.receiverName ? (
@@ -430,6 +422,16 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="p-3.5 pr-5 text-right">
                         <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedDo(doOrder);
+                              setIsDetailModalOpen(true);
+                            }}
+                            className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1"
+                          >
+                            <FileText size={10} />
+                            <span>Detail</span>
+                          </button>
                           {doOrder.status === "Siap Muat" && (
                             <button
                               onClick={() => handleOpenShipModal(doOrder)}
@@ -448,13 +450,15 @@ export default function DeliveryOrdersView({
                               <span>Terima</span>
                             </button>
                           )}
-                          <button
-                            onClick={() => handlePrintDo(doOrder)}
-                            className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1"
-                          >
-                            <Printer size={10} />
-                            <span>Cetak</span>
-                          </button>
+                          {doOrder.status !== "Siap Muat" && (
+                            <button
+                              onClick={() => handlePrintDo(doOrder)}
+                              className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1"
+                            >
+                              <Printer size={10} />
+                              <span>Cetak</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -618,6 +622,89 @@ export default function DeliveryOrdersView({
         </div>
       </div>
 
+      {/* Modal: Detail Surat Jalan */}
+      {isDetailModalOpen && selectedDo && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-cyan-400" />
+                <h3 className="font-bold text-sm">Detail Surat Jalan: {selectedDo.deliveryNumber}</h3>
+              </div>
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-[11px]">
+                <div>
+                  <div className="text-slate-400 font-bold uppercase mb-1">Customer</div>
+                  <div className="font-bold text-slate-800 text-sm">{selectedDo.customerName}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-bold uppercase mb-1">Sales Order</div>
+                  <div className="font-mono text-cyan-700 font-bold">{selectedDo.salesOrderNumber || "-"}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[11px] text-slate-400 font-bold uppercase mb-2">Rincian Muatan / Barang</div>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold">
+                      <tr>
+                        <th className="p-2.5">Produk</th>
+                        <th className="p-2.5 text-center">SKU</th>
+                        <th className="p-2.5 text-right">Kuantitas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {selectedDo.items && selectedDo.items.length > 0 ? (
+                        selectedDo.items.map((item, idx) => (
+                          <tr key={item.id || idx}>
+                            <td className="p-2.5 font-bold text-slate-700">{item.productName}</td>
+                            <td className="p-2.5 text-center font-mono text-slate-500">{item.productSku || "-"}</td>
+                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">{item.quantity} pcs</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="p-4 text-center text-slate-400 italic">
+                            {selectedDo.notes || "Tidak ada detail item (Muatan Custom)"}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {selectedDo.notes && (
+                <div>
+                  <div className="text-[11px] text-slate-400 font-bold uppercase mb-1">Catatan Pengiriman</div>
+                  <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-xs italic border border-amber-100">
+                    "{selectedDo.notes}"
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors text-xs"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Buat Surat Jalan */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -640,32 +727,22 @@ export default function DeliveryOrdersView({
                 <label className="block font-bold text-slate-700">
                   Pilih Sales Order *
                 </label>
-                <select
-                  required
+                <SearchableSelect
                   value={selectedSalesOrderId}
-                  onChange={(e) => setSelectedSalesOrderId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-cyan-400"
-                >
-                  <option value="">
-                    -- Pilih Sales Order Active (Lunas/Sebagian) --
-                  </option>
-                  {salesOrders
+                  onChange={(val) => setSelectedSalesOrderId(val)}
+                  options={salesOrders
                     .filter(
                       (so) => so.status === "Disetujui" && so.hasPaidInvoice,
                     )
-                    .map((so) => (
-                      <option key={so.id} value={so.id}>
-                        {so.orderNumber} - {so.customerName}
-                      </option>
-                    ))}
-                  {salesOrders.filter(
-                    (so) => so.status === "Disetujui" && so.hasPaidInvoice,
-                  ).length === 0 && (
-                    <option value="" disabled>
-                      Tidak ada Sales Order siap kirim (belum dibayar/approve)
-                    </option>
-                  )}
-                </select>
+                    .map((so) => ({
+                      value: so.id,
+                      label: `${so.orderNumber} - ${so.customerName}`
+                    }))}
+                  placeholder="-- Cari atau Pilih Sales Order --"
+                />
+                {salesOrders.filter((so) => so.status === "Disetujui" && so.hasPaidInvoice).length === 0 && (
+                  <p className="text-[10px] text-amber-600 mt-1">Tidak ada Sales Order siap kirim (belum dibayar/approve).</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -732,7 +809,7 @@ export default function DeliveryOrdersView({
       {/* Modal: Ship / Kirim Surat Jalan */}
       {isShipModalOpen && selectedDo && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Send size={16} className="text-cyan-400" />
@@ -761,25 +838,64 @@ export default function DeliveryOrdersView({
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="block font-bold text-slate-700">
-                  Asal Gudang / Lokasi Stok *
+                  Pilih Asal Gudang / Lokasi Stok *
                 </label>
-                <select
-                  required
-                  value={selectedLocationId}
-                  onChange={(e) => setSelectedLocationId(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-cyan-400"
-                >
-                  {storageLocations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name} ({loc.code})
-                    </option>
-                  ))}
-                </select>
+                
+                <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-60 overflow-y-auto">
+                  {storageLocations.map((loc) => {
+                    const doItems = selectedDo.items || [];
+                    const itemStockDetails = doItems.map(item => {
+                      const stockRecord = allStocks.find(s => s.location_id === loc.id && s.product_id === item.productId);
+                      const available = stockRecord ? Number(stockRecord.quantity) : 0;
+                      const required = Number(item.quantity);
+                      return { name: item.productName, required, available };
+                    });
+                    
+                    return (
+                      <label 
+                        key={loc.id} 
+                        className={`p-3 border-b border-slate-100 last:border-0 cursor-pointer transition-colors flex flex-col gap-2
+                          ${selectedLocationId === loc.id ? 'bg-cyan-50' : 'hover:bg-slate-50'}
+                        `}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <input 
+                            type="radio" 
+                            name="location" 
+                            value={loc.id} 
+                            checked={selectedLocationId === loc.id}
+                            onChange={() => setSelectedLocationId(loc.id)}
+                            className="text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5 mt-0.5"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-xs text-slate-800">
+                              {loc.warehouse?.name ? `${loc.warehouse.name} - ` : ''}{loc.name} 
+                            </span>
+                            <span className="text-slate-400 font-mono text-[10px] mt-0.5">Kode: {loc.code}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pl-6 space-y-1.5">
+                          {itemStockDetails.map((detail, idx) => (
+                            <div key={idx} className="flex justify-between items-start text-[10px] bg-white p-2 rounded border border-slate-100 shadow-sm gap-2">
+                              <span className="text-slate-600 font-bold leading-tight flex-1">{detail.name}</span>
+                              <div className="flex items-center gap-2 font-mono shrink-0 mt-0.5">
+                                <span className="text-slate-500">Butuh: {detail.required}</span>
+                                <span className={detail.available >= detail.required ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
+                                  Stok: {detail.available}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Stok material akan terpotong secara otomatis dari lokasi ini
-                  ketika status diubah ke "Dikirim".
+                  Pilih lokasi yang memiliki stok mencukupi. Stok barang akan otomatis terpotong.
                 </p>
               </div>
 

@@ -5,6 +5,7 @@ export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   id: dto.id,
   invoiceNumber: dto.invoice_number,
   customerName: dto.customer?.name || 'Unknown Customer',
+  customerPhone: dto.customer?.phone || undefined,
   date: dto.invoice_date,
   dueDate: dto.due_date,
   total: Number(dto.total),

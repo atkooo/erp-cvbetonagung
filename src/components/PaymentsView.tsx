@@ -10,6 +10,8 @@ import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
 import { formatDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import SearchableSelect from './SearchableSelect';
+import Swal from 'sweetalert2';
 
 interface PaymentsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -124,12 +126,25 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
   };
 
   const handleVerify = async (payId: string, payNum: string, customer: string, amount: number) => {
-    try {
-      await financeApi.verifyPayment(payId);
-      onTriggerNotification(`Berhasil memverifikasi setoran BANK dari ${customer} sebesar ${formatIDR(amount)}`);
-      await loadData();
-    } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal verifikasi pembayaran');
+    const result = await Swal.fire({
+      title: 'Verifikasi Pembayaran',
+      text: `Approve setoran dari ${customer} sebesar ${formatIDR(amount)}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#4f46e5',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Approve',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await financeApi.verifyPayment(payId);
+        onTriggerNotification(`Berhasil memverifikasi setoran BANK dari ${customer} sebesar ${formatIDR(amount)}`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal verifikasi pembayaran');
+      }
     }
   };
 
@@ -290,18 +305,15 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                 <form onSubmit={handleRecordPayment} className="p-5 space-y-4">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Invoice / Piutang Pelanggan</label>
-                    <select
-                      required
+                    <SearchableSelect
                       value={selectedInvoiceId}
-                      onChange={(e) => handleInvoiceChange(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                    >
-                      {unpaidInvoices.map((inv) => (
-                        <option key={inv.id} value={inv.id}>
-                          {inv.invoiceNumber} - {inv.customerName} - Sisa {formatIDR(inv.total - inv.paidAmount)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => handleInvoiceChange(val)}
+                      options={unpaidInvoices.map((inv) => ({
+                        value: inv.id,
+                        label: `${inv.invoiceNumber} - ${inv.customerName} - Sisa ${formatIDR(inv.total - inv.paidAmount)}`
+                      }))}
+                      placeholder="-- Cari atau Pilih Invoice --"
+                    />
                   </div>
 
                   {selectedInvoice && (
@@ -316,7 +328,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Metode Penerimaan</label>
                       <select
@@ -328,6 +340,24 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                         <option value="cash">Cash / Tunai</option>
                         <option value="qris">QRIS</option>
                       </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Persentase (%)</label>
+                      <input 
+                        type="number"
+                        min={1}
+                        max={100}
+                        placeholder="Contoh: 50"
+                        className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded placeholder:text-slate-300"
+                        onChange={(e) => {
+                          const pct = Number(e.target.value);
+                          if (pct > 0 && selectedInvoice) {
+                            const calculated = Math.round((selectedInvoice.total * pct) / 100);
+                            setPaymentAmount(calculated > selectedOutstanding ? selectedOutstanding : calculated);
+                          }
+                        }}
+                      />
                     </div>
 
                     <div className="space-y-1">

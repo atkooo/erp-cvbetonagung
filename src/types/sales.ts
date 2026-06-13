@@ -15,6 +15,7 @@ export interface SalesOrder {
     pieceCount?: number;
     length?: number;
     specification?: string;
+    description?: string;
     quantity: number;
     price: number;
     unit?: string;
@@ -38,6 +39,7 @@ export interface Quotation {
     pieceCount?: number;
     length?: number;
     specification?: string;
+    description?: string;
     quantity: number;
     price: number;
     unit?: string;
@@ -48,6 +50,7 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   customerName: string;
+  customerPhone?: string;
   date: string;
   dueDate: string;
   total: number;

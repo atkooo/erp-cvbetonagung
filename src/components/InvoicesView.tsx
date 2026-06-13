@@ -11,6 +11,10 @@ import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
 import { formatDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import { salesApi } from '../features/sales/api';
+import { SalesOrder } from '../types/sales';
+import { Plus } from 'lucide-react';
+import SearchableSelect from './SearchableSelect';
 
 interface InvoicesViewProps {
   onTriggerNotification: (message: string) => void;
@@ -22,6 +26,18 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Create Invoice states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [selectedSOId, setSelectedSOId] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // API states
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -44,9 +60,57 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     }
   };
 
+  const loadSalesOrders = async () => {
+    try {
+      const data = await salesApi.getSalesOrders();
+      // Only get Approved (Disetujui) sales orders that don't have invoices yet
+      const approvedSOs = data.filter(so => so.status === 'Disetujui' && !so.hasPaidInvoice); // actually, we can just show Disetujui
+      setSalesOrders(approvedSOs);
+    } catch (err) {
+      onTriggerNotification('Gagal memuat daftar Sales Order untuk invoice');
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSOId) {
+      onTriggerNotification('Silakan pilih Sales Order terlebih dahulu');
+      return;
+    }
+
+    const so = salesOrders.find(s => s.id === selectedSOId);
+    if (!so) return;
+
+    setIsSubmitting(true);
+    try {
+      const newInvoice = await financeApi.createInvoice({
+        customer_id: so.customerId || '',
+        sales_order_id: so.id,
+        invoice_date: invoiceDate,
+        due_date: dueDate,
+        total: so.total
+      });
+      onTriggerNotification(`Berhasil menerbitkan invoice untuk Sales Order ${so.orderNumber}`);
+      setShowCreateModal(false);
+      setSelectedSOId('');
+      await loadData();
+      
+      // Automatically show and print the new invoice
+      setSelectedInvoice(newInvoice);
+      setTimeout(() => {
+        handlePrintAction();
+      }, 500);
+
+    } catch (err) {
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
@@ -81,16 +145,19 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
           </h3>
           <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa piutang, dan status jatuh tempo.</p>
         </div>
-        <button
-          onClick={() => {
-            onNavigate('payments');
-            onTriggerNotification('Berpindah ke halaman Log Transaksi Pembayaran');
-          }}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg hover:bg-slate-800 font-bold text-xs flex items-center gap-1.5"
-        >
-          <DollarSign size={14} />
-          <span>Lihat Log Penerimaan</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              loadSalesOrders();
+              setShowCreateModal(true);
+            }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold text-xs flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            <span>Terbitkan Invoice</span>
+          </button>
+
+        </div>
       </div>
 
       {/* Inputs controls */}
@@ -249,11 +316,10 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   <span className="text-[9px] uppercase font-mono font-bold text-slate-400 block">Kondisi Validasi</span>
                   <strong className="text-slate-700 text-xs mt-0.5 block">Sisa Hutang: <span className="font-mono text-indigo-750 font-black">{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</span></strong>
                 </div>
-                
-                <span className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider ${
-                  selectedInvoice.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                  selectedInvoice.status === 'Sebagian Dibayar' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800 animate-pulse'
-                }`}>
+
+                <span className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider ${selectedInvoice.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    selectedInvoice.status === 'Sebagian Dibayar' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800 animate-pulse'
+                  }`}>
                   {selectedInvoice.status}
                 </span>
               </div>
@@ -271,7 +337,20 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
               <button
                 onClick={() => {
-                  onTriggerNotification(`Mengirim softcopy WA tagihan ke customer`);
+                  const message = `Halo ${selectedInvoice.customerName},\n\nBerikut adalah ringkasan tagihan (Invoice) dari *CV Beton Agung Solusi*:\n\n*No. Invoice:* ${selectedInvoice.invoiceNumber}\n*Total Tagihan:* ${formatIDR(selectedInvoice.total)}\n*Sisa Tagihan:* ${formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}\n*Jatuh Tempo:* ${formatDate(selectedInvoice.dueDate)}\n\nMohon segera melakukan pelunasan sebelum tanggal jatuh tempo. Terima kasih.`;
+                  
+                  let waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                  if (selectedInvoice.customerPhone) {
+                    let phone = selectedInvoice.customerPhone.replace(/\D/g, '');
+                    // Jika dimulai dengan angka 0, ubah menjadi format internasional Indonesia (62)
+                    if (phone.startsWith('0')) {
+                      phone = '62' + phone.substring(1);
+                    }
+                    waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                  }
+                  
+                  window.open(waUrl, '_blank');
+                  onTriggerNotification(`Membuka WhatsApp untuk mengirim tagihan ke ${selectedInvoice.customerName}`);
                 }}
                 className="px-3.5 py-1.5 border hover:bg-slate-100 rounded-lg flex items-center gap-1.5 text-slate-650 cursor-pointer"
               >
@@ -381,6 +460,82 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
           )}
         </div>
       </div>
+
+      {/* Create Invoice Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <Receipt size={16} className="text-cyan-400" />
+                Terbitkan Invoice Baru
+              </h3>
+              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateInvoice} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Referensi Sales Order (Approved)</label>
+                  <SearchableSelect
+                    value={selectedSOId}
+                    onChange={(val) => setSelectedSOId(val)}
+                    options={salesOrders.map(so => ({
+                      value: so.id,
+                      label: `${so.orderNumber} - ${so.customerName} - ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(so.total)}`
+                    }))}
+                    placeholder="-- Cari atau Pilih Sales Order --"
+                  />
+                  {salesOrders.length === 0 && (
+                    <p className="text-[10px] text-amber-600 mt-1">Belum ada Sales Order yang siap ditagihkan.</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Tanggal Invoice</label>
+                  <input
+                    type="date"
+                    required
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Jatuh Tempo</label>
+                  <input
+                    type="date"
+                    required
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-200 bg-slate-100 rounded-lg transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !selectedSOId}
+                  className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  {isSubmitting ? 'Memproses...' : 'Terbitkan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
