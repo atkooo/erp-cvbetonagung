@@ -179,7 +179,11 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
     r.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.referenceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.changeSummary.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).sort((a, b) => {
+    if (a.status === 'pending' && b.status !== 'pending') return -1;
+    if (a.status !== 'pending' && b.status === 'pending') return 1;
+    return 0;
+  });
 
   const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
