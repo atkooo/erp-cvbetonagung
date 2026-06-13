@@ -779,7 +779,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   onChange={(val) => setSelectedProductId(val)}
                   options={products
                     .filter(p => p.type !== 'raw_material' && p.type !== 'service')
-                    .map(p => ({ value: p.id, label: `${p.sku} - ${p.name}` }))}
+                    .map(p => ({ 
+                      value: p.id, 
+                      label: `${p.sku} - ${p.name}${p.length ? ` (${p.length})` : ''}${p.motif ? ` - ${p.motif}` : ''}` 
+                    }))}
                   placeholder="-- Ketik Nama atau SKU Produk Jadi --"
                   disabled={!!selectedSalesOrderId}
                 />

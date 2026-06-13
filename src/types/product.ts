@@ -5,6 +5,8 @@ export interface Product {
   sku: string;
   type: 'raw_material' | 'finished_good' | 'service';
   name: string;
+  length?: string;
+  motif?: string;
   category: string;
   costPrice: number;
   sellingPrice: number;

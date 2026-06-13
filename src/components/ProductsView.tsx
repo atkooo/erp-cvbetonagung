@@ -29,6 +29,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
+  const [length, setLength] = useState('');
+  const [motif, setMotif] = useState('');
   const [category, setCategory] = useState('');
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
@@ -129,6 +131,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const resetForm = () => {
     setSku('');
     setName('');
+    setLength('');
+    setMotif('');
     setType('finished_good');
     setCategory(categories[0]?.id || '');
     setCostPrice(0);
@@ -152,6 +156,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setEditingProduct(product);
     setSku(product.sku);
     setName(product.name);
+    setLength(product.length || '');
+    setMotif(product.motif || '');
     setType(product.type || 'finished_good');
     setCategory(selectedCategory?.id || categories[0]?.id || '');
     setCostPrice(product.costPrice);
@@ -201,6 +207,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       const payload = {
         sku,
         name,
+        length: length || undefined,
+        motif: motif || undefined,
         type,
         category_id: category, // The category select holds the ID
         unit_id: unit,
@@ -273,7 +281,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     try {
       await productsApi.deleteProduct(product.id);
       setProducts((prev) => prev.filter((prod) => prod.id !== product.id));
-      
+
       Swal.fire({
         title: 'Terhapus!',
         text: `Produk ${product.name} berhasil dihapus.`,
@@ -394,6 +402,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-800">{p.name}</div>
+                        {(p.length || p.motif) && (
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {p.length ? `Ukuran: ${p.length} ` : ''}{p.motif ? `Motif: ${p.motif}` : ''}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3.5">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-semibold border border-slate-200/50">
@@ -540,7 +553,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   >
                     <option value="raw_material">Raw Material (Bahan Baku)</option>
                     <option value="finished_good">Finished Good (Barang Jadi)</option>
-                    <option value="service">Service (Jasa)</option>
+                    {/* <option value="service">Service (Jasa)</option> */}
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -548,9 +561,32 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Kubah GRC Motif Madinah..."
+                    placeholder="Contoh: Kubah GRC / Tiang Serut"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Ukuran / Dimensi (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Misal: 20x20x10 cm atau 7.5M"
+                    value={length}
+                    onChange={(e) => setLength(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Motif / Spesifikasi (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Misal: Motif A"
+                    value={motif}
+                    onChange={(e) => setMotif(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
