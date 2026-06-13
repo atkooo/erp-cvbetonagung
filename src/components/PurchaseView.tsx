@@ -120,8 +120,8 @@ export default function PurchaseView({
   };
 
   const handleItemChange = (id: string, field: string, value: any) => {
-    setFormItems(
-      formItems.map((item) =>
+    setFormItems((prev) =>
+      prev.map((item) =>
         item.id === id ? { ...item, [field]: value } : item,
       ),
     );
@@ -625,7 +625,7 @@ export default function PurchaseView({
       {/* Rilis PO Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
             {/* Header */}
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -741,13 +741,19 @@ export default function PurchaseView({
                   </button>
                 </div>
 
-                <div className="bg-slate-50 border rounded-xl overflow-hidden">
-                  <table className="w-full text-left">
+                <div className="bg-slate-50 border rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[620px] table-fixed text-left">
+                    <colgroup>
+                      <col className="w-[52%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[22%]" />
+                      <col className="w-[8%]" />
+                    </colgroup>
                     <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-500 border-b">
                       <tr>
-                        <th className="p-2 w-1/2">Material / Produk</th>
-                        <th className="p-2 w-1/4">Qty</th>
-                        <th className="p-2 w-1/4">Harga Satuan (Rp)</th>
+                        <th className="p-2">Material / Produk</th>
+                        <th className="p-2">Qty</th>
+                        <th className="p-2">Harga Satuan (Rp)</th>
                         <th className="p-2 text-center">Aksi</th>
                       </tr>
                     </thead>
@@ -769,11 +775,11 @@ export default function PurchaseView({
                             />
                           </td>
                           <td className="p-2">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-2">
                               <input
                                 type="number"
                                 min="1"
-                                className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
+                                className="w-16 p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
                                 value={item.quantity}
                                 onChange={(e) =>
                                   handleItemChange(
@@ -784,7 +790,7 @@ export default function PurchaseView({
                                 }
                                 required
                               />
-                              <span className="text-[10px] text-slate-500 font-bold uppercase w-6">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase min-w-8">
                                 {item.unit || "-"}
                               </span>
                             </div>
