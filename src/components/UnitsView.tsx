@@ -21,6 +21,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
   const [editingUnit, setEditingUnit] = useState<UnitDto | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [type, setType] = useState<'raw_material' | 'finished_good' | 'both'>('both');
 
   const fetchUnits = () => {
     setIsLoading(true);
@@ -42,6 +43,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
   const resetForm = () => {
     setCode("");
     setName("");
+    setType("both");
   };
 
   const openAddModal = () => {
@@ -54,6 +56,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
     setEditingUnit(unit);
     setCode(unit.code);
     setName(unit.name);
+    setType(unit.type || "both");
     setShowModal(true);
   };
 
@@ -79,6 +82,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
         const updated = await productsApi.updateUnit(editingUnit.id, {
           code: normalizedCode,
           name: normalizedName,
+          type: type,
         });
         setUnits((prev) =>
           prev.map((unit) => (unit.id === editingUnit.id ? updated : unit)),
@@ -88,6 +92,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
         const created = await productsApi.createUnit({
           code: normalizedCode,
           name: normalizedName,
+          type: type,
         });
         setUnits((prev) => [...prev, created]);
         onTriggerNotification(`Sukses menambahkan satuan: ${created.name}`);
@@ -166,6 +171,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
             <tr>
               <th className="p-3.5 text-left">Kode</th>
               <th className="p-3.5 text-left">Nama Satuan</th>
+              <th className="p-3.5 text-left">Peruntukan</th>
               <th className="p-3.5 text-right">Aksi</th>
             </tr>
           </thead>
@@ -178,7 +184,7 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
               </tr>
             ) : units.length === 0 ? (
               <tr>
-                <td colSpan={3} className="p-8 text-center text-slate-400">
+                <td colSpan={4} className="p-8 text-center text-slate-400">
                   Belum ada satuan. Tambahkan satuan pertama untuk produk.
                 </td>
               </tr>
@@ -193,6 +199,11 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
                   </td>
                   <td className="p-3.5 font-bold text-slate-800">
                     {unit.name}
+                  </td>
+                  <td className="p-3.5">
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-medium">
+                      {unit.type === 'raw_material' ? 'Hanya Bahan Baku' : unit.type === 'finished_good' ? 'Hanya Barang Jadi' : 'Semua Tipe'}
+                    </span>
                   </td>
                   <td className="p-3.5">
                     <div className="flex items-center justify-end gap-1">
@@ -264,6 +275,24 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
                   placeholder="Contoh: Pieces"
                   className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Peruntukan Tipe Produk
+                </label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                >
+                  <option value="both">Keduanya (Bahan Baku & Barang Jadi)</option>
+                  <option value="raw_material">Hanya Bahan Baku</option>
+                  <option value="finished_good">Hanya Barang Jadi</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Membatasi pilihan satuan ini hanya muncul pada tipe produk tertentu untuk menghindari kesalahan input.
+                </p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">

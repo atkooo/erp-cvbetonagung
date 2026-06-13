@@ -29,8 +29,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
-  const [length, setLength] = useState('');
-  const [motif, setMotif] = useState('');
+  const [isCustomizable, setIsCustomizable] = useState(false);
+  const [pricingMethod, setPricingMethod] = useState<'per_item' | 'per_dimension'>('per_item');
   const [category, setCategory] = useState('');
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
@@ -49,6 +49,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
+  const filteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === type);
 
   const fetchData = () => {
     setIsLoading(true);
@@ -131,14 +132,15 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const resetForm = () => {
     setSku('');
     setName('');
-    setLength('');
-    setMotif('');
+    setIsCustomizable(false);
+    setPricingMethod('per_item');
     setType('finished_good');
     setCategory(categories[0]?.id || '');
     setCostPrice(0);
     setSellingPrice(0);
     setStock(0);
-    setUnit(visibleUnits[0]?.id || '');
+    const initialFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === 'finished_good');
+    setUnit(initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
     setLocation(storageLocations[0]?.id || '');
     setMinStock(10);
   };
@@ -156,14 +158,17 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setEditingProduct(product);
     setSku(product.sku);
     setName(product.name);
-    setLength(product.length || '');
-    setMotif(product.motif || '');
+    setIsCustomizable(product.isCustomizable || false);
+    setPricingMethod(product.pricingMethod || 'per_item');
     setType(product.type || 'finished_good');
     setCategory(selectedCategory?.id || categories[0]?.id || '');
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
     setStock(0);
-    setUnit(selectedUnit?.id || visibleUnits[0]?.id || '');
+    
+    const prodType = product.type || 'finished_good';
+    const initialFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === prodType);
+    setUnit(selectedUnit?.id || initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
     setLocation(storageLocations[0]?.id || '');
     setMinStock(product.minStock);
     setShowAddModal(true);
@@ -192,8 +197,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !costPrice || !sellingPrice) {
-      onTriggerNotification('Gagal menyimpan: Harap lengkapi semua kolom produk!');
+    if (!name) {
+      onTriggerNotification('Gagal menyimpan: Harap lengkapi nama produk!');
       return;
     }
     if (units.length === 0) {
@@ -207,8 +212,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       const payload = {
         sku,
         name,
-        length: length || undefined,
-        motif: motif || undefined,
+        is_customizable: isCustomizable,
+        pricing_method: pricingMethod,
         type,
         category_id: category, // The category select holds the ID
         unit_id: unit,
@@ -402,11 +407,6 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-800">{p.name}</div>
-                        {(p.length || p.motif) && (
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {p.length ? `Ukuran: ${p.length} ` : ''}{p.motif ? `Motif: ${p.motif}` : ''}
-                          </div>
-                        )}
                       </td>
                       <td className="p-3.5">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-semibold border border-slate-200/50">
@@ -548,7 +548,16 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Tipe Produk</label>
                   <select
                     value={type}
-                    onChange={(e) => setType(e.target.value as any)}
+                    onChange={(e) => {
+                      const newType = e.target.value as any;
+                      setType(newType);
+                      const newFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === newType);
+                      if (newFilteredUnits.length > 0 && !newFilteredUnits.find(u => u.id === unit)) {
+                        setUnit(newFilteredUnits[0].id);
+                      } else if (newFilteredUnits.length === 0) {
+                        setUnit('');
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
                   >
                     <option value="raw_material">Raw Material (Bahan Baku)</option>
@@ -569,35 +578,39 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-3.5 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Ukuran / Dimensi (Opsional)</label>
-                  <input
-                    type="text"
-                    placeholder="Misal: 20x20x10 cm atau 7.5M"
-                    value={length}
-                    onChange={(e) => setLength(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
+                  <label className="flex items-center gap-2 cursor-pointer mt-1">
+                    <input
+                      type="checkbox"
+                      checked={isCustomizable}
+                      onChange={(e) => setIsCustomizable(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-[11px] font-bold text-indigo-900 uppercase">Barang Bisa Di-Custom</span>
+                  </label>
+                  <p className="text-[9px] text-indigo-600/70 ml-6 leading-tight">Centang jika ukuran produk bisa dipesan khusus oleh pelanggan di Sales Order.</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Motif / Spesifikasi (Opsional)</label>
-                  <input
-                    type="text"
-                    placeholder="Misal: Motif A"
-                    value={motif}
-                    onChange={(e) => setMotif(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
+                {isCustomizable && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-indigo-900 uppercase">Metode Hitung Tagihan</label>
+                    <select
+                      value={pricingMethod}
+                      onChange={(e) => setPricingMethod(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-indigo-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-indigo-900"
+                    >
+                      <option value="per_item">Harga Per Batang / Pcs</option>
+                      <option value="per_dimension">Harga Per Meter / Dimensi</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Pokok Modal (Rp)</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Pokok Modal (Rp) (Opsional)</label>
                   <input
                     type="number"
-                    required
                     value={costPrice || ''}
                     onChange={(e) => setCostPrice(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
@@ -621,15 +634,24 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className={`w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${filteredUnits.length === 0 ? 'border-red-300 bg-red-50' : ''}`}
+                    disabled={filteredUnits.length === 0}
                   >
-                    {visibleUnits.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
+                    {filteredUnits.length > 0 ? (
+                      filteredUnits.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)
+                    ) : (
+                      <option value="">Tidak ada satuan</option>
+                    )}
                   </select>
-                  {units.length === 0 && (
-                    <p className="text-[10px] text-amber-600 font-semibold">
+                  {filteredUnits.length === 0 ? (
+                    <p className="text-[10px] text-red-600 font-semibold mt-1">
+                      Belum ada master satuan yang cocok untuk tipe produk ini.
+                    </p>
+                  ) : units.length === 0 ? (
+                    <p className="text-[10px] text-amber-600 font-semibold mt-1">
                       Master satuan belum tersedia di database.
                     </p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">Batas Minim Alaram</label>

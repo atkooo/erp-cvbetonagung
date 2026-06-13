@@ -5,8 +5,8 @@ export interface Product {
   sku: string;
   type: 'raw_material' | 'finished_good' | 'service';
   name: string;
-  length?: string;
-  motif?: string;
+  isCustomizable?: boolean;
+  pricingMethod?: 'per_item' | 'per_dimension';
   category: string;
   costPrice: number;
   sellingPrice: number;

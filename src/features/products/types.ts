@@ -17,11 +17,13 @@ export interface UnitDto {
   id: string;
   code: string;
   name: string;
+  type?: 'raw_material' | 'finished_good' | 'both';
 }
 
 export interface UnitFormData {
   code: string;
   name: string;
+  type?: 'raw_material' | 'finished_good' | 'both';
 }
 
 export interface ProductDto {
@@ -29,6 +31,8 @@ export interface ProductDto {
   sku: string;
   type: 'raw_material' | 'finished_good' | 'service';
   name: string;
+  is_customizable?: boolean;
+  pricing_method?: 'per_item' | 'per_dimension';
   category_id: string;
   unit_id: string;
   cost_price: string;
@@ -47,6 +51,8 @@ export interface ProductFormData {
   sku?: string;
   type?: 'raw_material' | 'finished_good' | 'service';
   name: string;
+  is_customizable?: boolean;
+  pricing_method?: 'per_item' | 'per_dimension';
   category_id: string;
   unit_id: string;
   cost_price: number;

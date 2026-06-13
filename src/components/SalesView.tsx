@@ -42,14 +42,15 @@ interface SalesViewProps {
 
 interface SalesFormItem {
   productId: string;
+  pieceCount?: number;
+  length?: number;
   quantity: number;
   unitPrice: number;
   unit?: string;
   stock?: number;
-  pieceCount?: number;
-  length?: number;
-  specification?: string;
   description?: string;
+  isCustomizable?: boolean;
+  pricingMethod?: 'per_item' | 'per_dimension';
 }
 
 export default function SalesView({
@@ -252,10 +253,9 @@ export default function SalesView({
             product_id: item.productId,
             piece_count: item.pieceCount,
             length: item.length,
-            specification: item.specification,
-            description: item.description,
             quantity: item.quantity,
             unit_price: item.unitPrice,
+            description: item.description
           }))
         });
         onTriggerNotification(`Sukses menerbitkan Quotation via API`);
@@ -269,10 +269,9 @@ export default function SalesView({
             product_id: item.productId,
             piece_count: item.pieceCount,
             length: item.length,
-            specification: item.specification,
-            description: item.description,
             quantity: item.quantity,
             unit_price: item.unitPrice,
+            description: item.description
           }))
         });
         onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
@@ -572,16 +571,11 @@ export default function SalesView({
                       <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs">
                         <div>
                           <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
-                          {(item.specification || item.description) && (
-                            <div className="text-[10px] text-slate-500 mb-1 leading-tight">
-                              {item.specification && <span className="block border-b border-slate-100 pb-0.5 mb-0.5">Spesifikasi: {item.specification}</span>}
-                              {item.description && <span className="block italic mt-0.5">{item.description}</span>}
-                            </div>
+                          {item.description && (
+                            <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
                           )}
                           <span className="text-slate-400 text-[11px] font-mono block">
                             {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
-                            {item.pieceCount ? ` (${item.pieceCount} Batang)` : ''}
-                            {item.length ? ` (${item.length} Meter)` : ''}
                           </span>
                         </div>
                         <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
@@ -709,21 +703,12 @@ export default function SalesView({
                         <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
                         <td className="border border-black p-2 align-top">
                           <span className="font-bold block">{item.productName}</span>
-                          {(item.specification || item.description) && (
-                            <div className="text-[10px] text-slate-600 mt-1">
-                              {item.specification && <div className="border-b border-slate-200 pb-0.5 mb-0.5 border-dotted">Spek: {item.specification}</div>}
-                              {item.description && <div className="italic">{item.description}</div>}
-                            </div>
+                          {item.description && (
+                            <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
                           )}
                         </td>
                         <td className="border border-black p-2 text-right font-mono align-top">
                           {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
-                          {(item.pieceCount || item.length) && (
-                            <div className="text-[9px] text-slate-500 mt-1">
-                              {item.pieceCount ? <div>{item.pieceCount} Batang</div> : null}
-                              {item.length ? <div>{item.length} Meter</div> : null}
-                            </div>
-                          )}
                         </td>
                         <td className="border border-black p-2 text-right font-mono align-top">{formatIDR(item.price)}</td>
                         <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(item.quantity * item.price)}</td>
@@ -825,14 +810,11 @@ export default function SalesView({
                               const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
                               return {
                                 productId: product?.id || item.productId || '',
-                                pieceCount: item.pieceCount,
-                                length: item.length,
-                                specification: item.specification,
-                                description: item.description,
                                 quantity: item.quantity,
                                 unitPrice: item.price,
                                 unit: product?.unit,
                                 stock: product?.stock,
+                                description: item.description,
                               };
                             }));
                           }
@@ -889,6 +871,8 @@ export default function SalesView({
                               quantity: item.quantity > 0 ? item.quantity : 1,
                               unit: product.unit,
                               stock: product.stock,
+                              isCustomizable: product.isCustomizable,
+                              pricingMethod: product.pricingMethod,
                             });
                           }}
                           typeFilter={isQuotation ? undefined : "finished_good"}
@@ -896,85 +880,101 @@ export default function SalesView({
                         />
 
                         <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3 mt-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600">Qty</label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={item.pieceCount || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value ? Number(e.target.value) : undefined;
-                                  const l = item.length || 1;
-                                  const p = val || 1;
-                                  updateFormItem(index, {
-                                    pieceCount: val,
-                                    quantity: parseFloat((p * l).toFixed(2))
-                                  });
-                                }}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                placeholder="Misal: 10 (Batang/Pcs/Zak)"
-                              />
+                          {item.isCustomizable ? (
+                            <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
+                              <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                Detail Dimensi Custom
+                              </h4>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">Jml Fisik (Batang/Pcs)</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.pieceCount || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value ? Number(e.target.value) : undefined;
+                                      const l = item.length || 1;
+                                      const p = val || 1;
+                                      updateFormItem(index, {
+                                        pieceCount: val,
+                                        quantity: item.pricingMethod === 'per_dimension' ? parseFloat((p * l).toFixed(2)) : p
+                                      });
+                                    }}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                    placeholder="Jml"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">Ukuran per Fisik ({item.unit || 'M'})</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.length || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value ? Number(e.target.value) : undefined;
+                                      const p = item.pieceCount || 1;
+                                      const l = val || 1;
+                                      updateFormItem(index, {
+                                        length: val,
+                                        quantity: item.pricingMethod === 'per_dimension' ? parseFloat((p * l).toFixed(2)) : p
+                                      });
+                                    }}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                    placeholder="Ukuran"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.pricingMethod === 'per_dimension' ? item.unit || 'M' : 'Item'})</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    min="0.01"
+                                    step="0.01"
+                                    value={item.quantity || ''}
+                                    readOnly={true}
+                                    className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50 border-indigo-200 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
+                                <input
+                                  type="number"
+                                  required
+                                  min="0.01"
+                                  step="0.01"
+                                  value={item.quantity || ''}
+                                  onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                  placeholder="Misal: 10"
+                                />
+                                {typeof item.stock === 'number' && (
+                                  <p className="text-[10px] text-slate-400 mt-1">
+                                    Stok: {item.stock} {item.unit || 'unit'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
 
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600 capitalize">
-                                {item.unit || 'Satuan'}
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={item.length || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value ? Number(e.target.value) : undefined;
-                                  const p = item.pieceCount || 1;
-                                  const l = val || 1;
-                                  updateFormItem(index, {
-                                    length: val,
-                                    quantity: parseFloat((p * l).toFixed(2))
-                                  });
-                                }}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                placeholder="Opsional (misal: 6.5)"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 border-dashed">
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600 capitalize">
-                                Total {item.unit || 'Unit'}
-                              </label>
-                              <input
-                                type="number"
-                                required
-                                min="1"
-                                step="0.01"
-                                value={item.quantity || ''}
-                                readOnly={true}
-                                className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50/50 border-indigo-100 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
-                              />
-                              {typeof item.stock === 'number' && (
-                                <p className="text-[10px] text-slate-400 mt-1">
-                                  Stok: {item.stock} {item.unit || 'unit'}
-                                </p>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600">
-                                Harga Satuan (Rp {item.unit ? `/ ${item.unit}` : ''})
-                              </label>
-                              <input
-                                type="number"
-                                required
-                                min="1"
-                                value={item.unitPrice || ''}
-                                onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                              />
-                            </div>
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-600">
+                              Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                            </label>
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              value={item.unitPrice || ''}
+                              onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                            />
                           </div>
                         </div>
 
