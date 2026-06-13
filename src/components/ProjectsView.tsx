@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Compass,
   MapPin,
@@ -26,13 +26,13 @@ import {
   Wrench,
   X,
   Plus,
-  Factory
-} from '@/src/components/icons';
-import { Project, ViewType, Customer, ProductionWorkOrder } from '../types';
-import { authStorage } from '../services/api';
-import { projectsApi } from '../features/projects/api';
-import { customersApi } from '../features/customers/api';
-import { productionApi } from '../features/production/api';
+  Factory,
+} from "@/src/components/icons";
+import { Project, ViewType, Customer, ProductionWorkOrder } from "../types";
+import { authStorage } from "../services/api";
+import { projectsApi } from "../features/projects/api";
+import { customersApi } from "../features/customers/api";
+import { productionApi } from "../features/production/api";
 
 interface ProjectsViewProps {
   selectedProjectId: string | null;
@@ -50,20 +50,20 @@ export default function ProjectsView({
   onTriggerNotification,
 }: ProjectsViewProps) {
   const [showEventAddModal, setShowEventAddModal] = useState(false);
-  const [newStage, setNewStage] = useState('Produksi Workshop');
-  const [newDesc, setNewDesc] = useState('');
+  const [newStage, setNewStage] = useState("Produksi Workshop");
+  const [newDesc, setNewDesc] = useState("");
 
   // Project registration states
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
-  const [projName, setProjName] = useState('');
-  const [custId, setCustId] = useState('');
-  const [projCode, setProjCode] = useState('AUTO GENERATED');
-  const [location, setLocation] = useState('');
-  const [projType, setProjType] = useState('Kubah Masjid');
-  const [projSpec, setProjSpec] = useState('');
+  const [projName, setProjName] = useState("");
+  const [custId, setCustId] = useState("");
+  const [projCode, setProjCode] = useState("AUTO GENERATED");
+  const [location, setLocation] = useState("");
+  const [projType, setProjType] = useState("Kubah Masjid");
+  const [projSpec, setProjSpec] = useState("");
   const [contractVal, setContractVal] = useState(0);
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // API states
@@ -77,7 +77,7 @@ export default function ProjectsView({
       const [projData, custData, woData] = await Promise.all([
         projectsApi.getProjects(),
         customersApi.listCustomers(),
-        productionApi.getWorkOrders()
+        productionApi.getWorkOrders(),
       ]);
       setProjects(projData);
       setCustomers(custData.customers || []);
@@ -86,7 +86,7 @@ export default function ProjectsView({
         setCustId(custData.customers[0].id);
       }
     } catch (err) {
-      console.error('Failed to load projects data', err);
+      console.error("Failed to load projects data", err);
     } finally {
       setIsLoading(false);
     }
@@ -99,13 +99,14 @@ export default function ProjectsView({
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projName || !custId) {
-      onTriggerNotification('Nama proyek dan customer harus diisi.');
+      onTriggerNotification("Nama proyek dan customer harus diisi.");
       return;
     }
 
     setIsSaving(true);
     try {
-      const generatedCode = projCode || `PRJ-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const generatedCode =
+        projCode || `PRJ-2026-${Math.floor(1000 + Math.random() * 9000)}`;
       const created = await projectsApi.createProject({
         project_name: projName,
         customer_id: custId,
@@ -115,47 +116,57 @@ export default function ProjectsView({
         project_spec: projSpec || undefined,
         contract_value: contractVal,
         deadline: deadline || undefined,
-        status: 'survey'
+        status: "survey",
       });
 
-      onTriggerNotification(`Proyek ${created.projectName} berhasil didaftarkan`);
+      onTriggerNotification(
+        `Proyek ${created.projectName} berhasil didaftarkan`,
+      );
       setShowAddProjectModal(false);
 
       // Clear form
-      setProjName('');
-      setProjCode('');
-      setLocation('');
-      setProjType('Kubah Masjid');
-      setProjSpec('');
+      setProjName("");
+      setProjCode("");
+      setLocation("");
+      setProjType("Kubah Masjid");
+      setProjSpec("");
       setContractVal(0);
-      setDeadline('');
+      setDeadline("");
 
       await loadData();
     } catch (err) {
-      console.error('Failed to create project', err);
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal mendaftarkan kontrak proyek');
+      console.error("Failed to create project", err);
+      onTriggerNotification(
+        err instanceof Error
+          ? err.message
+          : "Gagal mendaftarkan kontrak proyek",
+      );
     } finally {
       setIsSaving(false);
     }
   };
 
   const formatIDR = (num: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(num);
   };
 
   const getStageIcon = (iconName: string) => {
     switch (iconName) {
-      case 'Compass':
+      case "Compass":
         return <Compass size={14} className="text-indigo-600" />;
-      case 'FileText':
+      case "FileText":
         return <Layers size={14} className="text-blue-600" />;
-      case 'Handshake':
+      case "Handshake":
         return <Handshake size={14} className="text-teal-600" />;
-      case 'Cpu':
+      case "Cpu":
         return <Cpu size={14} className="text-amber-600" />;
-      case 'Truck':
+      case "Truck":
         return <Truck size={14} className="text-cyan-600" />;
-      case 'Wrench':
+      case "Wrench":
         return <Wrench size={14} className="text-purple-600" />;
       default:
         return <CheckCircle size={14} className="text-emerald-600" />;
@@ -164,37 +175,39 @@ export default function ProjectsView({
 
   // Find selected project
   const project = projects.find((p) => p.id === selectedProjectId);
-  const projectWorkOrders = workOrders.filter((wo) => wo.projectId === selectedProjectId);
+  const projectWorkOrders = workOrders.filter(
+    (wo) => wo.projectId === selectedProjectId,
+  );
 
   const handleAddTimeline = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!project || !newDesc) return;
 
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split("T")[0];
 
       // Map stage to database status and progress
       let progress = project.progress;
-      let status = 'production'; // default
+      let status = "production"; // default
 
-      if (newStage.includes('Survey')) {
+      if (newStage.includes("Survey")) {
         progress = 15;
-        status = 'survey';
-      } else if (newStage.includes('Produksi')) {
+        status = "survey";
+      } else if (newStage.includes("Produksi")) {
         progress = 45;
-        status = 'production';
-      } else if (newStage.includes('Pengiriman')) {
+        status = "production";
+      } else if (newStage.includes("Pengiriman")) {
         progress = 70;
-        status = 'shipping';
-      } else if (newStage.includes('Pemasangan')) {
+        status = "shipping";
+      } else if (newStage.includes("Pemasangan")) {
         progress = 85;
-        status = 'installation';
-      } else if (newStage.includes('Penyelesaian')) {
+        status = "installation";
+      } else if (newStage.includes("Penyelesaian")) {
         progress = 95;
-        status = 'installation';
-      } else if (newStage.includes('Selesai')) {
+        status = "installation";
+      } else if (newStage.includes("Selesai")) {
         progress = 100;
-        status = 'completed';
+        status = "completed";
       }
 
       // 1. Create timeline event
@@ -203,7 +216,7 @@ export default function ProjectsView({
         event_date: todayStr,
         stage: newStage,
         description: newDesc,
-        icon: newStage.includes('Survey') ? 'Compass' : 'CheckCircle'
+        icon: newStage.includes("Survey") ? "Compass" : "CheckCircle",
       });
 
       // 2. Update project progress and status
@@ -212,10 +225,12 @@ export default function ProjectsView({
       onTriggerNotification(`Sukses merekam timeline progress: ${newStage}`);
       await loadData();
     } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal merekam progress');
+      onTriggerNotification(
+        err instanceof Error ? err.message : "Gagal merekam progress",
+      );
     }
 
-    setNewDesc('');
+    setNewDesc("");
     setShowEventAddModal(false);
   };
 
@@ -248,21 +263,36 @@ export default function ProjectsView({
                 <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-400 font-black text-[10px] uppercase tracking-wider rounded border border-amber-500/30">
                   {project.status}
                 </span>
-                <span className="text-xs text-slate-400 font-mono">{project.location}</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {project.location}
+                </span>
               </div>
-              <h2 className="text-lg md:text-xl font-sans font-black tracking-tight mt-1.5">{project.projectName}</h2>
+              <h2 className="text-lg md:text-xl font-sans font-black tracking-tight mt-1.5">
+                {project.projectName}
+              </h2>
               <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
-                Mitra Pemesan: <strong>{project.customerName}</strong> | Jenis Proyek: <strong>{project.projectType}</strong> | Spesifikasi: <strong>{project.projectSpec}</strong>
+                Mitra Pemesan: <strong>{project.customerName}</strong> | Jenis
+                Proyek: <strong>{project.projectType}</strong> | Spesifikasi:{" "}
+                <strong>{project.projectSpec}</strong>
               </p>
             </div>
 
             <div className="text-left md:text-right shrink-0">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Nilai Borongan Kontrak</span>
-              <p className="text-lg font-mono font-black text-white mt-1">{formatIDR(project.contractValue)}</p>
+              <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400">
+                Nilai Borongan Kontrak
+              </span>
+              <p className="text-lg font-mono font-black text-white mt-1">
+                {formatIDR(project.contractValue)}
+              </p>
               <div className="flex items-center md:justify-end gap-2 mt-2">
-                <span className="text-xs font-bold text-amber-400">{project.progress}% Selesai</span>
+                <span className="text-xs font-bold text-amber-400">
+                  {project.progress}% Selesai
+                </span>
                 <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div style={{ width: `${project.progress}%` }} className="bg-amber-500 h-full rounded-full" />
+                  <div
+                    style={{ width: `${project.progress}%` }}
+                    className="bg-amber-500 h-full rounded-full"
+                  />
                 </div>
               </div>
             </div>
@@ -274,7 +304,9 @@ export default function ProjectsView({
           {/* Column Left: Timeline */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-7 flex flex-col">
             <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">Timeline & Sejarah Konstruksi</h3>
+              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">
+                Timeline & Sejarah Konstruksi
+              </h3>
               <button
                 onClick={() => setShowEventAddModal(true)}
                 className="px-2.5 py-1 bg-slate-900 text-white rounded text-[10px] font-bold hover:bg-slate-800 flex items-center gap-1 transition-colors"
@@ -286,20 +318,28 @@ export default function ProjectsView({
 
             <div className="relative border-l border-slate-200 pl-5 ml-2.5 space-y-4 flex-1">
               {project.timeline.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs">Belum ada aktivitas terekam.</div>
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  Belum ada aktivitas terekam.
+                </div>
               ) : (
                 project.timeline.map((event, idx) => (
                   <div key={idx} className="relative text-xs">
                     {/* Custom icon */}
-                    <span className="absolute -left-[28px] top-0.5 p-1 bg-white border rounded-full shadow-sm">
+                    <span className="absolute -left-7 top-0.5 p-1 bg-white border rounded-full shadow-sm">
                       {getStageIcon(event.icon)}
                     </span>
                     <div>
                       <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <strong className="text-slate-800 text-xs">{event.stage}</strong>
-                        <span className="font-mono text-[10px] text-slate-400">{event.date}</span>
+                        <strong className="text-slate-800 text-xs">
+                          {event.stage}
+                        </strong>
+                        <span className="font-mono text-[10px] text-slate-400">
+                          {event.date}
+                        </span>
                       </div>
-                      <p className="text-slate-500 mt-1 leading-relaxed text-[11px]">{event.description}</p>
+                      <p className="text-slate-500 mt-1 leading-relaxed text-[11px]">
+                        {event.description}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -311,21 +351,39 @@ export default function ProjectsView({
           <div className="lg:col-span-5 space-y-5">
             {/* Block 1: Termins of payments */}
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400 border-b pb-3 mb-3">Termin & Penyerapan Dana</h3>
+              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400 border-b pb-3 mb-3">
+                Termin & Penyerapan Dana
+              </h3>
               <div className="space-y-2">
                 {project.termin.length === 0 ? (
-                  <div className="text-center py-6 text-slate-400 text-xs">Belum ada termin kontrak didaftarkan.</div>
+                  <div className="text-center py-6 text-slate-400 text-xs">
+                    Belum ada termin kontrak didaftarkan.
+                  </div>
                 ) : (
                   project.termin.map((term, tIdx) => (
-                    <div key={tIdx} className="p-3 bg-slate-50 border rounded-xl flex items-center justify-between text-xs transition-colors">
+                    <div
+                      key={tIdx}
+                      className="p-3 bg-slate-50 border rounded-xl flex items-center justify-between text-xs transition-colors"
+                    >
                       <div className="space-y-1">
-                        <strong className="text-slate-700 block leading-tight">{term.phase}</strong>
-                        <span className="text-[10px] text-slate-400 font-mono">Tempo: {term.dueDate}</span>
+                        <strong className="text-slate-700 block leading-tight">
+                          {term.phase}
+                        </strong>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Tempo: {term.dueDate}
+                        </span>
                       </div>
                       <div className="text-right space-y-1">
-                        <p className="font-mono font-bold text-slate-900 leading-none">{formatIDR(term.amount)}</p>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${term.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border' : 'bg-rose-100 text-rose-800'
-                          }`}>
+                        <p className="font-mono font-bold text-slate-900 leading-none">
+                          {formatIDR(term.amount)}
+                        </p>
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${
+                            term.status === "Lunas"
+                              ? "bg-emerald-100 text-emerald-800 border"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
                           {term.status}
                         </span>
                       </div>
@@ -337,16 +395,24 @@ export default function ProjectsView({
 
             {/* Block 2: Documentation photos */}
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400 border-b pb-3 mb-3">Audit Dokumentasi Lapangan</h3>
+              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400 border-b pb-3 mb-3">
+                Audit Dokumentasi Lapangan
+              </h3>
               <div className="grid grid-cols-2 gap-3">
                 {project.documentation.length === 0 ? (
                   <div className="col-span-2 text-center py-6 text-slate-400 text-xs">
-                    <ImageIcon size={24} className="mx-auto mb-1.5 text-slate-300" />
+                    <ImageIcon
+                      size={24}
+                      className="mx-auto mb-1.5 text-slate-300"
+                    />
                     <span>Belum ada foto yang diunggah.</span>
                   </div>
                 ) : (
                   project.documentation.map((doc, dIdx) => (
-                    <div key={dIdx} className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50 relative">
+                    <div
+                      key={dIdx}
+                      className="group overflow-hidden rounded-xl border border-slate-200 bg-slate-50 relative"
+                    >
                       <img
                         src={doc.imageUrl}
                         alt={doc.title}
@@ -354,8 +420,15 @@ export default function ProjectsView({
                         className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       <div className="p-2 text-[10px]">
-                        <strong className="text-slate-700 block truncate" title={doc.title}>{doc.title}</strong>
-                        <span className="text-slate-400 font-mono text-[9px] mt-0.5 block">{doc.date}</span>
+                        <strong
+                          className="text-slate-700 block truncate"
+                          title={doc.title}
+                        >
+                          {doc.title}
+                        </strong>
+                        <span className="text-slate-400 font-mono text-[9px] mt-0.5 block">
+                          {doc.date}
+                        </span>
                       </div>
                     </div>
                   ))
@@ -366,9 +439,11 @@ export default function ProjectsView({
             {/* Block 3: Workshop Production Work Orders */}
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between border-b pb-3 mb-3">
-                <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">Daftar SPK Produksi Workshop</h3>
+                <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">
+                  Daftar SPK Produksi Workshop
+                </h3>
                 <button
-                  onClick={() => onNavigate('production-work-orders')}
+                  onClick={() => onNavigate("production-work-orders")}
                   className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <Factory size={12} />
@@ -377,32 +452,53 @@ export default function ProjectsView({
               </div>
               <div className="space-y-2">
                 {projectWorkOrders.length === 0 ? (
-                  <div className="text-center py-6 text-slate-400 text-xs">Belum ada SPK Produksi untuk proyek ini.</div>
+                  <div className="text-center py-6 text-slate-400 text-xs">
+                    Belum ada SPK Produksi untuk proyek ini.
+                  </div>
                 ) : (
                   projectWorkOrders.map((wo) => (
-                    <div key={wo.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between transition-colors">
+                    <div
+                      key={wo.id}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between transition-colors"
+                    >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <strong className="text-cyan-700 font-mono text-[11px]">{wo.workOrderNumber}</strong>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === 'QC' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                              wo.stage === 'Finishing' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                wo.stage === 'Curing' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                  'bg-cyan-50 text-cyan-700 border-cyan-100'
-                            }`}>
+                          <strong className="text-cyan-700 font-mono text-[11px]">
+                            {wo.workOrderNumber}
+                          </strong>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                              wo.stage === "QC"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : wo.stage === "Finishing"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                                  : wo.stage === "Curing"
+                                    ? "bg-amber-50 text-amber-700 border-amber-100"
+                                    : "bg-cyan-50 text-cyan-700 border-cyan-100"
+                            }`}
+                          >
                             {wo.stage}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-700 font-bold truncate max-w-[200px]">{wo.productName}</p>
+                        <p className="text-xs text-slate-700 font-bold truncate max-w-50">
+                          {wo.productName}
+                        </p>
                       </div>
                       <div className="text-right space-y-1.5 flex flex-col items-end">
                         <div className="text-[10px] font-mono text-slate-500">
                           {wo.completedQty} / {wo.targetQty} pcs
                         </div>
                         <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-cyan-500" style={{ width: `${wo.progress}%` }} />
+                          <div
+                            className="h-full bg-cyan-500"
+                            style={{ width: `${wo.progress}%` }}
+                          />
                         </div>
                         <button
-                          onClick={() => onNavigateToWorkOrder && onNavigateToWorkOrder(wo.id)}
+                          onClick={() =>
+                            onNavigateToWorkOrder &&
+                            onNavigateToWorkOrder(wo.id)
+                          }
                           className="mt-1 text-[9px] font-bold text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <span>Lihat Detail SPK</span>
@@ -423,12 +519,19 @@ export default function ProjectsView({
             <div className="bg-white rounded-xl shadow-2xl border max-w-sm w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
               <div className="px-4 py-3 bg-slate-900 text-white flex justify-between items-center">
                 <h4 className="font-bold">Update Catatan Progres</h4>
-                <button onClick={() => setShowEventAddModal(false)} className="text-slate-400 hover:text-white"><X size={16} /></button>
+                <button
+                  onClick={() => setShowEventAddModal(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
               <form onSubmit={handleAddTimeline} className="p-4 space-y-3.5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Tahapan / Stage</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Tahapan / Stage
+                  </label>
                   <select
                     value={newStage}
                     onChange={(e) => setNewStage(e.target.value)}
@@ -436,15 +539,25 @@ export default function ProjectsView({
                   >
                     <option value="Survey Lokasi">Survey Lokasi</option>
                     <option value="Produksi Workshop">Produksi Workshop</option>
-                    <option value="Pengiriman Material">Pengiriman Material</option>
-                    <option value="Pemasangan Scaffolding">Pemasangan Scaffolding</option>
-                    <option value="Penyelesaian Pekerjaan">Penyelesaian Pekerjaan</option>
-                    <option value="Selesai & Serah Terima">Selesai & Serah Terima</option>
+                    <option value="Pengiriman Material">
+                      Pengiriman Material
+                    </option>
+                    <option value="Pemasangan Scaffolding">
+                      Pemasangan Scaffolding
+                    </option>
+                    <option value="Penyelesaian Pekerjaan">
+                      Penyelesaian Pekerjaan
+                    </option>
+                    <option value="Selesai & Serah Terima">
+                      Selesai & Serah Terima
+                    </option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Keterangan Aktivitas</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Keterangan Aktivitas
+                  </label>
                   <textarea
                     rows={3}
                     required
@@ -456,8 +569,19 @@ export default function ProjectsView({
                 </div>
 
                 <div className="pt-2 border-t flex justify-end gap-1.5 text-xs font-bold">
-                  <button type="button" onClick={() => setShowEventAddModal(false)} className="px-3 py-1.5 border rounded">Batal</button>
-                  <button type="submit" className="px-4 py-1.5 bg-slate-900 text-white rounded">Simpan Progress</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEventAddModal(false)}
+                    className="px-3 py-1.5 border rounded"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-slate-900 text-white rounded"
+                  >
+                    Simpan Progress
+                  </button>
                 </div>
               </form>
             </div>
@@ -476,11 +600,14 @@ export default function ProjectsView({
           <h3 className="font-sans font-bold text-sm text-slate-850 uppercase tracking-tight flex items-center gap-2">
             Portofolio Pelaksanaan Proyek
           </h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">Sistem pelacakan pekerjaan workshop, pengiriman material, progres lapangan, serta penarikan termin pembayaran.</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">
+            Sistem pelacakan pekerjaan workshop, pengiriman material, progres
+            lapangan, serta penarikan termin pembayaran.
+          </p>
         </div>
         <button
           onClick={() => {
-            setProjCode('AUTO GENERATED');
+            setProjCode("AUTO GENERATED");
             setShowAddProjectModal(true);
           }}
           className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
@@ -492,13 +619,21 @@ export default function ProjectsView({
 
       {/* Main projects grid listings */}
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400 text-xs">Memuat daftar proyek...</div>
+        <div className="text-center py-12 text-slate-400 text-xs">
+          Memuat daftar proyek...
+        </div>
       ) : projects.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center py-16">
-          <AlertTriangle size={32} className="mx-auto mb-3 text-slate-300 stroke-[1.5]" />
-          <h4 className="font-bold text-slate-700 text-sm">Belum Ada Proyek Terdaftar</h4>
+          <AlertTriangle
+            size={32}
+            className="mx-auto mb-3 text-slate-300 stroke-[1.5]"
+          />
+          <h4 className="font-bold text-slate-700 text-sm">
+            Belum Ada Proyek Terdaftar
+          </h4>
           <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
-            Belum ada data kontrak proyek terdaftar dalam database. Silakan gunakan tombol di atas untuk mendaftarkan kontrak proyek baru.
+            Belum ada data kontrak proyek terdaftar dalam database. Silakan
+            gunakan tombol di atas untuk mendaftarkan kontrak proyek baru.
           </p>
         </div>
       ) : (
@@ -506,13 +641,14 @@ export default function ProjectsView({
           {projects.map((proj) => {
             // Compute status colors
             const statusColors: any = {
-              Survey: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-              Penawaran: 'bg-blue-50 text-blue-700 border-blue-200',
-              Deal: 'bg-teal-50 text-teal-700 border-teal-200',
-              Produksi: 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse',
-              Pengiriman: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-              Pemasangan: 'bg-purple-50 text-purple-700 border-purple-200',
-              Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              Survey: "bg-indigo-100 text-indigo-700 border-indigo-200",
+              Penawaran: "bg-blue-50 text-blue-700 border-blue-200",
+              Deal: "bg-teal-50 text-teal-700 border-teal-200",
+              Produksi:
+                "bg-amber-50 text-amber-700 border-amber-300 animate-pulse",
+              Pengiriman: "bg-cyan-50 text-cyan-700 border-cyan-200",
+              Pemasangan: "bg-purple-50 text-purple-700 border-purple-200",
+              Selesai: "bg-emerald-100 text-emerald-800 border-emerald-200",
             };
 
             return (
@@ -527,15 +663,21 @@ export default function ProjectsView({
                     <span className="font-mono text-[10px] bg-slate-100 text-slate-400 font-bold px-1.5 py-0.5 rounded border">
                       {proj.code}
                     </span>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${statusColors[proj.status] || 'bg-slate-100'
-                      }`}>
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                        statusColors[proj.status] || "bg-slate-100"
+                      }`}
+                    >
                       {proj.status}
                     </span>
                   </div>
 
                   {/* Main titles */}
                   <div>
-                    <h4 className="font-sans font-bold text-sm text-slate-800 leading-snug truncate" title={proj.projectName}>
+                    <h4
+                      className="font-sans font-bold text-sm text-slate-800 leading-snug truncate"
+                      title={proj.projectName}
+                    >
                       {proj.projectName}
                     </h4>
                     <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
@@ -548,15 +690,21 @@ export default function ProjectsView({
                   <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150/50 text-[11px] leading-relaxed">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Jenis:</span>
-                      <strong className="text-slate-700">{proj.projectType}</strong>
+                      <strong className="text-slate-700">
+                        {proj.projectType}
+                      </strong>
                     </div>
                     <div className="flex justify-between mt-1 gap-3">
                       <span className="text-slate-400">Spesifikasi:</span>
-                      <strong className="text-slate-700 text-right">{proj.projectSpec}</strong>
+                      <strong className="text-slate-700 text-right">
+                        {proj.projectSpec}
+                      </strong>
                     </div>
                     <div className="flex justify-between mt-1">
                       <span className="text-slate-400">Nilai Kontrak:</span>
-                      <strong className="text-slate-800 font-bold">{formatIDR(proj.contractValue)}</strong>
+                      <strong className="text-slate-800 font-bold">
+                        {formatIDR(proj.contractValue)}
+                      </strong>
                     </div>
                   </div>
 
@@ -564,7 +712,9 @@ export default function ProjectsView({
                   <div className="space-y-1.5 text-[11px]">
                     <div className="flex justify-between font-bold text-slate-650">
                       <span>Progres Pekerjaan</span>
-                      <span className="text-amber-600 font-mono">{proj.progress}%</span>
+                      <span className="text-amber-600 font-mono">
+                        {proj.progress}%
+                      </span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
@@ -599,14 +749,23 @@ export default function ProjectsView({
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Compass size={18} className="text-cyan-400" />
-                <h3 className="font-bold text-sm">Daftarkan Kontrak Proyek Baru</h3>
+                <h3 className="font-bold text-sm">
+                  Daftarkan Kontrak Proyek Baru
+                </h3>
               </div>
-              <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+              <button
+                onClick={() => setShowAddProjectModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <form onSubmit={handleCreateProject} className="p-5 space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Pilih Pelanggan / Partner *</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase">
+                  Pilih Pelanggan / Partner *
+                </label>
                 {customers.length > 0 ? (
                   <select
                     required
@@ -614,19 +773,26 @@ export default function ProjectsView({
                     onChange={(e) => setCustId(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded cursor-pointer"
                   >
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.city})</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.city})
+                      </option>
                     ))}
                   </select>
                 ) : (
-                  <select disabled className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400">
+                  <select
+                    disabled
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded text-slate-400"
+                  >
                     <option>Memuat Pelanggan...</option>
                   </select>
                 )}
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Proyek *</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase">
+                  Nama Proyek *
+                </label>
                 <input
                   type="text"
                   required
@@ -639,7 +805,9 @@ export default function ProjectsView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Kode Proyek (Otomatis)</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Kode Proyek (Otomatis)
+                  </label>
                   <input
                     type="text"
                     readOnly
@@ -650,7 +818,9 @@ export default function ProjectsView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Lokasi Proyek</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Lokasi Proyek
+                  </label>
                   <input
                     type="text"
                     placeholder="Contoh: Surabaya, Jawa Timur"
@@ -663,7 +833,9 @@ export default function ProjectsView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Jenis Proyek</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Jenis Proyek
+                  </label>
                   <select
                     value={projType}
                     onChange={(e) => setProjType(e.target.value)}
@@ -676,11 +848,13 @@ export default function ProjectsView({
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Nilai Kontrak Proyek (Rp)</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Nilai Kontrak Proyek (Rp)
+                  </label>
                   <input
                     type="number"
                     required
-                    value={contractVal || ''}
+                    value={contractVal || ""}
                     onChange={(e) => setContractVal(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-200 rounded focus:outline-none"
                   />
@@ -689,7 +863,9 @@ export default function ProjectsView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Spesifikasi Ornamen/Bahan</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Spesifikasi Ornamen/Bahan
+                  </label>
                   <input
                     type="text"
                     placeholder="Contoh: Beton K-350 standard SNI"
@@ -699,7 +875,9 @@ export default function ProjectsView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Tanggal Deadline *</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    Tanggal Deadline *
+                  </label>
                   <input
                     type="date"
                     required
@@ -711,9 +889,19 @@ export default function ProjectsView({
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                <button type="button" onClick={() => setShowAddProjectModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
-                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50 cursor-pointer">
-                  {isSaving ? 'Menyimpan...' : 'Simpan Kontrak'}
+                <button
+                  type="button"
+                  onClick={() => setShowAddProjectModal(false)}
+                  className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {isSaving ? "Menyimpan..." : "Simpan Kontrak"}
                 </button>
               </div>
             </form>

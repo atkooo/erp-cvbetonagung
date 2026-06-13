@@ -3,21 +3,35 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Handshake, Search, Plus, Filter, MapPin, Phone, User, X, Edit, Trash2, Save } from '@/src/components/icons';
-import { Supplier } from '../types';
-import { authStorage } from '../services/api';
-import { suppliersApi } from '../features/suppliers/api';
-import { SkeletonTable, ErrorCard } from './Skeleton';
-import Swal from 'sweetalert2';
+import React, { useState } from "react";
+import {
+  Handshake,
+  Search,
+  Plus,
+  Filter,
+  MapPin,
+  Phone,
+  User,
+  X,
+  Edit,
+  Trash2,
+  Save,
+} from "@/src/components/icons";
+import { Supplier } from "../types";
+import { authStorage } from "../services/api";
+import { suppliersApi } from "../features/suppliers/api";
+import { SkeletonTable, ErrorCard } from "./Skeleton";
+import Swal from "sweetalert2";
 
 interface SuppliersViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-export default function SuppliersView({ onTriggerNotification }: SuppliersViewProps) {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+export default function SuppliersView({
+  onTriggerNotification,
+}: SuppliersViewProps) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -26,12 +40,12 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
-  const [name, setName] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [address, setAddress] = useState('');
-  const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+  const [name, setName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [status, setStatus] = useState<"Aktif" | "Nonaktif">("Aktif");
 
   const fetchData = () => {
     setIsLoading(true);
@@ -62,17 +76,18 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
       supp.code.toLowerCase().includes(search.toLowerCase()) ||
       supp.contactName.toLowerCase().includes(search.toLowerCase()) ||
       supp.city.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || supp.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All" || supp.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const resetForm = () => {
-    setName('');
-    setContactName('');
-    setPhone('');
-    setCity('');
-    setAddress('');
-    setStatus('Aktif');
+    setName("");
+    setContactName("");
+    setPhone("");
+    setCity("");
+    setAddress("");
+    setStatus("Aktif");
   };
 
   const handleOpenAddModal = () => {
@@ -84,24 +99,24 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
   const handleOpenEditModal = (supp: Supplier) => {
     setEditingSupplier(supp);
     setName(supp.name);
-    setContactName(supp.contactName === '-' ? '' : supp.contactName);
-    setPhone(supp.phone === '-' ? '' : supp.phone);
-    setCity(supp.city === '-' ? '' : supp.city);
-    setAddress(supp.address === '-' ? '' : supp.address);
+    setContactName(supp.contactName === "-" ? "" : supp.contactName);
+    setPhone(supp.phone === "-" ? "" : supp.phone);
+    setCity(supp.city === "-" ? "" : supp.city);
+    setAddress(supp.address === "-" ? "" : supp.address);
     setStatus(supp.status);
     setShowAddModal(true);
   };
 
   const handleDelete = async (id: string, suppName: string) => {
     const result = await Swal.fire({
-      title: 'Apakah Anda yakin?',
+      title: "Apakah Anda yakin?",
       text: `Menghapus supplier ${suppName} tidak dapat dibatalkan!`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
     });
 
     if (!result.isConfirmed) return;
@@ -110,20 +125,23 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
     try {
       await suppliersApi.deleteSupplier(id);
       setSuppliers((prev) => prev.filter((s) => s.id !== id));
-      
+
       Swal.fire({
-        title: 'Terhapus!',
+        title: "Terhapus!",
         text: `Supplier ${suppName} berhasil dihapus.`,
-        icon: 'success',
+        icon: "success",
         timer: 2000,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Gagal menghapus supplier dari backend.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Gagal menghapus supplier dari backend.";
       Swal.fire({
-        title: 'Gagal!',
+        title: "Gagal!",
         text: message,
-        icon: 'error'
+        icon: "error",
       });
       onTriggerNotification(message);
     }
@@ -132,7 +150,7 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactName || !phone || !city) {
-      onTriggerNotification('Gagal menyimpan: Lengkapi kolom wajib isi!');
+      onTriggerNotification("Gagal menyimpan: Lengkapi kolom wajib isi!");
       return;
     }
 
@@ -147,12 +165,14 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
           phone,
           city,
           address,
-          status: status === 'Aktif' ? 'active' : 'inactive',
+          status: status === "Aktif" ? "active" : "inactive",
         });
-        setSuppliers((prev) => prev.map((s) => (s.id === editingSupplier.id ? updated : s)));
+        setSuppliers((prev) =>
+          prev.map((s) => (s.id === editingSupplier.id ? updated : s)),
+        );
         onTriggerNotification(`Sukses memperbarui Supplier: ${updated.name}`);
       } else {
-        const nextCode = 'AUTO GENERATED';
+        const nextCode = "AUTO GENERATED";
         const newSupp = await suppliersApi.createSupplier({
           code: nextCode,
           name,
@@ -160,15 +180,18 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
           phone,
           city,
           address,
-          status: status === 'Aktif' ? 'active' : 'inactive',
+          status: status === "Aktif" ? "active" : "inactive",
         });
         setSuppliers((prev) => [newSupp, ...prev]);
-        onTriggerNotification(`Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`);
+        onTriggerNotification(
+          `Sukses mendaftarkan Supplier: ${newSupp.name} (${newSupp.code})`,
+        );
       }
       resetForm();
       setShowAddModal(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Gagal menyimpan supplier';
+      const msg =
+        err instanceof Error ? err.message : "Gagal menyimpan supplier";
       setErrorMessage(msg);
       onTriggerNotification(msg);
     } finally {
@@ -225,7 +248,8 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Buku Rekanan Vendor / Supplier Material ({filteredSuppliers.length} Item)
+              Buku Rekanan Vendor / Supplier Material (
+              {filteredSuppliers.length} Item)
             </h3>
             <span className="text-[10px] text-slate-400 font-mono">
               Backend API
@@ -249,13 +273,20 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
               <tbody className="divide-y divide-slate-100">
                 {filteredSuppliers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-slate-400">
-                      Tidak ada data supplier yang beraliansi dengan kriteria tersebut.
+                    <td
+                      colSpan={8}
+                      className="text-center py-10 text-slate-400"
+                    >
+                      Tidak ada data supplier yang beraliansi dengan kriteria
+                      tersebut.
                     </td>
                   </tr>
                 ) : (
                   filteredSuppliers.map((supp) => (
-                    <tr key={supp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr
+                      key={supp.id}
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
                       <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
                         {supp.code}
                       </td>
@@ -265,7 +296,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                       <td className="p-3.5">
                         <div className="flex items-center gap-1.5 text-slate-700">
                           <User size={12} className="text-slate-400" />
-                          <span className="font-medium">{supp.contactName}</span>
+                          <span className="font-medium">
+                            {supp.contactName}
+                          </span>
                         </div>
                       </td>
                       <td className="p-3.5 font-mono text-slate-600">
@@ -280,15 +313,20 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                           <span>{supp.city}</span>
                         </div>
                       </td>
-                      <td className="p-3.5 text-slate-500 max-w-[200px] truncate" title={supp.address}>
+                      <td
+                        className="p-3.5 text-slate-500 max-w-50 truncate"
+                        title={supp.address}
+                      >
                         {supp.address}
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                          supp.status === 'Aktif' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-slate-100 text-slate-500'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                            supp.status === "Aktif"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
                           {supp.status}
                         </span>
                       </td>
@@ -319,10 +357,23 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
 
           {/* Footer Pagination */}
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length} item</span>
+            <span>
+              Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length}{" "}
+              item
+            </span>
             <div className="flex gap-1">
-              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
-              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+              <button
+                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
+                disabled
+              >
+                Sebelumnya
+              </button>
+              <button
+                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
+                disabled
+              >
+                Berikutnya
+              </button>
             </div>
           </div>
         </div>
@@ -337,10 +388,15 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
               <div className="flex items-center gap-2">
                 <Handshake size={18} className="text-cyan-400" />
                 <h3 className="font-sans font-bold text-sm">
-                  {editingSupplier ? `Edit Data Supplier: ${editingSupplier.code}` : 'Registrasi Pemasok Baru'}
+                  {editingSupplier
+                    ? `Edit Data Supplier: ${editingSupplier.code}`
+                    : "Registrasi Pemasok Baru"}
                 </h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white transition-colors">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -348,7 +404,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Nama Badan Usaha / Toko</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Nama Badan Usaha / Toko
+                </label>
                 <input
                   type="text"
                   required
@@ -361,7 +419,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nama Kontak PIC</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Nama Kontak PIC
+                  </label>
                   <input
                     type="text"
                     required
@@ -372,7 +432,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Kota Pabrik Vendor</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Kota Pabrik Vendor
+                  </label>
                   <input
                     type="text"
                     required
@@ -385,7 +447,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor Telepon Kantor/Sales</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Nomor Telepon Kantor/Sales
+                </label>
                 <input
                   type="text"
                   required
@@ -397,7 +461,9 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Alamat Kantor/Pabrik Utama</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Alamat Kantor/Pabrik Utama
+                </label>
                 <textarea
                   rows={2}
                   placeholder="Kawasan Industri Manyar Kav 12, Gresik"
@@ -408,14 +474,16 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Status Kelayakan PO</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Status Kelayakan PO
+                </label>
                 <div className="flex gap-4 mt-1.5">
                   <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
                     <input
                       type="radio"
                       name="supp_status"
-                      checked={status === 'Aktif'}
-                      onChange={() => setStatus('Aktif')}
+                      checked={status === "Aktif"}
+                      onChange={() => setStatus("Aktif")}
                       className="text-cyan-600 focus:ring-cyan-500"
                     />
                     <span>Aktif (Dapat dikirim PO otomatis)</span>
@@ -424,8 +492,8 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                     <input
                       type="radio"
                       name="supp_status"
-                      checked={status === 'Nonaktif'}
-                      onChange={() => setStatus('Nonaktif')}
+                      checked={status === "Nonaktif"}
+                      onChange={() => setStatus("Nonaktif")}
                       className="text-cyan-600 focus:ring-cyan-500"
                     />
                     <span>Dibekukan sementara (Hold PO)</span>
@@ -447,7 +515,7 @@ export default function SuppliersView({ onTriggerNotification }: SuppliersViewPr
                   className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 flex items-center gap-1.5"
                 >
                   <Save size={13} />
-                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+                  <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>
                 </button>
               </div>
             </form>

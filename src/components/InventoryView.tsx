@@ -74,7 +74,9 @@ export default function InventoryView({
   );
 
   // Form states - Barang Masuk
-  const [inManualItems, setInManualItems] = useState<{ sku: string; qty: number }[]>([{ sku: "", qty: 0 }]);
+  const [inManualItems, setInManualItems] = useState<
+    { sku: string; qty: number }[]
+  >([{ sku: "", qty: 0 }]);
   const [inDoc, setInDoc] = useState("");
   const [inLocationId, setInLocationId] = useState("");
   const [inHandler, setInHandler] = useState("Gudang - Wahyu");
@@ -108,34 +110,43 @@ export default function InventoryView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const needsProducts = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
-      const needsStocks = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
-      const needsLocations = activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsProducts =
+        activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsStocks =
+        activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
+      const needsLocations =
+        activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
       const needsInbound = activeTab === "masuk";
       const needsOutbound = activeTab === "keluar";
       const needsHistory = activeTab === "riwayat";
 
-      const [
-        prods,
-        stocks,
-        movs,
-        grns,
-        locRes,
-        pos,
-        sos,
-        emps,
-      ] = await Promise.all([
-        needsProducts ? productsApi.getProducts() : Promise.resolve(products),
-        needsStocks ? inventoryApi.getProductStocks() : Promise.resolve(productStocks),
-        needsHistory ? inventoryApi.getStockMovements() : needsOutbound ? inventoryApi.getStockOuts() : Promise.resolve([]),
-        needsInbound ? purchasingApi.getGoodsReceiptNotes() : Promise.resolve([]),
-        needsLocations
-          ? apiClient.get<{ data: LocationDto[] }>("/master-data/storage-locations")
-          : Promise.resolve({ data: locations }),
-        needsInbound ? purchasingApi.getPurchaseOrders() : Promise.resolve([]),
-        needsOutbound ? salesApi.getSalesOrders() : Promise.resolve([]),
-        needsInbound || needsOutbound ? employeesApi.getEmployees() : Promise.resolve([]),
-      ]);
+      const [prods, stocks, movs, grns, locRes, pos, sos, emps] =
+        await Promise.all([
+          needsProducts ? productsApi.getProducts() : Promise.resolve(products),
+          needsStocks
+            ? inventoryApi.getProductStocks()
+            : Promise.resolve(productStocks),
+          needsHistory
+            ? inventoryApi.getStockMovements()
+            : needsOutbound
+              ? inventoryApi.getStockOuts()
+              : Promise.resolve([]),
+          needsInbound
+            ? purchasingApi.getGoodsReceiptNotes()
+            : Promise.resolve([]),
+          needsLocations
+            ? apiClient.get<{ data: LocationDto[] }>(
+                "/master-data/storage-locations",
+              )
+            : Promise.resolve({ data: locations }),
+          needsInbound
+            ? purchasingApi.getPurchaseOrders()
+            : Promise.resolve([]),
+          needsOutbound ? salesApi.getSalesOrders() : Promise.resolve([]),
+          needsInbound || needsOutbound
+            ? employeesApi.getEmployees()
+            : Promise.resolve([]),
+        ]);
 
       const combinedProds = prods.map((p) => {
         const stockRows = stocks.filter(
@@ -181,7 +192,11 @@ export default function InventoryView({
       setEmployees(emps);
 
       if (combinedProds.length > 0) {
-        setInManualItems((prev) => prev.length > 0 && prev[0].sku ? prev : [{ sku: combinedProds[0].sku, qty: 0 }]);
+        setInManualItems((prev) =>
+          prev.length > 0 && prev[0].sku
+            ? prev
+            : [{ sku: combinedProds[0].sku, qty: 0 }],
+        );
         setOutSku((prev) => prev || combinedProds[0].sku);
       }
       if (locRes.data.length > 0) {
@@ -214,7 +229,8 @@ export default function InventoryView({
     let cancelled = false;
     fetchedPoDetailIds.current.add(selectedPo.id);
 
-    purchasingApi.getPurchaseOrder(selectedPo.id)
+    purchasingApi
+      .getPurchaseOrder(selectedPo.id)
       .then((poWithItems) => {
         if (cancelled) return;
 
@@ -304,15 +320,23 @@ export default function InventoryView({
 
     const matchedPO = purchaseOrders.find((po) => po.poNumber === inDoc);
     const selectedReceiver = employees.find((emp) => emp.name === inHandler);
-    const receiverId = selectedReceiver?.userId || authStorage.getUser()?.id || null;
+    const receiverId =
+      selectedReceiver?.userId || authStorage.getUser()?.id || null;
 
     if (matchedPO) {
       // MODE PO
-      const itemsToReceive = matchedPO.items?.filter((item) => {
-        const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
-        const inputQty = inPoItemsQty[item.id!] !== undefined ? inPoItemsQty[item.id!] : remaining;
-        return inputQty > 0;
-      }) || [];
+      const itemsToReceive =
+        matchedPO.items?.filter((item) => {
+          const remaining = Math.max(
+            0,
+            item.quantity - (item.receivedQty || 0),
+          );
+          const inputQty =
+            inPoItemsQty[item.id!] !== undefined
+              ? inPoItemsQty[item.id!]
+              : remaining;
+          return inputQty > 0;
+        }) || [];
 
       if (itemsToReceive.length === 0) {
         const hasItems = (matchedPO.items || []).length > 0;
@@ -326,10 +350,16 @@ export default function InventoryView({
 
       try {
         const payloadItems = itemsToReceive.map((item) => {
-          const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
+          const remaining = Math.max(
+            0,
+            item.quantity - (item.receivedQty || 0),
+          );
           return {
             id: item.id!,
-            quantity: inPoItemsQty[item.id!] !== undefined ? inPoItemsQty[item.id!] : remaining,
+            quantity:
+              inPoItemsQty[item.id!] !== undefined
+                ? inPoItemsQty[item.id!]
+                : remaining,
           };
         });
 
@@ -340,16 +370,20 @@ export default function InventoryView({
           receipt_date: new Date().toISOString().split("T")[0],
           status: "posted",
           notes: inNotes,
-          items: payloadItems.map((payloadItem) => {
-            const poItem = matchedPO.items.find((item) => item.id === payloadItem.id);
-            return {
-              purchase_order_item_id: payloadItem.id,
-              product_id: poItem?.productId || "",
-              received_quantity: payloadItem.quantity,
-              rejected_quantity: 0,
-              notes: inNotes || null,
-            };
-          }).filter((item) => item.product_id),
+          items: payloadItems
+            .map((payloadItem) => {
+              const poItem = matchedPO.items.find(
+                (item) => item.id === payloadItem.id,
+              );
+              return {
+                purchase_order_item_id: payloadItem.id,
+                product_id: poItem?.productId || "",
+                received_quantity: payloadItem.quantity,
+                rejected_quantity: 0,
+                notes: inNotes || null,
+              };
+            })
+            .filter((item) => item.product_id),
         });
 
         onTriggerNotification(
@@ -363,7 +397,9 @@ export default function InventoryView({
       }
     } else {
       // MODE MANUAL
-      const validItems = inManualItems.filter(item => item.sku && item.qty > 0);
+      const validItems = inManualItems.filter(
+        (item) => item.sku && item.qty > 0,
+      );
       if (validItems.length === 0 || !inDoc) {
         onTriggerNotification(
           "Gagal: Setidaknya satu item dengan kuantitas > 0 dan Dokumen Referensi harus diisi!",
@@ -372,16 +408,18 @@ export default function InventoryView({
       }
 
       try {
-        const payloadItems = validItems.map(item => {
-          const matchedProd = products.find((p) => p.sku === item.sku);
-          return {
-            purchase_order_item_id: null,
-            product_id: matchedProd?.id || "",
-            received_quantity: item.qty,
-            rejected_quantity: 0,
-            notes: inNotes || null,
-          };
-        }).filter(item => item.product_id);
+        const payloadItems = validItems
+          .map((item) => {
+            const matchedProd = products.find((p) => p.sku === item.sku);
+            return {
+              purchase_order_item_id: null,
+              product_id: matchedProd?.id || "",
+              received_quantity: item.qty,
+              rejected_quantity: 0,
+              notes: inNotes || null,
+            };
+          })
+          .filter((item) => item.product_id);
 
         await purchasingApi.createGoodsReceiptNote({
           purchase_order_id: null,
@@ -505,24 +543,26 @@ export default function InventoryView({
   };
 
   const poOptions = purchaseOrders
-    .filter(po => po.status === 'Dipesan' || po.status === 'Diterima Sebagian')
-    .map(po => ({
+    .filter(
+      (po) => po.status === "Dipesan" || po.status === "Diterima Sebagian",
+    )
+    .map((po) => ({
       id: po.id,
       number: po.poNumber,
       label: po.supplierName,
-      subLabel: po.status
+      subLabel: po.status,
     }));
 
-  const soOptions = salesOrders.map(so => ({
+  const soOptions = salesOrders.map((so) => ({
     id: so.id,
     number: so.orderNumber,
     label: so.customerName,
-    subLabel: so.status
+    subLabel: so.status,
   }));
 
-  const employeeOptions = employees.map(emp => ({
+  const employeeOptions = employees.map((emp) => ({
     value: emp.name,
-    label: `${emp.name} (${emp.roleName})`
+    label: `${emp.name} (${emp.roleName})`,
   }));
 
   return (
@@ -551,8 +591,12 @@ export default function InventoryView({
                 className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none cursor-pointer font-sans"
               >
                 <option value="All">Semua Kategori</option>
-                {Array.from(new Set(products.map(p => p.category).filter(Boolean))).map(c => (
-                  <option key={c} value={c}>{c}</option>
+                {Array.from(
+                  new Set(products.map((p) => p.category).filter(Boolean)),
+                ).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
               <div className="w-px h-4 bg-slate-300 mx-1"></div>
@@ -589,7 +633,7 @@ export default function InventoryView({
           </button>
         )}
         {activeTab === "stok" && (
-          <div className="text-[10px] font-mono text-slate-400 bg-slate-100 p-2 rounded-lg border border-slate-200 text-center truncate max-w-[250px]">
+          <div className="text-[10px] font-mono text-slate-400 bg-slate-100 p-2 rounded-lg border border-slate-200 text-center truncate max-w-62.5">
             Total Katalog:{" "}
             <strong className="text-slate-700">{products.length} SKU</strong>
           </div>
@@ -622,7 +666,11 @@ export default function InventoryView({
           )}
 
           {activeTab === "masuk" && (
-            <InwardTab goodsReceipts={goodsReceipts} locations={locations} search={search} />
+            <InwardTab
+              goodsReceipts={goodsReceipts}
+              locations={locations}
+              search={search}
+            />
           )}
 
           {activeTab === "keluar" && (

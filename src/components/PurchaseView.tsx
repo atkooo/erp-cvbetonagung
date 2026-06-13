@@ -3,19 +3,32 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Search, Filter, Plus, Printer, HelpCircle, X, ChevronDown, ChevronRight, PackageCheck, FileText, Trash2 } from '@/src/components/icons';
-import { PurchaseOrder, Supplier, Product } from '../types';
-import { authStorage } from '../services/api';
-import { purchasingApi } from '../features/purchasing/api';
-import { suppliersApi } from '../features/suppliers/api';
-import { productsApi } from '../features/products/api';
-import { SkeletonTable, ErrorCard } from './Skeleton';
-import RfqPicker from './RfqPicker';
-import ProductPicker from './ProductPicker';
-import { useReactToPrint } from 'react-to-print';
-import { formatDate } from '../utils/date';
-import Swal from 'sweetalert2';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ShoppingCart,
+  Search,
+  Filter,
+  Plus,
+  Printer,
+  HelpCircle,
+  X,
+  ChevronDown,
+  ChevronRight,
+  PackageCheck,
+  FileText,
+  Trash2,
+} from "@/src/components/icons";
+import { PurchaseOrder, Supplier, Product } from "../types";
+import { authStorage } from "../services/api";
+import { purchasingApi } from "../features/purchasing/api";
+import { suppliersApi } from "../features/suppliers/api";
+import { productsApi } from "../features/products/api";
+import { SkeletonTable, ErrorCard } from "./Skeleton";
+import RfqPicker from "./RfqPicker";
+import ProductPicker from "./ProductPicker";
+import { useReactToPrint } from "react-to-print";
+import { formatDate } from "../utils/date";
+import Swal from "sweetalert2";
 
 interface PurchaseViewProps {
   onTriggerNotification: (message: string) => void;
@@ -24,8 +37,8 @@ interface PurchaseViewProps {
 export default function PurchaseView({
   onTriggerNotification,
 }: PurchaseViewProps) {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [printPoId, setPrintPoId] = useState<string | null>(null);
@@ -33,7 +46,7 @@ export default function PurchaseView({
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrintAction = useReactToPrint({
     contentRef: printRef,
-    documentTitle: 'PO_CV_Beton_Agung'
+    documentTitle: "PO_CV_Beton_Agung",
   });
 
   // API states
@@ -44,19 +57,25 @@ export default function PurchaseView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New PO States
-  const [supplierId, setSupplierId] = useState('');
-  const [rfqId, setRfqId] = useState<string>('');
-  const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>('');
-  const [formItems, setFormItems] = useState<{ id: string; productId: string; quantity: number; price: number; unit?: string }[]>([
-    { id: '1', productId: '', quantity: 1, price: 0 }
-  ]);
+  const [supplierId, setSupplierId] = useState("");
+  const [rfqId, setRfqId] = useState<string>("");
+  const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>("");
+  const [formItems, setFormItems] = useState<
+    {
+      id: string;
+      productId: string;
+      quantity: number;
+      price: number;
+      unit?: string;
+    }[]
+  >([{ id: "1", productId: "", quantity: 1, price: 0 }]);
 
   // Quick add supplier states
   const [showAddSupplier, setShowAddSupplier] = useState(false);
-  const [newSupName, setNewSupName] = useState('');
-  const [newSupPhone, setNewSupPhone] = useState('');
-  const [newSupCity, setNewSupCity] = useState('');
-  const [newSupAddress, setNewSupAddress] = useState('');
+  const [newSupName, setNewSupName] = useState("");
+  const [newSupPhone, setNewSupPhone] = useState("");
+  const [newSupCity, setNewSupCity] = useState("");
+  const [newSupAddress, setNewSupAddress] = useState("");
 
   const loadData = async () => {
     setIsLoading(true);
@@ -65,7 +84,7 @@ export default function PurchaseView({
       const [pos, sups, prods] = await Promise.all([
         purchasingApi.getPurchaseOrders(),
         suppliersApi.getSuppliers(),
-        productsApi.getProducts()
+        productsApi.getProducts(),
       ]);
       setPurchaseOrders(pos);
       setSuppliers(sups);
@@ -73,8 +92,9 @@ export default function PurchaseView({
 
       if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
     } catch (err) {
-      console.error('Failed to load purchasing data', err);
-      const msg = err instanceof Error ? err.message : 'Gagal memuat data pembelian';
+      console.error("Failed to load purchasing data", err);
+      const msg =
+        err instanceof Error ? err.message : "Gagal memuat data pembelian";
       setErrorMessage(msg);
       onTriggerNotification(msg);
     } finally {
@@ -87,43 +107,61 @@ export default function PurchaseView({
   }, []);
 
   const handleAddItem = () => {
-    setFormItems([...formItems, { id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
+    setFormItems([
+      ...formItems,
+      { id: `form-item-${Date.now()}`, productId: "", quantity: 1, price: 0 },
+    ]);
   };
 
   const handleRemoveItem = (id: string) => {
     if (formItems.length > 1) {
-      setFormItems(formItems.filter(item => item.id !== id));
+      setFormItems(formItems.filter((item) => item.id !== id));
     }
   };
 
   const handleItemChange = (id: string, field: string, value: any) => {
-    setFormItems(formItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setFormItems(
+      formItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item,
+      ),
+    );
   };
 
   const formatIDR = (num: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(num);
   };
 
   const filteredPOs = purchaseOrders.filter((po) => {
     const matchesSearch =
       po.poNumber.toLowerCase().includes(search.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' 
-      ? po.status !== 'Dibatalkan' 
-      : po.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All"
+        ? po.status !== "Dibatalkan"
+        : po.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formItems.some(item => !item.productId || item.quantity <= 0 || item.price < 0)) {
-      onTriggerNotification('Gagal: Pastikan semua item memiliki produk, kuantitas positif, dan harga valid!');
+    if (
+      formItems.some(
+        (item) => !item.productId || item.quantity <= 0 || item.price < 0,
+      )
+    ) {
+      onTriggerNotification(
+        "Gagal: Pastikan semua item memiliki produk, kuantitas positif, dan harga valid!",
+      );
       return;
     }
 
     try {
       const d = new Date();
-      const todayStr = d.toISOString().split('T')[0];
+      const todayStr = d.toISOString().split("T")[0];
       const expectedDate = new Date(d);
       expectedDate.setDate(d.getDate() + 7); // assume 7 days delivery
 
@@ -131,23 +169,27 @@ export default function PurchaseView({
         supplier_id: supplierId,
         rfq_id: rfqId || undefined,
         order_date: todayStr,
-        expected_date: expectedDate.toISOString().split('T')[0],
-        items: formItems.map(it => ({
+        expected_date: expectedDate.toISOString().split("T")[0],
+        items: formItems.map((it) => ({
           product_id: it.productId,
           quantity: it.quantity,
           unit_price: it.price,
-        }))
+        })),
       });
       onTriggerNotification(`Sukses menerbitkan PO via API`);
-      
+
       // Reset form
-      setFormItems([{ id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
-      setRfqId('');
-      setRfqNumberDisplay('');
-      
+      setFormItems([
+        { id: `form-item-${Date.now()}`, productId: "", quantity: 1, price: 0 },
+      ]);
+      setRfqId("");
+      setRfqNumberDisplay("");
+
       await loadData();
     } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen PO');
+      onTriggerNotification(
+        err instanceof Error ? err.message : "Gagal membuat dokumen PO",
+      );
     }
 
     setShowAddModal(false);
@@ -165,83 +207,109 @@ export default function PurchaseView({
         phone: newSupPhone,
         city: newSupCity,
         address: newSupAddress,
-        status: 'active'
+        status: "active",
       });
 
-      setSuppliers(prev => [...prev, newSupplier]);
+      setSuppliers((prev) => [...prev, newSupplier]);
       setSupplierId(newSupplier.id);
       setShowAddSupplier(false);
-      onTriggerNotification(`Berhasil menambahkan supplier baru: ${newSupplier.name}`);
-      
-      setNewSupName('');
-      setNewSupPhone('');
-      setNewSupCity('');
-      setNewSupAddress('');
+      onTriggerNotification(
+        `Berhasil menambahkan supplier baru: ${newSupplier.name}`,
+      );
+
+      setNewSupName("");
+      setNewSupPhone("");
+      setNewSupCity("");
+      setNewSupAddress("");
     } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menambah supplier');
+      onTriggerNotification(
+        err instanceof Error ? err.message : "Gagal menambah supplier",
+      );
     }
   };
 
-  const handleReceiveGoods = async (poId: string, poNum: string, items: any[]) => {
+  const handleReceiveGoods = async (
+    poId: string,
+    poNum: string,
+    items: any[],
+  ) => {
     try {
-      const po = purchaseOrders.find((purchaseOrder) => purchaseOrder.id === poId);
+      const po = purchaseOrders.find(
+        (purchaseOrder) => purchaseOrder.id === poId,
+      );
       const receiptItems = (po?.items || items || [])
         .map((item: any) => ({
           purchase_order_item_id: item.id,
           product_id: item.productId,
-          received_quantity: Math.max(0, item.quantity - (item.receivedQty || 0)),
+          received_quantity: Math.max(
+            0,
+            item.quantity - (item.receivedQty || 0),
+          ),
           rejected_quantity: 0,
           notes: `Diterima dari PO ${poNum}`,
         }))
-        .filter((item: any) => item.purchase_order_item_id && item.product_id && item.received_quantity > 0);
+        .filter(
+          (item: any) =>
+            item.purchase_order_item_id &&
+            item.product_id &&
+            item.received_quantity > 0,
+        );
 
       if (receiptItems.length === 0) {
-        onTriggerNotification(`Tidak ada sisa item yang perlu diterima untuk PO ${poNum}.`);
+        onTriggerNotification(
+          `Tidak ada sisa item yang perlu diterima untuk PO ${poNum}.`,
+        );
         return;
       }
 
       await purchasingApi.createGoodsReceiptNote({
         purchase_order_id: poId,
-        receipt_date: new Date().toISOString().split('T')[0],
-        to_location_id: '019e9ad6-c8d2-7170-9090-1def3d995d06', // HARDCODED for now as there's no location picker yet
-        status: 'posted',
+        receipt_date: new Date().toISOString().split("T")[0],
+        to_location_id: "019e9ad6-c8d2-7170-9090-1def3d995d06", // HARDCODED for now as there's no location picker yet
+        status: "posted",
         notes: `Barang diterima dari PO ${poNum}`,
         items: receiptItems,
       });
-      
-      onTriggerNotification(`GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan (GRN).`);
+
+      onTriggerNotification(
+        `GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan (GRN).`,
+      );
       await loadData();
     } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal konfirmasi penerimaan');
+      onTriggerNotification(
+        err instanceof Error ? err.message : "Gagal konfirmasi penerimaan",
+      );
     }
   };
 
   const handleApprove = async (poId: string, poNum: string) => {
     const result = await Swal.fire({
-      title: 'Konfirmasi Approval PO',
+      title: "Konfirmasi Approval PO",
       text: `Apakah Anda yakin ingin menyetujui Purchase Order ${poNum}? PO yang telah disetujui akan berstatus Dipesan dan dikirim ke Supplier.`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#059669', // emerald-600
-      cancelButtonColor: '#64748b', // slate-500
-      confirmButtonText: 'Ya, Setujui PO!',
-      cancelButtonText: 'Batal'
+      confirmButtonColor: "#059669", // emerald-600
+      cancelButtonColor: "#64748b", // slate-500
+      confirmButtonText: "Ya, Setujui PO!",
+      cancelButtonText: "Batal",
     });
 
     if (result.isConfirmed) {
       try {
         await purchasingApi.approvePurchaseOrder(poId);
         Swal.fire(
-          'Approved!',
+          "Approved!",
           `PO ${poNum} berhasil disetujui. Status kini menjadi Dipesan.`,
-          'success'
+          "success",
         );
         await loadData();
       } catch (err) {
         Swal.fire(
-          'Gagal',
-          err instanceof Error ? err.message : 'Terjadi kesalahan saat menyetujui PO',
-          'error'
+          "Gagal",
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat menyetujui PO",
+          "error",
         );
       }
     }
@@ -249,37 +317,35 @@ export default function PurchaseView({
 
   const handleCancel = async (poId: string, poNum: string) => {
     const result = await Swal.fire({
-      title: 'Batalkan PO?',
+      title: "Batalkan PO?",
       text: `Masukkan alasan pembatalan Purchase Order ${poNum}:`,
-      icon: 'error',
-      input: 'textarea',
-      inputPlaceholder: 'Tuliskan alasan pembatalan di sini...',
+      icon: "error",
+      input: "textarea",
+      inputPlaceholder: "Tuliskan alasan pembatalan di sini...",
       showCancelButton: true,
-      confirmButtonColor: '#e11d48', // rose-600
-      cancelButtonColor: '#64748b', // slate-500
-      confirmButtonText: 'Ya, Batalkan!',
-      cancelButtonText: 'Tidak',
+      confirmButtonColor: "#e11d48", // rose-600
+      cancelButtonColor: "#64748b", // slate-500
+      confirmButtonText: "Ya, Batalkan!",
+      cancelButtonText: "Tidak",
       inputValidator: (value) => {
         if (!value) {
-          return 'Alasan pembatalan wajib diisi!';
+          return "Alasan pembatalan wajib diisi!";
         }
-      }
+      },
     });
 
     if (result.isConfirmed) {
       try {
         await purchasingApi.cancelPurchaseOrder(poId, result.value);
-        Swal.fire(
-          'Dibatalkan!',
-          `PO ${poNum} berhasil dibatalkan.`,
-          'success'
-        );
+        Swal.fire("Dibatalkan!", `PO ${poNum} berhasil dibatalkan.`, "success");
         await loadData();
       } catch (err) {
         Swal.fire(
-          'Gagal',
-          err instanceof Error ? err.message : 'Terjadi kesalahan saat membatalkan PO',
-          'error'
+          "Gagal",
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat membatalkan PO",
+          "error",
         );
       }
     }
@@ -298,7 +364,8 @@ export default function PurchaseView({
               Siklus Pembelian & Restock Bahan Cor (Purchase Order)
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik, dan pasir lumajang super.
+              Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik,
+              dan pasir lumajang super.
             </p>
           </div>
         </div>
@@ -313,18 +380,47 @@ export default function PurchaseView({
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          ['PR-2026-0601', 'Permintaan Pembelian', 'Gudang mengajukan kebutuhan semen, pasir, dan wiremesh.', 'Draft'],
-          ['PO-2026-05-014', 'Purchase Order', 'Admin menerbitkan pesanan resmi ke supplier.', 'Dipesan'],
-          ['GRN-2026-0601', 'Penerimaan Gudang', 'Barang masuk dicek fisik sebelum stok bertambah.', 'Parsial'],
-          ['AP-2026-0601', 'Hutang Supplier', 'Tagihan supplier menunggu jadwal pembayaran finance.', 'Open'],
+          [
+            "PR-2026-0601",
+            "Permintaan Pembelian",
+            "Gudang mengajukan kebutuhan semen, pasir, dan wiremesh.",
+            "Draft",
+          ],
+          [
+            "PO-2026-05-014",
+            "Purchase Order",
+            "Admin menerbitkan pesanan resmi ke supplier.",
+            "Dipesan",
+          ],
+          [
+            "GRN-2026-0601",
+            "Penerimaan Gudang",
+            "Barang masuk dicek fisik sebelum stok bertambah.",
+            "Parsial",
+          ],
+          [
+            "AP-2026-0601",
+            "Hutang Supplier",
+            "Tagihan supplier menunggu jadwal pembayaran finance.",
+            "Open",
+          ],
         ].map(([code, title, desc, status]) => (
-          <div key={code} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div
+            key={code}
+            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
+          >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[10px] font-black text-cyan-600">{code}</span>
-              <span className="px-2 py-0.5 rounded border bg-slate-50 text-[9px] font-bold text-slate-500">{status}</span>
+              <span className="font-mono text-[10px] font-black text-cyan-600">
+                {code}
+              </span>
+              <span className="px-2 py-0.5 rounded border bg-slate-50 text-[9px] font-bold text-slate-500">
+                {status}
+              </span>
             </div>
             <h4 className="mt-2 font-bold text-slate-800">{title}</h4>
-            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">{desc}</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+              {desc}
+            </p>
           </div>
         ))}
       </div>
@@ -383,7 +479,10 @@ export default function PurchaseView({
               <tbody className="divide-y divide-slate-100">
                 {filteredPOs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
+                    <td
+                      colSpan={6}
+                      className="text-center py-12 text-slate-400 font-medium"
+                    >
                       Tidak ditemukan data Purchase Order yang terekam.
                     </td>
                   </tr>
@@ -391,11 +490,13 @@ export default function PurchaseView({
                   filteredPOs.map((po) => {
                     const isExpanded = expandedPoId === po.id;
                     const statusColors: Record<string, string> = {
-                      Draft: 'bg-slate-100 text-slate-600',
-                      Dipesan: 'bg-blue-100 text-blue-700 border-blue-200',
-                      'Diterima Sebagian': 'bg-amber-100 text-amber-700 border-amber-300 animate-pulse',
-                      'Diterima Penuh': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                      Dibatalkan: 'bg-slate-100 text-slate-400',
+                      Draft: "bg-slate-100 text-slate-600",
+                      Dipesan: "bg-blue-100 text-blue-700 border-blue-200",
+                      "Diterima Sebagian":
+                        "bg-amber-100 text-amber-700 border-amber-300 animate-pulse",
+                      "Diterima Penuh":
+                        "bg-emerald-100 text-emerald-800 border-emerald-200",
+                      Dibatalkan: "bg-slate-100 text-slate-400",
                     };
 
                     return (
@@ -403,32 +504,56 @@ export default function PurchaseView({
                         <tr className="hover:bg-slate-50/40">
                           <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
                             <button
-                              onClick={() => setExpandedPoId(isExpanded ? null : po.id)}
+                              onClick={() =>
+                                setExpandedPoId(isExpanded ? null : po.id)
+                              }
                               className="flex items-center gap-1.5 focus:outline-none text-left"
                             >
-                              {isExpanded ? <ChevronDown size={14} className="text-cyan-500" /> : <ChevronRight size={14} className="text-slate-400" />}
+                              {isExpanded ? (
+                                <ChevronDown
+                                  size={14}
+                                  className="text-cyan-500"
+                                />
+                              ) : (
+                                <ChevronRight
+                                  size={14}
+                                  className="text-slate-400"
+                                />
+                              )}
                               <span>{po.poNumber}</span>
                             </button>
                           </td>
-                          <td className="p-3.5 font-bold text-slate-700">{po.supplierName}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{formatDate(po.date)}</td>
-                          <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(po.total)}</td>
+                          <td className="p-3.5 font-bold text-slate-700">
+                            {po.supplierName}
+                          </td>
+                          <td className="p-3.5 font-mono text-slate-500">
+                            {formatDate(po.date)}
+                          </td>
+                          <td className="p-3.5 font-mono font-black text-slate-900">
+                            {formatIDR(po.total)}
+                          </td>
                           <td className="p-3.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || 'bg-slate-100'}`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || "bg-slate-100"}`}
+                            >
                               {po.status}
                             </span>
                           </td>
                           <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                            {po.status === 'Draft' && (
+                            {po.status === "Draft" && (
                               <>
                                 <button
-                                  onClick={() => handleApprove(po.id, po.poNumber)}
+                                  onClick={() =>
+                                    handleApprove(po.id, po.poNumber)
+                                  }
                                   className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
                                 >
                                   Approve
                                 </button>
                                 <button
-                                  onClick={() => handleCancel(po.id, po.poNumber)}
+                                  onClick={() =>
+                                    handleCancel(po.id, po.poNumber)
+                                  }
                                   className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
                                 >
                                   Batal
@@ -438,7 +563,9 @@ export default function PurchaseView({
                             <button
                               onClick={() => {
                                 setPrintPoId(po.id);
-                                onTriggerNotification(`Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`);
+                                onTriggerNotification(
+                                  `Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`,
+                                );
                                 setTimeout(() => handlePrintAction(), 300);
                               }}
                               className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
@@ -452,22 +579,35 @@ export default function PurchaseView({
                         {/* Expandable PO items block */}
                         {isExpanded && (
                           <tr className="bg-slate-50/50">
-                            <td colSpan={6} className="p-4 pl-12 border-b border-slate-100">
+                            <td
+                              colSpan={6}
+                              className="p-4 pl-12 border-b border-slate-100"
+                            >
                               <div className="space-y-4 max-w-xl">
-                                <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">KOMPONEN RESTOCK BORONGAN</h5>
+                                <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
+                                  KOMPONEN RESTOCK BORONGAN
+                                </h5>
                                 <div className="space-y-1.5">
                                   {po.items?.map((it, idx) => (
-                                    <div key={idx} className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs">
+                                    <div
+                                      key={idx}
+                                      className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs"
+                                    >
                                       <div>
-                                        <strong className="text-slate-700 block">{it.productName}</strong>
-                                        <span className="text-slate-400 font-mono text-[10px]">{it.quantity} Pcs x {formatIDR(it.price)}</span>
+                                        <strong className="text-slate-700 block">
+                                          {it.productName}
+                                        </strong>
+                                        <span className="text-slate-400 font-mono text-[10px]">
+                                          {it.quantity} Pcs x{" "}
+                                          {formatIDR(it.price)}
+                                        </span>
                                       </div>
-                                      <strong className="font-mono text-slate-950">{formatIDR(it.quantity * it.price)}</strong>
+                                      <strong className="font-mono text-slate-950">
+                                        {formatIDR(it.quantity * it.price)}
+                                      </strong>
                                     </div>
                                   ))}
                                 </div>
-
-
                               </div>
                             </td>
                           </tr>
@@ -492,18 +632,30 @@ export default function PurchaseView({
                 <ShoppingCart size={18} className="text-cyan-400" />
                 <h3 className="font-bold text-sm">Pemesanan PO Supplier</h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
                 <X size={18} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            <form
+              onSubmit={handleSubmit}
+              className="p-5 space-y-4 max-h-[70vh] overflow-y-auto"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Vendor Supplier *</label>
-                    <button type="button" onClick={() => setShowAddSupplier(true)} className="text-[10px] text-cyan-600 font-bold hover:text-cyan-800 flex items-center gap-1 cursor-pointer">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Vendor Supplier *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSupplier(true)}
+                      className="text-[10px] text-cyan-600 font-bold hover:text-cyan-800 flex items-center gap-1 cursor-pointer"
+                    >
                       <Plus size={10} /> Tambah Baru
                     </button>
                   </div>
@@ -515,40 +667,60 @@ export default function PurchaseView({
                       required
                       disabled={!!rfqId}
                     >
-                      {suppliers.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.city})
+                        </option>
                       ))}
                     </select>
                   ) : (
-                    <select disabled className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400">
+                    <select
+                      disabled
+                      className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400"
+                    >
                       <option>Memuat Supplier...</option>
                     </select>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi RFQ</label>
-                  <RfqPicker 
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Referensi RFQ
+                  </label>
+                  <RfqPicker
                     value={rfqNumberDisplay}
                     onChange={(rfq) => {
                       setRfqId(rfq.id);
                       setRfqNumberDisplay(rfq.rfqNumber);
                       setSupplierId(rfq.supplierId); // Auto-select supplier
                       if (rfq.items && rfq.items.length > 0) {
-                        setFormItems(rfq.items.map((item, index) => ({
-                          id: `form-item-${Date.now()}-${index}`,
-                          productId: item.productId,
-                          quantity: item.quantity,
-                          price: item.quotedUnitPrice || products.find(p => p.id === item.productId)?.costPrice || 0,
-                          unit: item.unit
-                        })));
+                        setFormItems(
+                          rfq.items.map((item, index) => ({
+                            id: `form-item-${Date.now()}-${index}`,
+                            productId: item.productId,
+                            quantity: item.quantity,
+                            price:
+                              item.quotedUnitPrice ||
+                              products.find((p) => p.id === item.productId)
+                                ?.costPrice ||
+                              0,
+                            unit: item.unit,
+                          })),
+                        );
                       }
                     }}
                     onClear={() => {
-                      setRfqId('');
-                      setRfqNumberDisplay('');
-                      setSupplierId('');
-                      setFormItems([{ id: `form-item-${Date.now()}`, productId: '', quantity: 1, price: 0 }]);
+                      setRfqId("");
+                      setRfqNumberDisplay("");
+                      setSupplierId("");
+                      setFormItems([
+                        {
+                          id: `form-item-${Date.now()}`,
+                          productId: "",
+                          quantity: 1,
+                          price: 0,
+                        },
+                      ]);
                     }}
                     statusFilter="Diterima"
                   />
@@ -557,8 +729,14 @@ export default function PurchaseView({
 
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-bold text-slate-800 text-sm">Daftar Item PO</h4>
-                  <button type="button" onClick={handleAddItem} className="px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border rounded font-bold flex items-center gap-1 transition-colors text-[10px]">
+                  <h4 className="font-bold text-slate-800 text-sm">
+                    Daftar Item PO
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border rounded font-bold flex items-center gap-1 transition-colors text-[10px]"
+                  >
                     <Plus size={12} /> Tambah
                   </button>
                 </div>
@@ -580,39 +758,55 @@ export default function PurchaseView({
                             <ProductPicker
                               value={item.productId}
                               onChange={(prod) => {
-                                handleItemChange(item.id, 'productId', prod.id);
-                                handleItemChange(item.id, 'unit', prod.unit);
-                                handleItemChange(item.id, 'price', prod.costPrice || 0);
+                                handleItemChange(item.id, "productId", prod.id);
+                                handleItemChange(item.id, "unit", prod.unit);
+                                handleItemChange(
+                                  item.id,
+                                  "price",
+                                  prod.costPrice || 0,
+                                );
                               }}
                             />
                           </td>
                           <td className="p-2">
                             <div className="flex items-center gap-1">
-                              <input 
-                                type="number" 
-                                min="1" 
+                              <input
+                                type="number"
+                                min="1"
                                 className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
                                 value={item.quantity}
-                                onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    item.id,
+                                    "quantity",
+                                    parseInt(e.target.value) || 0,
+                                  )
+                                }
                                 required
                               />
                               <span className="text-[10px] text-slate-500 font-bold uppercase w-6">
-                                {item.unit || '-'}
+                                {item.unit || "-"}
                               </span>
                             </div>
                           </td>
                           <td className="p-2">
-                            <input 
-                              type="number" 
-                              min="0" 
+                            <input
+                              type="number"
+                              min="0"
                               className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
                               value={item.price}
-                              onChange={(e) => handleItemChange(item.id, 'price', parseInt(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  item.id,
+                                  "price",
+                                  parseInt(e.target.value) || 0,
+                                )
+                              }
                               required
                             />
                           </td>
                           <td className="p-2 text-center">
-                            <button 
+                            <button
                               type="button"
                               onClick={() => handleRemoveItem(item.id)}
                               disabled={formItems.length === 1}
@@ -629,15 +823,33 @@ export default function PurchaseView({
               </div>
 
               <div className="p-3.5 bg-slate-50 border rounded-xl">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Total Borongan PO</span>
+                <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">
+                  Total Borongan PO
+                </span>
                 <p className="text-sm font-black font-mono text-cyan-600 mt-1">
-                  {formatIDR(formItems.reduce((acc, curr) => acc + (curr.quantity * curr.price), 0))}
+                  {formatIDR(
+                    formItems.reduce(
+                      (acc, curr) => acc + curr.quantity * curr.price,
+                      0,
+                    ),
+                  )}
                 </p>
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-3 py-2 border rounded-lg text-slate-650">Batal</button>
-                <button type="submit" className="px-4 py-2 bg-slate-900 border text-white rounded-lg">Rilis Surat PO</button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-3 py-2 border rounded-lg text-slate-650"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-900 border text-white rounded-lg"
+                >
+                  Rilis Surat PO
+                </button>
               </div>
             </form>
           </div>
@@ -646,127 +858,231 @@ export default function PurchaseView({
 
       {/* Hidden Print Layout */}
       <div className="hidden">
-        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
-          {printPoId && (() => {
-            const poToPrint = purchaseOrders.find(p => p.id === printPoId);
-            if (!poToPrint) return null;
-            return (
-              <div className="w-full">
-                {/* Header */}
-                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
-                  <div>
-                    <h1 className="text-3xl font-black tracking-tighter uppercase">CV Beton Agung</h1>
-                    <p className="text-sm font-medium mt-1">General Contractor & Supplier Material Alam</p>
-                    <p className="text-xs mt-1 max-w-xs text-gray-600">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+        <div
+          ref={printRef}
+          className="print:block p-8 font-sans text-sm text-black bg-white"
+        >
+          {printPoId &&
+            (() => {
+              const poToPrint = purchaseOrders.find((p) => p.id === printPoId);
+              if (!poToPrint) return null;
+              return (
+                <div className="w-full">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
+                    <div>
+                      <h1 className="text-3xl font-black tracking-tighter uppercase">
+                        CV Beton Agung
+                      </h1>
+                      <p className="text-sm font-medium mt-1">
+                        General Contractor & Supplier Material Alam
+                      </p>
+                      <p className="text-xs mt-1 max-w-xs text-gray-600">
+                        Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <h2 className="text-2xl font-black text-gray-400 uppercase tracking-widest border border-gray-300 inline-block px-4 py-1 rounded">
+                        PURCHASE ORDER
+                      </h2>
+                      <p className="font-mono font-bold mt-2 text-lg">
+                        {poToPrint.poNumber}
+                      </p>
+                      <p className="text-sm">
+                        Tanggal: {formatDate(poToPrint.date)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <h2 className="text-2xl font-black text-gray-400 uppercase tracking-widest border border-gray-300 inline-block px-4 py-1 rounded">PURCHASE ORDER</h2>
-                    <p className="font-mono font-bold mt-2 text-lg">{poToPrint.poNumber}</p>
-                    <p className="text-sm">Tanggal: {formatDate(poToPrint.date)}</p>
+
+                  {/* To */}
+                  <div className="mb-8 p-4 border border-black rounded-lg inline-block min-w-75">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">
+                      Kepada Yth. (Supplier)
+                    </p>
+                    <p className="font-bold text-lg">
+                      {poToPrint.supplierName}
+                    </p>
                   </div>
-                </div>
 
-                {/* To */}
-                <div className="mb-8 p-4 border border-black rounded-lg inline-block min-w-[300px]">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Kepada Yth. (Supplier)</p>
-                  <p className="font-bold text-lg">{poToPrint.supplierName}</p>
-                </div>
-
-                {/* Items */}
-                <table className="w-full mb-8 border-collapse border border-black">
-                  <thead>
-                    <tr className="bg-gray-100 uppercase text-xs">
-                      <th className="p-3 border border-black text-left w-12">No</th>
-                      <th className="p-3 border border-black text-left">Nama Produk / Material</th>
-                      <th className="p-3 border border-black text-center w-24">Qty</th>
-                      <th className="p-3 border border-black text-right w-40">Harga Satuan</th>
-                      <th className="p-3 border border-black text-right w-48">Jumlah</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {poToPrint.items?.map((item, idx) => (
-                      <tr key={item.id || idx}>
-                        <td className="p-3 border border-black text-center">{idx + 1}</td>
-                        <td className="p-3 border border-black font-medium">{item.productName}</td>
-                        <td className="p-3 border border-black text-center">{item.quantity}</td>
-                        <td className="p-3 border border-black text-right font-mono">{formatIDR(item.price)}</td>
-                        <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(item.quantity * item.price)}</td>
+                  {/* Items */}
+                  <table className="w-full mb-8 border-collapse border border-black">
+                    <thead>
+                      <tr className="bg-gray-100 uppercase text-xs">
+                        <th className="p-3 border border-black text-left w-12">
+                          No
+                        </th>
+                        <th className="p-3 border border-black text-left">
+                          Nama Produk / Material
+                        </th>
+                        <th className="p-3 border border-black text-center w-24">
+                          Qty
+                        </th>
+                        <th className="p-3 border border-black text-right w-40">
+                          Harga Satuan
+                        </th>
+                        <th className="p-3 border border-black text-right w-48">
+                          Jumlah
+                        </th>
                       </tr>
-                    ))}
-                    {!poToPrint.items?.length && (
-                      <tr>
-                        <td colSpan={5} className="p-4 text-center italic">Tidak ada rincian material</td>
+                    </thead>
+                    <tbody>
+                      {poToPrint.items?.map((item, idx) => (
+                        <tr key={item.id || idx}>
+                          <td className="p-3 border border-black text-center">
+                            {idx + 1}
+                          </td>
+                          <td className="p-3 border border-black font-medium">
+                            {item.productName}
+                          </td>
+                          <td className="p-3 border border-black text-center">
+                            {item.quantity}
+                          </td>
+                          <td className="p-3 border border-black text-right font-mono">
+                            {formatIDR(item.price)}
+                          </td>
+                          <td className="p-3 border border-black text-right font-mono font-bold">
+                            {formatIDR(item.quantity * item.price)}
+                          </td>
+                        </tr>
+                      ))}
+                      {!poToPrint.items?.length && (
+                        <tr>
+                          <td colSpan={5} className="p-4 text-center italic">
+                            Tidak ada rincian material
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100">
+                        <td
+                          colSpan={4}
+                          className="p-3 border border-black text-right font-bold"
+                        >
+                          TOTAL KESELURUHAN
+                        </td>
+                        <td className="p-3 border border-black text-right font-bold font-mono text-lg">
+                          {formatIDR(poToPrint.total)}
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-100">
-                      <td colSpan={4} className="p-3 border border-black text-right font-bold">TOTAL KESELURUHAN</td>
-                      <td className="p-3 border border-black text-right font-bold font-mono text-lg">{formatIDR(poToPrint.total)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tfoot>
+                  </table>
 
-                <div className="text-xs mb-12">
-                  <p><strong>Catatan Tambahan:</strong> Harap menyertakan salinan dokumen PO ini pada saat pengiriman faktur tagihan dan surat jalan (GRN).</p>
-                </div>
+                  <div className="text-xs mb-12">
+                    <p>
+                      <strong>Catatan Tambahan:</strong> Harap menyertakan
+                      salinan dokumen PO ini pada saat pengiriman faktur tagihan
+                      dan surat jalan (GRN).
+                    </p>
+                  </div>
 
-                <div className="flex justify-between text-center mt-12 px-12">
-                  <div>
-                    <p className="mb-24">Dipesan Oleh,</p>
-                    <p className="font-bold border-b border-black pb-1 uppercase">Purchasing Dept.</p>
-                    <p className="mt-1">CV Beton Agung</p>
-                  </div>
-                  <div>
-                    <p className="mb-24">Disetujui Oleh,</p>
-                    <p className="font-bold border-b border-black pb-1 uppercase">Direktur Utama</p>
-                    <p className="mt-1">CV Beton Agung</p>
-                  </div>
-                  <div>
-                    <p className="mb-24">Dikonfirmasi Oleh,</p>
-                    <p className="font-bold border-b border-black pb-1 text-white select-none">.</p>
-                    <p className="mt-1">{poToPrint.supplierName}</p>
+                  <div className="flex justify-between text-center mt-12 px-12">
+                    <div>
+                      <p className="mb-24">Dipesan Oleh,</p>
+                      <p className="font-bold border-b border-black pb-1 uppercase">
+                        Purchasing Dept.
+                      </p>
+                      <p className="mt-1">CV Beton Agung</p>
+                    </div>
+                    <div>
+                      <p className="mb-24">Disetujui Oleh,</p>
+                      <p className="font-bold border-b border-black pb-1 uppercase">
+                        Direktur Utama
+                      </p>
+                      <p className="mt-1">CV Beton Agung</p>
+                    </div>
+                    <div>
+                      <p className="mb-24">Dikonfirmasi Oleh,</p>
+                      <p className="font-bold border-b border-black pb-1 text-white select-none">
+                        .
+                      </p>
+                      <p className="mt-1">{poToPrint.supplierName}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </div>
       </div>
 
       {/* Quick Add Supplier Modal */}
       {showAddSupplier && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 font-sans text-xs">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-4 py-3 bg-cyan-50 border-b border-cyan-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={16} className="text-cyan-600" />
-                <h3 className="font-bold text-cyan-900 text-sm">Tambah Supplier Baru</h3>
+                <h3 className="font-bold text-cyan-900 text-sm">
+                  Tambah Supplier Baru
+                </h3>
               </div>
-              <button onClick={() => setShowAddSupplier(false)} className="text-cyan-400 hover:text-cyan-600">
+              <button
+                onClick={() => setShowAddSupplier(false)}
+                className="text-cyan-400 hover:text-cyan-600"
+              >
                 <X size={16} />
               </button>
             </div>
             <form onSubmit={handleQuickAddSupplier} className="p-4 space-y-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Nama Supplier *</label>
-                <input required type="text" value={newSupName} onChange={e => setNewSupName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+                <label className="text-[11px] font-bold text-slate-600">
+                  Nama Supplier *
+                </label>
+                <input
+                  required
+                  type="text"
+                  value={newSupName}
+                  onChange={(e) => setNewSupName(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
-                <input type="text" value={newSupPhone} onChange={e => setNewSupPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+                <label className="text-[11px] font-bold text-slate-600">
+                  No. Telepon / WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={newSupPhone}
+                  onChange={(e) => setNewSupPhone(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Kota</label>
-                <input type="text" value={newSupCity} onChange={e => setNewSupCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none" />
+                <label className="text-[11px] font-bold text-slate-600">
+                  Kota
+                </label>
+                <input
+                  type="text"
+                  value={newSupCity}
+                  onChange={(e) => setNewSupCity(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
-                <textarea rows={2} value={newSupAddress} onChange={e => setNewSupAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none resize-none" />
+                <label className="text-[11px] font-bold text-slate-600">
+                  Alamat Lengkap
+                </label>
+                <textarea
+                  rows={2}
+                  value={newSupAddress}
+                  onChange={(e) => setNewSupAddress(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none resize-none"
+                />
               </div>
               <div className="pt-2 border-t flex justify-end gap-2 text-xs font-bold mt-2">
-                <button type="button" onClick={() => setShowAddSupplier(false)} className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
-                <button type="submit" className="px-4 py-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 shadow-sm cursor-pointer">Simpan Supplier</button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSupplier(false)}
+                  className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 shadow-sm cursor-pointer"
+                >
+                  Simpan Supplier
+                </button>
               </div>
             </form>
           </div>

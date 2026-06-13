@@ -103,13 +103,18 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                     <tr className="hover:bg-slate-50/40">
                       <td className="p-3.5 pl-5 font-mono text-slate-800">
                         <button
-                          onClick={() => setExpandedId(isExpanded ? null : grn.id)}
+                          onClick={() =>
+                            setExpandedId(isExpanded ? null : grn.id)
+                          }
                           className="flex items-center gap-1.5 focus:outline-none text-left font-bold"
                         >
                           {isExpanded ? (
                             <ChevronDown size={14} className="text-cyan-500" />
                           ) : (
-                            <ChevronRight size={14} className="text-slate-400" />
+                            <ChevronRight
+                              size={14}
+                              className="text-slate-400"
+                            />
                           )}
                           <span>{grn.grnNumber}</span>
                         </button>
@@ -163,7 +168,9 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                                   Referensi PO / Surat Jalan
                                 </span>
                                 <span className="font-mono text-slate-800">
-                                  {grn.poNumber || grn.deliveryOrderNumber || "-"}
+                                  {grn.poNumber ||
+                                    grn.deliveryOrderNumber ||
+                                    "-"}
                                 </span>
                               </div>
                               <div>
@@ -243,7 +250,9 @@ export const InwardTab: React.FC<InwardTabProps> = ({
         >
           {printId &&
             (() => {
-              const grn = goodsReceipts.find((receipt) => receipt.id === printId);
+              const grn = goodsReceipts.find(
+                (receipt) => receipt.id === printId,
+              );
               if (!grn) return null;
 
               return (
@@ -273,7 +282,7 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                     </div>
                   </div>
 
-                  <div className="mb-8 p-4 border border-black rounded-lg inline-block min-w-[300px]">
+                  <div className="mb-8 p-4 border border-black rounded-lg inline-block min-w-75">
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">
                       Penerima Gudang
                     </p>
@@ -286,8 +295,7 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                       {grn.poNumber || grn.deliveryOrderNumber || "-"}
                     </p>
                     <p>
-                      <strong>Gudang:</strong>{" "}
-                      {getWarehouseName(grn)}
+                      <strong>Gudang:</strong> {getWarehouseName(grn)}
                     </p>
                   </div>
 

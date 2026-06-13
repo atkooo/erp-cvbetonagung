@@ -8,7 +8,10 @@ interface OutwardTabProps {
   search: string;
 }
 
-export const OutwardTab: React.FC<OutwardTabProps> = ({ stockMovements, search }) => {
+export const OutwardTab: React.FC<OutwardTabProps> = ({
+  stockMovements,
+  search,
+}) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left font-sans text-xs border-collapse">
@@ -35,12 +38,8 @@ export const OutwardTab: React.FC<OutwardTabProps> = ({ stockMovements, search }
             )
             .map((m) => (
               <tr key={m.id} className="hover:bg-slate-50/40">
-                <td className="p-3.5 pl-5 font-mono text-slate-400">
-                  {m.id}
-                </td>
-                <td className="p-3.5 font-mono text-slate-600">
-                  {m.date}
-                </td>
+                <td className="p-3.5 pl-5 font-mono text-slate-400">{m.id}</td>
+                <td className="p-3.5 font-mono text-slate-600">{m.date}</td>
                 <td className="p-3.5 font-mono font-bold text-indigo-600">
                   {m.referenceDoc}
                 </td>
@@ -58,7 +57,7 @@ export const OutwardTab: React.FC<OutwardTabProps> = ({ stockMovements, search }
                   <span>{m.handler}</span>
                 </td>
                 <td
-                  className="p-3.5 pr-5 text-slate-500 max-w-[150px] truncate"
+                  className="p-3.5 pr-5 text-slate-500 max-w-37.5 truncate"
                   title={m.notes}
                 >
                   {m.notes}

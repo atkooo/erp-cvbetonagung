@@ -3,21 +3,33 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
-import { Users, Search, Plus, Filter, Mail, MapPin, Phone, Building2, UserPlus, X, Edit, Trash2, Save } from '@/src/components/icons';
-import { Customer } from '../types';
-import { authStorage } from '../services/api';
-import { customersApi } from '../features/customers/api';
-import { SkeletonTable, ErrorCard } from './Skeleton';
-import Swal from 'sweetalert2';
+import React, { useEffect, useState } from "react";
+import {
+  Search,
+  Plus,
+  Filter,
+  MapPin,
+  Phone,
+  UserPlus,
+  X,
+  Edit,
+  Trash2,
+  Save,
+} from "@/src/components/icons";
+import { Customer } from "../types";
+import { customersApi } from "../features/customers/api";
+import { SkeletonTable, ErrorCard } from "./Skeleton";
+import Swal from "sweetalert2";
 
 interface CustomersViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-export default function CustomersView({ onTriggerNotification }: CustomersViewProps) {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+export default function CustomersView({
+  onTriggerNotification,
+}: CustomersViewProps) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -26,12 +38,12 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [city, setCity] = useState('');
-  const [address, setAddress] = useState('');
-  const [status, setStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [status, setStatus] = useState<"Aktif" | "Nonaktif">("Aktif");
 
   const fetchData = () => {
     setIsLoading(true);
@@ -62,21 +74,22 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
       cust.code.toLowerCase().includes(search.toLowerCase()) ||
       cust.phone.includes(search) ||
       cust.city.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || cust.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All" || cust.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const resetForm = () => {
-    setName('');
-    setPhone('');
-    setEmail('');
-    setCity('');
-    setAddress('');
-    setStatus('Aktif');
+    setName("");
+    setPhone("");
+    setEmail("");
+    setCity("");
+    setAddress("");
+    setStatus("Aktif");
   };
 
   const generateCustomerCode = () => {
-    return 'AUTO GENERATED';
+    return "AUTO GENERATED";
   };
 
   const handleOpenAddModal = () => {
@@ -88,24 +101,24 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   const handleOpenEditModal = (cust: Customer) => {
     setEditingCustomer(cust);
     setName(cust.name);
-    setPhone(cust.phone === '-' ? '' : cust.phone);
-    setEmail(cust.email === '-' ? '' : cust.email);
-    setCity(cust.city === '-' ? '' : cust.city);
-    setAddress(cust.address === '-' ? '' : cust.address);
+    setPhone(cust.phone === "-" ? "" : cust.phone);
+    setEmail(cust.email === "-" ? "" : cust.email);
+    setCity(cust.city === "-" ? "" : cust.city);
+    setAddress(cust.address === "-" ? "" : cust.address);
     setStatus(cust.status);
     setShowAddModal(true);
   };
 
   const handleDelete = async (id: string, custName: string) => {
     const result = await Swal.fire({
-      title: 'Apakah Anda yakin?',
+      title: "Apakah Anda yakin?",
       text: `Menghapus customer ${custName} tidak dapat dibatalkan!`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
     });
 
     if (!result.isConfirmed) return;
@@ -114,20 +127,23 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
     try {
       await customersApi.deleteCustomer(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
-      
+
       Swal.fire({
-        title: 'Terhapus!',
+        title: "Terhapus!",
         text: `Customer ${custName} berhasil dihapus.`,
-        icon: 'success',
+        icon: "success",
         timer: 2000,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Gagal menghapus customer dari backend.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Gagal menghapus customer dari backend.";
       Swal.fire({
-        title: 'Gagal!',
+        title: "Gagal!",
         text: message,
-        icon: 'error'
+        icon: "error",
       });
       onTriggerNotification(message);
     }
@@ -136,7 +152,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone || !city) {
-      onTriggerNotification('Gagal menyimpan: Harap isi Nama, No HP, dan Kota!');
+      onTriggerNotification(
+        "Gagal menyimpan: Harap isi Nama, No HP, dan Kota!",
+      );
       return;
     }
 
@@ -155,7 +173,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
           status,
         });
 
-        setCustomers((prev) => prev.map((c) => (c.id === editingCustomer.id ? updated : c)));
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === editingCustomer.id ? updated : c)),
+        );
         onTriggerNotification(`Sukses memperbarui Customer: ${updated.name}`);
       } else {
         const nextCode = generateCustomerCode();
@@ -170,12 +190,17 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
         });
 
         setCustomers((prev) => [newCustomer, ...prev]);
-        onTriggerNotification(`Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`);
+        onTriggerNotification(
+          `Sukses menambahkan Customer: ${newCustomer.name} (${newCustomer.code})`,
+        );
       }
       resetForm();
       setShowAddModal(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Gagal menyimpan customer ke backend.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Gagal menyimpan customer ke backend.";
       setErrorMessage(message);
       onTriggerNotification(message);
     } finally {
@@ -256,13 +281,19 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               <tbody className="divide-y divide-slate-100">
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-slate-400">
+                    <td
+                      colSpan={8}
+                      className="text-center py-10 text-slate-400"
+                    >
                       Tidak ada data customer yang cocok dengan pencarian Anda.
                     </td>
                   </tr>
                 ) : (
                   filteredCustomers.map((cust) => (
-                    <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr
+                      key={cust.id}
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
                       <td className="p-3.5 pl-5 font-mono font-bold text-cyan-600">
                         {cust.code}
                       </td>
@@ -283,17 +314,23 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                           <span>{cust.city}</span>
                         </div>
                       </td>
-                      <td className="p-3.5 text-slate-500 truncate max-w-[200px]" title={cust.address}>
+                      <td
+                        className="p-3.5 text-slate-500 truncate max-w-50"
+                        title={cust.address}
+                      >
                         {cust.address}
                       </td>
                       <td className="p-3.5 text-slate-500 font-mono">
                         <span>{cust.email}</span>
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${cust.status === 'Aktif'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-500'
-                          }`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                            cust.status === "Aktif"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
                           {cust.status}
                         </span>
                       </td>
@@ -324,10 +361,23 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
 
           {/* Pagination UI */}
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Menampilkan 1-{filteredCustomers.length} dari {customers.length} item</span>
+            <span>
+              Menampilkan 1-{filteredCustomers.length} dari {customers.length}{" "}
+              item
+            </span>
             <div className="flex gap-1">
-              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Sebelumnya</button>
-              <button className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]" disabled>Berikutnya</button>
+              <button
+                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
+                disabled
+              >
+                Sebelumnya
+              </button>
+              <button
+                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
+                disabled
+              >
+                Berikutnya
+              </button>
             </div>
           </div>
         </div>
@@ -342,7 +392,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               <div className="flex items-center gap-2">
                 <UserPlus size={18} className="text-cyan-400" />
                 <h3 className="font-sans font-bold text-sm">
-                  {editingCustomer ? `Edit Data Customer: ${editingCustomer.code}` : 'Registrasi Customer Baru'}
+                  {editingCustomer
+                    ? `Edit Data Customer: ${editingCustomer.code}`
+                    : "Registrasi Customer Baru"}
                 </h3>
               </div>
               <button
@@ -356,7 +408,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Nama Lengkap / Instansi</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Nama Lengkap / Instansi
+                </label>
                 <input
                   type="text"
                   required
@@ -369,7 +423,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor HP / WhatsApp</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Nomor HP / WhatsApp
+                  </label>
                   <input
                     type="text"
                     required
@@ -380,7 +436,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Kota Operasional</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Kota Operasional
+                  </label>
                   <input
                     type="text"
                     required
@@ -393,7 +451,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Email (Opsional)</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Email (Opsional)
+                </label>
                 <input
                   type="email"
                   placeholder="Contoh: munir.giri@gmail.com"
@@ -404,7 +464,9 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Alamat Pengiriman / Pabrikasi</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Alamat Pengiriman / Pabrikasi
+                </label>
                 <textarea
                   rows={2}
                   placeholder="Jl. Pahlawan Barat No. 129, Kebomas"
@@ -415,14 +477,16 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Status Awal</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Status Awal
+                </label>
                 <div className="flex gap-4 mt-1.5">
                   <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
                     <input
                       type="radio"
                       name="add_status"
-                      checked={status === 'Aktif'}
-                      onChange={() => setStatus('Aktif')}
+                      checked={status === "Aktif"}
+                      onChange={() => setStatus("Aktif")}
                       className="text-cyan-600 focus:ring-cyan-500"
                     />
                     <span>Aktif (Mengikuti order aktif)</span>
@@ -431,8 +495,8 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                     <input
                       type="radio"
                       name="add_status"
-                      checked={status === 'Nonaktif'}
-                      onChange={() => setStatus('Nonaktif')}
+                      checked={status === "Nonaktif"}
+                      onChange={() => setStatus("Nonaktif")}
                       className="text-cyan-600 focus:ring-cyan-500"
                     />
                     <span>Nonaktif / Blacklist</span>
@@ -455,7 +519,7 @@ export default function CustomersView({ onTriggerNotification }: CustomersViewPr
                   className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
                   <Save size={13} />
-                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+                  <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>
                 </button>
               </div>
             </form>

@@ -551,7 +551,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
             ) : sessions.length === 0 ? (
               <p className="text-slate-400 text-center py-8">Belum ada sesi stock opname.</p>
             ) : (
-              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-120 overflow-y-auto pr-1">
                 {sessions.map((session) => (
                   <div
                     key={session.id}
@@ -682,7 +682,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                       <select
                         value={itemCategoryFilter}
                         onChange={(e) => setItemCategoryFilter(e.target.value)}
-                        className="px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 md:max-w-[200px]"
+                        className="px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 md:max-w-50"
                       >
                         <option value="">Semua Kategori</option>
                         {availableCategories.map(cat => (
@@ -740,7 +740,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[700px]">
+                      <table className="w-full text-left border-collapse min-w-175">
                         <thead>
                           <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
                             {selectedSession.status === 'in_progress' && (
@@ -852,7 +852,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                   {isEditing ? (
                                     <input
                                       type="text"
-                                      className="px-2 py-1 border rounded w-full min-w-[120px]"
+                                      className="px-2 py-1 border rounded w-full min-w-30"
                                       value={editingNotes}
                                       onChange={(e) => setEditingNotes(e.target.value)}
                                       placeholder="Catatan..."

@@ -8,7 +8,10 @@ interface HistoryTabProps {
   search: string;
 }
 
-export const HistoryTab: React.FC<HistoryTabProps> = ({ stockMovements, search }) => {
+export const HistoryTab: React.FC<HistoryTabProps> = ({
+  stockMovements,
+  search,
+}) => {
   return (
     <div className="p-6">
       <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -27,7 +30,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ stockMovements, search }
             <div key={idx} className="relative text-xs">
               {/* Circle indicators */}
               <span
-                className={`absolute -left-[30px] top-0 p-1 rounded-full text-white ${
+                className={`absolute -left-7.5 top-0 p-1 rounded-full text-white ${
                   m.type === "Masuk" ? "bg-emerald-500" : "bg-rose-500"
                 }`}
               >

@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from "react";
 import {
   FolderTree,
-  Sparkles,
   Plus,
   Edit,
   Trash2,
@@ -83,14 +82,14 @@ export default function CategoriesView({
 
   const handleDelete = async (id: string, catName: string) => {
     const result = await Swal.fire({
-      title: 'Apakah Anda yakin?',
+      title: "Apakah Anda yakin?",
       text: `Menghapus kategori ${catName} tidak dapat dibatalkan!`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
     });
 
     if (!result.isConfirmed) return;
@@ -99,13 +98,13 @@ export default function CategoriesView({
     try {
       await productsApi.deleteCategory(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
-      
+
       Swal.fire({
-        title: 'Terhapus!',
+        title: "Terhapus!",
         text: `Kategori ${catName} berhasil dihapus.`,
-        icon: 'success',
+        icon: "success",
         timer: 2000,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
     } catch (error) {
       const message =
@@ -113,9 +112,9 @@ export default function CategoriesView({
           ? error.message
           : "Gagal menghapus kategori dari backend.";
       Swal.fire({
-        title: 'Gagal!',
+        title: "Gagal!",
         text: message,
-        icon: 'error'
+        icon: "error",
       });
       onTriggerNotification(message);
     }
@@ -207,9 +206,7 @@ export default function CategoriesView({
               <div className="p-5">
                 {/* Header card info */}
                 <div className="flex items-start justify-between">
-                  <div
-                    className="p-2.5 rounded-lg bg-slate-700 text-white shadow"
-                  >
+                  <div className="p-2.5 rounded-lg bg-slate-700 text-white shadow">
                     <IconComponent size={20} />
                   </div>
                   <span className="text-[10px] font-mono tracking-wider font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">

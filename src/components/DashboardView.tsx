@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   Users,
@@ -12,11 +12,7 @@ import {
   AlertTriangle,
   Receipt,
   ArrowUpRight,
-  TrendingDown,
-  ShoppingBag,
-  Bell,
   CheckCircle,
-  Truck,
 } from "@/src/components/icons";
 import {
   Customer,
@@ -377,7 +373,7 @@ export default function DashboardView({
               </div>
 
               {/* Simple Custom Fully Responsive SVG Area Chart to avoid any Recharts crash */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/80 flex-1 flex flex-col justify-between min-h-[220px]">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/80 flex-1 flex flex-col justify-between min-h-55">
                 <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono border-b border-slate-200/50 pb-1 mb-2">
                   <span>Rp Milyar</span>
                   <div className="flex gap-4">
@@ -434,7 +430,7 @@ export default function DashboardView({
                       <div key={idx} className="space-y-1.5">
                         <div className="flex justify-between text-xs font-semibold">
                           <span
-                            className="text-slate-700 truncate max-w-[200px]"
+                            className="text-slate-700 truncate max-w-50"
                             title={item.name}
                           >
                             {item.name}
@@ -497,7 +493,7 @@ export default function DashboardView({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto max-h-[280px] space-y-2.5 pr-1">
+              <div className="flex-1 overflow-y-auto max-h-70 space-y-2.5 pr-1">
                 {lowStockProducts.length === 0 ? (
                   <div className="text-center py-8 text-slate-400">
                     <CheckCircle
@@ -573,7 +569,7 @@ export default function DashboardView({
                 </span>
               </div>
 
-              <div className="space-y-3 flex-1 overflow-y-auto max-h-[280px]">
+              <div className="space-y-3 flex-1 overflow-y-auto max-h-70">
                 {filteredActiveProjects.length === 0 ? (
                   <div className="text-center py-12 text-slate-405 text-xs text-slate-400">
                     Tidak ada proyek aktif.

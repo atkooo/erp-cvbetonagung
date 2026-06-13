@@ -3,24 +3,46 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  ClipboardCheck, Clock, CheckCircle2, XCircle, AlertTriangle, Eye, X, RefreshCw, Search, ChevronLeft, ChevronRight
-} from '@/src/components/icons';
-import Swal from 'sweetalert2';
-import { inventoryApi } from '../features/inventory/api';
-import { ApprovalRequest } from '../features/inventory/types';
+  ClipboardCheck,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Eye,
+  X,
+  RefreshCw,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "@/src/components/icons";
+import Swal from "sweetalert2";
+import { inventoryApi } from "../features/inventory/api";
+import { ApprovalRequest } from "../features/inventory/types";
 
 interface ApprovalWorkflowViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
 const formatIDR = (num: number) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(num);
 };
 
-const Panel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+const Panel = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}
+  >
     {children}
   </div>
 );
@@ -45,32 +67,43 @@ const Header = ({
   </Panel>
 );
 
-const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'cyan' | 'amber' | 'emerald' | 'rose' | 'indigo' }) => {
+const StatusPill = ({
+  children,
+  tone = "slate",
+}: {
+  children: React.ReactNode;
+  tone?: "slate" | "cyan" | "amber" | "emerald" | "rose" | "indigo";
+}) => {
   const tones: Record<string, string> = {
-    slate: 'bg-slate-100 text-slate-600 border-slate-200',
-    cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rose: 'bg-rose-50 text-rose-700 border-rose-200',
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    slate: "bg-slate-100 text-slate-600 border-slate-200",
+    cyan: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    rose: "bg-rose-50 text-rose-700 border-rose-200",
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
   };
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}
+    >
       {children}
     </span>
   );
 };
 
-export default function ApprovalWorkflowView({ onTriggerNotification }: ApprovalWorkflowViewProps) {
+export default function ApprovalWorkflowView({
+  onTriggerNotification,
+}: ApprovalWorkflowViewProps) {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
-  const [decisionNotes, setDecisionNotes] = useState('');
+  const [selectedRequest, setSelectedRequest] =
+    useState<ApprovalRequest | null>(null);
+  const [decisionNotes, setDecisionNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  
+
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
 
@@ -84,62 +117,72 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
       const data = await inventoryApi.getApprovalRequests();
       setRequests(data);
     } catch (error) {
-      console.error('Error fetching approval requests:', error);
-      onTriggerNotification('Gagal memuat daftar pengajuan persetujuan.');
+      console.error("Error fetching approval requests:", error);
+      onTriggerNotification("Gagal memuat daftar pengajuan persetujuan.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDecision = async (status: 'approved' | 'rejected') => {
+  const handleDecision = async (status: "approved" | "rejected") => {
     if (!selectedRequest) return;
 
-    const actionText = status === 'approved' ? 'Menyetujui' : 'Menolak';
-    const confirmButtonColor = status === 'approved' ? '#0891b2' : '#e11d48';
+    const actionText = status === "approved" ? "Menyetujui" : "Menolak";
+    const confirmButtonColor = status === "approved" ? "#0891b2" : "#e11d48";
 
     const result = await Swal.fire({
       title: `${actionText} Pengajuan?`,
-      text: `Apakah Anda yakin ingin ${status === 'approved' ? 'menyetujui' : 'menolak'} pengajuan ${selectedRequest.approvalNumber}?`,
-      icon: 'warning',
+      text: `Apakah Anda yakin ingin ${status === "approved" ? "menyetujui" : "menolak"} pengajuan ${selectedRequest.approvalNumber}?`,
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: status === 'approved' ? 'Ya, Setujui' : 'Ya, Tolak',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: confirmButtonColor
+      confirmButtonText: status === "approved" ? "Ya, Setujui" : "Ya, Tolak",
+      cancelButtonText: "Batal",
+      confirmButtonColor: confirmButtonColor,
     });
 
     if (result.isConfirmed) {
       try {
-        await inventoryApi.updateApprovalRequest(selectedRequest.id, status, decisionNotes);
-        Swal.fire(
-          status === 'approved' ? 'Disetujui' : 'Ditolak',
-          `Pengajuan ${selectedRequest.approvalNumber} berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}.`,
-          'success'
+        await inventoryApi.updateApprovalRequest(
+          selectedRequest.id,
+          status,
+          decisionNotes,
         );
-        onTriggerNotification(`Pengajuan ${selectedRequest.approvalNumber} ${status === 'approved' ? 'DISETUJUI' : 'DITOLAK'}.`);
+        Swal.fire(
+          status === "approved" ? "Disetujui" : "Ditolak",
+          `Pengajuan ${selectedRequest.approvalNumber} berhasil ${status === "approved" ? "disetujui" : "ditolak"}.`,
+          "success",
+        );
+        onTriggerNotification(
+          `Pengajuan ${selectedRequest.approvalNumber} ${status === "approved" ? "DISETUJUI" : "DITOLAK"}.`,
+        );
         setSelectedRequest(null);
-        setDecisionNotes('');
+        setDecisionNotes("");
         fetchRequests();
       } catch (error) {
-        console.error('Error deciding request:', error);
-        Swal.fire('Gagal', 'Terjadi kesalahan saat memproses keputusan.', 'error');
+        console.error("Error deciding request:", error);
+        Swal.fire(
+          "Gagal",
+          "Terjadi kesalahan saat memproses keputusan.",
+          "error",
+        );
       }
     }
   };
 
-  const handleBulkDecision = async (status: 'approved' | 'rejected') => {
+  const handleBulkDecision = async (status: "approved" | "rejected") => {
     if (selectedRequestIds.length === 0) return;
 
-    const actionText = status === 'approved' ? 'Menyetujui' : 'Menolak';
-    const confirmButtonColor = status === 'approved' ? '#0891b2' : '#e11d48';
+    const actionText = status === "approved" ? "Menyetujui" : "Menolak";
+    const confirmButtonColor = status === "approved" ? "#0891b2" : "#e11d48";
 
     const result = await Swal.fire({
       title: `${actionText} Massal?`,
-      text: `Apakah Anda yakin ingin ${status === 'approved' ? 'menyetujui' : 'menolak'} ${selectedRequestIds.length} pengajuan sekaligus?`,
-      icon: 'warning',
+      text: `Apakah Anda yakin ingin ${status === "approved" ? "menyetujui" : "menolak"} ${selectedRequestIds.length} pengajuan sekaligus?`,
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: status === 'approved' ? 'Ya, Setujui' : 'Ya, Tolak',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: confirmButtonColor
+      confirmButtonText: status === "approved" ? "Ya, Setujui" : "Ya, Tolak",
+      cancelButtonText: "Batal",
+      confirmButtonColor: confirmButtonColor,
     });
 
     if (result.isConfirmed) {
@@ -147,20 +190,26 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
       let successCount = 0;
       try {
         for (const reqId of selectedRequestIds) {
-          await inventoryApi.updateApprovalRequest(reqId, status, '');
+          await inventoryApi.updateApprovalRequest(reqId, status, "");
           successCount++;
         }
         Swal.fire(
-          status === 'approved' ? 'Disetujui' : 'Ditolak',
-          `${successCount} pengajuan berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}.`,
-          'success'
+          status === "approved" ? "Disetujui" : "Ditolak",
+          `${successCount} pengajuan berhasil ${status === "approved" ? "disetujui" : "ditolak"}.`,
+          "success",
         );
-        onTriggerNotification(`${successCount} pengajuan ${status === 'approved' ? 'DISETUJUI' : 'DITOLAK'}.`);
+        onTriggerNotification(
+          `${successCount} pengajuan ${status === "approved" ? "DISETUJUI" : "DITOLAK"}.`,
+        );
         setSelectedRequestIds([]);
         fetchRequests();
       } catch (error) {
-        console.error('Error deciding bulk requests:', error);
-        Swal.fire('Info', `Hanya ${successCount} dari ${selectedRequestIds.length} pengajuan yang berhasil diproses.`, 'warning');
+        console.error("Error deciding bulk requests:", error);
+        Swal.fire(
+          "Info",
+          `Hanya ${successCount} dari ${selectedRequestIds.length} pengajuan yang berhasil diproses.`,
+          "warning",
+        );
         fetchRequests();
       } finally {
         setIsSubmittingBulk(false);
@@ -169,42 +218,57 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
   };
 
   // Metrics calculations
-  const pendingCount = requests.filter(r => r.status === 'pending').length;
-  const approvedCount = requests.filter(r => r.status === 'approved').length;
-  const rejectedCount = requests.filter(r => r.status === 'rejected').length;
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const approvedCount = requests.filter((r) => r.status === "approved").length;
+  const rejectedCount = requests.filter((r) => r.status === "rejected").length;
 
-  const filteredRequests = requests.filter(r => 
-    r.approvalNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.requestType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.referenceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.changeSummary.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => {
-    if (a.status === 'pending' && b.status !== 'pending') return -1;
-    if (a.status !== 'pending' && b.status === 'pending') return 1;
-    return 0;
-  });
+  const filteredRequests = requests
+    .filter(
+      (r) =>
+        r.approvalNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.requestType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.referenceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.changeSummary.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return 0;
+    });
 
   const totalPages = Math.ceil(filteredRequests.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedRequests = filteredRequests.slice(startIndex, startIndex + rowsPerPage);
+  const paginatedRequests = filteredRequests.slice(
+    startIndex,
+    startIndex + rowsPerPage,
+  );
 
   const getRequestTypeLabel = (type: string) => {
     switch (type) {
-      case 'stock_opname_adjustment': return 'Koreksi Stok Opname';
-      case 'quotation_discount': return 'Diskon Penawaran';
-      case 'purchase_order': return 'PO Supplier';
-      case 'invoice_cancellation': return 'Pembatalan Invoice';
-      default: return type;
+      case "stock_opname_adjustment":
+        return "Koreksi Stok Opname";
+      case "quotation_discount":
+        return "Diskon Penawaran";
+      case "purchase_order":
+        return "PO Supplier";
+      case "invoice_cancellation":
+        return "Pembatalan Invoice";
+      default:
+        return type;
     }
   };
 
   const getStatusTone = (status: string) => {
     switch (status) {
-      case 'pending': return 'amber';
-      case 'approved': return 'emerald';
-      case 'rejected': return 'rose';
-      default: return 'slate';
+      case "pending":
+        return "amber";
+      case "approved":
+        return "emerald";
+      case "rejected":
+        return "rose";
+      default:
+        return "slate";
     }
   };
 
@@ -218,18 +282,44 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {([
-          ['Menunggu Persetujuan', pendingCount.toString(), 'amber', <Clock size={16} className="text-amber-500" />],
-          ['Disetujui', approvedCount.toString(), 'emerald', <CheckCircle2 size={16} className="text-emerald-500" />],
-          ['Ditolak', rejectedCount.toString(), 'rose', <XCircle size={16} className="text-rose-500" />],
-          ['Total Pengajuan', requests.length.toString(), 'indigo', <ClipboardCheck size={16} className="text-indigo-500" />]
-        ] as const).map(([label, value, tone, icon]) => (
+        {(
+          [
+            [
+              "Menunggu Persetujuan",
+              pendingCount.toString(),
+              "amber",
+              <Clock size={16} className="text-amber-500" />,
+            ],
+            [
+              "Disetujui",
+              approvedCount.toString(),
+              "emerald",
+              <CheckCircle2 size={16} className="text-emerald-500" />,
+            ],
+            [
+              "Ditolak",
+              rejectedCount.toString(),
+              "rose",
+              <XCircle size={16} className="text-rose-500" />,
+            ],
+            [
+              "Total Pengajuan",
+              requests.length.toString(),
+              "indigo",
+              <ClipboardCheck size={16} className="text-indigo-500" />,
+            ],
+          ] as const
+        ).map(([label, value, tone, icon]) => (
           <Panel key={label} className="p-4">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-[10px] uppercase font-mono font-bold">{label}</span>
+              <span className="text-[10px] uppercase font-mono font-bold">
+                {label}
+              </span>
               {icon}
             </div>
-            <h4 className="mt-1 text-base font-black text-slate-900">{value}</h4>
+            <h4 className="mt-1 text-base font-black text-slate-900">
+              {value}
+            </h4>
           </Panel>
         ))}
       </div>
@@ -246,14 +336,17 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
               placeholder="Cari pengajuan..."
               className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-xs"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
-          
+
           {selectedRequestIds.length > 0 && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleBulkDecision('rejected')}
+                onClick={() => handleBulkDecision("rejected")}
                 disabled={isSubmittingBulk}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg font-bold hover:bg-rose-700 transition disabled:opacity-50 text-[11px]"
               >
@@ -261,7 +354,7 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 <span>Tolak ({selectedRequestIds.length})</span>
               </button>
               <button
-                onClick={() => handleBulkDecision('approved')}
+                onClick={() => handleBulkDecision("approved")}
                 disabled={isSubmittingBulk}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 transition disabled:opacity-50 text-[11px]"
               >
@@ -271,11 +364,11 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
             </div>
           )}
 
-          <button 
+          <button
             onClick={fetchRequests}
             className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
           >
-            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
             <span>Segarkan</span>
           </button>
         </div>
@@ -291,20 +384,33 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-200">
               <thead>
                 <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
                   <th className="p-3.5 pl-5 w-10">
                     <input
                       type="checkbox"
                       className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-                      checked={selectedRequestIds.length > 0 && filteredRequests.filter(r => r.status === 'pending').length > 0 && filteredRequests.filter(r => r.status === 'pending').every(r => selectedRequestIds.includes(r.id))}
+                      checked={
+                        selectedRequestIds.length > 0 &&
+                        filteredRequests.filter((r) => r.status === "pending")
+                          .length > 0 &&
+                        filteredRequests
+                          .filter((r) => r.status === "pending")
+                          .every((r) => selectedRequestIds.includes(r.id))
+                      }
                       onChange={(e) => {
-                        const pendingIds = filteredRequests.filter(r => r.status === 'pending').map(r => r.id);
+                        const pendingIds = filteredRequests
+                          .filter((r) => r.status === "pending")
+                          .map((r) => r.id);
                         if (e.target.checked) {
-                          setSelectedRequestIds(prev => Array.from(new Set([...prev, ...pendingIds])));
+                          setSelectedRequestIds((prev) =>
+                            Array.from(new Set([...prev, ...pendingIds])),
+                          );
                         } else {
-                          setSelectedRequestIds(prev => prev.filter(id => !pendingIds.includes(id)));
+                          setSelectedRequestIds((prev) =>
+                            prev.filter((id) => !pendingIds.includes(id)),
+                          );
                         }
                       }}
                     />
@@ -323,34 +429,55 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 {paginatedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/50">
                     <td className="p-3.5 pl-5">
-                      {req.status === 'pending' && (
+                      {req.status === "pending" && (
                         <input
                           type="checkbox"
                           className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                           checked={selectedRequestIds.includes(req.id)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedRequestIds(prev => [...prev, req.id]);
+                              setSelectedRequestIds((prev) => [
+                                ...prev,
+                                req.id,
+                              ]);
                             } else {
-                              setSelectedRequestIds(prev => prev.filter(id => id !== req.id));
+                              setSelectedRequestIds((prev) =>
+                                prev.filter((id) => id !== req.id),
+                              );
                             }
                           }}
                         />
                       )}
                     </td>
-                    <td className="p-3.5 font-mono font-bold text-slate-800">{req.approvalNumber}</td>
-                    <td className="p-3.5 font-bold text-slate-700">{getRequestTypeLabel(req.requestType)}</td>
-                    <td className="p-3.5 text-slate-600">{req.requesterName}</td>
-                    <td className="p-3.5 font-mono text-cyan-600">{req.referenceNumber}</td>
+                    <td className="p-3.5 font-mono font-bold text-slate-800">
+                      {req.approvalNumber}
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-700">
+                      {getRequestTypeLabel(req.requestType)}
+                    </td>
+                    <td className="p-3.5 text-slate-600">
+                      {req.requesterName}
+                    </td>
+                    <td className="p-3.5 font-mono text-cyan-600">
+                      {req.referenceNumber}
+                    </td>
                     <td className="p-3.5">
-                      <span className="block font-medium text-slate-700">{req.changeSummary}</span>
+                      <span className="block font-medium text-slate-700">
+                        {req.changeSummary}
+                      </span>
                       {req.amount > 0 && (
-                        <span className="font-mono text-slate-500 font-semibold">{formatIDR(req.amount)}</span>
+                        <span className="font-mono text-slate-500 font-semibold">
+                          {formatIDR(req.amount)}
+                        </span>
                       )}
                     </td>
-                    <td className="p-3.5 font-mono text-slate-500">{req.requestedAt}</td>
+                    <td className="p-3.5 font-mono text-slate-500">
+                      {req.requestedAt}
+                    </td>
                     <td className="p-3.5">
-                      <StatusPill tone={getStatusTone(req.status)}>{req.status}</StatusPill>
+                      <StatusPill tone={getStatusTone(req.status)}>
+                        {req.status}
+                      </StatusPill>
                     </td>
                     <td className="p-3.5 pr-5 text-right whitespace-nowrap">
                       <button
@@ -372,7 +499,9 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
         {!isLoading && filteredRequests.length > 0 && (
           <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-3">
-              <span className="text-[10px] text-slate-500 font-mono">Tampilkan:</span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                Tampilkan:
+              </span>
               <select
                 className="text-[10px] border-slate-300 rounded px-2 py-1 focus:ring-cyan-500 focus:border-cyan-500"
                 value={rowsPerPage}
@@ -387,13 +516,15 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 <option value={100}>100 Baris</option>
               </select>
               <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
-                Menampilkan {startIndex + 1} - {Math.min(startIndex + rowsPerPage, filteredRequests.length)} dari {filteredRequests.length} data
+                Menampilkan {startIndex + 1} -{" "}
+                {Math.min(startIndex + rowsPerPage, filteredRequests.length)}{" "}
+                dari {filteredRequests.length} data
               </span>
             </div>
-            
+
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
                 className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent"
               >
@@ -403,7 +534,9 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
                 Hal {currentPage} / {totalPages || 1}
               </span>
               <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
                 disabled={currentPage === totalPages || totalPages === 0}
                 className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:hover:bg-transparent"
               >
@@ -420,38 +553,66 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full overflow-hidden border border-slate-200">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h4 className="font-mono font-bold text-slate-800">{selectedRequest.approvalNumber}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5">Detail Pengajuan Verifikasi</p>
+                <h4 className="font-mono font-bold text-slate-800">
+                  {selectedRequest.approvalNumber}
+                </h4>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Detail Pengajuan Verifikasi
+                </p>
               </div>
-              <button onClick={() => { setSelectedRequest(null); setDecisionNotes(''); }} className="text-slate-400 hover:text-slate-600">
+              <button
+                onClick={() => {
+                  setSelectedRequest(null);
+                  setDecisionNotes("");
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <X size={16} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4 border-b pb-4 border-slate-100">
                 <div>
-                  <span className="text-[9px] uppercase font-mono text-slate-400 block">Jenis Pengajuan</span>
-                  <strong className="text-slate-700 text-[11px]">{getRequestTypeLabel(selectedRequest.requestType)}</strong>
+                  <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                    Jenis Pengajuan
+                  </span>
+                  <strong className="text-slate-700 text-[11px]">
+                    {getRequestTypeLabel(selectedRequest.requestType)}
+                  </strong>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-mono text-slate-400 block">Pemohon (Requester)</span>
-                  <strong className="text-slate-700 text-[11px]">{selectedRequest.requesterName}</strong>
+                  <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                    Pemohon (Requester)
+                  </span>
+                  <strong className="text-slate-700 text-[11px]">
+                    {selectedRequest.requesterName}
+                  </strong>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-mono text-slate-400 block">Dokumen Referensi</span>
-                  <strong className="font-mono text-cyan-600 text-[11px]">{selectedRequest.referenceNumber}</strong>
+                  <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                    Dokumen Referensi
+                  </span>
+                  <strong className="font-mono text-cyan-600 text-[11px]">
+                    {selectedRequest.referenceNumber}
+                  </strong>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-mono text-slate-400 block">Status Saat Ini</span>
+                  <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                    Status Saat Ini
+                  </span>
                   <div className="mt-0.5">
-                    <StatusPill tone={getStatusTone(selectedRequest.status)}>{selectedRequest.status}</StatusPill>
+                    <StatusPill tone={getStatusTone(selectedRequest.status)}>
+                      {selectedRequest.status}
+                    </StatusPill>
                   </div>
                 </div>
               </div>
 
               <div>
-                <span className="text-[9px] uppercase font-mono text-slate-400 block">Ringkasan Perubahan</span>
+                <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                  Ringkasan Perubahan
+                </span>
                 <p className="text-slate-700 text-xs font-semibold mt-0.5 bg-slate-50 p-3 rounded-lg border">
                   {selectedRequest.changeSummary}
                 </p>
@@ -459,26 +620,40 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
 
               {selectedRequest.amount > 0 && (
                 <div>
-                  <span className="text-[9px] uppercase font-mono text-slate-400 block">Nominal Terkait</span>
-                  <strong className="text-slate-800 text-sm font-mono">{formatIDR(selectedRequest.amount)}</strong>
+                  <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                    Nominal Terkait
+                  </span>
+                  <strong className="text-slate-800 text-sm font-mono">
+                    {formatIDR(selectedRequest.amount)}
+                  </strong>
                 </div>
               )}
 
-              {selectedRequest.status !== 'pending' && (
+              {selectedRequest.status !== "pending" && (
                 <div className="border-t pt-4 border-slate-100 space-y-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Diverifikasi Oleh</span>
-                      <strong className="text-slate-700">{selectedRequest.approverName}</strong>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                        Diverifikasi Oleh
+                      </span>
+                      <strong className="text-slate-700">
+                        {selectedRequest.approverName}
+                      </strong>
                     </div>
                     <div>
-                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Tanggal Keputusan</span>
-                      <strong className="text-slate-700 font-mono">{selectedRequest.decidedAt || '-'}</strong>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                        Tanggal Keputusan
+                      </span>
+                      <strong className="text-slate-700 font-mono">
+                        {selectedRequest.decidedAt || "-"}
+                      </strong>
                     </div>
                   </div>
                   {selectedRequest.decisionNotes && (
                     <div>
-                      <span className="text-[9px] uppercase font-mono text-slate-400 block">Catatan Keputusan</span>
+                      <span className="text-[9px] uppercase font-mono text-slate-400 block">
+                        Catatan Keputusan
+                      </span>
                       <p className="text-slate-600 bg-slate-50/50 p-2.5 rounded border italic">
                         "{selectedRequest.decisionNotes}"
                       </p>
@@ -488,10 +663,12 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
               )}
 
               {/* Action Buttons for Pending request */}
-              {selectedRequest.status === 'pending' && (
+              {selectedRequest.status === "pending" && (
                 <div className="border-t pt-4 border-slate-100 space-y-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block">Catatan Keputusan / Alasan</label>
+                    <label className="font-bold text-slate-700 block">
+                      Catatan Keputusan / Alasan
+                    </label>
                     <textarea
                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-xs"
                       placeholder="Masukkan catatan persetujuan atau alasan penolakan..."
@@ -503,13 +680,13 @@ export default function ApprovalWorkflowView({ onTriggerNotification }: Approval
 
                   <div className="flex justify-end gap-2 pt-2">
                     <button
-                      onClick={() => handleDecision('rejected')}
+                      onClick={() => handleDecision("rejected")}
                       className="px-4 py-2 bg-rose-600 hover:bg-rose-750 text-white rounded-lg font-bold"
                     >
                       Tolak Pengajuan
                     </button>
                     <button
-                      onClick={() => handleDecision('approved')}
+                      onClick={() => handleDecision("approved")}
                       className="px-4 py-2 bg-cyan-600 hover:bg-cyan-750 text-white rounded-lg font-bold"
                     >
                       Setujui (Approve)

@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, AlertCircle, ChevronDown, History, Warehouse, ClipboardCheck, ChevronLeft, ChevronRight } from "../icons";
-import { Product } from "../../types";
+import {
+  CheckCircle,
+  AlertCircle,
+  ChevronDown,
+  History,
+  Warehouse,
+  ClipboardCheck,
+  ChevronLeft,
+  ChevronRight,
+} from "../icons";
+import { Product, ViewType } from "../../types";
+
+type StockNavigateView = Extract<
+  ViewType,
+  | "incoming-goods"
+  | "outgoing-goods"
+  | "stock-movement-history"
+  | "stock-opname"
+  | "multi-warehouse"
+>;
 
 interface StockTabProps {
   products: Product[];
@@ -10,7 +28,7 @@ interface StockTabProps {
   openStockActionId: string | null;
   setOpenStockActionId: (id: string | null) => void;
   openStockDetailModal: (product: Product) => void;
-  onNavigate?: (path: string) => void;
+  onNavigate?: (view: StockNavigateView) => void;
 }
 
 export const StockTab: React.FC<StockTabProps> = ({
@@ -31,11 +49,8 @@ export const StockTab: React.FC<StockTabProps> = ({
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase());
     const matchStt =
-      stockStatusFilter === "All" ||
-      p.status === stockStatusFilter;
-    const matchCat =
-      categoryFilter === "All" ||
-      p.category === categoryFilter;
+      stockStatusFilter === "All" || p.status === stockStatusFilter;
+    const matchCat = categoryFilter === "All" || p.category === categoryFilter;
     return matchSrc && matchStt && matchCat;
   });
 
@@ -45,33 +60,34 @@ export const StockTab: React.FC<StockTabProps> = ({
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
 
   return (
     <div className="pb-32 flex flex-col">
       <div className="overflow-x-auto">
         <table className="w-full text-left font-sans text-xs border-collapse">
-        <thead>
-          <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-            <th className="p-3.5 pl-5">SKU No.</th>
-            <th className="p-3.5">Nama Item Produk</th>
-            <th className="p-3.5">Kategori</th>
-            <th className="p-3.5">Sebaran Lokasi</th>
-            <th className="p-3.5 text-center">Total Stok</th>
-            <th className="p-3.5 text-center">Minimum Stok</th>
-            <th className="p-3.5">Status Alaram</th>
-            <th className="p-3.5 pr-5 text-right">Aksi</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {paginatedProducts.map((p) => (
+          <thead>
+            <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+              <th className="p-3.5 pl-5">SKU No.</th>
+              <th className="p-3.5">Nama Item Produk</th>
+              <th className="p-3.5">Kategori</th>
+              <th className="p-3.5">Sebaran Lokasi</th>
+              <th className="p-3.5 text-center">Total Stok</th>
+              <th className="p-3.5 text-center">Minimum Stok</th>
+              <th className="p-3.5">Status Alaram</th>
+              <th className="p-3.5 pr-5 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {paginatedProducts.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/40">
                 <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
                   {p.sku}
                 </td>
-                <td className="p-3.5 font-bold text-slate-800">
-                  {p.name}
-                </td>
+                <td className="p-3.5 font-bold text-slate-800">{p.name}</td>
                 <td className="p-3.5 text-slate-500 font-semibold">
                   {p.category}
                 </td>
@@ -98,9 +114,7 @@ export const StockTab: React.FC<StockTabProps> = ({
                     }`}
                   >
                     {p.status === "Aman" && <CheckCircle size={10} />}
-                    {p.status === "Menipis" && (
-                      <AlertCircle size={10} />
-                    )}
+                    {p.status === "Menipis" && <AlertCircle size={10} />}
                     {p.status === "Habis" && <AlertCircle size={10} />}
                     {p.status}
                   </span>
@@ -174,29 +188,41 @@ export const StockTab: React.FC<StockTabProps> = ({
                 </td>
               </tr>
             ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
       </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-white">
           <div className="text-xs text-slate-500 font-medium">
-            Menampilkan <span className="font-bold text-slate-700">{startIndex + 1}</span> hingga <span className="font-bold text-slate-700">{Math.min(startIndex + itemsPerPage, filteredProducts.length)}</span> dari <span className="font-bold text-slate-700">{filteredProducts.length}</span> entri
+            Menampilkan{" "}
+            <span className="font-bold text-slate-700">{startIndex + 1}</span>{" "}
+            hingga{" "}
+            <span className="font-bold text-slate-700">
+              {Math.min(startIndex + itemsPerPage, filteredProducts.length)}
+            </span>{" "}
+            dari{" "}
+            <span className="font-bold text-slate-700">
+              {filteredProducts.length}
+            </span>{" "}
+            entri
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="p-1 rounded hover:bg-slate-100 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Halaman Sebelumnya"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-xs font-bold text-slate-700 font-mono min-w-[3rem] text-center">
+            <span className="text-xs font-bold text-slate-700 font-mono min-w-12 text-center">
               {currentPage} / {totalPages}
             </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="p-1 rounded hover:bg-slate-100 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Halaman Selanjutnya"

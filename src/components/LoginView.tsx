@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
+import React, { useState } from "react";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 import {
   ArrowRight,
   Building2,
@@ -15,32 +15,35 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
-} from '@/src/components/icons';
-import { authApi } from '../services/api';
-import type { AuthSession } from '../types';
+} from "@/src/components/icons";
+import { authApi } from "../services/api";
+import type { AuthSession } from "../types";
 
 interface LoginViewProps {
   onLoginSuccess: (session: AuthSession) => void;
   onTriggerNotification: (message: string) => void;
 }
 
-export default function LoginView({ onLoginSuccess, onTriggerNotification }: LoginViewProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
+export default function LoginView({
+  onLoginSuccess,
+  onTriggerNotification,
+}: LoginViewProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [logoClicks, setLogoClicks] = useState(0);
   const [showOtpField, setShowOtpField] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
+  const appName = import.meta.env.VITE_APP_NAME || "CV. Beton Agung";
 
   const handleLogoClick = () => {
     setLogoClicks((prev) => {
       const next = prev + 1;
       if (next >= 5) {
         setShowOtpField(true);
-        onTriggerNotification('Mode Akses Khusus Super Admin Aktif.');
+        onTriggerNotification("Mode Akses Khusus Super Admin Aktif.");
         return 0;
       }
       return next;
@@ -50,16 +53,18 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
   const showLoginError = (message: string) => {
     setErrorMessage(message);
     Swal.fire({
-      icon: 'error',
-      title: 'Tidak dapat masuk',
+      icon: "error",
+      title: "Tidak dapat masuk",
       text: message,
-      confirmButtonText: 'Coba lagi',
+      confirmButtonText: "Coba lagi",
       buttonsStyling: false,
       customClass: {
-        popup: 'rounded-xl border border-slate-200 shadow-xl bg-white font-sans text-xs',
-        title: 'text-sm font-bold text-slate-900 pt-4',
-        htmlContainer: 'text-xs text-slate-500 py-2',
-        confirmButton: 'px-4 py-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-slate-800 transition-colors',
+        popup:
+          "rounded-xl border border-slate-200 shadow-xl bg-white font-sans text-xs",
+        title: "text-sm font-bold text-slate-900 pt-4",
+        htmlContainer: "text-xs text-slate-500 py-2",
+        confirmButton:
+          "px-4 py-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-slate-800 transition-colors",
       },
     });
   };
@@ -69,25 +74,32 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
     if (showOtpField) {
       if (!otp) {
-        showLoginError('Isi OTP untuk melanjutkan.');
+        showLoginError("Isi OTP untuk melanjutkan.");
         return;
       }
     } else {
       if (!email || !password) {
-        showLoginError('Isi email dan password untuk melanjutkan.');
+        showLoginError("Isi email dan password untuk melanjutkan.");
         return;
       }
     }
 
-    setErrorMessage('');
+    setErrorMessage("");
     setIsSubmitting(true);
 
     try {
-      const session = await authApi.login(email, password, showOtpField ? otp : undefined);
+      const session = await authApi.login(
+        email,
+        password,
+        showOtpField ? otp : undefined,
+      );
       onLoginSuccess(session);
       onTriggerNotification(`Selamat datang kembali, ${session.user.name}!`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login gagal. Silakan coba lagi.';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Login gagal. Silakan coba lagi.";
       showLoginError(message);
       onTriggerNotification(message);
     } finally {
@@ -97,17 +109,24 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
-      <main className="w-full max-w-4xl min-h-[520px] grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+      <main className="w-full max-w-4xl min-h-130 grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
         {/* Left Side: Brand Panel */}
         <section className="bg-slate-900 text-slate-200 p-8 md:p-10 flex flex-col justify-between gap-10">
           <div className="space-y-10">
-            <div className="flex items-center gap-3 select-none cursor-pointer" onClick={handleLogoClick}>
+            <div
+              className="flex items-center gap-3 select-none cursor-pointer"
+              onClick={handleLogoClick}
+            >
               <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center">
                 <Building2 size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-black text-white uppercase tracking-wider">{appName}</h1>
-                <p className="text-[10px] font-mono tracking-widest text-slate-400 mt-0.5">Sistem Operasional ERP</p>
+                <h1 className="text-sm font-black text-white uppercase tracking-wider">
+                  {appName}
+                </h1>
+                <p className="text-[10px] font-mono tracking-widest text-slate-400 mt-0.5">
+                  Sistem Operasional ERP
+                </p>
               </div>
             </div>
 
@@ -144,7 +163,9 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
               {!showOtpField && (
                 <>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Email Address</label>
+                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">
+                      Email Address
+                    </label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
                         <Mail size={13} />
@@ -163,7 +184,9 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-mono font-bold text-slate-500">Password</label>
+                      <label className="text-[10px] uppercase font-mono font-bold text-slate-500">
+                        Password
+                      </label>
                     </div>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
@@ -184,7 +207,9 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
 
               {showOtpField && (
                 <div className="space-y-1.5 animate-pulse">
-                  <label className="text-[10px] uppercase font-mono font-bold text-emerald-600">Super OTP Key</label>
+                  <label className="text-[10px] uppercase font-mono font-bold text-emerald-600">
+                    Super OTP Key
+                  </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-3 flex items-center text-emerald-600">
                       <LockKeyhole size={13} />
@@ -213,8 +238,16 @@ export default function LoginView({ onLoginSuccess, onTriggerNotification }: Log
                 disabled={isSubmitting}
                 className="w-full py-2.5 bg-slate-900 border border-slate-900 font-bold text-white rounded-lg hover:bg-slate-800 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
               >
-                <span>{isSubmitting ? 'Memproses Autentikasi' : 'Masuk ke Dashboard'}</span>
-                {isSubmitting ? <Loader2 size={13} className="animate-spin stroke-[2.5]" /> : <ArrowRight size={13} className="stroke-[2.5]" />}
+                <span>
+                  {isSubmitting
+                    ? "Memproses Autentikasi"
+                    : "Masuk ke Dashboard"}
+                </span>
+                {isSubmitting ? (
+                  <Loader2 size={13} className="animate-spin stroke-[2.5]" />
+                ) : (
+                  <ArrowRight size={13} className="stroke-[2.5]" />
+                )}
               </button>
             </form>
           </div>

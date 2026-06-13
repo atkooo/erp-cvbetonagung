@@ -293,7 +293,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
       <div className="hidden">
         <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
           {selectedInvoice && (
-            <div className="w-full max-w-[800px] mx-auto">
+            <div className="w-full max-w-200 mx-auto">
               <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
                 <div>
                   <h1 className="text-3xl font-black tracking-tight uppercase">CV Beton Agung Solusi</h1>

@@ -19,7 +19,8 @@ import {
   CreditCard,
   Building2,
   Calendar,
-  Truck
+  Truck,
+  Trash2
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage } from '../services/api';
@@ -35,6 +36,12 @@ interface SalesViewProps {
   type: 'quotation' | 'sales-order';
   onTriggerNotification: (message: string) => void;
   onNavigate: (view: ViewType) => void;
+}
+
+interface SalesFormItem {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
 }
 
 export default function SalesView({
@@ -69,9 +76,9 @@ export default function SalesView({
   // Form states to create a quick document
   const [custId, setCustId] = useState('');
   const [quotationId, setQuotationId] = useState('');
-  const [productId, setProductId] = useState('');
-  const [itemQty, setItemQty] = useState(1);
-  const [itemPrice, setItemPrice] = useState(0);
+  const [formItems, setFormItems] = useState<SalesFormItem[]>([
+    { productId: '', quantity: 1, unitPrice: 0 }
+  ]);
 
   // Quick add customer states
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -99,10 +106,13 @@ export default function SalesView({
       setProducts(prods);
 
       if (custsRes.customers.length > 0 && !custId) setCustId(custsRes.customers[0].id);
-      if (prods.length > 0 && !productId) {
-        setProductId(prods[0].id);
-        setItemPrice(prods[0].sellingPrice || 0);
-      }
+      setFormItems((prev) => {
+        if (prev.length > 0 && prev.some(item => item.productId)) return prev;
+        const defaultProduct = prods.find(p => !isQuotation ? p.type === 'finished_good' : true) || prods[0];
+        return defaultProduct
+          ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0 }]
+          : prev;
+      });
     } catch (err) {
       console.error('Failed to load sales data', err);
       const msg = err instanceof Error ? err.message : 'Gagal memuat data penjualan';
@@ -140,6 +150,30 @@ export default function SalesView({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
+  const formTotal = formItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+  const updateFormItem = (index: number, patch: Partial<SalesFormItem>) => {
+    setFormItems(prev => prev.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, ...patch } : item
+    )));
+  };
+
+  const addFormItem = () => {
+    setFormItems(prev => [...prev, { productId: '', quantity: 1, unitPrice: 0 }]);
+  };
+
+  const removeFormItem = (index: number) => {
+    setFormItems(prev => prev.length === 1 ? prev : prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const resetFormItems = () => {
+    const defaultProduct = products.find(p => (isQuotation ? true : p.type === 'finished_good')) || products[0];
+    setFormItems(defaultProduct
+      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0 }]
+      : [{ productId: '', quantity: 1, unitPrice: 0 }]
+    );
+  };
+
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
     const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
@@ -154,8 +188,13 @@ export default function SalesView({
   // Handle create document
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (itemQty <= 0 || itemPrice <= 0) {
-      onTriggerNotification('Gagal: Kuantitas dan harga produk harus positif!');
+    const validItems = formItems.filter(item => item.productId);
+    if (validItems.length === 0) {
+      onTriggerNotification('Gagal: Minimal pilih satu produk.');
+      return;
+    }
+    if (validItems.some(item => item.quantity <= 0 || item.unitPrice <= 0)) {
+      onTriggerNotification('Gagal: Kuantitas dan harga semua produk harus positif!');
       return;
     }
 
@@ -170,13 +209,11 @@ export default function SalesView({
           customer_id: custId,
           quotation_date: todayStr,
           valid_until: validUntil.toISOString().split('T')[0],
-          items: [
-            {
-              product_id: productId,
-              quantity: itemQty,
-              unit_price: itemPrice,
-            }
-          ]
+          items: validItems.map(item => ({
+            product_id: item.productId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+          }))
         });
         onTriggerNotification(`Sukses menerbitkan Quotation via API`);
       } else {
@@ -184,13 +221,11 @@ export default function SalesView({
           customer_id: custId,
           quotation_id: quotationId ? quotationId : undefined,
           order_date: todayStr,
-          items: [
-            {
-              product_id: productId,
-              quantity: itemQty,
-              unit_price: itemPrice,
-            }
-          ]
+          items: validItems.map(item => ({
+            product_id: item.productId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+          }))
         });
         onTriggerNotification(`Sukses menerbitkan Sales Order via API`);
       }
@@ -200,6 +235,7 @@ export default function SalesView({
     }
 
     setQuotationId('');
+    resetFormItems();
     setShowAddForm(false);
   };
 
@@ -555,7 +591,7 @@ export default function SalesView({
             const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
 
             return (
-              <div className="max-w-[800px] mx-auto">
+              <div className="max-w-200 mx-auto">
                 <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
                   <div>
                     <h1 className="text-2xl font-black tracking-tight">CV BETON AGUNG</h1>
@@ -686,14 +722,17 @@ export default function SalesView({
                       if (qId) {
                         const selectedQuo = quotations.find(q => q.id === qId);
                         if (selectedQuo && selectedQuo.items && selectedQuo.items.length > 0) {
-                          const firstItem = selectedQuo.items[0];
-                          const prod = products.find(p => p.name === firstItem.productName);
-                          if (prod) {
-                            setProductId(prod.id);
-                          }
-                          setItemQty(firstItem.quantity);
-                          setItemPrice(firstItem.price);
+                          setFormItems(selectedQuo.items.map(item => {
+                            const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
+                            return {
+                              productId: product?.id || item.productId || '',
+                              quantity: item.quantity,
+                              unitPrice: item.price,
+                            };
+                          }));
                         }
+                      } else {
+                        resetFormItems();
                       }
                     }}
                     options={[
@@ -707,46 +746,86 @@ export default function SalesView({
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
-                <ProductPicker
-                  value={productId}
-                  onChange={(product) => {
-                    setProductId(product.id);
-                    setItemPrice(product.sellingPrice || 0);
-                    setItemQty(1);
-                  }}
-                  typeFilter={isQuotation ? undefined : "finished_good"}
-                  placeholder="Pilih Produk..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Kuantitas Unit / Pcs</label>
-                  <input
-                    type="number"
-                    required
-                    value={itemQty || ''}
-                    onChange={(e) => setItemQty(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200"
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
+                  <button
+                    type="button"
+                    onClick={addFormItem}
+                    className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={10} /> Tambah Baris
+                  </button>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan disepakati (Rp)</label>
-                  <input
-                    type="number"
-                    required
-                    value={itemPrice || ''}
-                    onChange={(e) => setItemPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200"
-                  />
+
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                  {formItems.map((item, index) => {
+                    const selectedProductIds = formItems
+                      .map((formItem, itemIndex) => itemIndex === index ? '' : formItem.productId)
+                      .filter(Boolean);
+
+                    return (
+                      <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFormItem(index)}
+                            disabled={formItems.length === 1}
+                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
+                            title="Hapus baris"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+
+                        <ProductPicker
+                          value={item.productId}
+                          onChange={(product) => {
+                            updateFormItem(index, {
+                              productId: product.id,
+                              unitPrice: product.sellingPrice || 0,
+                              quantity: item.quantity > 0 ? item.quantity : 1,
+                            });
+                          }}
+                          typeFilter={isQuotation ? undefined : "finished_good"}
+                          excludedProductIds={selectedProductIds}
+                          placeholder="Pilih Produk..."
+                        />
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-600">Kuantitas Unit / Pcs</label>
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              value={item.quantity || ''}
+                              onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-600 font-sans">Harga Satuan (Rp)</label>
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              value={item.unitPrice || ''}
+                              onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
                 <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Total Proyeksi Kontrak</span>
-                <p className="text-sm font-black text-indigo-750 font-mono mt-1">{formatIDR(itemQty * itemPrice)}</p>
+                <p className="text-sm font-black text-indigo-750 font-mono mt-1">{formatIDR(formTotal)}</p>
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
@@ -760,7 +839,7 @@ export default function SalesView({
 
       {/* 6. Quick Add Customer Modal */}
       {showAddCustomer && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 font-sans text-xs">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-4 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
               <div className="flex items-center gap-2">

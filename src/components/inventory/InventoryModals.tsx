@@ -1,7 +1,10 @@
 import React from "react";
 import { X, ArrowDownCircle, ArrowUpCircle, Trash2, Plus } from "../icons";
 import { Product, StockMovement } from "../../types";
-import { LocationDto as Location, ProductStockDto as ProductStock } from "../../features/inventory/types";
+import {
+  LocationDto as Location,
+  ProductStockDto as ProductStock,
+} from "../../features/inventory/types";
 import ReferencePicker from "../ReferencePicker";
 import SearchableSelect from "../SearchableSelect";
 import ProductPicker from "../ProductPicker";
@@ -24,7 +27,9 @@ interface InventoryModalsProps {
   showInwardModal: boolean;
   setShowInwardModal: (show: boolean) => void;
   inManualItems?: { sku: string; qty: number }[];
-  setInManualItems?: React.Dispatch<React.SetStateAction<{ sku: string; qty: number }[]>>;
+  setInManualItems?: React.Dispatch<
+    React.SetStateAction<{ sku: string; qty: number }[]>
+  >;
   inDoc: string;
   setInDoc: (val: string) => void;
   inHandler: string;
@@ -36,7 +41,11 @@ interface InventoryModalsProps {
   poOptions: any[];
   purchaseOrders?: any[]; // added
   inPoItemsQty?: Record<string, number>; // added
-  setInPoItemsQty?: (val: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void; // added
+  setInPoItemsQty?: (
+    val:
+      | Record<string, number>
+      | ((prev: Record<string, number>) => Record<string, number>),
+  ) => void; // added
   getIncomingLocationOptions: () => Location[];
   getDefaultIncomingLocationId: (p: Product | null) => string;
   handleInwardSubmit: (e: React.FormEvent) => void;
@@ -73,19 +82,69 @@ interface InventoryModalsProps {
   handleOutwardSubmit: (e: React.FormEvent) => void;
 
   // Additional options
-  employeeOptions?: { value: string, label: string }[];
+  employeeOptions?: { value: string; label: string }[];
 }
 
 export const InventoryModals: React.FC<InventoryModalsProps> = ({
-  products, locations, selectedProduct, setSelectedProduct, getProductBySku, getLocationName,
-  showStockDetailModal, setShowStockDetailModal, getProductStocks,
-  showInwardModal, setShowInwardModal, inManualItems, setInManualItems, inDoc, setInDoc, inHandler, setInHandler, inNotes, setInNotes, inLocationId, setInLocationId, poOptions, purchaseOrders, inPoItemsQty, setInPoItemsQty, getIncomingLocationOptions, getDefaultIncomingLocationId, handleInwardSubmit,
-  showCorrectionModal, setShowCorrectionModal, correctionQty, setCorrectionQty, correctionLocationId, setCorrectionLocationId, correctionNotes, setCorrectionNotes, handleCorrectionSubmit,
-  showOutwardModal, setShowOutwardModal, outSku, setOutSku, outQty, setOutQty, outDoc, setOutDoc, outHandler, setOutHandler, outNotes, setOutNotes, outLocationId, setOutLocationId, soOptions, getStockLocationOptions, getDefaultStockLocationId, handleOutwardSubmit,
+  products,
+  locations,
+  selectedProduct,
+  setSelectedProduct,
+  getProductBySku,
+  getLocationName,
+  showStockDetailModal,
+  setShowStockDetailModal,
+  getProductStocks,
+  showInwardModal,
+  setShowInwardModal,
+  inManualItems,
+  setInManualItems,
+  inDoc,
+  setInDoc,
+  inHandler,
+  setInHandler,
+  inNotes,
+  setInNotes,
+  inLocationId,
+  setInLocationId,
+  poOptions,
+  purchaseOrders,
+  inPoItemsQty,
+  setInPoItemsQty,
+  getIncomingLocationOptions,
+  getDefaultIncomingLocationId,
+  handleInwardSubmit,
+  showCorrectionModal,
+  setShowCorrectionModal,
+  correctionQty,
+  setCorrectionQty,
+  correctionLocationId,
+  setCorrectionLocationId,
+  correctionNotes,
+  setCorrectionNotes,
+  handleCorrectionSubmit,
+  showOutwardModal,
+  setShowOutwardModal,
+  outSku,
+  setOutSku,
+  outQty,
+  setOutQty,
+  outDoc,
+  setOutDoc,
+  outHandler,
+  setOutHandler,
+  outNotes,
+  setOutNotes,
+  outLocationId,
+  setOutLocationId,
+  soOptions,
+  getStockLocationOptions,
+  getDefaultStockLocationId,
+  handleOutwardSubmit,
   employeeOptions,
 }) => {
   const selectedPO = React.useMemo(() => {
-    return purchaseOrders?.find(po => po.poNumber === inDoc) || null;
+    return purchaseOrders?.find((po) => po.poNumber === inDoc) || null;
   }, [inDoc, purchaseOrders]);
 
   return (
@@ -226,7 +285,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                     onChange={(val) => setInLocationId(val)}
                     options={getIncomingLocationOptions().map((loc) => ({
                       value: loc.id,
-                      label: `${loc.name} (${loc.code})`
+                      label: `${loc.name} (${loc.code})`,
                     }))}
                     placeholder="-- Pilih Lokasi --"
                   />
@@ -243,60 +302,86 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                       <thead>
                         <tr className="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
                           <th className="pb-2 font-semibold">SKU / Nama</th>
-                          <th className="pb-2 font-semibold text-right">Dipesan</th>
-                          <th className="pb-2 font-semibold text-right">Sisa</th>
-                          <th className="pb-2 font-semibold text-right">Diterima Saat Ini</th>
+                          <th className="pb-2 font-semibold text-right">
+                            Dipesan
+                          </th>
+                          <th className="pb-2 font-semibold text-right">
+                            Sisa
+                          </th>
+                          <th className="pb-2 font-semibold text-right">
+                            Diterima Saat Ini
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedPO.items?.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="py-4 text-center text-[11px] text-slate-400">
+                            <td
+                              colSpan={4}
+                              className="py-4 text-center text-[11px] text-slate-400"
+                            >
                               Detail item PO belum tersedia dari backend.
                             </td>
                           </tr>
-                        ) : selectedPO.items?.map((item: any) => {
-                          const remaining = Math.max(0, item.quantity - (item.receivedQty || 0));
-                          const currentValue = inPoItemsQty?.[item.id] !== undefined
-                            ? inPoItemsQty[item.id]
-                            : remaining;
+                        ) : (
+                          selectedPO.items?.map((item: any) => {
+                            const remaining = Math.max(
+                              0,
+                              item.quantity - (item.receivedQty || 0),
+                            );
+                            const currentValue =
+                              inPoItemsQty?.[item.id] !== undefined
+                                ? inPoItemsQty[item.id]
+                                : remaining;
 
-                          return (
-                            <tr key={item.id} className="border-b border-slate-100 last:border-0">
-                              <td className="py-2">
-                                <div className="font-bold text-slate-800">{item.productSku || "-"}</div>
-                                <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{item.productName}</div>
-                                {remaining <= 0 && (
-                                  <div className="text-[9px] font-bold text-emerald-600 mt-0.5">
-                                    Sudah diterima penuh
+                            return (
+                              <tr
+                                key={item.id}
+                                className="border-b border-slate-100 last:border-0"
+                              >
+                                <td className="py-2">
+                                  <div className="font-bold text-slate-800">
+                                    {item.productSku || "-"}
                                   </div>
-                                )}
-                              </td>
-                              <td className="py-2 text-right font-mono">{item.quantity}</td>
-                              <td className={`py-2 text-right font-mono font-bold ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                                {remaining}
-                              </td>
-                              <td className="py-2 text-right">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={remaining}
-                                  value={currentValue}
-                                  disabled={remaining <= 0}
-                                  onChange={(e) => {
-                                    if (setInPoItemsQty) {
-                                      setInPoItemsQty(prev => ({
-                                        ...prev,
-                                        [item.id]: Number(e.target.value)
-                                      }));
-                                    }
-                                  }}
-                                  className="w-20 px-2 py-1 text-right border border-slate-200 rounded text-xs disabled:bg-slate-100 disabled:text-slate-400"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                  <div className="text-[10px] text-slate-500 truncate max-w-50">
+                                    {item.productName}
+                                  </div>
+                                  {remaining <= 0 && (
+                                    <div className="text-[9px] font-bold text-emerald-600 mt-0.5">
+                                      Sudah diterima penuh
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2 text-right font-mono">
+                                  {item.quantity}
+                                </td>
+                                <td
+                                  className={`py-2 text-right font-mono font-bold ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}
+                                >
+                                  {remaining}
+                                </td>
+                                <td className="py-2 text-right">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={remaining}
+                                    value={currentValue}
+                                    disabled={remaining <= 0}
+                                    onChange={(e) => {
+                                      if (setInPoItemsQty) {
+                                        setInPoItemsQty((prev) => ({
+                                          ...prev,
+                                          [item.id]: Number(e.target.value),
+                                        }));
+                                      }
+                                    }}
+                                    className="w-20 px-2 py-1 text-right border border-slate-200 rounded text-xs disabled:bg-slate-100 disabled:text-slate-400"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -310,10 +395,10 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                     <div key={idx} className="flex items-center gap-2">
                       <div className="flex-1">
                         <ProductPicker
-                          value={getProductBySku(item.sku)?.id || ''}
+                          value={getProductBySku(item.sku)?.id || ""}
                           onChange={(product) => {
                             if (setInManualItems) {
-                              setInManualItems(prev => {
+                              setInManualItems((prev) => {
                                 const next = [...prev];
                                 next[idx].sku = product.sku;
                                 return next;
@@ -321,7 +406,9 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                             }
                             if (idx === 0) {
                               setSelectedProduct(product);
-                              setInLocationId(getDefaultIncomingLocationId(product));
+                              setInLocationId(
+                                getDefaultIncomingLocationId(product),
+                              );
                             }
                           }}
                         />
@@ -334,7 +421,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                           min={0}
                           onChange={(e) => {
                             if (setInManualItems) {
-                              setInManualItems(prev => {
+                              setInManualItems((prev) => {
                                 const next = [...prev];
                                 next[idx].qty = Number(e.target.value);
                                 return next;
@@ -350,7 +437,9 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                           type="button"
                           onClick={() => {
                             if (setInManualItems) {
-                              setInManualItems(prev => prev.filter((_, i) => i !== idx));
+                              setInManualItems((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              );
                             }
                           }}
                           className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
@@ -360,12 +449,15 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                       )}
                     </div>
                   ))}
-                  
+
                   <button
                     type="button"
                     onClick={() => {
                       if (setInManualItems) {
-                        setInManualItems(prev => [...prev, { sku: "", qty: 0 }]);
+                        setInManualItems((prev) => [
+                          ...prev,
+                          { sku: "", qty: 0 },
+                        ]);
                       }
                     }}
                     className="w-full py-2 border border-dashed border-slate-300 text-slate-500 hover:text-cyan-700 hover:border-cyan-300 hover:bg-cyan-50 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
@@ -491,11 +583,11 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                     getProductStocks(selectedProduct).length > 0
                       ? getProductStocks(selectedProduct).map((stock) => ({
                           value: stock.location_id,
-                          label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`
+                          label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`,
                         }))
                       : locations.map((loc) => ({
                           value: loc.id,
-                          label: `${loc.name} (${loc.code}) - Stok: 0`
+                          label: `${loc.name} (${loc.code}) - Stok: 0`,
                         }))
                   }
                   placeholder="-- Pilih Lokasi --"
@@ -563,7 +655,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                   Pilih Item Produk
                 </label>
                 <ProductPicker
-                  value={selectedProduct?.id || ''}
+                  value={selectedProduct?.id || ""}
                   onChange={(product) => {
                     setOutSku(product.sku);
                     setSelectedProduct(product);
@@ -582,8 +674,8 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                   options={getStockLocationOptions(getProductBySku(outSku)).map(
                     (stock) => ({
                       value: stock.location_id,
-                      label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`
-                    })
+                      label: `${stock.location?.name || getLocationName(stock.location_id)} - Stok: ${Number(stock.quantity || 0)}`,
+                    }),
                   )}
                   placeholder="-- Pilih Lokasi Stok --"
                 />

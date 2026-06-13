@@ -41,6 +41,7 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   total: Number(dto.total),
   status: mapQuotationStatus(dto.status),
   items: (dto.items || []).map(item => ({
+    productId: item.product_id,
     productName: item.product?.name || item.description || 'Unknown Product',
     quantity: Number(item.quantity),
     price: Number(item.unit_price)
@@ -56,6 +57,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   total: Number(dto.total),
   status: mapSalesOrderStatus(dto.status),
   items: (dto.items || []).map(item => ({
+    productId: item.product_id,
     productName: item.product?.name || item.description || 'Unknown Product',
     quantity: Number(item.quantity),
     price: Number(item.unit_price)

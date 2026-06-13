@@ -3,19 +3,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  FileSearch, FileClock, Search, FileDown, RefreshCw, AlertTriangle
-} from '@/src/components/icons';
-import { supportApi } from '../features/support/api';
-import { AuditLog } from '../features/support/types';
+  FileSearch,
+  Search,
+  FileDown,
+  RefreshCw,
+  AlertTriangle,
+} from "@/src/components/icons";
+import { supportApi } from "../features/support/api";
+import { AuditLog } from "../features/support/types";
 
 interface AuditLogViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-const Panel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+const Panel = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}
+  >
     {children}
   </div>
 );
@@ -40,28 +52,38 @@ const Header = ({
   </Panel>
 );
 
-const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'cyan' | 'amber' | 'emerald' | 'rose' | 'indigo' }) => {
+const StatusPill = ({
+  children,
+  tone = "slate",
+}: {
+  children: React.ReactNode;
+  tone?: "slate" | "cyan" | "amber" | "emerald" | "rose" | "indigo";
+}) => {
   const tones: Record<string, string> = {
-    slate: 'bg-slate-100 text-slate-600 border-slate-200',
-    cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rose: 'bg-rose-50 text-rose-700 border-rose-200',
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    slate: "bg-slate-100 text-slate-600 border-slate-200",
+    cyan: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    rose: "bg-rose-50 text-rose-700 border-rose-200",
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
   };
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}
+    >
       {children}
     </span>
   );
 };
 
-export default function AuditLogView({ onTriggerNotification }: AuditLogViewProps) {
+export default function AuditLogView({
+  onTriggerNotification,
+}: AuditLogViewProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterAction, setFilterAction] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterAction, setFilterAction] = useState("ALL");
 
   const fetchLogs = useCallback(async () => {
     setIsLoading(true);
@@ -69,8 +91,8 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
       const data = await supportApi.getAuditLogs();
       setLogs(data);
     } catch (error) {
-      console.error('Error fetching audit logs:', error);
-      onTriggerNotification('Gagal memuat log audit aktivitas.');
+      console.error("Error fetching audit logs:", error);
+      onTriggerNotification("Gagal memuat log audit aktivitas.");
     } finally {
       setIsLoading(false);
     }
@@ -82,9 +104,18 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
 
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return;
-    
-    const headers = ['Waktu', 'User', 'Role', 'Aksi', 'Tipe Objek', 'Nomor Objek', 'Ringkasan', 'IP Address'];
-    const rows = filteredLogs.map(log => [
+
+    const headers = [
+      "Waktu",
+      "User",
+      "Role",
+      "Aksi",
+      "Tipe Objek",
+      "Nomor Objek",
+      "Ringkasan",
+      "IP Address",
+    ];
+    const rows = filteredLogs.map((log) => [
       log.createdAt,
       log.userName,
       log.roleName,
@@ -92,47 +123,68 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
       log.objectType,
       log.objectNumber,
       log.summary,
-      log.ipAddress
+      log.ipAddress,
     ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(','), ...rows.map(e => e.map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(','))].join('\n');
+
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      [
+        headers.join(","),
+        ...rows.map((e) =>
+          e
+            .map((val) => `"${(val || "").toString().replace(/"/g, '""')}"`)
+            .join(","),
+        ),
+      ].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `audit_log_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `audit_log_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    onTriggerNotification('Audit log berhasil di-export ke CSV.');
+    onTriggerNotification("Audit log berhasil di-export ke CSV.");
   };
 
   // Filtering
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
+  const filteredLogs = logs.filter((log) => {
+    const matchesSearch =
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.objectType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.objectNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.userName.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    const matchesAction = filterAction === 'ALL' || log.action.toUpperCase() === filterAction;
-    
+
+    const matchesAction =
+      filterAction === "ALL" || log.action.toUpperCase() === filterAction;
+
     return matchesSearch && matchesAction;
   });
 
   const getActionTone = (action: string) => {
     const act = action.toUpperCase();
-    if (act.includes('CREATE')) return 'emerald';
-    if (act.includes('UPDATE')) return 'amber';
-    if (act.includes('DELETE')) return 'rose';
-    if (act.includes('APPROVE') || act.includes('VERIFY')) return 'cyan';
-    if (act.includes('LOGIN') || act.includes('LOGOUT')) return 'indigo';
-    return 'slate';
+    if (act.includes("CREATE")) return "emerald";
+    if (act.includes("UPDATE")) return "amber";
+    if (act.includes("DELETE")) return "rose";
+    if (act.includes("APPROVE") || act.includes("VERIFY")) return "cyan";
+    if (act.includes("LOGIN") || act.includes("LOGOUT")) return "indigo";
+    return "slate";
   };
 
   // Distinct actions for filter dropdown
-  const actionOptions = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT', 'LOGIN', 'EXPORT'];
+  const actionOptions = [
+    "ALL",
+    "CREATE",
+    "UPDATE",
+    "DELETE",
+    "APPROVE",
+    "REJECT",
+    "LOGIN",
+    "EXPORT",
+  ];
 
   return (
     <div className="space-y-6 text-xs font-sans">
@@ -160,14 +212,18 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
 
           {/* Action Filter */}
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="text-slate-400 font-medium whitespace-nowrap">Aksi:</span>
+            <span className="text-slate-400 font-medium whitespace-nowrap">
+              Aksi:
+            </span>
             <select
               className="px-2 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white font-bold text-slate-700 text-xs w-full md:w-auto"
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
             >
-              {actionOptions.map(opt => (
-                <option key={opt} value={opt}>{opt === 'ALL' ? 'Semua Aksi' : opt}</option>
+              {actionOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === "ALL" ? "Semua Aksi" : opt}
+                </option>
               ))}
             </select>
           </div>
@@ -178,10 +234,10 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
             onClick={fetchLogs}
             className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
           >
-            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
             <span>Segarkan</span>
           </button>
-          
+
           <button
             onClick={handleExportCSV}
             disabled={filteredLogs.length === 0}
@@ -205,7 +261,7 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[750px]">
+            <table className="w-full text-left border-collapse min-w-187.5">
               <thead>
                 <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
                   <th className="p-3.5 pl-5">Waktu</th>
@@ -220,18 +276,32 @@ export default function AuditLogView({ onTriggerNotification }: AuditLogViewProp
               <tbody className="divide-y divide-slate-100">
                 {filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 pl-5 font-mono text-slate-500">{log.createdAt}</td>
-                    <td className="p-3.5 font-bold text-slate-700">{log.userName}</td>
+                    <td className="p-3.5 pl-5 font-mono text-slate-500">
+                      {log.createdAt}
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-700">
+                      {log.userName}
+                    </td>
                     <td className="p-3.5 text-slate-500">{log.roleName}</td>
                     <td className="p-3.5">
-                      <StatusPill tone={getActionTone(log.action)}>{log.action}</StatusPill>
+                      <StatusPill tone={getActionTone(log.action)}>
+                        {log.action}
+                      </StatusPill>
                     </td>
                     <td className="p-3.5 font-mono text-slate-700">
-                      <span className="block text-slate-400 text-[10px]">{log.objectType}</span>
-                      <span className="text-cyan-600 font-bold">{log.objectNumber}</span>
+                      <span className="block text-slate-400 text-[10px]">
+                        {log.objectType}
+                      </span>
+                      <span className="text-cyan-600 font-bold">
+                        {log.objectNumber}
+                      </span>
                     </td>
-                    <td className="p-3.5 text-slate-600 font-medium">{log.summary}</td>
-                    <td className="p-3.5 pr-5 font-mono text-slate-400">{log.ipAddress}</td>
+                    <td className="p-3.5 text-slate-600 font-medium">
+                      {log.summary}
+                    </td>
+                    <td className="p-3.5 pr-5 font-mono text-slate-400">
+                      {log.ipAddress}
+                    </td>
                   </tr>
                 ))}
               </tbody>

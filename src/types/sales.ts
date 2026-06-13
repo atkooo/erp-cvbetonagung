@@ -9,6 +9,7 @@ export interface SalesOrder {
   total: number;
   status: 'Draft' | 'Diproses' | 'Disetujui' | 'Selesai' | 'Dibatalkan';
   items: {
+    productId?: string;
     productName: string;
     quantity: number;
     price: number;
@@ -26,6 +27,7 @@ export interface Quotation {
   total: number;
   status: 'Draft' | 'Terkirim' | 'Disetujui' | 'Ditolak';
   items: {
+    productId?: string;
     productName: string;
     quantity: number;
     price: number;
