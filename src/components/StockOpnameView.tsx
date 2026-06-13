@@ -86,6 +86,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const [newItemNotes, setNewItemNotes] = useState('');
 
   const [itemSearch, setItemSearch] = useState('');
+  const [itemCategoryFilter, setItemCategoryFilter] = useState('');
   const [itemRowsPerPage, setItemRowsPerPage] = useState(10);
   const [itemCurrentPage, setItemCurrentPage] = useState(1);
 
@@ -103,8 +104,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     ? locations.filter((location) => location.warehouse_id === selectedSession.warehouseId)
     : [];
   const selectedSessionProductIds = sessionItems.map((item) => item.productId);
+  const availableCategories = Array.from(new Set(sessionItems.map(item => item.categoryName).filter(Boolean))) as string[];
   const normalizedItemSearch = itemSearch.trim().toLowerCase();
   const filteredSessionItems = sessionItems.filter((item) => {
+    if (itemCategoryFilter && item.categoryName !== itemCategoryFilter) {
+      return false;
+    }
+
     if (!normalizedItemSearch) {
       return true;
     }
@@ -662,15 +668,27 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
               ) : (
                 <div>
                   <div className="p-4 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="relative flex-1 max-w-md">
-                      <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
-                      <input
-                        type="text"
-                        value={itemSearch}
-                        onChange={(e) => setItemSearch(e.target.value)}
-                        placeholder="Cari item, SKU, lokasi, catatan, approval..."
-                        className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                      />
+                    <div className="flex flex-col md:flex-row gap-2 flex-1 max-w-xl">
+                      <div className="relative flex-1">
+                        <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={itemSearch}
+                          onChange={(e) => setItemSearch(e.target.value)}
+                          placeholder="Cari item, SKU, lokasi, catatan, approval..."
+                          className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                        />
+                      </div>
+                      <select
+                        value={itemCategoryFilter}
+                        onChange={(e) => setItemCategoryFilter(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 md:max-w-[200px]"
+                      >
+                        <option value="">Semua Kategori</option>
+                        {availableCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
                     </div>
                     {(() => {
                       const selectedApprovable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && !i.approvalRequestId);
@@ -749,6 +767,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                               </th>
                             )}
                             <th className={selectedSession.status === 'in_progress' ? "p-3.5" : "p-3.5 pl-5"}>Barang</th>
+                            <th className="p-3.5">Kategori</th>
                             <th className="p-3.5">Lokasi Simpan</th>
                             <th className="p-3.5 text-center">Stok Sistem</th>
                             <th className="p-3.5 text-center">Stok Fisik</th>
@@ -787,8 +806,14 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                   <span className="font-bold text-slate-800 block">{item.productName}</span>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span className="font-mono text-slate-400 text-[10px]">{item.sku}</span>
-                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{item.categoryName}</span>
                                   </div>
+                                </td>
+                                <td className="p-3.5">
+                                  {item.categoryName ? (
+                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-md border border-slate-200">{item.categoryName}</span>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
                                 </td>
                                 <td className="p-3.5 font-mono text-slate-600">{item.locationName}</td>
                                 <td className="p-3.5 text-center font-mono text-slate-700">{item.systemQty}</td>
