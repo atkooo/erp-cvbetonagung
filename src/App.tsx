@@ -414,8 +414,7 @@ export default function App() {
         return <DocumentExportsView onTriggerNotification={triggerNotification} />;
       case 'role-permissions':
         return <RolePermissionView onTriggerNotification={triggerNotification} />;
-      case 'approval-workflows':
-        return <ApprovalWorkflowView onTriggerNotification={triggerNotification} />;
+
       case 'stock-opname':
         return <StockOpnameView onTriggerNotification={triggerNotification} />;
       case 'audit-logs':

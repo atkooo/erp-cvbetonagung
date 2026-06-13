@@ -29,7 +29,7 @@ import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
 import Barcode from 'react-barcode';
 import { Html5Qrcode } from 'html5-qrcode';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import { useReactToPrint } from 'react-to-print';
 
 
@@ -103,13 +103,14 @@ export default function QrView({
   const [scanProgress, setScanProgress] = useState(0); // 0 to 100 for simulated camera scan delay
   const [scanTriggered, setScanTriggered] = useState<string | null>(null);
 
+  const [printProduct, setPrintProduct] = useState<Product | null>(null);
+  const hiddenStickerRef = useRef<HTMLDivElement>(null);
   const stickerRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadPng = async () => {
     if (!stickerRef.current || !showQrModal) return;
     try {
-      const canvas = await html2canvas(stickerRef.current, { scale: 3, backgroundColor: '#ffffff' });
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = await htmlToImage.toPng(stickerRef.current, { backgroundColor: '#ffffff', pixelRatio: 3 });
       const link = document.createElement('a');
       link.download = `Barcode-${showQrModal.sku}.png`;
       link.href = dataUrl;
@@ -126,6 +127,25 @@ export default function QrView({
     documentTitle: showQrModal ? `Barcode-${showQrModal.sku}` : 'Barcode',
     onAfterPrint: () => onTriggerNotification(`Berhasil mengirim stiker Barcode [${showQrModal?.sku}] ke printer.`),
   });
+
+  const handleHiddenPrint = useReactToPrint({
+    contentRef: hiddenStickerRef,
+    documentTitle: printProduct ? `Barcode-${printProduct.sku}` : 'Barcode',
+    onAfterPrint: () => {
+      onTriggerNotification(`Berhasil mengirim stiker Barcode [${printProduct?.sku}] ke printer harian.`);
+      setPrintProduct(null);
+    },
+  });
+
+  useEffect(() => {
+    if (printProduct) {
+      // Need a small timeout to ensure the DOM is updated before printing
+      const timer = setTimeout(() => {
+        handleHiddenPrint();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [printProduct, handleHiddenPrint]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -224,7 +244,7 @@ export default function QrView({
   const drawBarcode = (value: string, large = false) => {
     return (
       <div className={`bg-white p-2 border border-slate-200 rounded ${large ? 'shadow-sm' : ''} inline-block`}>
-        <Barcode value={value || 'EMPTY'} width={large ? 2 : 1.2} height={large ? 60 : 35} fontSize={large ? 14 : 10} margin={0} background="#ffffff" lineColor="#0f172a" />
+        <Barcode renderer="img" value={value || 'EMPTY'} width={large ? 2 : 1.2} height={large ? 60 : 35} fontSize={large ? 14 : 10} margin={0} background="#ffffff" lineColor="#0f172a" />
       </div>
     );
   };
@@ -525,7 +545,8 @@ export default function QrView({
                         </button>
                         <button
                           onClick={() => {
-                            onTriggerNotification(`Mengirim cetak stiker Barcode [${p.sku}] ke printer zebra harian`);
+                            setPrintProduct(p);
+                            onTriggerNotification(`Menyiapkan cetak stiker Barcode [${p.sku}] ke printer zebra harian...`);
                           }}
                           className="px-2 py-1.5 border border-cyan-200 text-[10px] font-semibold text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 rounded flex items-center gap-1.5 transition-colors"
                         >
@@ -539,6 +560,30 @@ export default function QrView({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Hidden layout for direct print */}
+      <div style={{ overflow: 'hidden', height: 0, width: 0, position: 'absolute' }}>
+        {printProduct && (
+          <div ref={hiddenStickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white w-[350px]">
+            <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">CV BETON AGUNG LOGISTIC</p>
+            <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
+              <div className="relative group">
+                {drawBarcode(printProduct.qrValue || printProduct.sku, true)}
+              </div>
+            </div>
+            <div className="space-y-1.5 text-center">
+              <strong className="text-base font-sans font-black text-slate-800 tracking-tight leading-tight">{printProduct.sku}</strong>
+              <p className="text-xs font-bold text-slate-650 text-slate-500 max-w-[200px] leading-snug">{printProduct.name}</p>
+              <div className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono inline-block border border-slate-200 mt-1">
+                Barcode: <strong className="text-slate-800">{printProduct.qrValue || printProduct.sku}</strong>
+              </div>
+              <div className="pt-2 text-[9px] font-mono text-slate-400">
+                Storage Rak: <strong className="text-slate-600">{printProduct.location}</strong>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal View Barcode Sticker layout */}
