@@ -38,4 +38,14 @@ export interface Project {
     imageUrl: string;
     date: string;
   }[];
+  tasks?: {
+    id: string;
+    taskCode: string;
+    taskName: string;
+    status: 'Pending' | 'In Progress' | 'Completed';
+    sequence: number;
+    targetDate?: string;
+    completedDate?: string;
+    notes?: string;
+  }[];
 }

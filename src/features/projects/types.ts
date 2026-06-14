@@ -28,6 +28,19 @@ export interface ProjectTerminDto {
   paid_at: string | null;
 }
 
+export interface ProjectTaskDto {
+  id: string;
+  project_id: string;
+  task_code: string;
+  task_name: string;
+  status: string;
+  sequence: number;
+  target_date: string | null;
+  completed_date: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface ProjectDto {
   id: string;
   code: string;
@@ -49,6 +62,7 @@ export interface ProjectDto {
   timelines?: ProjectTimelineDto[];
   documents?: ProjectDocumentDto[];
   termins?: ProjectTerminDto[];
+  tasks?: ProjectTaskDto[];
 }
 
 export interface CreateProjectTimelineDto {

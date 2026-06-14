@@ -31,6 +31,16 @@ export const mapProjectFromDto = (dto: ProjectDto): Project => ({
     imageUrl: doc.file_url,
     date: doc.document_date,
   })),
+  tasks: (dto.tasks || []).map((task: any) => ({
+    id: task.id,
+    taskCode: task.task_code,
+    taskName: task.task_name,
+    status: task.status as 'Pending' | 'In Progress' | 'Completed',
+    sequence: Number(task.sequence),
+    targetDate: task.target_date,
+    completedDate: task.completed_date,
+    notes: task.notes,
+  })),
 });
 
 const mapProjectStatus = (status: string): Project['status'] => {

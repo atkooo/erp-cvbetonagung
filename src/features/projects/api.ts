@@ -8,8 +8,12 @@ import { mapProjectFromDto, mapProjectBudgetItemFromDto } from './mappers';
 
 export const projectsApi = {
   async getProjects(): Promise<Project[]> {
-    const response = await apiClient.get<{ data: ProjectDto[] }>('/projects/projects?include=customer,timelines,documents,termins');
+    const response = await apiClient.get<{ data: ProjectDto[] }>('/projects/projects?include=customer,timelines,documents,termins,tasks');
     return response.data.map(mapProjectFromDto);
+  },
+
+  async updateProjectTask(id: string, data: { status: string; completed_date?: string }): Promise<void> {
+    await apiClient.put(`/projects/project-tasks/${id}`, data);
   },
 
   async createTimelineEvent(data: CreateProjectTimelineDto): Promise<void> {

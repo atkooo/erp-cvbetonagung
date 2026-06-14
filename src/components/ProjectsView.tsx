@@ -301,49 +301,124 @@ export default function ProjectsView({
 
         {/* Content Bento section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Column Left: Timeline */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-7 flex flex-col">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">
-                Timeline & Sejarah Konstruksi
-              </h3>
-              <button
-                onClick={() => setShowEventAddModal(true)}
-                className="px-2.5 py-1 bg-slate-900 text-white rounded text-[10px] font-bold hover:bg-slate-800 flex items-center gap-1 transition-colors"
-              >
-                <Plus size={12} />
-                <span>Update Progress</span>
-              </button>
-            </div>
-
-            <div className="relative border-l border-slate-200 pl-5 ml-2.5 space-y-4 flex-1">
-              {project.timeline.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs">
-                  Belum ada aktivitas terekam.
+          {/* Column Left: Tasks & Timeline */}
+          <div className="lg:col-span-7 flex flex-col gap-5">
+            {/* Tasklist Checklist UI */}
+            {project.tasks && project.tasks.length > 0 && (
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between border-b pb-3 mb-4">
+                  <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400 flex items-center gap-2">
+                    <Activity size={14} className="text-cyan-600" />
+                    Checklist Tahapan Proyek
+                  </h3>
                 </div>
-              ) : (
-                project.timeline.map((event, idx) => (
-                  <div key={idx} className="relative text-xs">
-                    {/* Custom icon */}
-                    <span className="absolute -left-7 top-0.5 p-1 bg-white border rounded-full shadow-sm">
-                      {getStageIcon(event.icon)}
-                    </span>
-                    <div>
-                      <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <strong className="text-slate-800 text-xs">
-                          {event.stage}
-                        </strong>
-                        <span className="font-mono text-[10px] text-slate-400">
-                          {event.date}
-                        </span>
+                <div className="space-y-3">
+                  {project.tasks.map((task, index) => {
+                    const isCompleted = task.status === 'Completed';
+                    const isInProgress = task.status === 'In Progress';
+                    
+                    return (
+                      <div key={task.id} className={`p-3 rounded-lg border ${isCompleted ? 'bg-emerald-50 border-emerald-100' : isInProgress ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200'} flex items-center justify-between`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${isCompleted ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                            {isCompleted ? <CheckCircle size={12} /> : index + 1}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[10px] font-bold text-slate-500">{task.taskCode}</span>
+                              <h5 className={`font-bold text-sm ${isCompleted ? 'text-emerald-800' : isInProgress ? 'text-amber-800' : 'text-slate-700'}`}>{task.taskName}</h5>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Status: <span className="font-bold">{task.status}</span>
+                              {task.completedDate && ` | Selesai: ${task.completedDate}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex gap-2">
+                          {!isCompleted && (
+                            <button
+                              onClick={async () => {
+                                const newStatus = isInProgress ? 'Completed' : 'In Progress';
+                                try {
+                                  await projectsApi.updateProjectTask(task.id, {
+                                    status: newStatus,
+                                    completed_date: newStatus === 'Completed' ? new Date().toISOString().split('T')[0] : undefined
+                                  });
+                                  
+                                  // Update the timeline too
+                                  if (newStatus === 'Completed') {
+                                    await projectsApi.createTimelineEvent({
+                                      project_id: project.id,
+                                      event_date: new Date().toISOString().split('T')[0],
+                                      stage: task.taskName,
+                                      description: `Tahapan ${task.taskName} telah diselesaikan.`,
+                                      icon: 'CheckCircle'
+                                    });
+                                  }
+
+                                  onTriggerNotification(`Tahapan ${task.taskName} diperbarui menjadi ${newStatus}`);
+                                  await loadData(); // Reload to get updated tasks, timeline, progress
+                                } catch(e) {
+                                  onTriggerNotification('Gagal mengupdate tahapan.');
+                                }
+                              }}
+                              className={`px-3 py-1.5 text-[10px] font-bold rounded border transition-colors ${isInProgress ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600 border-amber-600'}`}
+                            >
+                              {isInProgress ? 'Tandai Selesai' : 'Mulai Kerja'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-slate-500 mt-1 leading-relaxed text-[11px]">
-                        {event.description}
-                      </p>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Timeline Log */}
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between border-b pb-3 mb-4">
+                <h3 className="text-xs uppercase font-mono font-bold tracking-widest text-slate-400">
+                  Timeline & Sejarah Konstruksi
+                </h3>
+                <button
+                  onClick={() => setShowEventAddModal(true)}
+                  className="px-2.5 py-1 bg-slate-900 text-white rounded text-[10px] font-bold hover:bg-slate-800 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Plus size={12} />
+                  <span>Update Progress Manual</span>
+                </button>
+              </div>
+
+              <div className="relative border-l border-slate-200 pl-5 ml-2.5 space-y-4 flex-1">
+                {project.timeline.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs">
+                    Belum ada aktivitas terekam.
                   </div>
-                ))
-              )}
+                ) : (
+                  project.timeline.map((event, idx) => (
+                    <div key={idx} className="relative text-xs">
+                      {/* Custom icon */}
+                      <span className="absolute -left-7 top-0.5 p-1 bg-white border rounded-full shadow-sm">
+                        {getStageIcon(event.icon)}
+                      </span>
+                      <div>
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <strong className="text-slate-800 text-xs">
+                            {event.stage}
+                          </strong>
+                          <span className="font-mono text-[10px] text-slate-400">
+                            {event.date}
+                          </span>
+                        </div>
+                        <p className="text-slate-500 mt-1 leading-relaxed text-[11px]">
+                          {event.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 

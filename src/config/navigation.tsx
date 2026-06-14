@@ -131,7 +131,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     items: [
       {
         view: "quotations",
-        label: "Quotation",
+        label: "Penawaran (quotations)",
         icon: FileSpreadsheet,
         requiredModule: "sales",
       },
