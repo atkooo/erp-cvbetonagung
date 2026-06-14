@@ -117,8 +117,8 @@ export default function LoginView({
               className="flex items-center gap-3 select-none cursor-pointer"
               onClick={handleLogoClick}
             >
-              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/50 flex items-center justify-center">
-                <Building2 size={20} className="text-white" />
+              <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center overflow-hidden p-2">
+                <img src="/logo.png" alt="CV Beton Agung Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-sm font-black text-white uppercase tracking-wider">

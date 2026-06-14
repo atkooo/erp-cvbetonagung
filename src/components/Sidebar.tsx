@@ -87,8 +87,8 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
       <div className={`p-4 border-b border-slate-900 bg-slate-950/60 sticky top-0 backdrop-blur-md z-10 flex items-center ${isPinned ? 'justify-between' : 'justify-center'}`}>
         {isPinned ? (
           <div className="flex items-center gap-3">
-            <div className="bg-slate-800 border border-slate-700/50 p-2 rounded-lg text-white">
-              <HardHat size={18} className="stroke-[2.5]" />
+            <div className="bg-slate-800 border border-slate-700/50 p-1.5 rounded-lg flex items-center justify-center">
+              <img src="/logo.png" alt="CV Beton Agung Logo" className="w-6 h-6 object-contain" />
             </div>
             <div>
               <h1 className="font-sans font-bold tracking-tight text-white text-sm whitespace-nowrap">CV Beton Agung</h1>
@@ -96,8 +96,8 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
             </div>
           </div>
         ) : (
-          <button onClick={() => setIsPinned(true)} className="bg-slate-800 border border-slate-700/50 p-2 rounded-lg text-white hover:bg-slate-700 transition-colors" title="Expand Sidebar">
-            <HardHat size={18} className="stroke-[2.5]" />
+          <button onClick={() => setIsPinned(true)} className="bg-slate-800 border border-slate-700/50 p-1.5 rounded-lg flex items-center justify-center hover:bg-slate-700 transition-colors" title="Expand Sidebar">
+            <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
           </button>
         )}
         
