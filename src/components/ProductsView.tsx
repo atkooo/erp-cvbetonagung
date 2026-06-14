@@ -11,6 +11,7 @@ import { UnitDto } from '../features/products/types';
 import { inventoryApi } from '../features/inventory/api';
 import { apiClient } from '../services/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
+import CurrencyInput from './CurrencyInput';
 import Swal from 'sweetalert2';
 
 interface ProductsViewProps {
@@ -609,20 +610,18 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Pokok Modal (Rp) (Opsional)</label>
-                  <input
-                    type="number"
+                  <CurrencyInput
                     value={costPrice || ''}
-                    onChange={(e) => setCostPrice(Number(e.target.value))}
+                    onValueChange={(val) => setCostPrice(Number(val))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Jual Pasar (Rp)</label>
-                  <input
-                    type="number"
+                  <CurrencyInput
                     required
                     value={sellingPrice || ''}
-                    onChange={(e) => setSellingPrice(Number(e.target.value))}
+                    onValueChange={(val) => setSellingPrice(Number(val))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>

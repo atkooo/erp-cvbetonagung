@@ -64,6 +64,7 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  salesOrderId?: string;
   salesOrderNumber?: string;
   customerName: string;
   customerPhone?: string;

@@ -13,8 +13,9 @@ import { formatDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import { salesApi } from '../features/sales/api';
 import { SalesOrder } from '../types/sales';
-import { Plus } from 'lucide-react';
+import { Plus, Truck } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
+import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
 
 interface InvoicesViewProps {
   onTriggerNotification: (message: string) => void;
@@ -25,6 +26,15 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(getCompanyProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCompanyProfile(getCompanyProfile());
+    };
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Create Invoice states
@@ -41,6 +51,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
   // API states
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -48,8 +59,12 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const data = await financeApi.getInvoices();
-      setInvoices(data);
+      const [invoiceData, accountsData] = await Promise.all([
+        financeApi.getInvoices(),
+        financeApi.getAccounts()
+      ]);
+      setInvoices(invoiceData);
+      setAccounts(accountsData.filter(a => a.type === 'bank' || a.type === 'ewallet'));
     } catch (err) {
       console.error('Failed to load invoices', err);
       const msg = err instanceof Error ? err.message : 'Gagal memuat data invoice';
@@ -365,13 +380,31 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
             </div>
 
             {/* Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 text-xs font-bold">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-end gap-2 text-xs font-bold">
+              {(selectedInvoice.status === 'Sebagian Dibayar' || selectedInvoice.status === 'Lunas') && (
+                <button
+                  onClick={() => {
+                    if (selectedInvoice.salesOrderId) {
+                      sessionStorage.setItem('action_create_do', selectedInvoice.salesOrderId);
+                      setSelectedInvoice(null);
+                      onNavigate && onNavigate('delivery-orders');
+                    } else {
+                      onTriggerNotification('Invoice ini tidak terhubung dengan Sales Order.');
+                    }
+                  }}
+                  className="px-4 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <Truck size={13} />
+                  <span>Buat Surat Jalan (DO)</span>
+                </button>
+              )}
+
               {(selectedInvoice.status === 'Belum Lunas' || selectedInvoice.status === 'Sebagian Dibayar' || selectedInvoice.status === 'Overdue') && (
                 <button
                   onClick={() => {
                     sessionStorage.setItem('action_pay_invoice', selectedInvoice.id);
                     setSelectedInvoice(null);
-                    onNavigate('payments');
+                    onNavigate && onNavigate('payments');
                   }}
                   className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 cursor-pointer shadow"
                 >
@@ -390,7 +423,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
               <button
                 onClick={() => {
-                  const message = `Halo ${selectedInvoice.customerName},\n\nBerikut adalah ringkasan tagihan (Invoice) dari *CV Beton Agung Solusi*:\n\n*No. Invoice:* ${selectedInvoice.invoiceNumber}\n*Total Tagihan:* ${formatIDR(selectedInvoice.total)}\n*Sisa Tagihan:* ${formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}\n*Jatuh Tempo:* ${formatDate(selectedInvoice.dueDate)}\n\nMohon segera melakukan pelunasan sebelum tanggal jatuh tempo. Terima kasih.`;
+                  const message = `Halo ${selectedInvoice.customerName},\n\nBerikut adalah ringkasan tagihan (Invoice) dari *${companyProfile.name}*:\n\n*No. Invoice:* ${selectedInvoice.invoiceNumber}\n*Total Tagihan:* ${formatIDR(selectedInvoice.total)}\n*Sisa Tagihan:* ${formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}\n*Jatuh Tempo:* ${formatDate(selectedInvoice.dueDate)}\n\nMohon segera melakukan pelunasan sebelum tanggal jatuh tempo. Terima kasih.`;
                   
                   let waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
                   if (selectedInvoice.customerPhone) {
@@ -429,15 +462,18 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               {/* Header / Letterhead */}
               <div className="flex justify-between items-center border-b-4 border-double border-slate-900 pb-5 mb-8 mt-4">
                 <div className="flex items-center gap-4">
-                  {/* Logo Placeholder */}
-                  <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
-                    BA
-                  </div>
+                  {companyProfile.logoUrl ? (
+                    <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                  ) : (
+                    <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                      {companyProfile.name.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">CV Beton Agung</h1>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">{companyProfile.name}</h1>
                     <p className="text-xs font-bold text-slate-700 tracking-wide mt-0.5">GENERAL CONTRACTOR & SUPPLIER MATERIAL ALAM</p>
-                    <p className="text-[10px] mt-1 text-slate-600 max-w-sm">Jl. Raya Sukomanunggal Jaya No. 12, Kel. Sukomanunggal,<br/>Kec. Sukomanunggal, Surabaya, Jawa Timur 60188</p>
-                    <p className="text-[10px] mt-0.5 text-slate-600">Telp: (031) 7328999 | Email: finance@betonagung.co.id</p>
+                    <p className="text-[10px] mt-1 text-slate-600 max-w-sm">{formatAddressForPrint(companyProfile.address)}</p>
+                    <p className="text-[10px] mt-0.5 text-slate-600">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -467,10 +503,17 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 <div className="w-1/3">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Informasi Pembayaran:</p>
                   <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-800">
-                    <p className="font-bold mb-1">Transfer Bank:</p>
-                    <p className="flex justify-between font-mono mt-0.5"><span className="font-bold">BCA</span> <span>088 1234 567</span></p>
-                    <p className="flex justify-between font-mono mt-0.5"><span className="font-bold">Mandiri</span> <span>142 00 8899 7766</span></p>
-                    <p className="mt-2 text-[10px] text-slate-500">A/N: CV Beton Agung Solusi</p>
+                    <p className="font-bold mb-1">Transfer Bank / E-Wallet:</p>
+                    {accounts.length > 0 ? (
+                      accounts.map(acc => (
+                        <p key={acc.id} className="flex justify-between font-mono mt-0.5">
+                          <span className="font-bold">{acc.bank_name || acc.name}</span> <span>{acc.account_number}</span>
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-[10px] italic text-slate-500">Belum ada rekening tujuan diatur.</p>
+                    )}
+                    <p className="mt-2 text-[10px] text-slate-500">A/N: {companyProfile.name}</p>
                   </div>
                 </div>
               </div>
@@ -556,13 +599,16 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   <p className="border-t border-slate-900 mx-10 pt-2 font-bold uppercase text-slate-800">
                     Finance Dept.
                   </p>
-                  <p className="text-[10px] text-slate-500">CV Beton Agung</p>
+                  <p className="text-[10px] text-slate-500">{companyProfile.name}</p>
                 </div>
               </div>
-              
+
               {/* Footer */}
               <div className="mt-10 border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400 font-mono">
-                Invoice generated by Sistem ERP CV Beton Agung &copy; {new Date().getFullYear()}
+                <p>Terima kasih atas kepercayaan Anda bermitra dengan kami.</p>
+                <p className="mt-1">
+                  Invoice generated by Sistem ERP {companyProfile.name} &copy; {new Date().getFullYear()}
+                </p>
               </div>
             </div>
           )}

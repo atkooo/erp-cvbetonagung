@@ -28,11 +28,13 @@ import { authStorage } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { financeApi } from '../features/finance/api';
 import { customersApi } from '../features/customers/api';
+import CurrencyInput from './CurrencyInput';
 import { productsApi } from '../features/products/api';
 import { inventoryApi } from '../features/inventory/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
 import ProductPicker from './ProductPicker';
+import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -59,6 +61,15 @@ export default function SalesView({
   onNavigate,
 }: SalesViewProps) {
   const [search, setSearch] = useState('');
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(getCompanyProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCompanyProfile(getCompanyProfile());
+    };
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -694,13 +705,13 @@ export default function SalesView({
                 {!isQuotation && selectedDoc.status === 'Disetujui' && (
                   <button
                     onClick={() => {
-                      sessionStorage.setItem('action_create_do', selectedDoc.id);
+                      sessionStorage.setItem('action_create_invoice', selectedDoc.id);
                       setSelectedDoc(null);
-                      onNavigate('delivery-orders');
+                      onNavigate('invoices');
                     }}
                     className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
                   >
-                    <span>Lanjut Buat Surat Jalan (DO)</span>
+                    <span>Lanjut Buat Tagihan (Invoice)</span>
                     <ChevronRight size={14} />
                   </button>
                 )}
@@ -721,10 +732,20 @@ export default function SalesView({
             return (
               <div className="max-w-200 mx-auto">
                 <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-                  <div>
-                    <h1 className="text-2xl font-black tracking-tight">CV BETON AGUNG</h1>
-                    <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
-                    <p className="text-[11px] mt-1">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+                  <div className="flex items-center gap-4">
+                    {companyProfile.logoUrl ? (
+                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                    ) : (
+                      <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                        {companyProfile.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-2xl font-black tracking-tight">{companyProfile.name.toUpperCase()}</h1>
+                      <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
+                      <p className="text-[11px] mt-1">{formatAddressForPrint(companyProfile.address)}</p>
+                      <p className="text-[10px] mt-0.5">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
@@ -793,7 +814,7 @@ export default function SalesView({
                     <p>Dibuat Oleh,</p>
                     <div className="h-20"></div>
                     <p className="border-t border-black pt-2 font-bold">SALES DEPT.</p>
-                    <p>CV Beton Agung</p>
+                    <p>{companyProfile.name}</p>
                   </div>
                   <div>
                     <p>{signatureTitle}</p>
@@ -804,7 +825,7 @@ export default function SalesView({
                     <p>Mengetahui,</p>
                     <div className="h-20"></div>
                     <p className="border-t border-black pt-2 font-bold">DIREKTUR UTAMA</p>
-                    <p>CV Beton Agung</p>
+                    <p>{companyProfile.name}</p>
                   </div>
                 </div>
               </div>
@@ -1033,12 +1054,10 @@ export default function SalesView({
                             <label className="text-[11px] font-bold text-slate-600">
                               Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
                             </label>
-                            <input
-                              type="number"
+                            <CurrencyInput
                               required
-                              min="1"
                               value={item.unitPrice || ''}
-                              onChange={(e) => updateFormItem(index, { unitPrice: Number(e.target.value) })}
+                              onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
                               className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
                             />
                           </div>

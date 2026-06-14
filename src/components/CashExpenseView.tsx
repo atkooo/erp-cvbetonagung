@@ -16,6 +16,7 @@ import {
   CashTransactionDto,
   CreateCashTransactionDto,
 } from "../features/finance/types";
+import CurrencyInput from "./CurrencyInput";
 
 interface CashExpenseViewProps {
   onTriggerNotification: (message: string) => void;
@@ -417,14 +418,12 @@ export default function CashExpenseView({
                 <label className="font-bold text-slate-700 block">
                   Nominal (Rp)
                 </label>
-                <input
-                  type="number"
-                  min="0"
+                <CurrencyInput
                   placeholder="0"
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
                   value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
+                  onValueChange={(val) =>
+                    setFormData({ ...formData, amount: val })
                   }
                   required
                 />

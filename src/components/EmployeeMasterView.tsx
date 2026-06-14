@@ -18,7 +18,9 @@ import { authStorage } from "../services/api";
 import { employeesApi } from "../features/employees/api";
 import { Employee } from "../types";
 import { SkeletonCard, SkeletonTable, ErrorCard } from "./Skeleton";
+
 import Swal from "sweetalert2";
+import CurrencyInput from "./CurrencyInput";
 
 interface EmployeeMasterViewProps {
   onTriggerNotification: (message: string) => void;
@@ -658,10 +660,9 @@ export default function EmployeeMasterView({
                         <label className="block font-bold text-slate-650 text-slate-700">
                           Tarif Gaji Harian (Rp)
                         </label>
-                        <input
-                          type="number"
+                        <CurrencyInput
                           value={dailyRate}
-                          onChange={(e) => setDailyRate(Number(e.target.value))}
+                          onValueChange={(val) => setDailyRate(Number(val))}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
                         />
                       </div>
@@ -670,10 +671,9 @@ export default function EmployeeMasterView({
                         <label className="block font-bold text-slate-650 text-slate-700">
                           Tarif Borongan per Pcs (Rp)
                         </label>
-                        <input
-                          type="number"
+                        <CurrencyInput
                           value={pieceRate}
-                          onChange={(e) => setPieceRate(Number(e.target.value))}
+                          onValueChange={(val) => setPieceRate(Number(val))}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
                         />
                       </div>

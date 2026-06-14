@@ -19,6 +19,17 @@ export const InwardTab: React.FC<InwardTabProps> = ({
   const [printId, setPrintId] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+
+  React.useEffect(() => {
+    import('../../utils/companyProfile').then(({ getCompanyProfile }) => {
+      setCompanyProfile(getCompanyProfile());
+      const handleProfileUpdate = () => setCompanyProfile(getCompanyProfile());
+      window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+    });
+  }, []);
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: "Goods-Receipt",
@@ -258,16 +269,25 @@ export const InwardTab: React.FC<InwardTabProps> = ({
               return (
                 <div className="w-full">
                   <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
-                    <div>
-                      <h1 className="text-3xl font-black tracking-tighter uppercase">
-                        CV Beton Agung
-                      </h1>
-                      <p className="text-sm font-medium mt-1">
-                        General Contractor & Supplier Material Alam
-                      </p>
-                      <p className="text-xs mt-1 max-w-xs text-gray-600">
-                        Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur
-                      </p>
+                    <div className="flex items-center gap-4">
+                      {companyProfile?.logoUrl ? (
+                        <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                      ) : (
+                        <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                          {(companyProfile?.name || 'CV Beton Agung').substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h1 className="text-3xl font-black tracking-tighter uppercase">
+                          {companyProfile?.name || 'CV Beton Agung'}
+                        </h1>
+                        <p className="text-sm font-medium mt-1">
+                          General Contractor & Supplier Material Alam
+                        </p>
+                        <p className="text-xs mt-1 max-w-xs text-gray-600">
+                          {companyProfile?.address || 'Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur'}
+                        </p>
+                      </div>
                     </div>
                     <div className="text-right">
                       <h2 className="text-2xl font-black text-gray-400 uppercase tracking-widest border border-gray-300 inline-block px-4 py-1 rounded">

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
 import type { AuthSession, AuthUser, ViewType } from './types';
 import { authApi, authStorage } from './services/api';
 import { DEFAULT_AUTHENTICATED_VIEW, normalizePath, pathForView, viewFromPath } from './routes';
@@ -12,6 +13,7 @@ import { useToast } from './hooks/useToast';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import LoginView from './components/LoginView';
+import { fetchCompanyProfileFromServer } from './utils/companyProfile';
 
 // Lazy-loaded view modules — code split per route untuk performa optimal
 const DashboardView = React.lazy(() => import('./pages/dashboard'));
@@ -191,6 +193,11 @@ export default function App() {
       .finally(() => setIsRestoringSession(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentional: only on mount
 
+  // --- Fetch Company Profile ---
+  useEffect(() => {
+    fetchCompanyProfileFromServer();
+  }, []);
+
   // --- Auth handlers ---
   const handleLoginSuccess = (session: AuthSession) => {
     setAuthUser(session.user);
@@ -200,21 +207,33 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (authStorage.getToken()) {
-      try {
-        await authApi.logout();
-      } catch (error) {
-        triggerNotification(
-          error instanceof Error ? error.message : 'Logout gagal. Silakan coba lagi.'
-        );
-      }
-    } else {
-      authStorage.clear();
-    }
+    const result = await Swal.fire({
+      title: 'Keluar dari Sistem?',
+      text: "Anda harus masuk kembali untuk menggunakan sistem ini.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      confirmButtonText: 'Ya, Keluar',
+      cancelButtonText: 'Batal'
+    });
 
-    setAuthUser(null);
-    setCurrentView('login');
-    triggerNotification('Sampai jumpa! Anda berhasil logout.');
+    if (result.isConfirmed) {
+      if (authStorage.getToken()) {
+        try {
+          await authApi.logout();
+        } catch (error) {
+          triggerNotification(
+            error instanceof Error ? error.message : 'Logout gagal. Silakan coba lagi.'
+          );
+        }
+      } else {
+        authStorage.clear();
+      }
+
+      setAuthUser(null);
+      setCurrentView('login');
+      triggerNotification('Sampai jumpa! Anda berhasil logout.');
+    }
   };
 
   // -------------------------------------------------------------
@@ -342,10 +361,10 @@ export default function App() {
         return <PaymentsView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'purchase-requests':
-        return <PurchaseRequestView onTriggerNotification={triggerNotification} />;
+        return <PurchaseRequestView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'rfq':
-        return <RfqView onTriggerNotification={triggerNotification} />;
+        return <RfqView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'approval-workflows':
         return <ApprovalWorkflowView onTriggerNotification={triggerNotification} />;
@@ -354,7 +373,7 @@ export default function App() {
         return <UsersView onTriggerNotification={triggerNotification} />;
 
       case 'purchase-orders':
-        return <PurchaseView onTriggerNotification={triggerNotification} />;
+        return <PurchaseView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'purchase-returns':
       case 'returns':

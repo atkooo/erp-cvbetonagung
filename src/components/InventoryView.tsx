@@ -251,6 +251,32 @@ export default function InventoryView({
     };
   }, [inDoc, purchaseOrders, onTriggerNotification]);
 
+  // Workflow shortcut effect
+  React.useEffect(() => {
+    const pendingPoId = sessionStorage.getItem('action_receive_po');
+    if (pendingPoId) {
+      sessionStorage.removeItem('action_receive_po');
+      
+      const checkAndOpen = setInterval(() => {
+        setPurchaseOrders((currentPos) => {
+          if (currentPos.length > 0) {
+            clearInterval(checkAndOpen);
+            setTimeout(() => {
+              const po = currentPos.find((p) => p.id === pendingPoId);
+              if (po) {
+                setInDoc(po.poNumber);
+                setShowInwardModal(true);
+              }
+            }, 500);
+          }
+          return currentPos;
+        });
+      }, 500);
+      
+      setTimeout(() => clearInterval(checkAndOpen), 10000);
+    }
+  }, []);
+
   const getProductStocks = (product: Product | null) => {
     if (!product) return [];
     return productStocks.filter(

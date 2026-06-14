@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize } from 'lucide-react';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
 import type { Product, Customer } from '../../../types';
@@ -34,7 +34,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [amountPaid, setAmountPaid] = useState<string>('');
-  
+
   const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
   const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
   const [lastTransactionInfo, setLastTransactionInfo] = useState<any>(null);
@@ -58,8 +58,20 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+
+  useEffect(() => {
+    import('../../../utils/companyProfile').then(({ getCompanyProfile }) => {
+      setCompanyProfile(getCompanyProfile());
+      const handleProfileUpdate = () => setCompanyProfile(getCompanyProfile());
+      window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+    });
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,7 +121,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
+        p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
       const pAny = p as any;
       const matchCategory = selectedCategoryId ? pAny.category_id === selectedCategoryId || pAny.category?.id === selectedCategoryId : true;
       return matchSearch && matchCategory;
@@ -125,8 +137,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
   const addToCart = (product: any) => {
     const productStocks = stocks.filter(s => s.product_id === product.id && parseFloat(s.quantity) > 0);
-    const defaultLocationId = productStocks.length > 0 
-      ? productStocks.sort((a, b) => parseFloat(b.quantity) - parseFloat(a.quantity))[0].location_id 
+    const defaultLocationId = productStocks.length > 0
+      ? productStocks.sort((a, b) => parseFloat(b.quantity) - parseFloat(a.quantity))[0].location_id
       : (locations[0]?.id || '');
 
     setCart(prev => {
@@ -144,9 +156,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             : item
         );
       }
-      return [...prev, { 
+      return [...prev, {
         id: `${product.id}-${defaultLocationId}-${Date.now()}`,
-        product, 
+        product,
         quantity: 1,
         location_id: defaultLocationId
       }];
@@ -157,10 +169,10 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
-        
+
         const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-        
+
         if (newQty > maxStock && delta > 0) {
           onTriggerNotification(`Gagal. Sisa stok di gudang terpilih hanya ${maxStock}`);
           return item;
@@ -175,7 +187,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const removeFromCart = (cartItemId: string) => {
     setCart(prev => prev.filter(item => item.id !== cartItemId));
   };
-  
+
   const handleAddCustomer = async () => {
     if (!newCustomerName.trim()) {
       onTriggerNotification('Nama pelanggan wajib diisi.');
@@ -195,7 +207,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       });
       setCustomers(prev => [...prev, newCustomer]);
       setSelectedCustomerId(newCustomer.id);
-      
+
       // Reset and close
       setShowAddCustomerModal(false);
       setNewCustomerName('');
@@ -214,7 +226,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       if (item.id === cartItemId) {
         const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === newLocationId);
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-        
+
         let newQty = item.quantity;
         if (newQty > maxStock) {
           newQty = maxStock || 1;
@@ -274,10 +286,10 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         items: [...cart],
         date: toApiDate(),
       };
-      
+
       // Save to localStorage so it persists across refreshes
       localStorage.setItem('pos_last_transaction', JSON.stringify(txInfo));
-      
+
       // Show success modal
       setCheckoutSuccessInfo(txInfo);
       setLastTransactionInfo(txInfo);
@@ -304,7 +316,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       const qParam = search ? `&q=${encodeURIComponent(search)}` : '';
       const dateParams = (startDate && endDate) ? `&start_date=${startDate}&end_date=${endDate}` : '';
       const statusParam = category ? `&status=${category}` : '';
-      
+
       const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?include=customer,items.product&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
       setTransactionHistory(res.data || []);
       setHistoryTotalPages(res.meta?.last_page || 1);
@@ -319,7 +331,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const printReceipt = (infoToPrint?: any) => {
     const info = infoToPrint || checkoutSuccessInfo;
     if (!info) return;
-    
+
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) {
       onTriggerNotification('Gagal membuka jendela cetak. Pastikan pop-up diizinkan.');
@@ -354,10 +366,10 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         </style>
       </head>
       <body>
-        <div class="text-center mb-2 font-bold" style="font-size: 14px;">CV BETON AGUNG</div>
+        <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
         <div class="text-center border-b mb-2" style="font-size: 10px;">
-          Jl. Raya Konstruksi No.123<br>
-          Telp: 0812-3456-7890
+          ${companyProfile?.address || 'Jl. Raya Konstruksi No.123'}<br>
+          Telp: ${companyProfile?.phone || '0812-3456-7890'}
         </div>
         
         <div class="mb-2" style="font-size: 10px;">
@@ -371,9 +383,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         
         <table class="mb-2" style="font-size: 11px;">
           ${info.items.map((item: any) => {
-            const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-            const subtotal = price * item.quantity;
-            return `
+      const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+      const subtotal = price * item.quantity;
+      return `
               <tr>
                 <td colspan="3">${item.product.name}</td>
               </tr>
@@ -383,7 +395,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
               </tr>
             `;
-          }).join('')}
+    }).join('')}
         </table>
         
         <div class="border-b"></div>
@@ -431,41 +443,23 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   };
 
   return (
-    <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-[100] m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] -m-6 rounded-lg border border-slate-200'}`}>
+    <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-[100] m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] rounded-2xl border border-slate-200 shadow-sm'}`}>
 
       {/* LEFT PANEL: PRODUCT CATALOG */}
       <div className="flex-1 flex flex-col bg-slate-50/50 border-r border-slate-200 relative">
-        <div className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm flex items-center justify-between z-20 sticky top-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-              <Package size={20} />
+        <div className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm flex flex-col gap-4 z-20 sticky top-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Package size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Katalog Produk</h2>
+                <p className="text-xs text-slate-500">Pilih produk untuk ditambahkan ke keranjang</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Katalog Produk</h2>
-              <p className="text-xs text-slate-500">Pilih produk untuk ditambahkan ke keranjang</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="w-48">
-              <SearchableSelect
-                value={selectedCategoryId}
-                onChange={setSelectedCategoryId}
-                options={[{ value: '', label: 'Semua Kategori' }, ...categories.map(c => ({ value: c.id, label: c.name }))]}
-                placeholder="Pilih Kategori"
-              />
-            </div>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
-                type="text"
-                placeholder="Cari produk..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-full text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-              />
-            </div>
-            <div className="flex gap-2">
+            
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   setHistoryPage(1);
@@ -494,16 +488,38 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               )}
               <button
                 onClick={() => setIsKioskMode(!isKioskMode)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition-colors shadow-sm shadow-slate-900/20"
+                className="p-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-colors shadow-sm shadow-slate-900/20"
+                title={isKioskMode ? 'Tutup Mode Penuh' : 'Mode Kasir Penuh'}
               >
-                {isKioskMode ? 'Tutup Mode Penuh' : 'Mode Kasir Penuh'}
+                {isKioskMode ? <Minimize size={18} /> : <Maximize size={18} />}
               </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-64 shrink-0">
+              <SearchableSelect
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
+                options={[{ value: '', label: 'Semua Kategori' }, ...categories.map(c => ({ value: c.id, label: c.name }))]}
+                placeholder="Pilih Kategori"
+              />
+            </div>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Cari nama produk atau SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-xl text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+              />
             </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {filteredProducts.map((product) => {
               const price = parseFloat(product.sellingPrice?.toString() || (product as any).selling_price?.toString() || '0');
               const inCart = cart.find(c => c.product.id === product.id);
@@ -525,14 +541,26 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   <div>
                     <div className="text-[10px] font-mono text-slate-400 mb-1">{product.sku || 'NO-SKU'}</div>
                     <div className="font-bold text-slate-700 leading-tight line-clamp-2">{product.name}</div>
-                    
+
                     <div className="text-[11px] mt-1.5 text-slate-500">
                       <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
                         {totalStock > 0 ? `Stok: ${totalStock}` : 'Stok Habis'}
                       </span>
                       {productStocks.length > 0 && (
-                        <div className="text-[9px] mt-0.5 text-slate-400 leading-tight">
-                          {productStocks.map(s => `${s.location?.warehouse?.name ? s.location.warehouse.name + ' - ' : ''}${s.location?.name}: ${parseFloat(s.quantity)}`).join(', ')}
+                        <div className="flex flex-col gap-0.5 mt-1 border-t border-slate-100 pt-1">
+                          {productStocks.map(s => {
+                            const locName = `${s.location?.warehouse?.name ? s.location.warehouse.name + ' - ' : ''}${s.location?.name || 'Unknown'}`;
+                            return (
+                              <div key={s.location_id} className="flex justify-between items-center text-[9px]">
+                                <span className="text-slate-400 truncate pr-1" title={locName}>
+                                  {locName}
+                                </span>
+                                <span className="font-bold text-slate-600 bg-slate-100 px-1 rounded shrink-0">
+                                  {parseFloat(s.quantity)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -598,7 +626,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             cart.map(item => {
               const price = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
               const itemStocks = stocks.filter(s => s.product_id === item.product.id && parseFloat(s.quantity) > 0);
-              
+
               return (
                 <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md transition-shadow relative group">
                   <button
@@ -610,7 +638,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   <div className="flex-1">
                     <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
                     <div className="text-emerald-600 font-semibold text-sm">{formatRupiah(price)}</div>
-                    
+
                     <div className="mt-2">
                       <select
                         value={item.location_id}
@@ -693,9 +721,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Jumlah Diterima (Rp)</label>
                 <input
-                  type="number"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
+                  type="text"
+                  value={amountPaid ? new Intl.NumberFormat('id-ID').format(parseFloat(amountPaid.replace(/\D/g, ''))) : ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setAmountPaid(val);
+                  }}
                   className="w-full text-2xl font-bold p-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-0 outline-none transition-colors text-right"
                   placeholder="0"
                 />
@@ -724,7 +755,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Metode Pengambilan</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div 
+                  <div
                     onClick={() => setFulfillmentType('take_away')}
                     className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'take_away' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
                   >
@@ -733,8 +764,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                     </div>
                     <span className="font-bold text-slate-700 text-sm">Bawa Sendiri</span>
                   </div>
-                  
-                  <div 
+
+                  <div
                     onClick={() => setFulfillmentType('delivery')}
                     className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
                   >
@@ -758,7 +789,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full border-slate-200 rounded-lg"
-                  placeholder="Contoh: Tunai, transfer bank, dll..."
+                  placeholder="Note"
                 />
               </div>
             </div>
@@ -920,7 +951,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi</h3>
                 <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                 </button>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">

@@ -11,6 +11,7 @@ import { financeApi } from '../features/finance/api';
 import { formatDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
+import CurrencyInput from './CurrencyInput';
 import Swal from 'sweetalert2';
 
 interface PaymentsViewProps {
@@ -101,7 +102,10 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const unpaidInvoices = invoices.filter((inv) => inv.status !== 'Lunas' && inv.total - inv.paidAmount > 0);
+  const unpaidInvoices = invoices.filter((inv) => {
+    const hasPendingPayment = payments.some(p => p.invoiceNumber === inv.invoiceNumber && p.status === 'Pending');
+    return inv.status !== 'Lunas' && inv.total - inv.paidAmount > 0 && !hasPendingPayment;
+  });
   const selectedInvoice = invoices.find((inv) => inv.id === selectedInvoiceId) || null;
   const selectedOutstanding = selectedInvoice ? selectedInvoice.total - selectedInvoice.paidAmount : 0;
 
@@ -373,7 +377,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Akun Penerima</label>
                       <select
@@ -397,19 +401,6 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Metode Penerimaan</label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
-                      >
-                        <option value="transfer">Transfer Bank</option>
-                        <option value="cash">Cash / Tunai</option>
-                        <option value="qris">QRIS</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Persentase (%)</label>
                       <input 
                         type="number"
@@ -429,13 +420,10 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Nominal Diterima</label>
-                      <input
-                        type="number"
+                      <CurrencyInput
                         required
-                        min={1}
-                        max={selectedOutstanding || undefined}
                         value={paymentAmount || ''}
-                        onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                        onValueChange={(val) => setPaymentAmount(Number(val))}
                         className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded"
                       />
                     </div>

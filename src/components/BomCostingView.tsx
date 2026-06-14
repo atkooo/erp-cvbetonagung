@@ -24,6 +24,7 @@ import { productsApi } from "../features/products/api";
 import { Bom, BomItem, Product } from "../types";
 import { ErrorCard } from "./Skeleton";
 import ProductPicker from "./ProductPicker";
+import CurrencyInput from "./CurrencyInput";
 import Swal from "sweetalert2";
 
 interface BomCostingViewProps {
@@ -766,11 +767,9 @@ export default function BomCostingView({
                     <label className="block font-bold text-slate-700">
                       Biaya Satuan *
                     </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={tempUnitCost}
-                      onChange={(e) => setTempUnitCost(Number(e.target.value))}
+                    <CurrencyInput
+                      value={tempUnitCost || ''}
+                      onValueChange={(val) => setTempUnitCost(Number(val))}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none text-right font-mono"
                     />
                   </div>

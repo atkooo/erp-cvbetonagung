@@ -217,5 +217,15 @@ export const systemApi = {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+  },
+
+  async getSettings(): Promise<Record<string, string>> {
+    const res = await apiClient.get<{ data: Record<string, string> }>('/settings');
+    return res.data;
+  },
+
+  async saveSettings(settings: Record<string, string>): Promise<Record<string, string>> {
+    const res = await apiClient.post<{ data: Record<string, string> }>('/settings', settings);
+    return res.data;
   }
 };

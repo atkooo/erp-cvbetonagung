@@ -4,6 +4,7 @@ import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable } from './t
 export const mapInvoiceFromDto = (dto: InvoiceDto): Invoice => ({
   id: dto.id,
   invoiceNumber: dto.invoice_number,
+  salesOrderId: dto.sales_order_id || undefined,
   salesOrderNumber: dto.sales_order?.order_number || undefined,
   customerName: dto.customer?.name || 'Unknown Customer',
   customerPhone: dto.customer?.phone || undefined,

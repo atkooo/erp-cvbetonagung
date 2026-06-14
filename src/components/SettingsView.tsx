@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck } from '@/src/components/icons';
 import { systemApi } from '../services/api';
+import { getCompanyProfile, saveCompanyProfile } from '../utils/companyProfile';
 
 interface SettingsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -15,19 +16,54 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
   const [activeTab, setActiveTab] = useState<'profile' | 'tax' | 'backup'>('profile');
 
   // Company Form states
-  const [compName, setCompName] = useState('CV Beton Agung');
-  const [compAddress, setCompAddress] = useState('Jl. Raya Beton Agung No. 99, Surabaya - Sidoarjo, Jawa Timur');
+  const [compName, setCompName] = useState('');
+  const [compAddress, setCompAddress] = useState('');
+  const [compPhone, setCompPhone] = useState('');
+  const [compEmail, setCompEmail] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [taxRate, setTaxRate] = useState(11); // PPN 11%
-  const [backupTerm, setBackupTerm] = useState('Harian');
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    // Initial load from local memory (synced by App.tsx)
+    const profile = getCompanyProfile();
+    setCompName(profile.name);
+    setCompAddress(profile.address);
+    setCompPhone(profile.phone);
+    setCompEmail(profile.email);
+    setLogoUrl(profile.logoUrl);
+    setTaxRate(profile.taxRate);
+
+    // Listen to updates from server sync
+    const handleProfileUpdate = () => {
+      const updatedProfile = getCompanyProfile();
+      setCompName(updatedProfile.name);
+      setCompAddress(updatedProfile.address);
+      setCompPhone(updatedProfile.phone);
+      setCompEmail(updatedProfile.email);
+      setLogoUrl(updatedProfile.logoUrl);
+      setTaxRate(updatedProfile.taxRate);
+    };
+
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    onTriggerNotification('Konfigurasi profile perusahaan CV Beton Agung berhasil diperbarui!');
+    setIsSaving(true);
+    await saveCompanyProfile({ name: compName, address: compAddress, phone: compPhone, email: compEmail, logoUrl });
+    setIsSaving(false);
+    onTriggerNotification(`Konfigurasi profile perusahaan ${compName} berhasil diperbarui di server!`);
   };
 
-  const handleSaveTax = (e: React.FormEvent) => {
+  const handleSaveTax = async (e: React.FormEvent) => {
     e.preventDefault();
-    onTriggerNotification(`Menerapkan parameter pajak PPN sebesar ${taxRate}% ke seluruh sistem invoice.`);
+    setIsSaving(true);
+    await saveCompanyProfile({ taxRate });
+    setIsSaving(false);
+    onTriggerNotification(`Menerapkan parameter pajak PPN sebesar ${taxRate}% ke seluruh sistem dan disimpan ke server.`);
   };
 
   return (
@@ -110,7 +146,8 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
                   <label className="text-[11px] font-bold text-slate-600">Kontak Person Surat</label>
                   <input
                     type="text"
-                    defaultValue="+62 821-3456-7890"
+                    value={compPhone}
+                    onChange={(e) => setCompPhone(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                   />
                 </div>
@@ -118,18 +155,49 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
                   <label className="text-[11px] font-bold text-slate-600">E-mail Operasional Kantor</label>
                   <input
                     type="email"
-                    defaultValue="marketing@betonagung.co.id"
+                    value={compEmail}
+                    onChange={(e) => setCompEmail(e.target.value)}
                     className="w-full px-3 py-2 border rounded"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-600 block">Logo Perusahaan (Untuk Cetakan)</label>
+                <div className="flex items-center gap-4">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo Perusahaan" className="h-16 w-16 object-contain border bg-white p-1 rounded" />
+                  ) : (
+                    <div className="h-16 w-16 bg-slate-100 flex items-center justify-center border border-dashed rounded text-xs text-slate-400">Belum ada</div>
+                  )}
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setLogoUrl(ev.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="text-xs"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Disarankan format PNG transparan, rasio 1:1, max 1MB</p>
+                  </div>
                 </div>
               </div>
 
               <div className="pt-3 border-t flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 border text-white font-bold rounded-lg transition-all hover:bg-slate-800"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-slate-900 border text-white font-bold rounded-lg transition-all hover:bg-slate-800 disabled:bg-slate-400"
                 >
-                  Simpan Perubahan Profile
+                  {isSaving ? 'Menyimpan ke Database...' : 'Simpan Perubahan Profile'}
                 </button>
               </div>
             </form>
@@ -162,9 +230,10 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
               <div className="pt-3 border-t flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 text-white font-bold rounded-lg transition-all hover:bg-slate-800"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-slate-900 border text-white font-bold rounded-lg transition-all hover:bg-slate-800 disabled:bg-slate-400"
                 >
-                  Terapkan Tarif Pajak
+                  {isSaving ? 'Menyimpan ke Database...' : 'Terapkan Parameter Pajak'}
                 </button>
               </div>
             </form>

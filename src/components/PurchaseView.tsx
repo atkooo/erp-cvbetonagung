@@ -26,19 +26,32 @@ import { productsApi } from "../features/products/api";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
 import RfqPicker from "./RfqPicker";
 import ProductPicker from "./ProductPicker";
+import CurrencyInput from "./CurrencyInput";
 import { useReactToPrint } from "react-to-print";
 import { formatDate } from "../utils/date";
+import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
 import Swal from "sweetalert2";
 
 interface PurchaseViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
 export default function PurchaseView({
   onTriggerNotification,
+  onNavigate,
 }: PurchaseViewProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(getCompanyProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCompanyProfile(getCompanyProfile());
+    };
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [printPoId, setPrintPoId] = useState<string | null>(null);
@@ -104,6 +117,23 @@ export default function PurchaseView({
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingRfqId = sessionStorage.getItem('action_create_po');
+    if (pendingRfqId) {
+      sessionStorage.removeItem('action_create_po');
+      
+      const checkAndOpen = setInterval(() => {
+        // Just set the RFQ ID and open the modal, the RFQ picker might fetch it.
+        setRfqId(pendingRfqId);
+        setShowAddModal(true);
+        clearInterval(checkAndOpen);
+      }, 500);
+      
+      setTimeout(() => clearInterval(checkAndOpen), 10000);
+    }
   }, []);
 
   const handleAddItem = () => {
@@ -608,6 +638,34 @@ export default function PurchaseView({
                                     </div>
                                   ))}
                                 </div>
+                                {onNavigate && po.status === "Dipesan" && (
+                                  <div className="pt-2">
+                                    <button
+                                      onClick={() => {
+                                        sessionStorage.setItem('action_receive_po', po.id);
+                                        onNavigate('goods-receipts');
+                                      }}
+                                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                    >
+                                      <span>Lanjut ke Penerimaan Barang (GRN)</span>
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                                {onNavigate && (po.status === "Diterima Sebagian" || po.status === "Diterima Penuh") && (
+                                  <div className="pt-2">
+                                    <button
+                                      onClick={() => {
+                                        sessionStorage.setItem('action_pay_ap', po.poNumber);
+                                        onNavigate('receivables-payables');
+                                      }}
+                                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                    >
+                                      <span>Lanjut ke Pembayaran / Hutang (AP)</span>
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -797,16 +855,14 @@ export default function PurchaseView({
                             </div>
                           </td>
                           <td className="p-2">
-                            <input
-                              type="number"
-                              min="0"
+                            <CurrencyInput
                               className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
-                              value={item.price}
-                              onChange={(e) =>
+                              value={item.price || ''}
+                              onValueChange={(val) =>
                                 handleItemChange(
                                   item.id,
                                   "price",
-                                  parseInt(e.target.value) || 0,
+                                  parseInt(val) || 0,
                                 )
                               }
                               required
@@ -877,16 +933,26 @@ export default function PurchaseView({
                 <div className="w-full">
                   {/* Header */}
                   <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
-                    <div>
-                      <h1 className="text-3xl font-black tracking-tighter uppercase">
-                        CV Beton Agung
-                      </h1>
-                      <p className="text-sm font-medium mt-1">
-                        General Contractor & Supplier Material Alam
-                      </p>
-                      <p className="text-xs mt-1 max-w-xs text-gray-600">
-                        Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur
-                      </p>
+                    <div className="flex items-center gap-4">
+                      {companyProfile.logoUrl ? (
+                        <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                      ) : (
+                        <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                          {companyProfile.name.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h1 className="text-3xl font-black tracking-tighter uppercase">
+                          {companyProfile.name}
+                        </h1>
+                        <p className="text-sm font-medium mt-1">
+                          General Contractor & Supplier Material Alam
+                        </p>
+                        <p className="text-xs mt-1 max-w-xs text-gray-600">
+                          {formatAddressForPrint(companyProfile.address)}
+                        </p>
+                        <p className="text-[10px] mt-0.5">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
+                      </div>
                     </div>
                     <div className="text-right">
                       <h2 className="text-2xl font-black text-gray-400 uppercase tracking-widest border border-gray-300 inline-block px-4 py-1 rounded">
@@ -989,14 +1055,14 @@ export default function PurchaseView({
                       <p className="font-bold border-b border-black pb-1 uppercase">
                         Purchasing Dept.
                       </p>
-                      <p className="mt-1">CV Beton Agung</p>
+                      <p className="mt-1">{companyProfile.name}</p>
                     </div>
                     <div>
                       <p className="mb-24">Disetujui Oleh,</p>
                       <p className="font-bold border-b border-black pb-1 uppercase">
                         Direktur Utama
                       </p>
-                      <p className="mt-1">CV Beton Agung</p>
+                      <p className="mt-1">{companyProfile.name}</p>
                     </div>
                     <div>
                       <p className="mb-24">Dikonfirmasi Oleh,</p>

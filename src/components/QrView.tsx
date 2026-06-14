@@ -149,6 +149,17 @@ export default function QrView({
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+
+  useEffect(() => {
+    // Import dynamically to avoid circular dependencies if any, or just use normal import
+    import('../utils/companyProfile').then(({ getCompanyProfile }) => {
+      setCompanyProfile(getCompanyProfile());
+      const handleProfileUpdate = () => setCompanyProfile(getCompanyProfile());
+      window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+    });
+  }, []);
 
   const loadProducts = async () => {
     setIsLoading(true);
@@ -383,7 +394,7 @@ export default function QrView({
             <div className="space-y-1.5 text-slate-500 text-[11px] leading-relaxed">
               <strong className="text-slate-700 uppercase font-bold text-[10px] block">Deskripsi Teknis Material:</strong>
               <p>
-                Produk pracetak beton CV Beton Agung diproduksi menggunakan formula pasir Lumajang super dipadukan semen Portland kualitas tinggi SNI. Diperkuat dengan besi wiremesh M8 antikarat di dalam cetakannya. Mampu menahan beban cuaca eksternal dan memiliki estetika relief yang sangat presisi, dipastikan lulus uji QA laboratorium sipil CV Beton Agung.
+                Produk pracetak beton {companyProfile?.name || 'CV Beton Agung'} diproduksi menggunakan formula pasir Lumajang super dipadukan semen Portland kualitas tinggi SNI. Diperkuat dengan besi wiremesh M8 antikarat di dalam cetakannya. Mampu menahan beban cuaca eksternal dan memiliki estetika relief yang sangat presisi, dipastikan lulus uji QA laboratorium sipil {companyProfile?.name || 'CV Beton Agung'}.
               </p>
             </div>
 
@@ -421,7 +432,7 @@ export default function QrView({
           <div className="space-y-1">
             <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian Barcode Produk</h3>
             <p className="text-[10px] text-slate-450 text-slate-500 max-w-sm">
-              Gunakan perangkat kamera untuk memindai label Barcode di rak gudang atau di kemasan beton CV Beton Agung.
+              Gunakan perangkat kamera untuk memindai label Barcode di rak gudang atau di kemasan beton {companyProfile?.name || 'CV Beton Agung'}.
             </p>
           </div>
         </div>
@@ -566,7 +577,7 @@ export default function QrView({
       <div style={{ overflow: 'hidden', height: 0, width: 0, position: 'absolute' }}>
         {printProduct && (
           <div ref={hiddenStickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white w-[350px]">
-            <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">CV BETON AGUNG LOGISTIC</p>
+            <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">{(companyProfile?.name || 'CV Beton Agung').toUpperCase()} LOGISTIC</p>
             <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
               <div className="relative group">
                 {drawBarcode(printProduct.qrValue || printProduct.sku, true)}
@@ -600,7 +611,7 @@ export default function QrView({
 
             {/* Sticker panel display */}
             <div ref={stickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white">
-              <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">CV BETON AGUNG LOGISTIC</p>
+              <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">{(companyProfile?.name || 'CV Beton Agung').toUpperCase()} LOGISTIC</p>
               
               <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
                 <div className="relative group">

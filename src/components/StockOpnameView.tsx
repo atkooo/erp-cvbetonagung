@@ -1049,6 +1049,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                   onChange={(product) => setNewItemProductId(product.id)}
                   excludedProductIds={selectedSessionProductIds}
                   placeholder="Pilih produk untuk diopname..."
+                  showCategoryFilter={true}
                 />
               </div>
 

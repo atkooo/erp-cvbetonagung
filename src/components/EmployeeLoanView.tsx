@@ -12,6 +12,7 @@ import {
   AlertCircle,
   X,
 } from "@/src/components/icons";
+import CurrencyInput from "./CurrencyInput";
 
 interface EmployeeLoanViewProps {
   onTriggerNotification: (message: string) => void;
@@ -22,6 +23,8 @@ export default function EmployeeLoanView({
 }: EmployeeLoanViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loanAmount, setLoanAmount] = useState<number | ''>('');
+  const [installment, setInstallment] = useState<number | ''>('');
 
   const loans = [
     {
@@ -238,8 +241,9 @@ export default function EmployeeLoanView({
                   <label className="block text-slate-700 font-bold mb-1">
                     Total Pinjaman (Rp)
                   </label>
-                  <input
-                    type="number"
+                  <CurrencyInput
+                    value={loanAmount || ''}
+                    onValueChange={(val) => setLoanAmount(Number(val))}
                     placeholder="0"
                     className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none"
                   />
@@ -249,8 +253,9 @@ export default function EmployeeLoanView({
                 <label className="block text-slate-700 font-bold mb-1">
                   Potongan per Payroll (Rp)
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
+                  value={installment || ''}
+                  onValueChange={(val) => setInstallment(Number(val))}
                   placeholder="0"
                   className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none"
                 />

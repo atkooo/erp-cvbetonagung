@@ -86,6 +86,17 @@ export default function DocumentExportsView({
   const [exports, setExports] = useState<DocumentExport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
+
+  useEffect(() => {
+    import('../utils/companyProfile').then(({ getCompanyProfile }) => {
+      setCompanyProfile(getCompanyProfile());
+      const handleProfileUpdate = () => setCompanyProfile(getCompanyProfile());
+      window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+      return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+    });
+  }, []);
+
   // Form State
   const [showNewExportModal, setShowNewExportModal] = useState(false);
   const [newDocType, setNewDocType] = useState("Quotation");
@@ -127,7 +138,7 @@ export default function DocumentExportsView({
       });
 
       // 2. Simulate File Download
-      const dataStr = `DOKUMEN RESMI CV BETON AGUNG\n=================================\nJenis Dokumen  : ${newDocType}\nNomor Dokumen  : ${newDocNumber}\nDivisi Pembuat : ${newDivision}\nFormat Ekspor  : ${newExportFormat.toUpperCase()}\nWaktu Ekspor   : ${new Date().toLocaleString()}\n\nCatatan: Dokumen ini telah diverifikasi oleh sistem ERP.`;
+      const dataStr = `DOKUMEN RESMI ${(companyProfile?.name || 'CV BETON AGUNG').toUpperCase()}\n=================================\nJenis Dokumen  : ${newDocType}\nNomor Dokumen  : ${newDocNumber}\nDivisi Pembuat : ${newDivision}\nFormat Ekspor  : ${newExportFormat.toUpperCase()}\nWaktu Ekspor   : ${new Date().toLocaleString()}\n\nCatatan: Dokumen ini telah diverifikasi oleh sistem ERP.`;
       const blob = new Blob([dataStr], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -149,7 +160,7 @@ export default function DocumentExportsView({
   };
 
   const handleDownloadExisting = (exp: DocumentExport) => {
-    const dataStr = `DOKUMEN RESMI CV BETON AGUNG\n=================================\nJenis Dokumen  : ${exp.documentType}\nNomor Dokumen  : ${exp.documentNumber}\nDivisi Pembuat : ${exp.division}\nFormat Ekspor  : ${exp.exportFormat}\nWaktu Ekspor   : ${exp.exportedAt}\n\nCatatan: Re-download arsip ekspor sistem ERP.`;
+    const dataStr = `DOKUMEN RESMI ${(companyProfile?.name || 'CV BETON AGUNG').toUpperCase()}\n=================================\nJenis Dokumen  : ${exp.documentType}\nNomor Dokumen  : ${exp.documentNumber}\nDivisi Pembuat : ${exp.division}\nFormat Ekspor  : ${exp.exportFormat}\nWaktu Ekspor   : ${exp.exportedAt}\n\nCatatan: Re-download arsip ekspor sistem ERP.`;
     const blob = new Blob([dataStr], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

@@ -447,30 +447,30 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       { view: "reminders", label: "Reminder Center", icon: BellRing },
     ],
   },
-  {
-    id: "reports",
-    title: "Report",
-    collapsible: true,
-    items: [
-      {
-        view: "document-exports",
-        label: "Export Dokumen",
-        icon: FileDown,
-      },
-      {
-        view: "finance-reports",
-        label: "Laporan Keuangan & Omset",
-        icon: TrendingUp,
-        requiredModule: "reports",
-      },
-      {
-        view: "inventory-reports",
-        label: "Mutasi & Turnover Stok",
-        icon: TrendingUp,
-        requiredModule: "reports",
-      },
-    ],
-  },
+  // {
+  //   id: "reports",
+  //   title: "Report",
+  //   collapsible: true,
+  //   items: [
+  //     {
+  //       view: "document-exports",
+  //       label: "Export Dokumen",
+  //       icon: FileDown,
+  //     },
+  //     {
+  //       view: "finance-reports",
+  //       label: "Laporan Keuangan & Omset",
+  //       icon: TrendingUp,
+  //       requiredModule: "reports",
+  //     },
+  //     {
+  //       view: "inventory-reports",
+  //       label: "Mutasi & Turnover Stok",
+  //       icon: TrendingUp,
+  //       requiredModule: "reports",
+  //     },
+  //   ],
+  // },
   {
     id: "system",
     separator: true,

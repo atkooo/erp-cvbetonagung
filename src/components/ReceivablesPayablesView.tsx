@@ -13,6 +13,7 @@ import { Invoice } from '../types';
 import { SupplierPayable, AccountDto } from '../features/finance/types';
 import { formatDate } from '../utils/date';
 import { X } from 'lucide-react';
+import CurrencyInput from './CurrencyInput';
 
 interface ReceivablesPayablesViewProps {
   onTriggerNotification: (message: string) => void;
@@ -111,6 +112,32 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
       setIsLoading(false);
     }
   };
+
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingPoNumber = sessionStorage.getItem('action_pay_ap');
+    if (pendingPoNumber) {
+      sessionStorage.removeItem('action_pay_ap');
+      setLedgerMode('ap');
+      
+      const checkAndOpen = setInterval(() => {
+        setPayables((currentPayables) => {
+          if (currentPayables.length > 0) {
+            clearInterval(checkAndOpen);
+            setTimeout(() => {
+              const payable = currentPayables.find((p) => p.poNumber === pendingPoNumber);
+              if (payable) {
+                handlePaySupplier(payable);
+              }
+            }, 500);
+          }
+          return currentPayables;
+        });
+      }, 500);
+      
+      setTimeout(() => clearInterval(checkAndOpen), 10000);
+    }
+  }, []);
 
   const handlePaySupplier = (payable: SupplierPayable) => {
     const remaining = payable.amount - payable.paidAmount;
@@ -437,7 +464,7 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
                     <option value="" disabled>-- Pilih Rekening --</option>
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.bank_name || 'KAS'} - {acc.account_name} ({formatIDR(acc.balance)})
+                        {acc.type === 'Bank' ? 'BANK' : 'KAS'} - {acc.name} ({formatIDR(Number(acc.balance))})
                       </option>
                     ))}
                   </select>
@@ -445,14 +472,12 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Nominal Pembayaran <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
+                  <CurrencyInput
                     required
-                    min="1"
-                    max={selectedPayable.amount - selectedPayable.paidAmount}
                     value={paymentAmount || ''}
-                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 font-mono font-black text-lg text-slate-900"
+                    onValueChange={(val) => setPaymentAmount(Number(val))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 font-bold"
+                    placeholder="0"
                   />
                 </div>
 

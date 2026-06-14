@@ -16,20 +16,33 @@ import { suppliersApi } from "../features/suppliers/api";
 import { purchasingApi } from "../features/purchasing/api";
 import PurchaseRequestPicker from "./PurchaseRequestPicker";
 import ProductPicker from "./ProductPicker";
+import SupplierPicker from "./SupplierPicker";
+import CurrencyInput from "./CurrencyInput";
 import { useReactToPrint } from "react-to-print";
 import { formatDate } from "../utils/date";
+import { getCompanyProfile, CompanyProfile, formatAddressForPrint } from "../utils/companyProfile";
 
 interface RfqViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
-export default function RfqView({ onTriggerNotification }: RfqViewProps) {
+export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedRfqId, setExpandedRfqId] = useState<string | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(getCompanyProfile());
 
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCompanyProfile(getCompanyProfile());
+    };
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
 
   const handlePrintAction = useReactToPrint({
     contentRef: printRef,
@@ -83,6 +96,26 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingPrId = sessionStorage.getItem('action_create_rfq');
+    if (pendingPrId) {
+      sessionStorage.removeItem('action_create_rfq');
+      
+      const checkAndOpen = setInterval(() => {
+        // We need PR info, but since it requires fetching PRs to get the PR Number,
+        // wait, RfqView has a PurchaseRequestPicker.
+        // We can just open the modal and let the user pick it or set the ID directly.
+        setPrId(pendingPrId);
+        // We might not have the PR Number immediately, so the picker will fetch or user can see it's picked.
+        setShowAddModal(true);
+        clearInterval(checkAndOpen);
+      }, 500);
+      
+      setTimeout(() => clearInterval(checkAndOpen), 10000);
+    }
   }, []);
 
   const handleAddItem = () => {
@@ -439,6 +472,20 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
                                       )}
                                     </span>
                                   </div>
+                                  {onNavigate && (rfq.status === 'Disetujui' || rfq.status === 'Diterima') && (
+                                    <div className="pt-2">
+                                      <button
+                                        onClick={() => {
+                                          sessionStorage.setItem('action_create_po', rfq.id);
+                                          onNavigate('purchase-orders');
+                                        }}
+                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                      >
+                                        <span>Lanjut Buat Purchase Order (PO)</span>
+                                        <ChevronRight size={14} />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -615,16 +662,14 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
                                 </div>
                               </td>
                               <td className="p-2">
-                                <input
-                                  type="number"
-                                  min="0"
+                                <CurrencyInput
                                   className="w-full p-2 border rounded outline-none focus:border-cyan-500"
-                                  value={item.quotedUnitPrice}
-                                  onChange={(e) =>
+                                  value={item.quotedUnitPrice || ''}
+                                  onValueChange={(val) =>
                                     handleItemChange(
                                       item.id,
                                       "quotedUnitPrice",
-                                      parseInt(e.target.value) || 0,
+                                      parseInt(val) || 0,
                                     )
                                   }
                                 />
@@ -687,19 +732,28 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
             return (
               <div className="print-container">
                 <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
-                  <div>
-                    <h1 className="text-2xl font-black uppercase tracking-widest text-black">
-                      CV BETON AGUNG
-                    </h1>
-                    <p className="text-xs text-black font-medium mt-1">
-                      General Contractor & Supplier Material Alam
-                    </p>
-                    <p className="text-[10px] text-gray-700 mt-0.5">
-                      Jl. Raya Puspiptek No. 88, Tangerang Selatan
-                    </p>
-                    <p className="text-[10px] text-gray-700">
-                      Telp: (021) 123-4567 | Email: info@cvbetonagung.com
-                    </p>
+                  <div className="flex items-center gap-4">
+                    {companyProfile.logoUrl ? (
+                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                    ) : (
+                      <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                        {companyProfile.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-2xl font-black uppercase tracking-widest text-black">
+                        {companyProfile.name}
+                      </h1>
+                      <p className="text-xs text-black font-medium mt-1">
+                        General Contractor & Supplier Material Alam
+                      </p>
+                      <p className="text-[10px] text-gray-700 mt-0.5 max-w-xs">
+                        {formatAddressForPrint(companyProfile.address)}
+                      </p>
+                      <p className="text-[10px] text-gray-700 mt-0.5">
+                        Telp: {companyProfile.phone} | Email: {companyProfile.email}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <h2 className="text-xl font-black uppercase tracking-widest border-b border-black pb-1 mb-1">
@@ -852,7 +906,7 @@ export default function RfqView({ onTriggerNotification }: RfqViewProps) {
                     <p className="font-bold border-b border-black pb-1 inline-block min-w-37.5 uppercase">
                       Purchasing Dept.
                     </p>
-                    <p className="mt-1">CV Beton Agung</p>
+                    <p className="mt-1">{companyProfile.name}</p>
                   </div>
                   <div>
                     <p className="mb-20">Pihak Vendor,</p>

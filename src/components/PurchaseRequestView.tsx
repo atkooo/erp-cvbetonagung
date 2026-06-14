@@ -14,15 +14,27 @@ import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
 import { formatDate } from '../utils/date';
 
+import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
+
 interface PurchaseRequestViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
-export default function PurchaseRequestView({ onTriggerNotification }: PurchaseRequestViewProps) {
+export default function PurchaseRequestView({ onTriggerNotification, onNavigate }: PurchaseRequestViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPrId, setExpandedPrId] = useState<string | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(getCompanyProfile());
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCompanyProfile(getCompanyProfile());
+    };
+    window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
+    return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
+  }, []);
 
   const printRef = useRef<HTMLDivElement>(null);
   
@@ -229,6 +241,20 @@ export default function PurchaseRequestView({ onTriggerNotification }: PurchaseR
                               <span className="font-mono text-cyan-600">{it.quantity} {it.unit || 'Unit'}</span>
                             </div>
                           ))}
+                          {onNavigate && pr.status === 'Disetujui' && (
+                            <div className="pt-2">
+                              <button
+                                onClick={() => {
+                                  sessionStorage.setItem('action_create_rfq', pr.id);
+                                  onNavigate('rfq');
+                                }}
+                                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                              >
+                                <span>Lanjut Buat Request for Quotation (RFQ)</span>
+                                <ChevronRight size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -322,12 +348,21 @@ export default function PurchaseRequestView({ onTriggerNotification }: PurchaseR
           return (
             <div className="print-container">
               <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
-                <div>
-                  <h1 className="text-2xl font-black uppercase tracking-widest text-black">CV BETON AGUNG</h1>
-                  <p className="text-xs text-black font-medium mt-1">General Contractor & Supplier Material Alam</p>
-                  <p className="text-[10px] text-gray-700 mt-0.5">Jl. Raya Puspiptek No. 88, Tangerang Selatan</p>
-                  <p className="text-[10px] text-gray-700">Telp: (021) 123-4567 | Email: info@cvbetonagung.com</p>
-                </div>
+                  <div className="flex items-center gap-4">
+                    {companyProfile.logoUrl ? (
+                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                    ) : (
+                      <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                        {companyProfile.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-2xl font-black uppercase tracking-widest text-black">{companyProfile.name}</h1>
+                      <p className="text-xs text-black font-medium mt-1">General Contractor & Supplier Material Alam</p>
+                      <p className="text-[10px] text-gray-700 mt-0.5">{formatAddressForPrint(companyProfile.address)}</p>
+                      <p className="text-[10px] text-gray-700">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
+                    </div>
+                  </div>
                 <div className="text-right">
                   <h2 className="text-xl font-black uppercase tracking-widest border-b border-black pb-1 mb-1">Purchase Request</h2>
                   <p className="font-mono text-sm font-bold">{pr.prNumber}</p>
