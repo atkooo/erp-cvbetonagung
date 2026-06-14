@@ -35,7 +35,24 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [amountPaid, setAmountPaid] = useState<string>('');
   
+  const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
+  const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
+  const [lastTransactionInfo, setLastTransactionInfo] = useState<any>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStartDate, setHistoryStartDate] = useState('');
+  const [historyEndDate, setHistoryEndDate] = useState('');
+  const [historyCategory, setHistoryCategory] = useState(''); // Maps to status
+
   const [stocks, setStocks] = useState<any[]>([]);
+
+  // Finance Accounts State
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
   // Add Customer State
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
@@ -47,7 +64,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodRes, custRes, locRes, stockRes, catRes] = await Promise.all([
+        const [prodRes, custRes, locRes, stockRes, catRes, accRes] = await Promise.all([
           apiClient.get<{ data: any[] }>('/master/products?per_page=100'),
           apiClient.get<{ data: any[] }>('/master/customers?per_page=100'),
           apiClient.get<{ data: any[] }>('/master-data/storage-locations?per_page=100').catch(() =>
@@ -55,9 +72,11 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           ),
           apiClient.get<{ data: any[] }>('/inventory/stocks?per_page=1000').catch(() => ({ data: [] })),
           apiClient.get<{ data: any[] }>('/master-data/product-categories?per_page=100').catch(() => ({ data: [] })),
+          apiClient.get<{ data: any[] }>('/finance/accounts?per_page=100').catch(() => ({ data: [] })),
         ]);
 
         setCategories(catRes.data || []);
+        setAccounts(accRes.data || []);
 
         setStocks(stockRes.data || []);
 
@@ -69,7 +88,15 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const locs = locRes.data || [];
         setLocations(locs);
 
-        // Auto-select first location if available (removed because location is now per-item)
+        // Load last transaction from local storage
+        const savedLastTx = localStorage.getItem('pos_last_transaction');
+        if (savedLastTx) {
+          try {
+            setLastTransactionInfo(JSON.parse(savedLastTx));
+          } catch (e) {
+            console.error('Failed to parse last transaction', e);
+          }
+        }
 
       } catch (error) {
         console.error('Error fetching POS data:', error);
@@ -105,6 +132,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId);
       if (existing) {
+        const maxStock = productStocks.find(s => s.location_id === defaultLocationId)?.quantity || 0;
+        if (existing.quantity + 1 > parseFloat(maxStock)) {
+          onTriggerNotification(`Stok di gudang ini tidak mencukupi. Sisa: ${parseFloat(maxStock)}`);
+          return prev;
+        }
+
         return prev.map(item =>
           item.product.id === product.id && item.location_id === defaultLocationId
             ? { ...item, quantity: item.quantity + 1 }
@@ -124,6 +157,15 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
+        
+        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
+        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
+        
+        if (newQty > maxStock && delta > 0) {
+          onTriggerNotification(`Gagal. Sisa stok di gudang terpilih hanya ${maxStock}`);
+          return item;
+        }
+
         return { ...item, quantity: newQty };
       }
       return item;
@@ -170,7 +212,20 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const updateCartItemLocation = (cartItemId: string, newLocationId: string) => {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
-        return { ...item, location_id: newLocationId };
+        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === newLocationId);
+        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
+        
+        let newQty = item.quantity;
+        if (newQty > maxStock) {
+          newQty = maxStock || 1;
+          if (maxStock > 0) {
+            onTriggerNotification(`Jumlah disesuaikan dengan sisa stok gudang (${maxStock})`);
+          } else {
+            onTriggerNotification(`Perhatian: Stok gudang ini kosong (0)`);
+          }
+        }
+
+        return { ...item, location_id: newLocationId, quantity: newQty };
       }
       return item;
     }));
@@ -194,9 +249,11 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
     setIsProcessing(true);
     try {
-      await salesApi.processPos({
+      const salesOrder = await salesApi.processPos({
         customer_id: selectedCustomerId,
         transaction_date: toApiDate(),
+        fulfillment_type: fulfillmentType,
+        payment_account_id: selectedAccountId,
         notes: notes,
         items: cart.map(item => ({
           product_id: item.product.id,
@@ -207,12 +264,23 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         })),
       });
 
-      onTriggerNotification('Transaksi berhasil diproses!');
-
-      // Reset POS
-      setCart([]);
-      setAmountPaid('');
-      setNotes('');
+      const txInfo = {
+        orderNumber: salesOrder.orderNumber || (salesOrder as any).order_number,
+        change: paid - cartTotal,
+        fulfillmentType,
+        customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'Pelanggan',
+        amountPaid: paid,
+        cartTotal: cartTotal,
+        items: [...cart],
+        date: toApiDate(),
+      };
+      
+      // Save to localStorage so it persists across refreshes
+      localStorage.setItem('pos_last_transaction', JSON.stringify(txInfo));
+      
+      // Show success modal
+      setCheckoutSuccessInfo(txInfo);
+      setLastTransactionInfo(txInfo);
       setShowCheckoutModal(false);
 
     } catch (error: any) {
@@ -220,6 +288,140 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleResetPos = () => {
+    setCart([]);
+    setAmountPaid('');
+    setNotes('');
+    setFulfillmentType('take_away');
+    setCheckoutSuccessInfo(null);
+  };
+
+  const fetchHistory = async (page = 1, search = '', startDate = '', endDate = '', category = '') => {
+    setIsLoadingHistory(true);
+    try {
+      const qParam = search ? `&q=${encodeURIComponent(search)}` : '';
+      const dateParams = (startDate && endDate) ? `&start_date=${startDate}&end_date=${endDate}` : '';
+      const statusParam = category ? `&status=${category}` : '';
+      
+      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?include=customer,items.product&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
+      setTransactionHistory(res.data || []);
+      setHistoryTotalPages(res.meta?.last_page || 1);
+      setHistoryPage(page);
+    } catch (err) {
+      onTriggerNotification('Gagal memuat riwayat transaksi');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const printReceipt = (infoToPrint?: any) => {
+    const info = infoToPrint || checkoutSuccessInfo;
+    if (!info) return;
+    
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+      onTriggerNotification('Gagal membuka jendela cetak. Pastikan pop-up diizinkan.');
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Struk Pembayaran - ${info.orderNumber}</title>
+        <style>
+          @page { margin: 0; size: 58mm auto; }
+          body { 
+            font-family: 'Courier New', Courier, monospace; 
+            width: 58mm; 
+            margin: 0; 
+            padding: 10px; 
+            font-size: 12px; 
+            line-height: 1.2;
+            color: #000;
+          }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-bold { font-weight: bold; }
+          .mb-1 { margin-bottom: 5px; }
+          .mb-2 { margin-bottom: 10px; }
+          .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+          .flex { display: flex; justify-content: space-between; }
+          table { width: 100%; border-collapse: collapse; }
+          td { padding: 2px 0; vertical-align: top; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center mb-2 font-bold" style="font-size: 14px;">CV BETON AGUNG</div>
+        <div class="text-center border-b mb-2" style="font-size: 10px;">
+          Jl. Raya Konstruksi No.123<br>
+          Telp: 0812-3456-7890
+        </div>
+        
+        <div class="mb-2" style="font-size: 10px;">
+          <div class="flex"><span>No:</span> <span>${info.orderNumber}</span></div>
+          <div class="flex"><span>Tgl:</span> <span>${info.date}</span></div>
+          <div class="flex"><span>Kasir:</span> <span>Admin</span></div>
+          <div class="flex"><span>Plg:</span> <span>${info.customerName}</span></div>
+        </div>
+        
+        <div class="border-b"></div>
+        
+        <table class="mb-2" style="font-size: 11px;">
+          ${info.items.map((item: any) => {
+            const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+            const subtotal = price * item.quantity;
+            return `
+              <tr>
+                <td colspan="3">${item.product.name}</td>
+              </tr>
+              <tr>
+                <td>${item.quantity}x</td>
+                <td>${new Intl.NumberFormat('id-ID').format(price)}</td>
+                <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </table>
+        
+        <div class="border-b"></div>
+        
+        <table class="mb-2 font-bold" style="font-size: 11px;">
+          <tr>
+            <td>TOTAL</td>
+            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
+          </tr>
+          <tr>
+            <td>BAYAR</td>
+            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
+          </tr>
+          <tr>
+            <td>KEMBALI</td>
+            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.change)}</td>
+          </tr>
+        </table>
+        
+        <div class="text-center mb-2 mt-4" style="font-size: 10px;">
+          *** TERIMA KASIH ***<br>
+          Barang yang sudah dibeli<br>
+          tidak dapat ditukar/dikembalikan
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const [isKioskMode, setIsKioskMode] = useState(false);
@@ -263,17 +465,40 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-full text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
               />
             </div>
-            <button
-              onClick={() => setIsKioskMode(!isKioskMode)}
-              className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full transition-colors"
-              title={isKioskMode ? 'Keluar Mode Kiosk' : 'Mode Kiosk (Layar Penuh)'}
-            >
-              {isKioskMode ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setHistoryPage(1);
+                  setHistorySearch('');
+                  setHistoryStartDate('');
+                  setHistoryEndDate('');
+                  setHistoryCategory('');
+                  fetchHistory(1, '', '', '', '');
+                  setShowHistoryModal(true);
+                }}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-slate-200"
+                title="Riwayat Transaksi"
+              >
+                <Search size={16} />
+                <span className="hidden sm:inline">Riwayat</span>
+              </button>
+              {lastTransactionInfo && (
+                <button
+                  onClick={() => printReceipt(lastTransactionInfo)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-slate-200"
+                  title="Cetak Ulang Struk Terakhir"
+                >
+                  <Package size={16} />
+                  <span className="hidden sm:inline">Cetak Terakhir</span>
+                </button>
               )}
-            </button>
+              <button
+                onClick={() => setIsKioskMode(!isKioskMode)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition-colors shadow-sm shadow-slate-900/20"
+              >
+                {isKioskMode ? 'Tutup Mode Penuh' : 'Mode Kasir Penuh'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -439,6 +664,10 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 onTriggerNotification('Mohon pilih gudang untuk setiap barang di keranjang.');
                 return;
               }
+              if (accounts.length > 0 && !selectedAccountId) {
+                // Auto-select first account if not selected
+                setSelectedAccountId(accounts[0].id);
+              }
               setAmountPaid(cartTotal.toString());
               setShowCheckoutModal(true);
             }}
@@ -479,6 +708,50 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Penerimaan Pembayaran (Kas/Bank)</label>
+                <select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  className="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 bg-white font-bold text-slate-700 outline-none transition-colors"
+                >
+                  <option value="" disabled>-- Pilih Akun --</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.code || acc.account_number || '-'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Metode Pengambilan</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div 
+                    onClick={() => setFulfillmentType('take_away')}
+                    className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'take_away' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${fulfillmentType === 'take_away' ? 'border-emerald-500' : 'border-slate-300'}`}>
+                      {fulfillmentType === 'take_away' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
+                    </div>
+                    <span className="font-bold text-slate-700 text-sm">Bawa Sendiri</span>
+                  </div>
+                  
+                  <div 
+                    onClick={() => setFulfillmentType('delivery')}
+                    className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${fulfillmentType === 'delivery' ? 'border-emerald-500' : 'border-slate-300'}`}>
+                      {fulfillmentType === 'delivery' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
+                    </div>
+                    <span className="font-bold text-slate-700 text-sm">Kirim ke Lokasi</span>
+                  </div>
+                </div>
+                {fulfillmentType === 'delivery' && (
+                  <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
+                    *Stok fisik tidak akan dipotong langsung. Surat Jalan (Delivery Order) akan dibuat untuk ditindaklanjuti gudang.
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Catatan Transaksi</label>
                 <input
                   type="text"
@@ -500,7 +773,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               </button>
               <button
                 onClick={handleCheckout}
-                disabled={isProcessing || parseFloat(amountPaid || '0') < cartTotal}
+                disabled={isProcessing || parseFloat(amountPaid || '0') < cartTotal || !selectedAccountId}
                 className="flex-[2] px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
@@ -580,6 +853,184 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   'Simpan'
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS MODAL */}
+      {checkoutSuccessInfo && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-8 text-center text-white relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
+              <div className="relative z-10">
+                <div className="w-20 h-20 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-900/20">
+                  <CheckCircle2 size={40} />
+                </div>
+                <h3 className="text-2xl font-black">Transaksi Sukses!</h3>
+                <p className="text-emerald-100 mt-1 opacity-90">{checkoutSuccessInfo.orderNumber} • {checkoutSuccessInfo.customerName}</p>
+              </div>
+            </div>
+
+            <div className="p-8 text-center bg-slate-50 border-b border-slate-100">
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Kembalian</p>
+              <div className="text-4xl font-black text-slate-800">
+                {formatRupiah(checkoutSuccessInfo.change)}
+              </div>
+            </div>
+
+            <div className="p-6 space-y-3 bg-white">
+              <button
+                onClick={() => printReceipt(checkoutSuccessInfo)}
+                className="w-full py-3.5 border-2 border-emerald-500 text-emerald-700 font-bold rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <Package size={20} />
+                Cetak Struk Pembayaran
+              </button>
+
+              {checkoutSuccessInfo.fulfillmentType === 'delivery' && (
+                <button
+                  onClick={() => onTriggerNotification('Mencetak Surat Jalan...')}
+                  className="w-full py-3.5 border-2 border-indigo-500 text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <MapPin size={20} />
+                  Cetak Surat Jalan (DO)
+                </button>
+              )}
+
+              <button
+                onClick={handleResetPos}
+                className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 mt-4"
+              >
+                <ShoppingCart size={20} />
+                Mulai Transaksi Baru
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-3 bg-slate-50">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi</h3>
+                <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Cari no struk atau pelanggan..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1, historySearch, historyStartDate, historyEndDate, historyCategory)}
+                    className="w-full pl-9 pr-4 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={historyStartDate}
+                    onChange={(e) => setHistoryStartDate(e.target.value)}
+                    className="w-32 px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
+                  />
+                  <span className="text-slate-400 self-center">-</span>
+                  <input
+                    type="date"
+                    value={historyEndDate}
+                    onChange={(e) => setHistoryEndDate(e.target.value)}
+                    className="w-32 px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
+                  />
+                </div>
+                <select
+                  value={historyCategory}
+                  onChange={(e) => setHistoryCategory(e.target.value)}
+                  className="px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
+                >
+                  <option value="">Semua Kategori</option>
+                  <option value="completed">Selesai (Kasir POS)</option>
+                  <option value="processing">Diproses (Reguler)</option>
+                </select>
+                <button
+                  onClick={() => fetchHistory(1, historySearch, historyStartDate, historyEndDate, historyCategory)}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Terapkan
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {isLoadingHistory ? (
+                <div className="text-center py-8 text-slate-500">Memuat riwayat...</div>
+              ) : transactionHistory.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">Belum ada transaksi hari ini</div>
+              ) : (
+                <div className="space-y-3">
+                  {transactionHistory.map(tx => (
+                    <div key={tx.id} className="flex justify-between items-center p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                      <div>
+                        <div className="font-bold text-slate-800">{tx.order_number}</div>
+                        <div className="text-sm text-slate-500">{tx.customer?.name || 'Pelanggan'} • {tx.order_date}</div>
+                        <div className="text-xs text-slate-400 mt-1">{tx.items?.length || 0} Item</div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="font-black text-slate-900">{formatRupiah(parseFloat(tx.total))}</div>
+                        <button
+                          onClick={() => {
+                            // Map backend sales order to info format
+                            const info = {
+                              orderNumber: tx.order_number,
+                              change: 0, // Not saved in SO
+                              fulfillmentType: 'take_away',
+                              customerName: tx.customer?.name || 'Pelanggan',
+                              amountPaid: parseFloat(tx.total),
+                              cartTotal: parseFloat(tx.total),
+                              items: (tx.items || []).map((i: any) => ({
+                                product: i.product,
+                                quantity: i.quantity,
+                              })),
+                              date: tx.order_date,
+                            };
+                            printReceipt(info);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors"
+                        >
+                          Cetak
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="text-sm text-slate-500">
+                Halaman {historyPage} dari {historyTotalPages}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={historyPage <= 1 || isLoadingHistory}
+                  onClick={() => fetchHistory(historyPage - 1, historySearch, historyStartDate, historyEndDate, historyCategory)}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                >
+                  Sebelumnnya
+                </button>
+                <button
+                  disabled={historyPage >= historyTotalPages || isLoadingHistory}
+                  onClick={() => fetchHistory(historyPage + 1, historySearch, historyStartDate, historyEndDate, historyCategory)}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                >
+                  Selanjutnya
+                </button>
+              </div>
             </div>
           </div>
         </div>

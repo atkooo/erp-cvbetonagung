@@ -86,6 +86,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   payments: "Kasir (Penerimaan Customer)",
   "receivables-payables": "Piutang & Hutang (AR / AP)",
   "cash-expense": "Kas & Biaya Operasional",
+  "accounts": "Buku Kas & Bank",
   "purchase-requests": "Purchase Request (PR)",
   rfq: "Request For Quotation (RFQ)",
   "purchase-orders": "Purchase Order (PO Pemasok)",
@@ -168,6 +169,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: "Finance & Accounting",
     collapsible: true,
     items: [
+      {
+        view: "accounts",
+        label: "Buku Kas & Bank",
+        icon: WalletCards,
+        requiredModule: "finance",
+      },
       {
         view: "invoices",
         label: "Billing (Invoice)",

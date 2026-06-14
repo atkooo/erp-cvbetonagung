@@ -86,6 +86,8 @@ export const salesApi = {
   async processPos(payload: {
     customer_id: string;
     transaction_date?: string;
+    fulfillment_type?: 'take_away' | 'delivery';
+    payment_account_id: string;
     notes?: string;
     items: Array<{
       product_id: string;

@@ -10,8 +10,9 @@ import {
 import Swal from 'sweetalert2';
 import { financeApi } from '../features/finance/api';
 import { Invoice } from '../types';
-import { SupplierPayable } from '../features/finance/types';
+import { SupplierPayable, AccountDto } from '../features/finance/types';
 import { formatDate } from '../utils/date';
+import { X } from 'lucide-react';
 
 interface ReceivablesPayablesViewProps {
   onTriggerNotification: (message: string) => void;
@@ -75,6 +76,15 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
   const [isLoading, setIsLoading] = useState(false);
   const [ledgerMode, setLedgerMode] = useState<'ar' | 'ap'>('ar');
   const [payablesTab, setPayablesTab] = useState<'outstanding' | 'lunas'>('outstanding');
+  const [accounts, setAccounts] = useState<AccountDto[]>([]);
+
+  // Payment Modal States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPayable, setSelectedPayable] = useState<SupplierPayable | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -83,12 +93,17 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [invs, pays] = await Promise.all([
+      const [invs, pays, accs] = await Promise.all([
         financeApi.getInvoices(),
-        financeApi.getSupplierPayables()
+        financeApi.getSupplierPayables(),
+        financeApi.getAccounts()
       ]);
       setInvoices(invs);
       setPayables(pays);
+      setAccounts(accs);
+      if (accs.length > 0 && !selectedAccountId) {
+        setSelectedAccountId(accs[0].id);
+      }
     } catch (error) {
       console.error('Error fetching receivables/payables:', error);
       onTriggerNotification('Gagal memuat data keuangan.');
@@ -97,47 +112,49 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
     }
   };
 
-  const handlePaySupplier = async (payable: SupplierPayable) => {
+  const handlePaySupplier = (payable: SupplierPayable) => {
     const remaining = payable.amount - payable.paidAmount;
     if (remaining <= 0) {
       Swal.fire('Info', 'AP ini sudah lunas.', 'info');
       return;
     }
 
-    const { value: paymentInput } = await Swal.fire({
-      title: 'Pembayaran Hutang Supplier (AP)',
-      text: `Masukkan nominal pembayaran untuk ${payable.payableNumber} (Sisa hutang supplier: ${formatIDR(remaining)}):`,
-      input: 'number',
-      inputPlaceholder: 'Nominal pembayaran',
-      showCancelButton: true,
-      inputValidator: (value) => {
-        if (!value || parseFloat(value) <= 0) {
-          return 'Nominal pembayaran harus lebih besar dari 0!';
-        }
-        if (parseFloat(value) > remaining) {
-          return `Nominal pembayaran tidak boleh melebihi sisa hutang supplier (${formatIDR(remaining)})!`;
-        }
-        return null;
-      }
-    });
+    setSelectedPayable(payable);
+    setPaymentAmount(remaining);
+    setPaymentNotes(`Pembayaran hutang supplier ${payable.payableNumber}`);
+    setShowPaymentModal(true);
+  };
 
-    if (paymentInput) {
-      const paymentAmount = parseFloat(paymentInput);
+  const submitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPayable || !selectedAccountId || paymentAmount <= 0) {
+      onTriggerNotification('Pilih Rekening dan isi nominal dengan benar.');
+      return;
+    }
 
-      try {
-        await financeApi.paySupplierPayable(payable.id, {
-          amount: paymentAmount,
-          method: 'transfer',
-          notes: `Pembayaran hutang supplier ${payable.payableNumber}`,
-        });
+    const remaining = selectedPayable.amount - selectedPayable.paidAmount;
+    if (paymentAmount > remaining) {
+      onTriggerNotification(`Nominal pembayaran tidak boleh melebihi sisa hutang (${formatIDR(remaining)}).`);
+      return;
+    }
 
-        Swal.fire('Sukses', `Pembayaran supplier sebesar ${formatIDR(paymentAmount)} berhasil dicatat.`, 'success');
-        onTriggerNotification(`Pembayaran hutang supplier ${payable.payableNumber} sebesar ${formatIDR(paymentAmount)} berhasil.`);
-        fetchData();
-      } catch (error) {
-        console.error('Error recording payment:', error);
-        Swal.fire('Gagal', 'Terjadi kesalahan saat memproses pembayaran hutang supplier.', 'error');
-      }
+    setIsSubmittingPayment(true);
+    try {
+      await financeApi.paySupplierPayable(selectedPayable.id, {
+        account_id: selectedAccountId,
+        amount: paymentAmount,
+        method: 'transfer',
+        notes: paymentNotes,
+      });
+
+      onTriggerNotification(`Pembayaran hutang supplier ${selectedPayable.payableNumber} sebesar ${formatIDR(paymentAmount)} berhasil.`);
+      setShowPaymentModal(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      Swal.fire('Gagal', 'Terjadi kesalahan saat memproses pembayaran hutang supplier.', 'error');
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
@@ -377,6 +394,100 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
           )}
         </Panel>}
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedPayable && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+              <h3 className="font-bold flex items-center gap-2">
+                <HandCoins size={16} className="text-cyan-400" />
+                Bayar Hutang Supplier (AP)
+              </h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={submitPayment}>
+              <div className="p-5 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-amber-800">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-bold">Dokumen AP:</span>
+                    <span className="font-mono font-black">{selectedPayable.payableNumber}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="font-bold">Supplier:</span>
+                    <span>{selectedPayable.supplierName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-2 pt-2 border-t border-amber-200">
+                    <span className="font-bold">Sisa Hutang:</span>
+                    <span className="font-mono font-black">{formatIDR(selectedPayable.amount - selectedPayable.paidAmount)}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Pilih Rekening Bank / Kas <span className="text-rose-500">*</span></label>
+                  <select
+                    required
+                    value={selectedAccountId}
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 font-bold text-slate-700"
+                  >
+                    <option value="" disabled>-- Pilih Rekening --</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.bank_name || 'KAS'} - {acc.account_name} ({formatIDR(acc.balance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Nominal Pembayaran <span className="text-rose-500">*</span></label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    max={selectedPayable.amount - selectedPayable.paidAmount}
+                    value={paymentAmount || ''}
+                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500 font-mono font-black text-lg text-slate-900"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Catatan Pembayaran</label>
+                  <input
+                    type="text"
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPayment}
+                  className="px-5 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {isSubmittingPayment ? 'Memproses...' : 'Bayar Sekarang'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -36,6 +36,7 @@ export type ViewType =
   | 'payments'
   | 'receivables-payables'
   | 'cash-expense'
+  | 'accounts'
   // Purchasing
   | 'purchase-orders'
   | 'purchase-requests'

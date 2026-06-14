@@ -15,6 +15,7 @@ import Swal from 'sweetalert2';
 
 interface PaymentsViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
 export default function PaymentsView({ onTriggerNotification }: PaymentsViewProps) {
@@ -24,12 +25,14 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'qris'>('transfer');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isSavingPayment, setIsSavingPayment] = useState(false);
 
   // API states
   const [payments, setPayments] = useState<Payment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -37,12 +40,18 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [paymentData, invoiceData] = await Promise.all([
+      const [paymentData, invoiceData, accountsData] = await Promise.all([
         financeApi.getPayments(),
         financeApi.getInvoices(),
+        financeApi.getAccounts(),
       ]);
       setPayments(paymentData);
       setInvoices(invoiceData);
+      setAccounts(accountsData);
+      
+      if (accountsData.length > 0 && !selectedAccountId) {
+        setSelectedAccountId(accountsData[0].id);
+      }
     } catch (err) {
       console.error('Failed to load payments', err);
       const msg = err instanceof Error ? err.message : 'Gagal memuat data pembayaran';
@@ -55,6 +64,37 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingInvoiceId = sessionStorage.getItem('action_pay_invoice');
+    if (pendingInvoiceId) {
+      sessionStorage.removeItem('action_pay_invoice');
+      
+      // We need to wait for invoices to load
+      const checkAndOpen = setInterval(() => {
+        setInvoices((currentInvoices) => {
+          if (currentInvoices.length > 0) {
+            clearInterval(checkAndOpen);
+            setTimeout(() => {
+              const invoice = currentInvoices.find((inv) => inv.id === pendingInvoiceId);
+              if (invoice) {
+                setSelectedInvoiceId(pendingInvoiceId);
+                setPaymentAmount(invoice.total - invoice.paidAmount);
+                setPaymentMethod('transfer');
+                setPaymentNotes(`Penerimaan pembayaran faktur ${invoice.invoiceNumber}`);
+                setShowReceiveModal(true);
+              }
+            }, 500);
+          }
+          return currentInvoices;
+        });
+      }, 500);
+      
+      // timeout clear interval after 10s
+      setTimeout(() => clearInterval(checkAndOpen), 10000);
+    }
   }, []);
 
   const formatIDR = (num: number) => {
@@ -104,12 +144,17 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
       onTriggerNotification('Gagal: nominal penerimaan melebihi sisa piutang invoice.');
       return;
     }
+    if (!selectedAccountId) {
+      onTriggerNotification('Pilih akun penerima pembayaran.');
+      return;
+    }
 
     setIsSavingPayment(true);
     try {
       const todayStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
       await financeApi.createPayment({
         invoice_id: selectedInvoice.id,
+        account_id: selectedAccountId,
         payment_date: todayStr,
         method: paymentMethod,
         amount: paymentAmount,
@@ -328,7 +373,29 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Akun Penerima</label>
+                      <select
+                        value={selectedAccountId}
+                        onChange={(e) => {
+                          const accId = e.target.value;
+                          setSelectedAccountId(accId);
+                          const acc = accounts.find(a => a.id === accId);
+                          if (acc) {
+                            if (acc.type === 'bank') setPaymentMethod('transfer');
+                            else if (acc.type === 'cash') setPaymentMethod('cash');
+                            else if (acc.type === 'ewallet') setPaymentMethod('qris');
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
+                      >
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name} ({acc.code})</option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Metode Penerimaan</label>
                       <select

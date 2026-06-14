@@ -54,6 +54,7 @@ const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudget
 const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
 const ReceivablesPayablesView = React.lazy(() => import('./pages/finance/account-payable'));
 const CashExpenseView = React.lazy(() => import('./pages/finance/cash-bank'));
+import { FinanceAccountsView } from './features/finance/components/FinanceAccountsView';
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 const UsersView = React.lazy(() => import('./components/UsersView'));
 const ProfileView = React.lazy(() => import('./components/ProfileView'));
@@ -338,7 +339,7 @@ export default function App() {
           />
         );
       case 'payments':
-        return <PaymentsView onTriggerNotification={triggerNotification} />;
+        return <PaymentsView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'purchase-requests':
         return <PurchaseRequestView onTriggerNotification={triggerNotification} />;
@@ -365,8 +366,11 @@ export default function App() {
       case 'cash-expense':
         return <CashExpenseView onTriggerNotification={triggerNotification} />;
 
+      case 'accounts':
+        return <FinanceAccountsView />;
+
       case 'delivery-orders':
-        return <DeliveryOrdersView onTriggerNotification={triggerNotification} />;
+        return <DeliveryOrdersView onTriggerNotification={triggerNotification} onNavigate={(v) => setCurrentView(v as ViewType)} />;
 
       case 'multi-warehouse':
         return (

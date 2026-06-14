@@ -75,6 +75,22 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     loadData();
   }, []);
 
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingSalesOrderId = sessionStorage.getItem('action_create_invoice');
+    if (pendingSalesOrderId) {
+      sessionStorage.removeItem('action_create_invoice');
+      
+      // Load sales orders first, then set the ID
+      loadSalesOrders().then(() => {
+        setTimeout(() => {
+          setShowCreateModal(true);
+          setSelectedSOId(pendingSalesOrderId);
+        }, 500);
+      });
+    }
+  }, []);
+
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSOId) {
@@ -350,6 +366,20 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
             {/* Actions */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 text-xs font-bold">
+              {(selectedInvoice.status === 'Belum Lunas' || selectedInvoice.status === 'Sebagian Dibayar' || selectedInvoice.status === 'Overdue') && (
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('action_pay_invoice', selectedInvoice.id);
+                    setSelectedInvoice(null);
+                    onNavigate('payments');
+                  }}
+                  className="px-4 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <DollarSign size={13} />
+                  <span>Lanjut Terima Pembayaran</span>
+                </button>
+              )}
+
               <button
                 onClick={handlePrintInvoice}
                 className="px-3.5 py-1.5 border hover:bg-slate-100 rounded-lg flex items-center gap-1.5 text-slate-650 cursor-pointer"
@@ -393,113 +423,146 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
       )}
 
       <div className="hidden">
-        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+        <div ref={printRef} className="print:block bg-white text-black print-a4-container">
           {selectedInvoice && (
-            <div className="w-full max-w-200 mx-auto">
-              <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
-                <div>
-                  <h1 className="text-3xl font-black tracking-tight uppercase">CV Beton Agung Solusi</h1>
-                  <p className="text-sm font-bold mt-1">Penyedia Kubah Masjid & Precast Beton Jawa Timur</p>
-                  <p className="text-xs mt-1 text-slate-700 max-w-sm">Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur</p>
+            <div className="w-full flex flex-col h-full">
+              {/* Header / Letterhead */}
+              <div className="flex justify-between items-center border-b-4 border-double border-slate-900 pb-5 mb-8 mt-4">
+                <div className="flex items-center gap-4">
+                  {/* Logo Placeholder */}
+                  <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                    BA
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">CV Beton Agung</h1>
+                    <p className="text-xs font-bold text-slate-700 tracking-wide mt-0.5">GENERAL CONTRACTOR & SUPPLIER MATERIAL ALAM</p>
+                    <p className="text-[10px] mt-1 text-slate-600 max-w-sm">Jl. Raya Sukomanunggal Jaya No. 12, Kel. Sukomanunggal,<br/>Kec. Sukomanunggal, Surabaya, Jawa Timur 60188</p>
+                    <p className="text-[10px] mt-0.5 text-slate-600">Telp: (031) 7328999 | Email: finance@betonagung.co.id</p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest border border-slate-300 inline-block px-4 py-1">
+                  <h2 className="text-3xl font-black text-cyan-700 uppercase tracking-widest mb-2">
                     INVOICE
                   </h2>
-                  <p className="font-mono font-bold mt-2 text-lg">{selectedInvoice.invoiceNumber}</p>
-                  {selectedInvoice.salesOrderNumber && (
-                    <p className="text-sm font-bold text-slate-600">SO: {selectedInvoice.salesOrderNumber}</p>
-                  )}
-                  <p className="text-sm">Tanggal: {formatDate(selectedInvoice.date)}</p>
-                  <p className="text-sm">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</p>
+                  <div className="inline-block text-left bg-slate-50 p-3 border border-slate-200 rounded">
+                    <p className="text-xs flex justify-between gap-4"><span className="font-bold text-slate-500">No. Invoice:</span> <span className="font-mono font-bold text-sm">{selectedInvoice.invoiceNumber}</span></p>
+                    <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Tanggal:</span> <span>{formatDate(selectedInvoice.date)}</span></p>
+                    <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Jatuh Tempo:</span> <span className="text-rose-600 font-bold">{formatDate(selectedInvoice.dueDate)}</span></p>
+                    {selectedInvoice.salesOrderNumber && (
+                      <p className="text-xs flex justify-between gap-4 mt-1 border-t border-slate-200 pt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span>{selectedInvoice.salesOrderNumber}</span></p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mb-8">
-                <div className="border border-black rounded-md p-4">
-                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest uppercase mb-1">Ditagihkan Kepada</p>
-                  <p className="font-bold text-lg">{selectedInvoice.customerName}</p>
-                  <p className="mt-2 text-xs text-slate-700">Mitra Pembangunan Daerah</p>
+              {/* Customer Info */}
+              <div className="flex gap-10 mb-8">
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ditagihkan Kepada:</p>
+                  <div className="border-l-4 border-cyan-700 pl-3">
+                    <p className="font-bold text-base text-slate-900 uppercase">{selectedInvoice.customerName}</p>
+                    <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">{selectedInvoice.customerPhone || 'Alamat tidak tersedia. Harap hubungi tim representatif kami.'}</p>
+                  </div>
                 </div>
-                <div className="border border-black rounded-md p-4">
-                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest uppercase mb-2">Status Pembayaran</p>
-                  <p>Status: <strong>{selectedInvoice.status}</strong></p>
-                  <p>Total Dibayar: <strong>{formatIDR(selectedInvoice.paidAmount)}</strong></p>
-                  <p>Sisa Tagihan: <strong>{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</strong></p>
+                <div className="w-1/3">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Informasi Pembayaran:</p>
+                  <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-800">
+                    <p className="font-bold mb-1">Transfer Bank:</p>
+                    <p className="flex justify-between font-mono mt-0.5"><span className="font-bold">BCA</span> <span>088 1234 567</span></p>
+                    <p className="flex justify-between font-mono mt-0.5"><span className="font-bold">Mandiri</span> <span>142 00 8899 7766</span></p>
+                    <p className="mt-2 text-[10px] text-slate-500">A/N: CV Beton Agung Solusi</p>
+                  </div>
                 </div>
               </div>
 
-              <table className="w-full mb-8 border-collapse border border-black">
-                <thead>
-                  <tr className="bg-slate-100 uppercase text-xs">
-                    <th className="p-3 border border-black text-left w-12">No</th>
-                    <th className="p-3 border border-black text-left">Uraian Tagihan</th>
-                    <th className="p-3 border border-black text-right w-48">Jumlah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                    selectedInvoice.items.map((item, index) => (
-                      <tr key={item.id || index}>
-                        <td className="p-3 border border-black text-center">{index + 1}</td>
-                        <td className="p-3 border border-black">
-                          <p className="font-bold">{item.productName}</p>
-                          {item.pieceCount && item.length && (
-                            <p className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</p>
-                          )}
-                          <p className="text-xs text-slate-600 mt-1">
-                            {item.quantity} {item.unit || ''} x {formatIDR(item.unitPrice)}
-                            {item.description ? ` - ${item.description}` : ''}
-                          </p>
-                        </td>
-                        <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(item.subtotal)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td className="p-3 border border-black text-center">1</td>
-                      <td className="p-3 border border-black">
-                        <p className="font-bold">Paket Konstruksi Terintegrasi</p>
-                        <p className="text-xs text-slate-600 mt-1">Komponen Beton Pracetak standardisasi SNI CV Beton Agung</p>
-                      </td>
-                      <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
+              {/* Items Table */}
+              <div className="mb-8 flex-1">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3 text-center w-12 border-b-2 border-slate-900">No</th>
+                      <th className="py-2.5 px-3 text-left border-b-2 border-slate-900">Deskripsi Barang / Jasa</th>
+                      <th className="py-2.5 px-3 text-center w-24 border-b-2 border-slate-900">Qty</th>
+                      <th className="py-2.5 px-3 text-right w-32 border-b-2 border-slate-900">Harga Satuan</th>
+                      <th className="py-2.5 px-3 text-right w-36 border-b-2 border-slate-900">Jumlah</th>
                     </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={2} className="p-3 border border-black text-right font-bold">TOTAL TAGIHAN</td>
-                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.total)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2} className="p-3 border border-black text-right font-bold">TELAH DIBAYAR</td>
-                    <td className="p-3 border border-black text-right font-mono font-bold">{formatIDR(selectedInvoice.paidAmount)}</td>
-                  </tr>
-                  <tr className="bg-slate-100">
-                    <td colSpan={2} className="p-3 border border-black text-right font-black">SISA TAGIHAN</td>
-                    <td className="p-3 border border-black text-right font-mono font-black text-lg">
-                      {formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              <div className="text-xs leading-relaxed mb-12">
-                <p><strong>Catatan:</strong> Mohon lakukan pembayaran sebelum tanggal jatuh tempo. Simpan dokumen ini sebagai bukti tagihan resmi.</p>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 border-b-2 border-slate-900">
+                    {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                      selectedInvoice.items.map((item, index) => (
+                        <tr key={item.id || index}>
+                          <td className="py-3 px-3 text-center text-slate-500">{index + 1}</td>
+                          <td className="py-3 px-3">
+                            <p className="font-bold text-slate-900">{item.productName}</p>
+                            {item.pieceCount && item.length && (
+                              <p className="text-[10px] text-slate-600 mt-0.5">{item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</p>
+                            )}
+                            {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono">{item.quantity} <span className="text-[10px] text-slate-500">{item.unit || ''}</span></td>
+                          <td className="py-3 px-3 text-right font-mono">{formatIDR(item.unitPrice)}</td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(item.subtotal)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="py-3 px-3 text-center text-slate-500">1</td>
+                        <td className="py-3 px-3">
+                          <p className="font-bold text-slate-900">Material Konstruksi</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Sesuai penawaran/surat jalan</p>
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono">1</td>
+                        <td className="py-3 px-3 text-right font-mono">{formatIDR(selectedInvoice.total)}</td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(selectedInvoice.total)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} rowSpan={3} className="py-4 px-3 text-xs align-top border-r border-slate-200">
+                        <div className="bg-amber-50 border border-amber-200 p-3 rounded text-amber-800 inline-block w-full max-w-sm">
+                          <p className="font-bold mb-1">Status: {selectedInvoice.status.toUpperCase()}</p>
+                          <p className="text-[10px]">Harap sertakan Nomor Invoice pada berita transfer pembayaran Anda.</p>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase">Subtotal</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(selectedInvoice.total)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase border-b border-slate-200">Telah Dibayar</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 border-b border-slate-200">- {formatIDR(selectedInvoice.paidAmount)}</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="py-3 px-3 text-right text-xs font-black text-slate-900 uppercase">Total Tagihan</td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 text-lg border-b-4 border-slate-900">
+                        {formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
-              <div className="grid grid-cols-2 gap-20 mt-12 text-center text-xs">
-                <div>
-                  <p>Diterima Oleh,</p>
-                  <div className="h-24"></div>
-                  <p className="border-t border-black pt-2 font-bold">{selectedInvoice.customerName}</p>
+              {/* Signatures */}
+              <div className="grid grid-cols-2 gap-20 mt-auto pt-8">
+                <div className="text-center text-sm">
+                  <p className="text-slate-600 mb-20">Diterima Oleh,</p>
+                  <p className="border-t border-slate-900 mx-10 pt-2 font-bold uppercase text-slate-800">
+                    {selectedInvoice.customerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Ttd & Stempel Perusahaan</p>
                 </div>
-                <div>
-                  <p>Hormat Kami,</p>
-                  <div className="h-24"></div>
-                  <p className="border-t border-black pt-2 font-bold">Finance Dept.</p>
-                  <p>CV Beton Agung Solusi</p>
+                <div className="text-center text-sm">
+                  <p className="text-slate-600 mb-20">Hormat Kami,</p>
+                  <p className="border-t border-slate-900 mx-10 pt-2 font-bold uppercase text-slate-800">
+                    Finance Dept.
+                  </p>
+                  <p className="text-[10px] text-slate-500">CV Beton Agung</p>
                 </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="mt-10 border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400 font-mono">
+                Invoice generated by Sistem ERP CV Beton Agung &copy; {new Date().getFullYear()}
               </div>
             </div>
           )}

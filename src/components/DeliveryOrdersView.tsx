@@ -27,6 +27,7 @@ import SearchableSelect from "./SearchableSelect";
 
 interface DeliveryOrdersViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
 interface StorageLocationOption {
@@ -40,6 +41,7 @@ interface StorageLocationOption {
 
 export default function DeliveryOrdersView({
   onTriggerNotification,
+  onNavigate,
 }: DeliveryOrdersViewProps) {
   const [deliveryOrders, setDeliveryOrders] = useState<DeliveryOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
@@ -109,6 +111,18 @@ export default function DeliveryOrdersView({
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Workflow shortcut effect
+  useEffect(() => {
+    const pendingSalesOrderId = sessionStorage.getItem('action_create_do');
+    if (pendingSalesOrderId) {
+      sessionStorage.removeItem('action_create_do');
+      setTimeout(() => {
+        handleOpenCreateModal();
+        setSelectedSalesOrderId(pendingSalesOrderId);
+      }, 500);
+    }
   }, []);
 
   const handleOpenCreateModal = () => {
@@ -480,143 +494,126 @@ export default function DeliveryOrdersView({
         </>
       )}
 
-      <div className="hidden print:block">
-        <div
-          ref={printRef}
-          className="print:block p-8 font-sans text-sm text-black bg-white"
+      <div className="hidden">
+        <div 
+          ref={printRef} 
+          className="print:block bg-white text-black print-a4-container"
         >
           {printDo && (
-            <div className="max-w-200 mx-auto">
-              <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight">
-                    CV BETON AGUNG
-                  </h1>
-                  <p className="font-bold text-xs">
-                    General Contractor & Supplier Material Alam
-                  </p>
-                  <p className="text-[11px] mt-1">
-                    Jl. Raya Sukomanunggal Jaya No. 12, Surabaya, Jawa Timur
-                  </p>
+            <div className="w-full flex flex-col h-full">
+              {/* Header / Letterhead */}
+              <div className="flex justify-between items-center border-b-4 border-double border-slate-900 pb-5 mb-8 mt-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                    BA
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">CV Beton Agung</h1>
+                    <p className="text-xs font-bold text-slate-700 tracking-wide mt-0.5">GENERAL CONTRACTOR & SUPPLIER MATERIAL ALAM</p>
+                    <p className="text-[10px] mt-1 text-slate-600 max-w-sm">Jl. Raya Sukomanunggal Jaya No. 12, Kel. Sukomanunggal,<br/>Kec. Sukomanunggal, Surabaya, Jawa Timur 60188</p>
+                    <p className="text-[10px] mt-0.5 text-slate-600">Telp: (031) 7328999 | Email: logistik@betonagung.co.id</p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">
+                  <h2 className="text-3xl font-black text-cyan-700 uppercase tracking-widest mb-2">
                     SURAT JALAN
+                  </h2>
+                  <div className="inline-block text-left bg-slate-50 p-3 border border-slate-200 rounded">
+                    <p className="text-xs flex justify-between gap-4"><span className="font-bold text-slate-500">No. Surat Jalan:</span> <span className="font-mono font-bold text-sm">{printDo.deliveryNumber}</span></p>
+                    <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Tgl. Kirim:</span> <span>{printDo.deliveryDate}</span></p>
+                    <p className="text-xs flex justify-between gap-4 mt-1 border-t border-slate-200 pt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span>{printDo.salesOrderNumber || "-"}</span></p>
                   </div>
-                  <p className="font-mono font-bold mt-2 text-lg">
-                    {printDo.deliveryNumber}
-                  </p>
-                  <p className="text-sm">
-                    Tanggal Kirim: {printDo.deliveryDate}
-                  </p>
-                  <p className="text-sm">Status: {printDo.status}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="border border-black rounded-md p-4">
-                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">
-                    DIKIRIM KEPADA
-                  </p>
-                  <p className="font-bold text-lg mt-1">
-                    {printDo.customerName || "-"}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-700">
-                    Referensi SO:{" "}
-                    <strong>{printDo.salesOrderNumber || "-"}</strong>
-                  </p>
+              {/* Delivery Info */}
+              <div className="flex gap-10 mb-8">
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dikirim Kepada / Tujuan:</p>
+                  <div className="border-l-4 border-cyan-700 pl-3">
+                    <p className="font-bold text-base text-slate-900 uppercase">{printDo.customerName || "-"}</p>
+                    <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">Alamat pengiriman sesuai dengan kesepakatan Sales Order.</p>
+                  </div>
                 </div>
-                <div className="border border-black rounded-md p-4">
-                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">
-                    INFORMASI PENERIMAAN
-                  </p>
-                  <p className="mt-1">
-                    Penerima: <strong>{printDo.receiverName || "-"}</strong>
-                  </p>
-                  <p>
-                    Tanggal Terima: <strong>{printDo.receivedAt || "-"}</strong>
-                  </p>
+                <div className="w-1/3 border border-slate-200 rounded p-3 bg-slate-50">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Informasi Penerimaan:</p>
+                  <div className="text-xs text-slate-800 space-y-1">
+                    <p className="flex justify-between"><span className="font-bold">Status:</span> <span className="uppercase font-bold text-slate-900">{printDo.status}</span></p>
+                    <p className="flex justify-between"><span className="font-bold">Penerima:</span> <span>{printDo.receiverName || "-"}</span></p>
+                    <p className="flex justify-between"><span className="font-bold">Tgl Terima:</span> <span>{printDo.receivedAt || "-"}</span></p>
+                  </div>
                 </div>
               </div>
 
-              <table className="w-full border-collapse border border-black text-xs">
-                <thead>
-                  <tr className="bg-slate-100">
-                    <th className="border border-black p-2 w-10">NO</th>
-                    <th className="border border-black p-2 text-left">
-                      NAMA BARANG / MATERIAL
-                    </th>
-                    <th className="border border-black p-2 w-28">SKU</th>
-                    <th className="border border-black p-2 w-28 text-right">
-                      QTY KIRIM
-                    </th>
-                    <th className="border border-black p-2 w-32">KETERANGAN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printDo.items?.map((item, idx) => (
-                    <tr key={item.id || `${item.productName}-${idx}`}>
-                      <td className="border border-black p-2 text-center">
-                        {idx + 1}
-                      </td>
-                      <td className="border border-black p-2 font-bold">
-                        {item.productName}
-                        {item.length && <span className="ml-1 text-slate-500 font-normal">({item.length}m)</span>}
-                      </td>
-                      <td className="border border-black p-2 text-center font-mono">
-                        {item.productSku || "-"}
-                      </td>
-                      <td className="border border-black p-2 text-right font-mono font-bold">
-                        {item.quantity}
-                      </td>
-                      <td className="border border-black p-2">Baik</td>
+              {/* Items Table */}
+              <div className="mb-8 flex-1">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3 text-center w-12 border-b-2 border-slate-900">No</th>
+                      <th className="py-2.5 px-3 text-left border-b-2 border-slate-900">Nama Barang / Material</th>
+                      <th className="py-2.5 px-3 text-center w-28 border-b-2 border-slate-900">SKU</th>
+                      <th className="py-2.5 px-3 text-right w-24 border-b-2 border-slate-900">Qty Kirim</th>
+                      <th className="py-2.5 px-3 text-left w-32 border-b-2 border-slate-900">Keterangan</th>
                     </tr>
-                  ))}
-                  {!printDo.items?.length && (
-                    <tr>
-                      <td
-                        className="border border-black p-4 text-center text-slate-500"
-                        colSpan={5}
-                      >
-                        {printDo.notes ||
-                          "Muatan custom belum memiliki rincian item."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-
-              <div className="mt-5 text-[11px] leading-relaxed">
-                <p>
-                  <strong>Catatan Pengiriman:</strong> {printDo.notes || "-"}
-                </p>
-                <p>
-                  Barang yang tercantum di atas telah diserahkan sesuai dokumen
-                  Sales Order terkait.
-                </p>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 border-b-2 border-slate-900">
+                    {printDo.items?.map((item, idx) => (
+                      <tr key={item.id || `${item.productName}-${idx}`}>
+                        <td className="py-3 px-3 text-center text-slate-500">{idx + 1}</td>
+                        <td className="py-3 px-3">
+                          <p className="font-bold text-slate-900">{item.productName}</p>
+                          {item.length && <p className="text-[10px] text-slate-600 mt-0.5">Panjang: {item.length}m</p>}
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-600">{item.productSku || "-"}</td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 text-base">{item.quantity}</td>
+                        <td className="py-3 px-3 text-slate-600 text-xs">Baik</td>
+                      </tr>
+                    ))}
+                    {!printDo.items?.length && (
+                      <tr>
+                        <td className="py-6 px-3 text-center text-slate-500" colSpan={5}>
+                          {printDo.notes || "Muatan custom belum memiliki rincian item."}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
-                <div>
-                  <p>Disiapkan Oleh,</p>
-                  <div className="h-20"></div>
-                  <p className="border-t border-black pt-2 font-bold">GUDANG</p>
-                  <p>CV Beton Agung</p>
-                </div>
-                <div>
-                  <p>Dikirim Oleh,</p>
-                  <div className="h-20"></div>
-                  <p className="border-t border-black pt-2 font-bold">
-                    SUPIR / EKSPEDISI
+              <div className="text-xs leading-relaxed mb-8 border border-slate-200 p-3 rounded bg-slate-50">
+                <p><strong>Catatan Pengiriman:</strong> {printDo.notes || "-"}</p>
+                <p className="text-[10px] text-slate-500 mt-1">Barang yang tercantum di atas telah diserahkan dan diperiksa sesuai dokumen Sales Order terkait. Komplain setelah supir meninggalkan lokasi tidak dapat dilayani.</p>
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-3 gap-10 mt-auto pt-8">
+                <div className="text-center text-sm">
+                  <p className="text-slate-600 mb-20">Disiapkan Oleh,</p>
+                  <p className="border-t border-slate-900 mx-6 pt-2 font-bold text-slate-800">
+                    KEPALA GUDANG
                   </p>
+                  <p className="text-[10px] text-slate-500">CV Beton Agung</p>
                 </div>
-                <div>
-                  <p>Diterima Oleh,</p>
-                  <div className="h-20"></div>
-                  <p className="border-t border-black pt-2 font-bold">
+                <div className="text-center text-sm">
+                  <p className="text-slate-600 mb-20">Dikirim Oleh (Supir),</p>
+                  <p className="border-t border-slate-900 mx-6 pt-2 font-bold text-slate-800">
+                    &nbsp;
+                  </p>
+                  <p className="text-[10px] text-slate-500">Nama Terang & No. Kendaraan</p>
+                </div>
+                <div className="text-center text-sm">
+                  <p className="text-slate-600 mb-20">Diterima Oleh,</p>
+                  <p className="border-t border-slate-900 mx-6 pt-2 font-bold uppercase text-slate-800">
                     {printDo.receiverName || printDo.customerName || "CUSTOMER"}
                   </p>
+                  <p className="text-[10px] text-slate-500">Ttd & Stempel</p>
                 </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="mt-8 border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400 font-mono">
+                Surat Jalan generated by Sistem ERP CV Beton Agung &copy; {new Date().getFullYear()}
               </div>
             </div>
           )}
@@ -697,7 +694,20 @@ export default function DeliveryOrdersView({
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
+              {selectedDo.status === 'Diterima' && onNavigate && (
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('action_create_invoice', selectedDo.salesOrderId);
+                    setIsDetailModalOpen(false);
+                    onNavigate('invoices');
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors text-xs flex items-center gap-1.5 shadow"
+                >
+                  <span>Lanjut Buat Tagihan (Invoice)</span>
+                  <ChevronRight size={14} />
+                </button>
+              )}
               <button
                 onClick={() => setIsDetailModalOpen(false)}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors text-xs"

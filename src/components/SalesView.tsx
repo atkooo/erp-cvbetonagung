@@ -162,6 +162,20 @@ export default function SalesView({
     };
   }, [showAddForm, isQuotation, quotations.length, onTriggerNotification]);
 
+  // Workflow shortcut effect
+  useEffect(() => {
+    if (!isQuotation) {
+      const pendingQuotationId = sessionStorage.getItem('action_create_so');
+      if (pendingQuotationId) {
+        sessionStorage.removeItem('action_create_so');
+        setTimeout(() => {
+          setShowAddForm(true);
+          setQuotationId(pendingQuotationId);
+        }, 500);
+      }
+    }
+  }, [isQuotation]);
+
   const formatIDR = (num: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
@@ -655,11 +669,39 @@ export default function SalesView({
                     </button>
                   </div>
                 ) : (
+                    <button
+                      onClick={() => setSelectedDoc(null)}
+                      className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                )}
+                
+                {isQuotation && selectedDoc.status === 'Disetujui' && (
                   <button
-                    onClick={() => setSelectedDoc(null)}
-                    className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
+                    onClick={() => {
+                      sessionStorage.setItem('action_create_so', selectedDoc.id);
+                      setSelectedDoc(null);
+                      onNavigate('sales-orders');
+                    }}
+                    className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
                   >
-                    Tutup
+                    <span>Lanjut Buat Sales Order (SO)</span>
+                    <ChevronRight size={14} />
+                  </button>
+                )}
+
+                {!isQuotation && selectedDoc.status === 'Disetujui' && (
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem('action_create_do', selectedDoc.id);
+                      setSelectedDoc(null);
+                      onNavigate('delivery-orders');
+                    }}
+                    className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <span>Lanjut Buat Surat Jalan (DO)</span>
+                    <ChevronRight size={14} />
                   </button>
                 )}
               </div>

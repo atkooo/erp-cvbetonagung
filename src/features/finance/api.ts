@@ -14,7 +14,7 @@ export const financeApi = {
     return mapInvoiceFromDto(response.data);
   },
 
-  async createPayment(data: { invoice_id: string; payment_date: string; method: 'cash' | 'transfer' | 'qris'; amount: number; notes?: string }): Promise<Payment> {
+  async createPayment(data: { invoice_id: string; account_id: string; payment_date: string; method: 'cash' | 'transfer' | 'qris'; amount: number; notes?: string }): Promise<Payment> {
     const response = await apiClient.post<{ data: PaymentDto }>('/finance/payments', data);
     return mapPaymentFromDto(response.data);
   },
@@ -37,7 +37,7 @@ export const financeApi = {
     return response.data.map(mapSupplierPayableFromDto);
   },
 
-  async paySupplierPayable(id: string, data: { amount: number; method?: 'cash' | 'transfer' | 'qris'; notes?: string }): Promise<SupplierPayable> {
+  async paySupplierPayable(id: string, data: { account_id: string; amount: number; method?: 'cash' | 'transfer' | 'qris'; notes?: string }): Promise<SupplierPayable> {
     const response = await apiClient.post<{ data: SupplierPayableDto }>(`/finance/supplier-payables/${id}/pay`, data);
     return mapSupplierPayableFromDto(response.data);
   },
@@ -45,6 +45,20 @@ export const financeApi = {
   async getAccounts(): Promise<AccountDto[]> {
     const response = await apiClient.get<{ data: AccountDto[] }>('/finance/accounts');
     return response.data;
+  },
+
+  async createAccount(data: Partial<AccountDto>): Promise<AccountDto> {
+    const response = await apiClient.post<{ data: AccountDto }>('/finance/accounts', data);
+    return response.data;
+  },
+
+  async updateAccount(id: string, data: Partial<AccountDto>): Promise<AccountDto> {
+    const response = await apiClient.put<{ data: AccountDto }>(`/finance/accounts/${id}`, data);
+    return response.data;
+  },
+
+  async deleteAccount(id: string): Promise<void> {
+    await apiClient.delete(`/finance/accounts/${id}`);
   },
 
   async getCashTransactions(): Promise<CashTransactionDto[]> {
