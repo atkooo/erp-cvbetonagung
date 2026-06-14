@@ -81,5 +81,23 @@ export const salesApi = {
   ): Promise<DeliveryOrder> {
     const response = await apiClient.put<{ data: DeliveryOrderDto }>(`/sales/delivery-orders/${id}`, payload);
     return mapDeliveryOrderFromDto(response.data);
+  },
+
+  async processPos(payload: {
+    customer_id: string;
+    location_id: string;
+    transaction_date?: string;
+    notes?: string;
+    items: Array<{
+      product_id: string;
+      description?: string;
+      specification?: string;
+      quantity: number;
+      unit_price: number;
+    }>;
+    handled_by?: string;
+  }): Promise<SalesOrder> {
+    const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/pos', payload);
+    return mapSalesOrderFromDto(response.data);
   }
 };

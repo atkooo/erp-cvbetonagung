@@ -28,6 +28,7 @@ export type ViewType =
   | 'scan-qr-product'
   | 'scanned-product-detail'
   // Sales
+  | 'pos'
   | 'quotations'
   | 'sales-orders'
   | 'delivery-orders'

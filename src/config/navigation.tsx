@@ -77,6 +77,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "stock-movement-history": "Timeline & Riwayat Pergerakan Stok",
   "stock-opname": "Stock Opname Gudang",
   "multi-warehouse": "Multi Warehouse / Lokasi Stok",
+  pos: "Kasir / Point of Sale",
   quotations: "Daftar Quotation (Penawaran Harga)",
   "sales-orders": "Daftar Sales Order (SO)",
   "delivery-orders": "Delivery Order / Surat Jalan",
@@ -129,6 +130,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
     title: "Sales & Orders",
     collapsible: true,
     items: [
+      {
+        view: "pos",
+        label: "Kasir (POS)",
+        icon: Calculator,
+        requiredModule: "sales",
+      },
       {
         view: "quotations",
         label: "Penawaran (quotations)",

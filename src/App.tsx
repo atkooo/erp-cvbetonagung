@@ -23,6 +23,7 @@ const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
 const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
+const PosView = React.lazy(() => import('./features/sales/components/PosView'));
 const SalesView = React.lazy(() => import('./pages/sales/quotation'));
 const InvoicesView = React.lazy(() => import('./pages/finance/billing'));
 const PaymentsView = React.lazy(() => import('./pages/finance/cashier'));
@@ -308,6 +309,9 @@ export default function App() {
             onNavigate={setCurrentView}
           />
         );
+
+      case 'pos':
+        return <PosView onTriggerNotification={triggerNotification} />;
 
       case 'quotations':
         return (
