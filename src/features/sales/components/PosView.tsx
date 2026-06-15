@@ -94,7 +94,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
         // Normalize products (from /master/products or /master-data/products)
         const allProducts = prodRes.data || [];
-        setProducts(allProducts.filter((p: any) => p.type === 'finished_good' && p.status === 'active' && !Number(p.is_customizable)));
+        setProducts(allProducts.filter((p: any) => p.type === 'finished_good' && p.status === 'active'));
         setCustomers(custRes.data || []);
 
         const locs = locRes.data || [];
@@ -145,7 +145,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId);
       if (existing) {
         const maxStock = productStocks.find(s => s.location_id === defaultLocationId)?.quantity || 0;
-        if (existing.quantity + 1 > parseFloat(maxStock)) {
+        if (!Number((product as any).is_customizable) && existing.quantity + 1 > parseFloat(maxStock)) {
           onTriggerNotification(`Stok di gudang ini tidak mencukupi. Sisa: ${parseFloat(maxStock)}`);
           return prev;
         }
@@ -173,7 +173,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
 
-        if (newQty > maxStock && delta > 0) {
+        if (!Number((item.product as any).is_customizable) && newQty > maxStock && delta > 0) {
           onTriggerNotification(`Gagal. Sisa stok di gudang terpilih hanya ${maxStock}`);
           return item;
         }
@@ -228,7 +228,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
 
         let newQty = item.quantity;
-        if (newQty > maxStock) {
+        if (!Number((item.product as any).is_customizable) && newQty > maxStock) {
           newQty = maxStock || 1;
           if (maxStock > 0) {
             onTriggerNotification(`Jumlah disesuaikan dengan sisa stok gudang (${maxStock})`);
@@ -254,8 +254,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     }
 
     const paid = parseFloat(amountPaid);
-    if (isNaN(paid) || paid < cartTotal) {
-      onTriggerNotification('Jumlah bayar kurang dari total belanja.');
+    if (isNaN(paid) || paid < 0) {
+      onTriggerNotification('Jumlah bayar tidak valid.');
       return;
     }
 
@@ -266,6 +266,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         transaction_date: toApiDate(),
         fulfillment_type: fulfillmentType,
         payment_account_id: selectedAccountId,
+        amount_paid: paid,
         notes: notes,
         items: cart.map(item => ({
           product_id: item.product.id,
@@ -540,12 +541,19 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   )}
                   <div>
                     <div className="text-[10px] font-mono text-slate-400 mb-1">{product.sku || 'NO-SKU'}</div>
-                    <div className="font-bold text-slate-700 leading-tight line-clamp-2">{product.name}</div>
+                    <div className="font-bold text-slate-700 leading-tight line-clamp-2">
+                      {product.name}
+                      {Number((product as any).is_customizable) ? <span className="ml-1.5 inline-block bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-black uppercase">PO</span> : null}
+                    </div>
 
                     <div className="text-[11px] mt-1.5 text-slate-500">
-                      <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
-                        {totalStock > 0 ? `Stok: ${totalStock}` : 'Stok Habis'}
-                      </span>
+                      {Number((product as any).is_customizable) ? (
+                        <span className="text-amber-600 font-bold">Barang Inden / PO</span>
+                      ) : (
+                        <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
+                          {totalStock > 0 ? `Stok: ${totalStock}` : 'Stok Habis'}
+                        </span>
+                      )}
                       {productStocks.length > 0 && (
                         <div className="flex flex-col gap-0.5 mt-1 border-t border-slate-100 pt-1">
                           {productStocks.map(s => {
@@ -733,7 +741,13 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 {parseFloat(amountPaid || '0') >= cartTotal && (
                   <div className="mt-2 text-right">
                     <span className="text-sm text-slate-500">Kembalian: </span>
-                    <span className="font-bold text-rose-500">{formatRupiah(parseFloat(amountPaid || '0') - cartTotal)}</span>
+                    <span className="font-bold text-emerald-600">{formatRupiah(parseFloat(amountPaid || '0') - cartTotal)}</span>
+                  </div>
+                )}
+                {parseFloat(amountPaid || '0') < cartTotal && (
+                  <div className="mt-2 text-right">
+                    <span className="text-sm text-slate-500">Sisa Piutang: </span>
+                    <span className="font-bold text-rose-500">{formatRupiah(cartTotal - parseFloat(amountPaid || '0'))}</span>
                   </div>
                 )}
               </div>
@@ -804,7 +818,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               </button>
               <button
                 onClick={handleCheckout}
-                disabled={isProcessing || parseFloat(amountPaid || '0') < cartTotal || !selectedAccountId}
+                disabled={isProcessing || !amountPaid || !selectedAccountId}
                 className="flex-[2] px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
@@ -906,10 +920,21 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             </div>
 
             <div className="p-8 text-center bg-slate-50 border-b border-slate-100">
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Kembalian</p>
-              <div className="text-4xl font-black text-slate-800">
-                {formatRupiah(checkoutSuccessInfo.change)}
-              </div>
+              {checkoutSuccessInfo.change >= 0 ? (
+                <>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Kembalian</p>
+                  <div className="text-4xl font-black text-slate-800">
+                    {formatRupiah(checkoutSuccessInfo.change)}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Sisa Piutang</p>
+                  <div className="text-4xl font-black text-rose-600">
+                    {formatRupiah(Math.abs(checkoutSuccessInfo.change))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-6 space-y-3 bg-white">

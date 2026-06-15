@@ -92,6 +92,7 @@ export const salesApi = {
     transaction_date?: string;
     fulfillment_type?: 'take_away' | 'delivery';
     payment_account_id: string;
+    amount_paid?: number;
     notes?: string;
     items: Array<{
       product_id: string;
