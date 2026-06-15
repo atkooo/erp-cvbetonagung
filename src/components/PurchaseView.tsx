@@ -18,11 +18,12 @@ import {
   FileText,
   Trash2,
 } from "@/src/components/icons";
-import { PurchaseOrder, Supplier, Product } from "../types";
+import { PurchaseOrder, Supplier, Product, SalesOrder } from "../types";
 import { authStorage } from "../services/api";
 import { purchasingApi } from "../features/purchasing/api";
 import { suppliersApi } from "../features/suppliers/api";
 import { productsApi } from "../features/products/api";
+import { salesApi } from "../features/sales/api";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
 import RfqPicker from "./RfqPicker";
 import ProductPicker from "./ProductPicker";
@@ -66,11 +67,13 @@ export default function PurchaseView({
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New PO States
   const [supplierId, setSupplierId] = useState("");
+  const [salesOrderId, setSalesOrderId] = useState("");
   const [rfqId, setRfqId] = useState<string>("");
   const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>("");
   const [formItems, setFormItems] = useState<
@@ -94,14 +97,16 @@ export default function PurchaseView({
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [pos, sups, prods] = await Promise.all([
+      const [pos, sups, prods, sos] = await Promise.all([
         purchasingApi.getPurchaseOrders(),
         suppliersApi.getSuppliers(),
         productsApi.getProducts(),
+        salesApi.getSalesOrders(),
       ]);
       setPurchaseOrders(pos);
       setSuppliers(sups);
       setProducts(prods);
+      setSalesOrders(sos);
 
       if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
     } catch (err) {
@@ -197,6 +202,7 @@ export default function PurchaseView({
 
       await purchasingApi.createPurchaseOrder({
         supplier_id: supplierId,
+        sales_order_id: salesOrderId || undefined,
         rfq_id: rfqId || undefined,
         order_date: todayStr,
         expected_date: expectedDate.toISOString().split("T")[0],
@@ -214,6 +220,7 @@ export default function PurchaseView({
       ]);
       setRfqId("");
       setRfqNumberDisplay("");
+      setSalesOrderId("");
 
       await loadData();
     } catch (err) {
@@ -614,9 +621,17 @@ export default function PurchaseView({
                               className="p-4 pl-12 border-b border-slate-100"
                             >
                               <div className="space-y-4 max-w-xl">
-                                <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
-                                  KOMPONEN RESTOCK BORONGAN
-                                </h5>
+                                <div className="flex items-center gap-3">
+                                  <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
+                                    KOMPONEN RESTOCK BORONGAN
+                                  </h5>
+                                  {po.salesOrderNumber && (
+                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 flex items-center gap-1">
+                                      <ShoppingCart size={10} />
+                                      Terkait SO: {po.salesOrderNumber}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="space-y-1.5">
                                   {po.items?.map((it, idx) => (
                                     <div
@@ -782,6 +797,24 @@ export default function PurchaseView({
                     }}
                     statusFilter="Diterima"
                   />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Referensi Sales Order (Opsional)
+                  </label>
+                  <select
+                    value={salesOrderId}
+                    onChange={(e) => setSalesOrderId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="">-- Tidak Ada / Opsional --</option>
+                    {salesOrders.map((so) => (
+                      <option key={so.id} value={so.id}>
+                        {so.orderNumber}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

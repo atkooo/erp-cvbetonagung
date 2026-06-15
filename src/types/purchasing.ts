@@ -17,6 +17,8 @@ export interface PurchaseOrder {
   date: string;
   total: number;
   status: 'Draft' | 'Dipesan' | 'Diterima Sebagian' | 'Diterima Penuh' | 'Dibatalkan' | string;
+  salesOrderId?: string;
+  salesOrderNumber?: string;
   notes?: string;
   items: PurchaseOrderItem[];
 }

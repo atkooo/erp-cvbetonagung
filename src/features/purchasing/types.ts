@@ -66,6 +66,7 @@ export interface PurchaseOrderDto {
   po_number?: string;
   purchase_number: string;
   supplier_id: string;
+  sales_order_id?: string | null;
   po_date?: string;
   order_date: string;
   expected_date: string | null;
@@ -78,11 +79,16 @@ export interface PurchaseOrderDto {
     id: string;
     name: string;
   };
+  sales_order?: {
+    id: string;
+    order_number: string;
+  };
   items?: PurchaseOrderItemDto[];
 }
 
 export interface CreatePurchaseOrderDto {
   supplier_id: string;
+  sales_order_id?: string | null;
   order_date: string;
   expected_date?: string;
   notes?: string;

@@ -68,12 +68,12 @@ export const purchasingApi = {
   },
 
   async getPurchaseOrders(): Promise<PurchaseOrder[]> {
-    const response = await apiClient.get<{ data: PurchaseOrderDto[] }>('/purchasing/purchase-orders?include=supplier,items.product');
+    const response = await apiClient.get<{ data: PurchaseOrderDto[] }>('/purchasing/purchase-orders?include=supplier,items.product,salesOrder');
     return response.data.map(mapPurchaseOrderFromDto);
   },
 
   async getPurchaseOrder(id: string): Promise<PurchaseOrder> {
-    const response = await apiClient.get<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}?include=supplier,items.product`);
+    const response = await apiClient.get<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}?include=supplier,items.product,salesOrder`);
     return mapPurchaseOrderFromDto(response.data);
   },
 
@@ -85,6 +85,7 @@ export const purchasingApi = {
       status: 'draft',
       rfq_id: data.rfq_id,
       purchase_request_id: data.purchase_request_id,
+      sales_order_id: data.sales_order_id,
       total: data.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0),
       notes: data.notes
     };
@@ -105,7 +106,7 @@ export const purchasingApi = {
       ));
     }
 
-    const finalRes = await apiClient.get<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${poId}?include=supplier,items.product`);
+    const finalRes = await apiClient.get<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${poId}?include=supplier,items.product,salesOrder`);
     return mapPurchaseOrderFromDto(finalRes.data);
   },
 
