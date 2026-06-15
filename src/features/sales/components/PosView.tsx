@@ -317,7 +317,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       const dateParams = (startDate && endDate) ? `&start_date=${startDate}&end_date=${endDate}` : '';
       const statusParam = category ? `&status=${category}` : '';
 
-      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?include=customer,items.product&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
+      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?source=pos&include=customer,items.product&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
       setTransactionHistory(res.data || []);
       setHistoryTotalPages(res.meta?.last_page || 1);
       setHistoryPage(page);

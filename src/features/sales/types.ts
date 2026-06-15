@@ -67,6 +67,7 @@ export interface SalesOrderDto {
   order_number: string;
   order_date: string;
   status: string; // Draft, Diproses, Selesai, Dibatalkan
+  source?: 'erp' | 'pos';
   notes: string | null;
   total: number;
   created_at: string;

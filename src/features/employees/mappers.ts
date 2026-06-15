@@ -16,6 +16,7 @@ export const mapEmployeeFromDto = (dto: EmployeeDto): Employee => {
 
   return {
     id: dto.id,
+    businessUnit: dto.business_unit || 'CV Beton Agung',
     userId: dto.user_id,
     employeeNumber: dto.employee_number,
     name: dto.name,
@@ -46,6 +47,7 @@ export const mapEmployeeToCreateDto = (employee: Omit<Employee, 'id'>): CreateEm
 
   return {
     employee_number: employee.employeeNumber,
+    business_unit: employee.businessUnit || 'CV Beton Agung',
     name: employee.name,
     role_name: employee.roleName,
     department: employee.department,

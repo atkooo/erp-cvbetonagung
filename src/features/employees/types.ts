@@ -1,5 +1,6 @@
 export interface EmployeeDto {
   id: string;
+  business_unit?: string;
   employee_number: string;
   user_id: string | null;
   name: string;
@@ -17,6 +18,7 @@ export interface EmployeeDto {
 }
 
 export interface CreateEmployeeDto {
+  business_unit?: string;
   employee_number: string;
   user_id?: string | null;
   name: string;

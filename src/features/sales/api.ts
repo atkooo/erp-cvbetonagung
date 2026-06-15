@@ -34,8 +34,12 @@ export const salesApi = {
     return mapSalesOrderFromDto(response.data);
   },
 
-  async getSalesOrders(): Promise<SalesOrder[]> {
-    const response = await apiClient.get<{ data: SalesOrderDto[] }>('/sales/sales-orders?include=customer,quotation,items.product.unit,invoices');
+  async getSalesOrders(source?: 'pos' | 'erp'): Promise<SalesOrder[]> {
+    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices';
+    if (source) {
+      url += `&source=${source}`;
+    }
+    const response = await apiClient.get<{ data: SalesOrderDto[] }>(url);
     return response.data.map(mapSalesOrderFromDto);
   },
 

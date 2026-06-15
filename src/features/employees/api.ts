@@ -17,6 +17,7 @@ export const employeesApi = {
 
   async updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
     const payload: any = {};
+    if (data.businessUnit !== undefined) payload.business_unit = data.businessUnit;
     if (data.employeeNumber !== undefined) payload.employee_number = data.employeeNumber;
     if (data.name !== undefined) payload.name = data.name;
     if (data.roleName !== undefined) payload.role_name = data.roleName;

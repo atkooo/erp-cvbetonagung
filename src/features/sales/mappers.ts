@@ -64,6 +64,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   date: dto.order_date ? dto.order_date.split('T')[0] : '',
   total: Number(dto.total),
   status: mapSalesOrderStatus(dto.status),
+  source: dto.source,
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     productId: item.product_id || item.product?.id || '',

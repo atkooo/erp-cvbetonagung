@@ -26,6 +26,7 @@ import { productsApi } from "../features/products/api";
 import { salesApi } from "../features/sales/api";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
 import RfqPicker from "./RfqPicker";
+import SalesOrderPicker from "./SalesOrderPicker";
 import ProductPicker from "./ProductPicker";
 import CurrencyInput from "./CurrencyInput";
 import { useReactToPrint } from "react-to-print";
@@ -74,6 +75,7 @@ export default function PurchaseView({
   // New PO States
   const [supplierId, setSupplierId] = useState("");
   const [salesOrderId, setSalesOrderId] = useState("");
+  const [salesOrderNumberDisplay, setSalesOrderNumberDisplay] = useState("");
   const [rfqId, setRfqId] = useState<string>("");
   const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>("");
   const [formItems, setFormItems] = useState<
@@ -803,18 +805,29 @@ export default function PurchaseView({
                   <label className="text-[11px] font-bold text-slate-600 uppercase">
                     Referensi Sales Order (Opsional)
                   </label>
-                  <select
-                    value={salesOrderId}
-                    onChange={(e) => setSalesOrderId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded bg-white focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="">-- Tidak Ada / Opsional --</option>
-                    {salesOrders.map((so) => (
-                      <option key={so.id} value={so.id}>
-                        {so.orderNumber}
-                      </option>
-                    ))}
-                  </select>
+                  <SalesOrderPicker
+                    value={salesOrderNumberDisplay || salesOrderId}
+                    onChange={(so) => {
+                      setSalesOrderId(so.id);
+                      setSalesOrderNumberDisplay(so.orderNumber);
+                      if (so && so.items && so.items.length > 0) {
+                        setFormItems(
+                          so.items.map((item, index) => ({
+                            id: `form-item-${Date.now()}-${index}`,
+                            productId: item.productId || "",
+                            quantity: item.quantity,
+                            price: products.find((p) => p.id === item.productId)?.costPrice || 0,
+                            unit: item.unit,
+                          }))
+                        );
+                      }
+                    }}
+                    onClear={() => {
+                      setSalesOrderId("");
+                      setSalesOrderNumberDisplay("");
+                    }}
+                    statusFilter="" // Allow all or limit to certain status? Empty to show all ERP SOs.
+                  />
                 </div>
               </div>
 

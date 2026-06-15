@@ -28,6 +28,7 @@ export interface UnitFormData {
 
 export interface ProductDto {
   id: string;
+  business_unit?: string;
   sku: string;
   type: 'raw_material' | 'finished_good' | 'service';
   name: string;
@@ -48,6 +49,7 @@ export interface ProductDto {
 }
 
 export interface ProductFormData {
+  business_unit?: string;
   sku?: string;
   type?: 'raw_material' | 'finished_good' | 'service';
   name: string;

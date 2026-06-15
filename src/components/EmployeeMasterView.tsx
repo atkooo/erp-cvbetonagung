@@ -37,6 +37,7 @@ export default function EmployeeMasterView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
+  const [businessUnit, setBusinessUnit] = useState("CV Beton Agung");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [name, setName] = useState("");
   const [roleName, setRoleName] = useState("");
@@ -93,7 +94,8 @@ export default function EmployeeMasterView({
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
-    setEmployeeNumber(`EMP00${employees.length + 1}`);
+    setBusinessUnit("CV Beton Agung");
+    setEmployeeNumber(`EMP-${Date.now().toString().slice(-6)}`);
     setName("");
     setRoleName("");
     setDepartment("");
@@ -120,6 +122,7 @@ export default function EmployeeMasterView({
 
   const handleOpenEditModal = (emp: Employee) => {
     setEditingEmployee(emp);
+    setBusinessUnit(emp.businessUnit || "CV Beton Agung");
     setEmployeeNumber(emp.employeeNumber);
     setName(emp.name);
     setRoleName(emp.roleName);
@@ -152,7 +155,8 @@ export default function EmployeeMasterView({
       return;
     }
 
-    const payload: Omit<Employee, "id"> = {
+    const employeeData = {
+      businessUnit,
       employeeNumber,
       name,
       roleName,
@@ -180,14 +184,14 @@ export default function EmployeeMasterView({
       if (editingEmployee) {
         const updated = await employeesApi.updateEmployee(
           editingEmployee.id,
-          payload,
+          employeeData,
         );
         setEmployees((prev) =>
           prev.map((item) => (item.id === editingEmployee.id ? updated : item)),
         );
         onTriggerNotification(`Berhasil memperbarui data karyawan ${name}`);
       } else {
-        const created = await employeesApi.createEmployee(payload);
+        const created = await employeesApi.createEmployee(employeeData);
         setEmployees((prev) => [created, ...prev]);
         onTriggerNotification(`Karyawan baru ${name} ditambahkan`);
       }
@@ -380,6 +384,7 @@ export default function EmployeeMasterView({
             <table className="w-full text-left border-collapse min-w-225">
               <thead>
                 <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                  <th className="p-3.5">Unit Bisnis</th>
                   <th className="p-3.5 pl-5">Kode Karyawan</th>
                   <th className="p-3.5">Nama</th>
                   <th className="p-3.5">Jabatan & Divisi</th>
@@ -398,6 +403,11 @@ export default function EmployeeMasterView({
                     key={emp.id}
                     className="hover:bg-slate-50/50 transition-colors"
                   >
+                    <td className="p-3.5 text-slate-600">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                        {emp.businessUnit || 'CV Beton Agung'}
+                      </span>
+                    </td>
                     <td className="p-3.5 pl-5 font-mono font-bold text-indigo-650 text-indigo-600">
                       {emp.employeeNumber}
                     </td>
@@ -557,6 +567,21 @@ export default function EmployeeMasterView({
 
                       <div className="space-y-1">
                         <label className="block font-bold text-slate-650 text-slate-700">
+                          Unit Bisnis / Perusahaan *
+                        </label>
+                        <select
+                          required
+                          value={businessUnit}
+                          onChange={(e) => setBusinessUnit(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                        >
+                          <option value="CV Beton Agung">CV Beton Agung</option>
+                          <option value="Griya Flora">Griya Flora</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-650 text-slate-700">
                           Nama Lengkap *
                         </label>
                         <input
@@ -574,50 +599,52 @@ export default function EmployeeMasterView({
                         <label className="block font-bold text-slate-650 text-slate-700">
                           Jabatan Pekerjaan *
                         </label>
-                        <select
+                        <input
+                          type="text"
+                          list="jabatan-list"
                           required
                           value={roleName}
                           onChange={(e) => setRoleName(e.target.value)}
+                          placeholder="Ketik atau pilih jabatan..."
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
-                        >
-                          <option value="">-- Pilih Jabatan --</option>
-                          <option value="Tukang Cetak">Tukang Cetak</option>
-                          <option value="Tukang Besi">Tukang Besi</option>
-                          <option value="Helper">Helper / Kenek</option>
-                          <option value="Mandor">Mandor</option>
-                          <option value="Supir Logistik">Supir Logistik</option>
-                          <option value="Admin Gudang">Admin Gudang</option>
-                          <option value="Kepala Gudang">Kepala Gudang</option>
-                          <option value="Admin Sales">Admin Sales</option>
-                          <option value="Finance">Finance / Akuntan</option>
-                          <option value="HRD">HRD & General Affair</option>
-                          <option value="Manager Operasional">
-                            Manager Operasional
-                          </option>
-                        </select>
+                        />
+                        <datalist id="jabatan-list">
+                          <option value="Tukang Cetak" />
+                          <option value="Tukang Besi" />
+                          <option value="Helper / Kenek" />
+                          <option value="Mandor" />
+                          <option value="Supir Logistik" />
+                          <option value="Admin Gudang" />
+                          <option value="Kepala Gudang" />
+                          <option value="Admin Sales" />
+                          <option value="Finance / Akuntan" />
+                          <option value="HRD & General Affair" />
+                          <option value="Manager Operasional" />
+                        </datalist>
                       </div>
 
                       <div className="space-y-1">
                         <label className="block font-bold text-slate-650 text-slate-700">
                           Divisi Departemen *
                         </label>
-                        <select
+                        <input
+                          type="text"
+                          list="divisi-list"
                           required
                           value={department}
                           onChange={(e) => setDepartment(e.target.value)}
+                          placeholder="Ketik atau pilih divisi..."
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
-                        >
-                          <option value="">-- Pilih Divisi --</option>
-                          <option value="Workshop">Workshop</option>
-                          <option value="Logistik">Logistik</option>
-                          <option value="Gudang">Gudang</option>
-                          <option value="Sales & Marketing">
-                            Sales & Marketing
-                          </option>
-                          <option value="Keuangan">Keuangan (Finance)</option>
-                          <option value="HRD & GA">HRD & GA</option>
-                          <option value="Manajemen">Manajemen</option>
-                        </select>
+                        />
+                        <datalist id="divisi-list">
+                          <option value="Workshop" />
+                          <option value="Logistik" />
+                          <option value="Gudang" />
+                          <option value="Sales & Marketing" />
+                          <option value="Keuangan (Finance)" />
+                          <option value="HRD & GA" />
+                          <option value="Manajemen" />
+                        </datalist>
                       </div>
                     </div>
 

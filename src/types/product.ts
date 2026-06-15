@@ -2,6 +2,7 @@
 
 export interface Product {
   id: string;
+  businessUnit?: string;
   sku: string;
   type: 'raw_material' | 'finished_good' | 'service';
   name: string;

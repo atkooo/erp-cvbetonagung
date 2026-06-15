@@ -27,6 +27,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const itemsPerPage = 10;
 
   // New product states
+  const [businessUnit, setBusinessUnit] = useState('CV Beton Agung');
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
@@ -153,15 +154,16 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   };
 
   const handleOpenEditModal = (product: Product) => {
-    const selectedCategory = categories.find((cat) => cat.name === product.category);
-    const selectedUnit = visibleUnits.find((u) => u.id === product.unitId || u.code === product.unit || u.name === product.unit);
-
     setEditingProduct(product);
+    setBusinessUnit(product.businessUnit || 'CV Beton Agung');
     setSku(product.sku);
     setName(product.name);
     setIsCustomizable(product.isCustomizable || false);
     setPricingMethod(product.pricingMethod || 'per_item');
     setType(product.type || 'finished_good');
+    
+    const selectedCategory = categories.find((cat) => cat.name === product.category);
+    const selectedUnit = visibleUnits.find((u) => u.id === product.unitId || u.code === product.unit || u.name === product.unit);
     setCategory(selectedCategory?.id || categories[0]?.id || '');
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
@@ -210,8 +212,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      const payload = {
-        sku,
+      const payload: ProductFormData = {
+        business_unit: businessUnit,
+        sku: sku,
         name,
         is_customizable: isCustomizable,
         pricing_method: pricingMethod,
@@ -222,7 +225,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         selling_price: sellingPrice,
         min_stock: minStock,
         status: 'active',
-      } as const;
+      };
 
       if (editingProduct) {
         const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
@@ -259,6 +262,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       }
       setShowAddModal(false);
       setEditingProduct(null);
+      setBusinessUnit('CV Beton Agung');
+      setSku('');
       resetForm();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyimpan produk';
@@ -379,11 +384,12 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs border-collapse">
+            <table className="w-full text-left border-collapse min-w-225">
               <thead>
-                <tr className="bg-slate-100 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">SKU No.</th>
-                  <th className="p-3.5">Nama Item Produk</th>
+                <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                  <th className="p-3.5 pl-5">SKU / ID</th>
+                  <th className="p-3.5">Unit Bisnis</th>
+                  <th className="p-3.5">Nama Produk</th>
                   <th className="p-3.5">Kategori</th>
                   <th className="p-3.5">Harga Modal (COGS)</th>
                   <th className="p-3.5">Harga Jual (MSRP)</th>
@@ -396,15 +402,20 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-slate-400 font-medium">
+                    <td colSpan={10} className="text-center py-12 text-slate-400 font-medium">
                       Tidak ditemukan kecocokan produk untuk kata kunci pencarian tersebut.
                     </td>
                   </tr>
                 ) : (
                   paginatedProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-slate-700 bg-slate-50/20">
+                      <td className="p-3.5 pl-5 font-mono font-bold text-indigo-600">
                         {p.sku}
+                      </td>
+                      <td className="p-3.5 text-slate-600">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                          {p.businessUnit || 'CV Beton Agung'}
+                        </span>
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-800">{p.name}</div>
@@ -522,8 +533,23 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU (Biarkan 'AUTO GENERATED' utk otomatis)</label>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Unit Bisnis / Perusahaan *
+                    </label>
+                    <select
+                      required
+                      value={businessUnit}
+                      onChange={(e) => setBusinessUnit(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="CV Beton Agung">CV Beton Agung</option>
+                      <option value="Griya Flora">Griya Flora</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU (Biarkan 'AUTO GENERATED' utk otomatis)</label>
                   <input
                     type="text"
                     value={sku}

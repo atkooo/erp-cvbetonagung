@@ -9,6 +9,7 @@ export interface SalesOrder {
   date: string;
   total: number;
   status: 'Draft' | 'Diproses' | 'Disetujui' | 'Selesai' | 'Dibatalkan';
+  source?: 'erp' | 'pos';
   notes?: string;
   items: {
     productId?: string;

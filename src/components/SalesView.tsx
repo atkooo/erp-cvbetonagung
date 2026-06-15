@@ -113,7 +113,7 @@ export default function SalesView({
     setErrorMessage(null);
     try {
       const [docs, custsRes, prods, stocks] = await Promise.all([
-        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders(),
+        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders('erp'),
         customersApi.listCustomers(),
         productsApi.getProducts(),
         inventoryApi.getProductStocks()

@@ -2,6 +2,7 @@
 
 export interface Employee {
   id: string;
+  businessUnit?: string;
   userId?: string | null;
   employeeNumber: string;
   name: string;

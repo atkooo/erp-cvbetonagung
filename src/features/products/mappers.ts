@@ -17,6 +17,7 @@ export const mapCategoryToDto = (formData: CategoryFormData): Partial<CategoryDt
 
 export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Product => ({
   id: dto.id,
+  businessUnit: dto.business_unit || 'CV Beton Agung',
   sku: dto.sku,
   type: dto.type,
   name: dto.name,
@@ -35,6 +36,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
 });
 
 export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> => ({
+  business_unit: formData.business_unit || 'CV Beton Agung',
   sku: formData.sku,
   type: formData.type || 'finished_good',
   name: formData.name,
