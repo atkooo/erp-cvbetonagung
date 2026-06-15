@@ -345,10 +345,10 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       <head>
         <title>Struk Pembayaran - ${info.orderNumber}</title>
         <style>
-          @page { margin: 0; size: 58mm auto; }
+          @page { margin: 0; size: 80mm auto; }
           body { 
             font-family: 'Courier New', Courier, monospace; 
-            width: 58mm; 
+            width: 80mm; 
             margin: 0; 
             padding: 10px; 
             font-size: 12px; 
