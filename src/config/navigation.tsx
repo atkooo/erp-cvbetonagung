@@ -73,7 +73,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   warehouses: "Master Gudang & Rak",
   "stock-management": "Manajemen Stok Produk",
   "incoming-goods": "Penerimaan Barang Masuk",
-  "outgoing-goods": "Pengeluaran Barang Keluar",
+  "outgoing-goods": "Barang Keluar (Internal)",
   "stock-movement-history": "Timeline & Riwayat Pergerakan Stok",
   "stock-opname": "Stock Opname Gudang",
   "multi-warehouse": "Multi Warehouse / Lokasi Stok",
@@ -348,7 +348,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       },
       {
         view: "outgoing-goods",
-        label: "Barang Keluar",
+        label: "Barang Keluar (Internal)",
         icon: Upload,
         requiredModule: "inventory",
       },

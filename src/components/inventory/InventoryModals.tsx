@@ -635,7 +635,7 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
               <div className="flex items-center gap-2">
                 <ArrowUpCircle size={18} className="text-rose-400" />
                 <h3 className="font-sans font-bold text-sm">
-                  Form Pengeluaran Logistik Gudang (Outward)
+                  Form Pengeluaran Non-Sales (Internal/Rusak)
                 </h3>
               </div>
               <button
@@ -697,40 +697,44 @@ export const InventoryModals: React.FC<InventoryModalsProps> = ({
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600">
-                    Referensi SO / Surat Jalan Keluar
+                    Kategori Pengeluaran
                   </label>
-                  <ReferencePicker
-                    title="Pilih Sales Order (SO)"
-                    placeholder="Contoh: SO-2026-05-090"
+                  <select
                     value={outDoc}
-                    onChange={setOutDoc}
-                    options={soOptions}
-                  />
+                    onChange={(e) => setOutDoc(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  >
+                    <option value="" disabled>-- Pilih Kategori --</option>
+                    <option value="Pemakaian Internal">Pemakaian Internal (Operasional)</option>
+                    <option value="Barang Rusak/Cacat">Barang Rusak / Cacat</option>
+                    <option value="Sampel Promosi">Sampel Promosi / Marketing</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">
-                  Driver / Kurir Pengantar
+                  Petugas / Penanggung Jawab
                 </label>
                 <SearchableSelect
                   value={outHandler}
                   onChange={(val) => setOutHandler(val)}
                   options={employeeOptions || []}
-                  placeholder="-- Pilih Driver/Kurir/Petugas --"
+                  placeholder="-- Pilih Petugas --"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">
-                  Tujuan Pengiriman / Alamat Proyek
+                  Catatan / Alasan Pengeluaran
                 </label>
                 <textarea
                   rows={2}
                   value={outNotes}
                   onChange={(e) => setOutNotes(e.target.value)}
-                  placeholder="Kirim ke lokasi Masjid Al-Ikhlas Sidoarjo menggunakan Truk Colt Diesel"
-                  className="w-full px-3 py-2 border border-slate-200 resize-none"
+                  placeholder="Contoh: Dipakai untuk renovasi pos satpam depan"
+                  className="w-full px-3 py-2 border border-slate-200 resize-none rounded-lg"
                 />
               </div>
 

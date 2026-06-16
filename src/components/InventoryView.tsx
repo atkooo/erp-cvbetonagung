@@ -480,7 +480,7 @@ export default function InventoryView({
     e.preventDefault();
     if (!outSku || outQty <= 0 || !outDoc) {
       onTriggerNotification(
-        "Gagal: Kolom SKU, Jumlah, dan Dokumen Referensi harus diisi!",
+        "Gagal: Kolom SKU, Jumlah, dan Kategori Pengeluaran harus diisi!",
       );
       return;
     }
@@ -512,8 +512,8 @@ export default function InventoryView({
         product_id: matchedProd.id,
         quantity: outQty,
         location_id: outLocationId,
-        reference_type: "SO",
-        reference_number: outDoc,
+        reference_type: outDoc, // Use category
+        reference_number: "MANUAL-OUT",
         notes: outNotes,
       });
       onTriggerNotification(
@@ -655,7 +655,7 @@ export default function InventoryView({
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center gap-2 shrink-0"
           >
             <Plus size={16} />
-            <span>Pengeluaran Logistik baru</span>
+            <span>Catat Barang Keluar (Internal)</span>
           </button>
         )}
         {activeTab === "stok" && (
