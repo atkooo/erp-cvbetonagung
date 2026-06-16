@@ -161,11 +161,10 @@ export default function DeliveryOrdersView({
       setDeliveryOrders((prev) => [created, ...prev]);
       onTriggerNotification(`Surat Jalan ${deliveryNumber} berhasil dibuat`);
       setIsCreateModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create delivery order", err);
-      onTriggerNotification(
-        "Gagal membuat surat jalan. Pastikan order belum memiliki DO.",
-      );
+      const msg = err.message || "Gagal membuat surat jalan. Pastikan order belum memiliki DO.";
+      onTriggerNotification(msg);
     }
   };
 
@@ -177,9 +176,10 @@ export default function DeliveryOrdersView({
       });
       onTriggerNotification(`Delivery Order ${doOrder.deliveryNumber} berhasil disiapkan untuk muat.`);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error setting DO to ready:', error);
-      onTriggerNotification('Gagal menyiapkan Delivery Order.');
+      const msg = error.message || 'Gagal menyiapkan Delivery Order.';
+      onTriggerNotification(msg);
     }
   };
 
