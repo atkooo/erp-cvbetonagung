@@ -26,6 +26,7 @@ export const mapPurchaseRequestFromDto = (dto: PurchaseRequestDto): PurchaseRequ
 export const mapPurchaseOrderFromDto = (dto: PurchaseOrderDto): PurchaseOrder => ({
   id: dto.id,
   poNumber: dto.purchase_number || dto.po_number || `PO-${dto.id.substring(0, 8)}`,
+  supplierId: dto.supplier_id || '',
   supplierName: dto.supplier?.name || 'Unknown Supplier',
   salesOrderId: dto.sales_order_id || undefined,
   salesOrderNumber: dto.sales_order?.order_number || undefined,

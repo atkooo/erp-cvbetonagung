@@ -126,8 +126,23 @@ export const purchasingApi = {
   },
 
   async createReturn(data: CreateReturnDto): Promise<Return> {
-    const response = await apiClient.post<{ data: ReturnDto }>('/purchasing/returns', data);
-    return mapReturnFromDto(response.data);
+    const payload = { ...data, return_number: `RTN-${Date.now()}` };
+    const response = await apiClient.post<{ data: ReturnDto }>('/purchasing/returns', payload);
+    const returnId = response.data.id;
+
+    if (data.items && data.items.length > 0) {
+      await Promise.all(data.items.map(item => 
+        apiClient.post('/purchasing/return-items', {
+          return_id: returnId,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          notes: item.notes || null,
+        })
+      ));
+    }
+
+    const finalRes = await apiClient.get<{ data: ReturnDto }>(`/purchasing/returns/${returnId}?include=customer,supplier,sales_order,purchase_order,items.product`);
+    return mapReturnFromDto(finalRes.data);
   },
 
   async updateReturnQcStatus(id: string, qc_status: string): Promise<Return> {

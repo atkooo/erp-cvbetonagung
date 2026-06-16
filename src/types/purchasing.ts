@@ -20,6 +20,7 @@ export interface PurchaseOrder {
   salesOrderId?: string;
   salesOrderNumber?: string;
   notes?: string;
+  supplierId: string;
   items: PurchaseOrderItem[];
 }
 

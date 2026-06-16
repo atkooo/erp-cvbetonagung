@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
 } from "@/src/components/icons";
+import SearchableSelect from "./SearchableSelect";
 import Swal from "sweetalert2";
 import { purchasingApi } from "../features/purchasing/api";
 import {
@@ -120,7 +121,7 @@ export default function ReturnsView({
   const [selectedRefId, setSelectedRefId] = useState("");
   const [reason, setReason] = useState("");
   const [items, setItems] = useState<
-    { product_id: string; quantity: number; notes: string }[]
+    { product_id: string; quantity: number; notes: string; max_qty?: number }[]
   >([]);
 
   useEffect(() => {
@@ -202,6 +203,10 @@ export default function ReturnsView({
       Swal.fire("Error", "Silakan pilih Pelanggan/Pemasok.", "error");
       return;
     }
+    if (!selectedRefId) {
+      Swal.fire("Error", "Silakan pilih referensi transaksi (SO/PO).", "error");
+      return;
+    }
     if (items.length === 0) {
       Swal.fire("Error", "Silakan tambah minimal satu item barang.", "error");
       return;
@@ -219,8 +224,8 @@ export default function ReturnsView({
       type,
       customer_id: type === "customer" ? selectedPartnerId : null,
       supplier_id: type === "supplier" ? selectedPartnerId : null,
-      sales_order_id: type === "customer" ? selectedRefId || null : null,
-      purchase_order_id: type === "supplier" ? selectedRefId || null : null,
+      sales_order_id: type === "customer" ? selectedRefId : null,
+      purchase_order_id: type === "supplier" ? selectedRefId : null,
       reason,
       qc_status: "pending_qc",
       items: items.map((i) => ({
@@ -264,6 +269,12 @@ export default function ReturnsView({
 
   const handleItemChange = (idx: number, field: string, value: any) => {
     const newItems = [...items];
+    if (field === "quantity") {
+      const max = newItems[idx].max_qty;
+      if (max !== undefined && value > max) {
+        value = max;
+      }
+    }
     newItems[idx] = { ...newItems[idx], [field]: value };
     setItems(newItems);
   };
@@ -675,18 +686,60 @@ export default function ReturnsView({
 
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700 block">
-                    {type === "customer" ? "Pilih Customer" : "Pilih Supplier"}
+                    {type === "customer"
+                      ? "Pilih Transaksi / Sales Order (SO)"
+                      : "Pilih Transaksi / Purchase Order (PO)"}
+                  </label>
+                  <SearchableSelect
+                    value={selectedRefId}
+                    onChange={(val) => {
+                      setSelectedRefId(val);
+                      if (type === "customer") {
+                        const so = salesOrders.find(s => s.id === val);
+                        if (so) {
+                          setSelectedPartnerId(so.customerId);
+                          if (so.items) {
+                            setItems(so.items.map(i => ({ product_id: i.productId, quantity: i.quantity, notes: "", max_qty: i.quantity })));
+                          } else {
+                            setItems([]);
+                          }
+                        }
+                      } else {
+                        const po = purchaseOrders.find(p => p.id === val);
+                        if (po) {
+                          setSelectedPartnerId(po.supplierId);
+                          if (po.items) {
+                            setItems(po.items.map(i => ({ product_id: i.productId, quantity: i.quantity, notes: "", max_qty: i.quantity })));
+                          } else {
+                            setItems([]);
+                          }
+                        }
+                      }
+                    }}
+                    placeholder={type === "customer" ? "-- Cari Nomor SO --" : "-- Cari Nomor PO --"}
+                    options={type === "customer"
+                      ? salesOrders.map((so) => ({ value: so.id, label: `${so.orderNumber} - ${so.customerName}` }))
+                      : purchaseOrders.map((po) => ({ value: po.id, label: `${po.poNumber} - ${po.supplierName}` }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">
+                    {type === "customer" ? "Pelanggan (Otomatis)" : "Pemasok (Otomatis)"}
                   </label>
                   <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-slate-50 text-slate-500"
                     value={selectedPartnerId}
+                    disabled
                     onChange={(e) => {
-                      setSelectedPartnerId(e.target.value);
-                      setSelectedRefId("");
+                      // Handled by reference selection
                     }}
                     required
                   >
-                    <option value="">-- Pilih Partner --</option>
+                    <option value="">-- Partner --</option>
                     {type === "customer"
                       ? customers.map((c) => (
                           <option key={c.id} value={c.id}>
@@ -696,34 +749,6 @@ export default function ReturnsView({
                       : suppliers.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
-                          </option>
-                        ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
-                    {type === "customer"
-                      ? "Referensi Sales Order (SO)"
-                      : "Referensi Purchase Order (PO)"}
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
-                    value={selectedRefId}
-                    onChange={(e) => setSelectedRefId(e.target.value)}
-                  >
-                    <option value="">-- Tanpa Referensi / Non-SO-PO --</option>
-                    {type === "customer"
-                      ? filteredSalesOrders.map((so) => (
-                          <option key={so.id} value={so.id}>
-                            {so.orderNumber}
-                          </option>
-                        ))
-                      : filteredPurchaseOrders.map((po) => (
-                          <option key={po.id} value={po.id}>
-                            {po.poNumber}
                           </option>
                         ))}
                   </select>
@@ -787,6 +812,7 @@ export default function ReturnsView({
                         <input
                           type="number"
                           min={1}
+                          max={item.max_qty}
                           className="w-full px-2 py-1 border rounded text-center text-[11px]"
                           value={item.quantity}
                           onChange={(e) =>
@@ -798,6 +824,9 @@ export default function ReturnsView({
                           }
                           required
                         />
+                        {item.max_qty !== undefined && (
+                          <div className="text-[9px] text-slate-400 mt-0.5 text-center">Max: {item.max_qty}</div>
+                        )}
                       </div>
 
                       <div className="flex-1">
