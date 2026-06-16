@@ -35,7 +35,7 @@ export const salesApi = {
   },
 
   async getSalesOrders(source?: 'pos' | 'erp'): Promise<SalesOrder[]> {
-    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items';
+    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items&sort=-created_at';
     if (source) {
       url += `&source=${source}`;
     }

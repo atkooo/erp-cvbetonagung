@@ -94,7 +94,9 @@ export default function InventoryView({
   const [correctionQty, setCorrectionQty] = useState(0);
   const [correctionNotes, setCorrectionNotes] = useState("");
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [rawProducts, setRawProducts] = useState<Product[]>([]);
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [warehouseFilter, setWarehouseFilter] = useState("All");
   const [productStocks, setProductStocks] = useState<ProductStockDto[]>([]);
   const [locations, setLocations] = useState<LocationDto[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
@@ -120,9 +122,9 @@ export default function InventoryView({
       const needsOutbound = activeTab === "keluar";
       const needsHistory = activeTab === "riwayat";
 
-      const [prods, stocks, movs, grns, locRes, pos, sos, emps] =
+      const [prods, stocks, movs, grns, locRes, pos, sos, emps, whRes] =
         await Promise.all([
-          needsProducts ? productsApi.getProducts() : Promise.resolve(products),
+          needsProducts ? productsApi.getProducts() : Promise.resolve(rawProducts),
           needsStocks
             ? inventoryApi.getProductStocks()
             : Promise.resolve(productStocks),
@@ -146,43 +148,13 @@ export default function InventoryView({
           needsInbound || needsOutbound
             ? employeesApi.getEmployees()
             : Promise.resolve([]),
+          needsLocations 
+            ? apiClient.get<{ data: any[] }>('/master-data/warehouses')
+            : Promise.resolve({ data: warehouses }),
         ]);
 
-      const combinedProds = prods.map((p) => {
-        const stockRows = stocks.filter(
-          (s) => s.product_id === p.id || s.product?.sku === p.sku,
-        );
-        const totalStock = stockRows.reduce(
-          (sum, s) => sum + Number(s.quantity || 0),
-          0,
-        );
-        const stockStatus: Product["status"] =
-          totalStock <= 0
-            ? "Habis"
-            : totalStock <= p.minStock
-              ? "Menipis"
-              : "Aman";
-        const locationNames = stockRows
-          .filter((s) => Number(s.quantity || 0) > 0)
-          .map((s) => s.location?.name)
-          .filter((name): name is string => Boolean(name));
-        const uniqueLocationNames = Array.from(new Set(locationNames));
-        const locationLabel =
-          uniqueLocationNames.length === 0
-            ? "Belum ada stok"
-            : uniqueLocationNames.length === 1
-              ? uniqueLocationNames[0] || "Belum ada stok"
-              : `${uniqueLocationNames.length} lokasi`;
-
-        return {
-          ...p,
-          stock: totalStock,
-          location: locationLabel,
-          status: stockStatus,
-        };
-      });
-
-      setProducts(combinedProds);
+      setRawProducts(prods);
+      setWarehouses(whRes.data);
       setProductStocks(stocks);
       setLocations(locRes.data);
       setStockMovements(movs);
@@ -191,13 +163,13 @@ export default function InventoryView({
       setSalesOrders(sos);
       setEmployees(emps);
 
-      if (combinedProds.length > 0) {
+      if (prods.length > 0) {
         setInManualItems((prev) =>
           prev.length > 0 && prev[0].sku
             ? prev
-            : [{ sku: combinedProds[0].sku, qty: 0 }],
+            : [{ sku: prods[0].sku, qty: 0 }],
         );
-        setOutSku((prev) => prev || combinedProds[0].sku);
+        setOutSku((prev) => prev || prods[0].sku);
       }
       if (locRes.data.length > 0) {
         setInLocationId((prev) => prev || locRes.data[0].id);
@@ -277,6 +249,55 @@ export default function InventoryView({
     }
   }, []);
 
+  // Compute products with their stock based on the selected warehouse filter
+  const computedProducts = React.useMemo(() => {
+    return rawProducts.map((p) => {
+      // Find matching stock rows
+      let stockRows = productStocks.filter(
+        (s) => s.product_id === p.id || s.product?.sku === p.sku,
+      );
+
+      // Filter by warehouse if a specific warehouse is selected
+      if (warehouseFilter !== "All") {
+        const allowedLocationIds = locations
+          .filter((loc) => loc.warehouse_id === warehouseFilter)
+          .map((loc) => loc.id);
+        stockRows = stockRows.filter((s) => allowedLocationIds.includes(s.location_id));
+      }
+
+      const physicalStock = stockRows.reduce(
+        (sum, s) => sum + Number(s.quantity || 0),
+        0,
+      );
+      const totalStock = Math.max(0, physicalStock - (p.bookedStock || 0));
+      const stockStatus: Product["status"] =
+        totalStock <= 0
+          ? "Habis"
+          : totalStock <= p.minStock
+            ? "Menipis"
+            : "Aman";
+      
+      const locationNames = stockRows
+        .filter((s) => Number(s.quantity || 0) > 0)
+        .map((s) => s.location?.name)
+        .filter((name): name is string => Boolean(name));
+      const uniqueLocationNames = Array.from(new Set(locationNames));
+      const locationLabel =
+        uniqueLocationNames.length === 0
+          ? "Belum ada stok"
+          : uniqueLocationNames.length === 1
+            ? uniqueLocationNames[0] || "Belum ada stok"
+            : `${uniqueLocationNames.length} lokasi`;
+
+      return {
+        ...p,
+        stock: totalStock,
+        location: locationLabel,
+        status: stockStatus,
+      };
+    });
+  }, [rawProducts, productStocks, warehouseFilter, locations]);
+
   const getProductStocks = (product: Product | null) => {
     if (!product) return [];
     return productStocks.filter(
@@ -285,7 +306,7 @@ export default function InventoryView({
   };
 
   const getProductBySku = (sku: string) =>
-    products.find((p) => p.sku === sku) || null;
+    computedProducts.find((p) => p.sku === sku) || null;
 
   const getLocationName = (locationId: string) => {
     return (
@@ -314,7 +335,7 @@ export default function InventoryView({
   };
 
   const openInwardModal = (product?: Product) => {
-    const target = product || selectedProduct || products[0] || null;
+    const target = product || selectedProduct || computedProducts[0] || null;
     setSelectedProduct(target);
     if (target) setInManualItems([{ sku: target.sku, qty: 0 }]);
     setInLocationId(getDefaultIncomingLocationId(target));
@@ -322,7 +343,7 @@ export default function InventoryView({
   };
 
   const openOutwardModal = (product?: Product) => {
-    const target = product || selectedProduct || products[0] || null;
+    const target = product || selectedProduct || computedProducts[0] || null;
     setSelectedProduct(target);
     if (target) setOutSku(target.sku);
     setOutLocationId(getDefaultStockLocationId(target));
@@ -436,7 +457,7 @@ export default function InventoryView({
       try {
         const payloadItems = validItems
           .map((item) => {
-            const matchedProd = products.find((p) => p.sku === item.sku);
+            const matchedProd = computedProducts.find((p) => p.sku === item.sku);
             return {
               purchase_order_item_id: null,
               product_id: matchedProd?.id || "",
@@ -485,7 +506,7 @@ export default function InventoryView({
       return;
     }
 
-    const matchedProd = products.find((p) => p.sku === outSku);
+    const matchedProd = computedProducts.find((p) => p.sku === outSku);
     if (!matchedProd) return;
     if (!outLocationId) {
       onTriggerNotification(
@@ -612,13 +633,26 @@ export default function InventoryView({
             <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
               <Filter size={13} className="text-slate-400" />
               <select
+                value={warehouseFilter}
+                onChange={(e) => setWarehouseFilter(e.target.value)}
+                className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none cursor-pointer font-sans"
+              >
+                <option value="All">Semua Gudang</option>
+                {warehouses.map((wh) => (
+                  <option key={wh.id} value={wh.id}>
+                    Gudang: {wh.name}
+                  </option>
+                ))}
+              </select>
+              <div className="w-px h-4 bg-slate-300 mx-1"></div>
+              <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none cursor-pointer font-sans"
               >
                 <option value="All">Semua Kategori</option>
                 {Array.from(
-                  new Set(products.map((p) => p.category).filter(Boolean)),
+                  new Set(computedProducts.map((p) => p.category).filter(Boolean)),
                 ).map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -661,7 +695,7 @@ export default function InventoryView({
         {activeTab === "stok" && (
           <div className="text-[10px] font-mono text-slate-400 bg-slate-100 p-2 rounded-lg border border-slate-200 text-center truncate max-w-62.5">
             Total Katalog:{" "}
-            <strong className="text-slate-700">{products.length} SKU</strong>
+            <strong className="text-slate-700">{computedProducts.length} SKU</strong>
           </div>
         )}
       </div>
@@ -680,7 +714,7 @@ export default function InventoryView({
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {activeTab === "stok" && (
             <StockTab
-              products={products}
+              products={computedProducts}
               search={search}
               stockStatusFilter={stockStatusFilter}
               categoryFilter={categoryFilter}
@@ -710,7 +744,7 @@ export default function InventoryView({
       )}
 
       <InventoryModals
-        products={products}
+        products={computedProducts}
         locations={locations}
         selectedProduct={selectedProduct}
         setSelectedProduct={setSelectedProduct}

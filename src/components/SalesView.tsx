@@ -697,7 +697,7 @@ export default function SalesView({
                   </>
                 ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                   <div className="flex flex-col gap-2 w-full">
-                    {selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' ? (
+                    {selectedDoc.source !== 'pos' && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
                       <button
                         onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
                         className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"

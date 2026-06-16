@@ -95,10 +95,16 @@ export const StockTab: React.FC<StockTabProps> = ({
                   {p.location}
                 </td>
                 <td className="p-3.5 text-center font-mono font-bold text-slate-900 bg-slate-50/10">
-                  {p.stock}{" "}
-                  <span className="font-normal text-slate-400 text-[10px]">
-                    {p.unit}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span>
+                      {p.stock} <span className="font-normal text-slate-400 text-[10px]">{p.unit}</span>
+                    </span>
+                    {p.bookedStock >= 0 && (
+                      <span className="text-[9px] text-slate-500 font-normal mt-0.5">
+                        (Fisik: {p.stock + p.bookedStock}, Dipesan: {p.bookedStock})
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="p-3.5 text-center font-mono text-slate-400">
                   {p.minStock} {p.unit}

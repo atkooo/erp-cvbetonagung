@@ -591,7 +591,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               const inCart = cart.find(c => c.product.id === product.id);
 
               const productStocks = stocks.filter(s => s.product_id === product.id && parseFloat(s.quantity) > 0);
-              const totalStock = productStocks.reduce((sum, s) => sum + parseFloat(s.quantity), 0);
+              const physicalStock = productStocks.reduce((sum, s) => sum + parseFloat(s.quantity), 0);
+              const bookedStock = Number(product.bookedStock || (product as any).booked_stock || 0);
+              const totalStock = Math.max(0, physicalStock - bookedStock);
 
               return (
                 <div
@@ -615,9 +617,14 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                       {Number((product as any).is_customizable) ? (
                         <span className="text-amber-600 font-bold">Barang Inden / PO</span>
                       ) : (
-                        <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
-                          {totalStock > 0 ? `Stok: ${totalStock}` : 'Stok Habis'}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
+                            {totalStock > 0 ? `Tersedia: ${totalStock}` : 'Stok Habis'}
+                          </span>
+                          <span className="text-slate-400">
+                            (Fisik: {physicalStock}, Dipesan: {bookedStock})
+                          </span>
+                        </div>
                       )}
                       {productStocks.length > 0 && (
                         <div className="flex flex-col gap-0.5 mt-1 border-t border-slate-100 pt-1">

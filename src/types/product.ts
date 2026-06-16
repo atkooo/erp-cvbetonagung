@@ -12,6 +12,7 @@ export interface Product {
   costPrice: number;
   sellingPrice: number;
   stock: number;
+  bookedStock: number;
   unit: string;
   unitId?: string;
   location: string;

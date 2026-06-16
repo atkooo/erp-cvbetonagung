@@ -169,6 +169,20 @@ export default function DeliveryOrdersView({
     }
   };
 
+  const handleSetReadyToLoad = async (doOrder: DeliveryOrder) => {
+    try {
+      await salesApi.updateDeliveryOrderStatus(doOrder.id, {
+        status: 'ready_to_load',
+        notes: doOrder.notes ? `${doOrder.notes}\n[Sistem]: Ditandai Siap Muat manual` : '[Sistem]: Ditandai Siap Muat manual'
+      });
+      onTriggerNotification(`Delivery Order ${doOrder.deliveryNumber} berhasil disiapkan untuk muat.`);
+      fetchData();
+    } catch (error) {
+      console.error('Error setting DO to ready:', error);
+      onTriggerNotification('Gagal menyiapkan Delivery Order.');
+    }
+  };
+
   const handleOpenShipModal = (doOrder: DeliveryOrder) => {
     setSelectedDo(doOrder);
     setSelectedLocationId(storageLocations[0]?.id || "");
@@ -456,6 +470,15 @@ export default function DeliveryOrdersView({
                             <FileText size={10} />
                             <span>Detail</span>
                           </button>
+                          {doOrder.status === "Draft" && (
+                            <button
+                              onClick={() => handleSetReadyToLoad(doOrder)}
+                              className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-1"
+                            >
+                              <CheckCircle2 size={10} />
+                              <span>Siapkan</span>
+                            </button>
+                          )}
                           {doOrder.status === "Siap Muat" && (
                             <button
                               onClick={() => handleOpenShipModal(doOrder)}

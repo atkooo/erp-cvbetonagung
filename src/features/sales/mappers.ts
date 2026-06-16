@@ -81,7 +81,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),
   hasInvoice: (dto.invoices || []).length > 0,
-  deliveryOrders: (dto.deliveryOrders || []).map(mapDeliveryOrderFromDto)
+  deliveryOrders: (dto.deliveryOrders || (dto as any).delivery_orders || []).map(mapDeliveryOrderFromDto)
 });
 
 // Helper for status translations

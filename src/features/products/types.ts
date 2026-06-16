@@ -40,6 +40,7 @@ export interface ProductDto {
   selling_price: string;
   min_stock: string;
   stock_status: 'safe' | 'low' | 'out_of_stock';
+  booked_stock?: string | number;
   qr_value: string | null;
   status: 'active' | 'inactive';
   category?: CategoryDto;
