@@ -443,6 +443,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
   };
 
+  const hasPOItems = cart.some(item => Number((item.product as any).is_customizable));
+
   return (
     <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-[100] m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] rounded-2xl border border-slate-200 shadow-sm'}`}>
 
@@ -726,8 +728,15 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             </div>
 
             <div className="p-6 space-y-4 bg-slate-50">
+              {hasPOItems && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs mb-4">
+                  <strong>⚠️ Perhatian:</strong> Terdapat barang Inden/PO di keranjang. Transaksi ini akan otomatis dialihkan menjadi <strong>Sales Order</strong> dengan sistem partial-delivery.
+                </div>
+              )}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Jumlah Diterima (Rp)</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                  {hasPOItems ? 'Jumlah Diterima / DP (Rp)' : 'Jumlah Diterima (Rp)'}
+                </label>
                 <input
                   type="text"
                   value={amountPaid ? new Intl.NumberFormat('id-ID').format(parseFloat(amountPaid.replace(/\D/g, ''))) : ''}

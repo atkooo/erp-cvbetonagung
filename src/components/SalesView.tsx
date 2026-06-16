@@ -113,7 +113,7 @@ export default function SalesView({
     setErrorMessage(null);
     try {
       const [docs, custsRes, prods, stocks] = await Promise.all([
-        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders('erp'),
+        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders(),
         customersApi.listCustomers(),
         productsApi.getProducts(),
         inventoryApi.getProductStocks()
@@ -460,6 +460,7 @@ export default function SalesView({
                 <option value="Draft">Draft</option>
                 <option value="Diproses">Diproses</option>
                 <option value="Disetujui">Disetujui</option>
+                <option value="Pending Delivery">Pending Delivery</option>
                 <option value="Selesai">Selesai</option>
                 <option value="Dibatalkan">Dibatalkan</option>
               </>
@@ -480,6 +481,7 @@ export default function SalesView({
               <thead>
                 <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
                   <th className="p-3.5 pl-5">Nomor Dokumen</th>
+                  <th className="p-3.5">Sumber</th>
                   <th className="p-3.5">Nama Relasi Customer</th>
                   <th className="p-3.5">Tanggal Dokumen</th>
                   {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
@@ -491,7 +493,7 @@ export default function SalesView({
               <tbody className="divide-y divide-slate-100">
                 {filteredDocs.length === 0 ? (
                   <tr>
-                    <td colSpan={isQuotation ? 7 : 6} className="text-center py-12 text-slate-400 font-medium">
+                    <td colSpan={isQuotation ? 8 : 7} className="text-center py-12 text-slate-400 font-medium">
                       Tidak ada dokumen transaksi terekam saat ini.
                     </td>
                   </tr>
@@ -504,7 +506,9 @@ export default function SalesView({
                       Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Ditolak: 'bg-red-100 text-red-700',
                       Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                      pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
                       Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                      completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                       Dibatalkan: 'bg-slate-100 text-slate-400',
                     };
 
@@ -513,6 +517,15 @@ export default function SalesView({
                         <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
                           {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
                           <span>{docNum}</span>
+                        </td>
+                        <td className="p-3.5">
+                          {!isQuotation && doc.source === 'pos' ? (
+                            <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold uppercase tracking-wider">Kasir (POS)</span>
+                          ) : !isQuotation ? (
+                            <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[9px] font-bold uppercase tracking-wider">B2B (ERP)</span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-bold uppercase tracking-wider">-</span>
+                          )}
                         </td>
                         <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
                         <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
