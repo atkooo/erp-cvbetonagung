@@ -51,11 +51,15 @@ export default function SalesOrderPicker({
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await salesApi.getSalesOrders('erp');
+      // Remove 'erp' filter to allow picking PO-generating Sales Orders from POS
+      const data = await salesApi.getSalesOrders();
 
-      const filtered = statusFilter
-        ? data.filter((so) => so.status === statusFilter)
-        : data;
+      // Only show open transactions (exclude completed and cancelled)
+      let filtered = data.filter((so) => so.status !== 'Selesai' && so.status !== 'Dibatalkan');
+
+      if (statusFilter) {
+        filtered = filtered.filter((so) => so.status === statusFilter);
+      }
 
       setSalesOrders(filtered);
     } catch (error) {

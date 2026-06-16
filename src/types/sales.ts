@@ -12,6 +12,7 @@ export interface SalesOrder {
   source?: 'erp' | 'pos';
   notes?: string;
   items: {
+    id?: string; // Add id to items for matching with DO items
     productId?: string;
     productName: string;
     pieceCount?: number;
@@ -24,6 +25,7 @@ export interface SalesOrder {
   }[];
   hasPaidInvoice?: boolean;
   hasInvoice?: boolean;
+  deliveryOrders?: DeliveryOrder[];
 }
 
 export interface Quotation {
@@ -107,7 +109,7 @@ export interface DeliveryOrder {
   deliveryDate: string;
   receivedAt?: string;
   receiverName?: string;
-  status: 'Siap Muat' | 'Dikirim' | 'Diterima' | 'Dibatalkan';
+  status: 'Draft' | 'Siap Muat' | 'Dikirim' | 'Diterima' | 'Dibatalkan';
   notes?: string;
   items?: DeliveryOrderItem[];
 }

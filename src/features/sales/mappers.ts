@@ -3,11 +3,12 @@ import { QuotationDto, SalesOrderDto, DeliveryOrderDto } from './types';
 
 const mapDeliveryOrderStatus = (status: string): DeliveryOrder['status'] => {
   const s = status.toLowerCase();
+  if (s === 'draft') return 'Draft';
   if (s === 'ready_to_load' || s === 'siap muat' || s === 'siap_muat') return 'Siap Muat';
   if (s === 'shipped' || s === 'dikirim') return 'Dikirim';
   if (s === 'received' || s === 'diterima') return 'Diterima';
   if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
-  return 'Siap Muat';
+  return 'Draft';
 };
 
 export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder => ({
@@ -67,6 +68,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   source: dto.source,
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
+    id: item.id,
     productId: item.product_id || item.product?.id || '',
     productName: item.product?.name || item.description || 'Unknown Product',
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
@@ -78,7 +80,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     unit: item.product?.unit?.name
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),
-  hasInvoice: (dto.invoices || []).length > 0
+  hasInvoice: (dto.invoices || []).length > 0,
+  deliveryOrders: (dto.deliveryOrders || []).map(mapDeliveryOrderFromDto)
 });
 
 // Helper for status translations
@@ -94,7 +97,7 @@ const mapQuotationStatus = (status: string): Quotation['status'] => {
 const mapSalesOrderStatus = (status: string): SalesOrder['status'] | any => {
   const s = status.toLowerCase();
   if (s === 'draft') return 'Draft';
-  if (s === 'processing' || s === 'diproses') return 'Diproses';
+  if (s === 'processing' || s === 'diproses' || s === 'pending_delivery') return 'Diproses';
   if (s === 'approved' || s === 'disetujui') return 'Disetujui';
   if (s === 'completed' || s === 'selesai') return 'Selesai';
   if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';

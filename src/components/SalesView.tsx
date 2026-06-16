@@ -609,26 +609,50 @@ export default function SalesView({
                 {/* Items loop */}
                 <div className="mt-6">
                   <h5 className="font-mono font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-3">DAFTAR PENYUSUNAN BARANG</h5>
-                  <div className="space-y-2">
-                    {selectedDoc.items?.map((item: any, idx: number) => (
-                      <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs">
-                        <div>
-                          <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
-                          {item.description && (
-                            <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
+                  <div className="space-y-3 pt-2">
+                    {selectedDoc.items?.map((item: any, idx: number) => {
+                      let itemLabel = "";
+                      let isPo = false;
+                      
+                      if (!isQuotation && selectedDoc.source === 'pos') {
+                        const poQty = selectedDoc.deliveryOrders?.filter((d: any) => d.status === 'Draft')
+                          .flatMap((d: any) => d.items || [])
+                          .filter((di: any) => di.productId === item.productId)
+                          .reduce((sum: number, di: any) => sum + di.quantity, 0) || 0;
+                        
+                        if (poQty > 0) {
+                          isPo = true;
+                          itemLabel = "Barang PO / Inden";
+                        } else {
+                          itemLabel = "Sudah Diambil / Siap Kirim";
+                        }
+                      }
+
+                      return (
+                        <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs relative mt-3">
+                          {itemLabel && (
+                            <div className={`absolute -top-2.5 right-4 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-widest text-white shadow-sm ${isPo ? 'bg-amber-500' : 'bg-emerald-500'}`}>
+                              {itemLabel}
+                            </div>
                           )}
-                          <span className="text-slate-400 text-[11px] font-mono block">
-                            {item.pieceCount && item.length ? (
-                              <span className="text-indigo-600 font-bold mr-1">
-                                [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
-                              </span>
-                            ) : null}
-                            {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
-                          </span>
+                          <div>
+                            <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
+                            {item.description && (
+                              <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
+                            )}
+                            <span className="text-slate-400 text-[11px] font-mono block">
+                              {item.pieceCount && item.length ? (
+                                <span className="text-indigo-600 font-bold mr-1">
+                                  [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
+                                </span>
+                              ) : null}
+                              {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
+                            </span>
+                          </div>
+                          <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
                         </div>
-                        <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

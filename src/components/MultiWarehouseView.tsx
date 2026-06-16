@@ -13,6 +13,8 @@ import { inventoryApi } from '../features/inventory/api';
 import { productsApi } from '../features/products/api';
 import { LocationDto, ProductStockDto } from '../features/inventory/types';
 import { Product } from '../types';
+import SearchableSelect from './SearchableSelect';
+import ProductPicker from './ProductPicker';
 
 interface MultiWarehouseViewProps {
   onTriggerNotification: (message: string) => void;
@@ -347,82 +349,98 @@ export default function MultiWarehouseView({ onTriggerNotification, onNavigate }
             </div>
             
             <form onSubmit={handleTransfer} className="p-5 space-y-4">
-              {/* Product selection */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">Pilih Produk</label>
-                <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
-                  value={transferProduct}
-                  onChange={(e) => {
-                    setTransferProduct(e.target.value);
-                    setTransferFromLocation('');
-                  }}
-                  required
-                >
-                  <option value="">-- Pilih Produk --</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Source location */}
+              {/* Source location (FIRST) */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block">Rak Asal (Lokasi Sumber)</label>
-                <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
-                  value={transferFromLocation}
-                  onChange={(e) => setTransferFromLocation(e.target.value)}
-                  required
-                >
-                  <option value="">-- Pilih Lokasi Asal --</option>
-                  {locations.map(loc => {
-                    // Check if there is stock for active product here
-                    const stock = productStocks.find(s => s.product_id === transferProduct && s.location_id === loc.id);
-                    const qty = stock ? Number(stock.quantity) : 0;
-                    if (qty <= 0) return null;
-
-                    return (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name} ({loc.code}) - Stok: {qty}
-                      </option>
-                    );
+                <SearchableSelect
+                  options={locations.map(loc => {
+                    const wh = warehouses.find(w => w.id === loc.warehouse_id);
+                    const whName = wh ? wh.name : '';
+                    const locStocks = productStocks.filter(s => s.location_id === loc.id && Number(s.quantity) > 0);
+                    return {
+                      value: loc.id,
+                      label: `${whName} - ${loc.name} - ${locStocks.length} SKU tersedia`
+                    };
                   })}
-                </select>
+                  value={transferFromLocation}
+                  onChange={(val) => {
+                    setTransferFromLocation(val);
+                    setTransferProduct(''); // reset product when source changes
+                    setTransferQuantity(0);
+                  }}
+                  placeholder="-- Cari Lokasi Asal --"
+                />
+              </div>
+
+              {/* Product selection (SECOND, filtered by Source Location) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block flex items-center justify-between">
+                  <span>Pilih Produk</span>
+                  {!transferFromLocation && (
+                    <span className="text-[10px] text-rose-500 font-normal">* Pilih lokasi asal terlebih dahulu</span>
+                  )}
+                </label>
+                {transferFromLocation ? (
+                  <ProductPicker
+                    value={transferProduct}
+                    onChange={(product) => {
+                      setTransferProduct(product.id);
+                      const stock = productStocks.find(s => s.product_id === product.id && s.location_id === transferFromLocation);
+                      setTransferQuantity(stock ? Number(stock.quantity) : 0);
+                    }}
+                    locationIdFilter={transferFromLocation}
+                    placeholder="-- Cari Produk di Rak Ini --"
+                  />
+                ) : (
+                  <div className="w-full px-3 py-2.5 border rounded-lg bg-slate-100 text-slate-400 text-xs cursor-not-allowed">
+                    Pilih lokasi asal terlebih dahulu
+                  </div>
+                )}
               </div>
 
               {/* Destination location */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block">Rak Tujuan (Lokasi Destinasi)</label>
-                <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                <SearchableSelect
+                  options={locations
+                    .filter(loc => loc.id !== transferFromLocation)
+                    .map(loc => {
+                      const wh = warehouses.find(w => w.id === loc.warehouse_id);
+                      const whName = wh ? wh.name : '';
+                      return {
+                        value: loc.id,
+                        label: `${whName} - ${loc.name}`
+                      };
+                    })}
                   value={transferToLocation}
-                  onChange={(e) => setTransferToLocation(e.target.value)}
-                  required
-                >
-                  <option value="">-- Pilih Lokasi Tujuan --</option>
-                  {locations.map(loc => {
-                    // Don't show source location
-                    if (loc.id === transferFromLocation) return null;
-                    return (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name} ({loc.code})
-                      </option>
-                    );
-                  })}
-                </select>
+                  onChange={(val) => setTransferToLocation(val)}
+                  placeholder="-- Cari Lokasi Tujuan --"
+                />
               </div>
 
               {/* Transfer quantity */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">Jumlah Kuantitas Transfer</label>
+                <label className="font-bold text-slate-700 block flex items-center justify-between">
+                  <span>Jumlah Kuantitas Transfer</span>
+                  {transferProduct && transferFromLocation && (
+                    <span className="text-[10px] text-cyan-600 font-mono bg-cyan-50 px-2 rounded">
+                      Maks: {productStocks.find(s => s.product_id === transferProduct && s.location_id === transferFromLocation)?.quantity || 0}
+                    </span>
+                  )}
+                </label>
                 <input
                   type="number"
                   min={1}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 font-mono font-bold"
+                  max={productStocks.find(s => s.product_id === transferProduct && s.location_id === transferFromLocation)?.quantity || undefined}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 font-mono font-bold disabled:bg-slate-100"
                   value={transferQuantity || ''}
-                  onChange={(e) => setTransferQuantity(Number(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const max = Number(productStocks.find(s => s.product_id === transferProduct && s.location_id === transferFromLocation)?.quantity || 0);
+                    const val = Number(e.target.value) || 0;
+                    setTransferQuantity(val > max ? max : val); // Cap at max available
+                  }}
                   required
+                  disabled={!transferProduct}
                 />
               </div>
 

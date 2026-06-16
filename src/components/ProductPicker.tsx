@@ -14,6 +14,7 @@ interface ProductPickerProps {
   onChange: (product: Product) => void;
   categoryFilter?: string; // Deprecated: Use typeFilter instead
   typeFilter?: 'raw_material' | 'finished_good' | 'service';
+  locationIdFilter?: string;
   excludedProductIds?: string[];
   showCategoryFilter?: boolean;
   placeholder?: string;
@@ -25,6 +26,7 @@ export default function ProductPicker({
   onChange,
   categoryFilter,
   typeFilter,
+  locationIdFilter,
   excludedProductIds = [],
   showCategoryFilter = false,
   placeholder = 'Pilih Produk / Material...',
@@ -54,13 +56,19 @@ export default function ProductPicker({
       ]);
 
       const productsWithStock = prods.map(p => {
-        const productStocks = stocks.filter(s => s.product_id === p.id);
+        let productStocks = stocks.filter(s => s.product_id === p.id);
+        if (locationIdFilter) {
+          productStocks = productStocks.filter(s => s.location_id === locationIdFilter);
+        }
         const totalStock = productStocks.reduce((sum, s) => sum + Number(s.quantity || 0), 0);
         return { ...p, stock: totalStock };
       });
 
       // Apply filters if provided
       let filtered = productsWithStock;
+      if (locationIdFilter) {
+        filtered = filtered.filter(p => p.stock > 0);
+      }
       if (categoryFilter) {
         filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
       }

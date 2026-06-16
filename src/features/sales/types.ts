@@ -85,6 +85,7 @@ export interface SalesOrderDto {
     id: string;
     paid_amount: string | number;
   }[];
+  deliveryOrders?: DeliveryOrderDto[];
 }
 
 export interface CreateQuotationDto {

@@ -120,15 +120,29 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   const getItemOutstandingQty = React.useCallback((soId: string, item: any) => {
     if (!item.productId) return 0;
+    
+    // Check if SO is from POS and find its PO quantity from draft delivery orders
+    const so = salesOrders.find(s => s.id === soId);
+    let requiredQty = item.pieceCount || item.quantity;
+
+    if (so && so.source === 'pos') {
+      const poQty = so.deliveryOrders?.filter(d => d.status === 'Draft')
+        .flatMap(d => d.items || [])
+        .filter(di => di.productId === item.productId)
+        .reduce((sum, di) => sum + di.quantity, 0) || 0;
+      
+      // If it's from POS and not in a Draft DO, it's not a PO item, so requiredQty is 0
+      requiredQty = poQty;
+    }
+
     const itemWos = workOrders.filter(wo => wo.salesOrderId === soId && wo.productId === item.productId);
     let totalExpectedYield = 0;
     for (const wo of itemWos) {
       const totalReject = wo.logs?.reduce((sum, l) => sum + l.rejectQty, 0) || 0;
       totalExpectedYield += Math.max(0, wo.targetQty - totalReject);
     }
-    const requiredQty = item.pieceCount || item.quantity;
     return Math.max(0, requiredQty - totalExpectedYield);
-  }, [workOrders]);
+  }, [workOrders, salesOrders]);
 
   const activeSalesOrders = React.useMemo(() => {
     return salesOrders.filter(so => {

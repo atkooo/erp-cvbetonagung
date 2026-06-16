@@ -35,7 +35,7 @@ export const salesApi = {
   },
 
   async getSalesOrders(source?: 'pos' | 'erp'): Promise<SalesOrder[]> {
-    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices';
+    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items';
     if (source) {
       url += `&source=${source}`;
     }
@@ -101,6 +101,7 @@ export const salesApi = {
       specification?: string;
       quantity: number;
       unit_price: number;
+      fulfillment_type?: 'take_away' | 'delivery';
     }>;
   }): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/pos', payload);

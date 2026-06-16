@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize } from 'lucide-react';
+import { FaCarSide, FaTruck } from 'react-icons/fa6';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
 import type { Product, Customer } from '../../../types';
@@ -13,9 +14,10 @@ interface PosViewProps {
 
 interface CartItem {
   id: string;
-  product: Product;
+  product: any;
   quantity: number;
   location_id: string;
+  fulfillment_type: 'take_away' | 'delivery';
 }
 
 export default function PosView({ onTriggerNotification }: PosViewProps) {
@@ -120,9 +122,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
+      const pAny = p as any;
+      // Sembunyikan barang PO/Customizable dari POS
+      if (Number(pAny.is_customizable) === 1 || pAny.is_customizable === true) return false;
+
       const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.sku?.toLowerCase().includes(searchQuery.toLowerCase());
-      const pAny = p as any;
       const matchCategory = selectedCategoryId ? pAny.category_id === selectedCategoryId || pAny.category?.id === selectedCategoryId : true;
       return matchSearch && matchCategory;
     });
@@ -142,25 +147,44 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       : (locations[0]?.id || '');
 
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId);
+      const maxStock = productStocks.find(s => s.location_id === defaultLocationId)?.quantity || 0;
+      const isCustom = Number((product as any).is_customizable);
+      
+      let itemFulfillment = fulfillmentType;
+
+      if (fulfillmentType === 'take_away') {
+        if (isCustom) {
+          itemFulfillment = 'delivery';
+          onTriggerNotification(`Otomatis dimasukkan sebagai "Diantar" karena ini barang Custom/PO.`);
+        } else {
+          // Jika first time add dan stok 0
+          const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === 'take_away');
+          if (!existing && 1 > parseFloat(maxStock)) {
+            itemFulfillment = 'delivery';
+            onTriggerNotification(`Otomatis dimasukkan sebagai "Diantar (PO)" karena stok gudang kosong.`);
+          }
+        }
+      }
+
+      const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === itemFulfillment);
       if (existing) {
-        const maxStock = productStocks.find(s => s.location_id === defaultLocationId)?.quantity || 0;
-        if (!Number((product as any).is_customizable) && existing.quantity + 1 > parseFloat(maxStock)) {
-          onTriggerNotification(`Stok di gudang ini tidak mencukupi. Sisa: ${parseFloat(maxStock)}`);
+        if (itemFulfillment === 'take_away' && existing.quantity + 1 > parseFloat(maxStock)) {
+          onTriggerNotification(`Stok tersisa ${parseFloat(maxStock)}. Bawa Sendiri maksimal sesuai stok. Ubah mode ke Diantar jika ingin menambah lagi.`);
           return prev;
         }
 
         return prev.map(item =>
-          item.product.id === product.id && item.location_id === defaultLocationId
+          item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === fulfillmentType
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
       return [...prev, {
-        id: `${product.id}-${defaultLocationId}-${Date.now()}`,
+        id: `${product.id}-${defaultLocationId}-${itemFulfillment}-${Date.now()}`,
         product,
         quantity: 1,
-        location_id: defaultLocationId
+        location_id: defaultLocationId,
+        fulfillment_type: itemFulfillment
       }];
     });
   };
@@ -173,8 +197,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
 
-        if (!Number((item.product as any).is_customizable) && newQty > maxStock && delta > 0) {
-          onTriggerNotification(`Gagal. Sisa stok di gudang terpilih hanya ${maxStock}`);
+        if (item.fulfillment_type === 'take_away' && newQty > maxStock && delta > 0) {
+          onTriggerNotification(`Maksimal Bawa Sendiri adalah ${maxStock} (sesuai stok). Tambahkan barang yang sama lagi dengan mode Diantar untuk sisanya.`);
           return item;
         }
 
@@ -228,16 +252,40 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
 
         let newQty = item.quantity;
-        if (!Number((item.product as any).is_customizable) && newQty > maxStock) {
+        if (item.fulfillment_type === 'take_away' && newQty > maxStock) {
           newQty = maxStock || 1;
           if (maxStock > 0) {
-            onTriggerNotification(`Jumlah disesuaikan dengan sisa stok gudang (${maxStock})`);
+            onTriggerNotification(`Karena Bawa Sendiri, jumlah diturunkan ke sisa stok gudang (${maxStock})`);
           } else {
-            onTriggerNotification(`Perhatian: Stok gudang ini kosong (0)`);
+            onTriggerNotification(`Perhatian: Stok gudang kosong (0). Item ini harus Diantar (Backorder).`);
           }
         }
 
         return { ...item, location_id: newLocationId, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const toggleItemFulfillment = (id: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === id) {
+        const newType = item.fulfillment_type === 'take_away' ? 'delivery' : 'take_away';
+        
+        if (newType === 'take_away') {
+          if (Number((item.product as any).is_customizable)) {
+            onTriggerNotification(`Barang Custom/PO wajib Diantar/Indent.`);
+            return item;
+          }
+          const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
+          const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
+          if (item.quantity > maxStock) {
+            onTriggerNotification(`Tidak bisa ubah ke Bawa Sendiri karena Qty (${item.quantity}) melebihi Stok (${maxStock}). Silakan kurangi Qty terlebih dahulu.`);
+            return item;
+          }
+        }
+        
+        return { ...item, fulfillment_type: newType, id: `${item.product.id}-${item.location_id}-${newType}-${Date.now()}` };
       }
       return item;
     }));
@@ -266,13 +314,14 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         transaction_date: toApiDate(),
         fulfillment_type: fulfillmentType,
         payment_account_id: selectedAccountId,
-        amount_paid: paid,
-        notes: notes,
+        amount_paid: Number(amountPaid.replace(/\D/g, '')),
+        notes: notes || undefined,
         items: cart.map(item => ({
           product_id: item.product.id,
           location_id: item.location_id,
           quantity: item.quantity,
           unit_price: parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0'),
+          fulfillment_type: item.fulfillment_type,
           description: item.product.name,
         })),
       });
@@ -388,7 +437,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       const subtotal = price * item.quantity;
       return `
               <tr>
-                <td colspan="3">${item.product.name}</td>
+                <td colspan="3">
+                  ${item.product.name}
+                  <span style="font-size: 9px; border: 1px solid #000; border-radius: 3px; padding: 1px 3px; margin-left: 4px; display: inline-block;">
+                    ${item.fulfillment_type === 'delivery' ? 'DELIVERY' : 'TAKE AWAY'}
+                  </span>
+                </td>
               </tr>
               <tr>
                 <td>${item.quantity}x</td>
@@ -407,14 +461,18 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
           </tr>
           <tr>
-            <td>BAYAR</td>
+            <td>BAYAR (DP)</td>
             <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
           </tr>
           <tr>
-            <td>KEMBALI</td>
-            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.change)}</td>
+            <td>${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}</td>
+            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(Math.abs(info.change))}</td>
           </tr>
         </table>
+        
+        <div class="text-center mb-2 font-bold" style="font-size: 11px;">
+          STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
+        </div>
         
         <div class="text-center mb-2 mt-4" style="font-size: 10px;">
           *** TERIMA KASIH ***<br>
@@ -443,7 +501,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
   };
 
-  const hasPOItems = cart.some(item => Number((item.product as any).is_customizable));
+  const hasPOItems = cart.some(item => {
+    if (Number((item.product as any).is_customizable)) return true;
+    const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
+    const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
+    return item.quantity > maxStock;
+  });
 
   return (
     <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-[100] m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] rounded-2xl border border-slate-200 shadow-sm'}`}>
@@ -648,6 +711,17 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   <div className="flex-1">
                     <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
                     <div className="text-emerald-600 font-semibold text-sm">{formatRupiah(price)}</div>
+                    
+                    <button 
+                      onClick={() => toggleItemFulfillment(item.id)}
+                      className="mt-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors bg-slate-100 hover:bg-slate-200 text-slate-600"
+                    >
+                      {item.fulfillment_type === 'take_away' ? (
+                        <><FaCarSide size={12} className="text-emerald-600" /> Bawa Sendiri</>
+                      ) : (
+                        <><FaTruck size={12} className="text-indigo-500" /> Diantar</>
+                      )}
+                    </button>
 
                     <div className="mt-2">
                       <select
@@ -730,7 +804,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             <div className="p-6 space-y-4 bg-slate-50">
               {hasPOItems && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs mb-4">
-                  <strong>⚠️ Perhatian:</strong> Terdapat barang Inden/PO di keranjang. Transaksi ini akan otomatis dialihkan menjadi <strong>Sales Order</strong> dengan sistem partial-delivery.
+                  <strong>⚠️ Perhatian:</strong> Terdapat barang Inden/PO atau <strong>Backorder</strong> (stok kurang) di keranjang. Transaksi ini akan otomatis dialihkan menjadi <strong>Sales Order</strong> dengan sistem partial-delivery.
                 </div>
               )}
               <div>
@@ -775,35 +849,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Metode Pengambilan</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    onClick={() => setFulfillmentType('take_away')}
-                    className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'take_away' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${fulfillmentType === 'take_away' ? 'border-emerald-500' : 'border-slate-300'}`}>
-                      {fulfillmentType === 'take_away' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
-                    </div>
-                    <span className="font-bold text-slate-700 text-sm">Bawa Sendiri</span>
-                  </div>
-
-                  <div
-                    onClick={() => setFulfillmentType('delivery')}
-                    className={`border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-200'}`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${fulfillmentType === 'delivery' ? 'border-emerald-500' : 'border-slate-300'}`}>
-                      {fulfillmentType === 'delivery' && <div className="w-2 h-2 bg-emerald-500 rounded-full" />}
-                    </div>
-                    <span className="font-bold text-slate-700 text-sm">Kirim ke Lokasi</span>
-                  </div>
-                </div>
-                {fulfillmentType === 'delivery' && (
-                  <p className="text-[11px] text-amber-600 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                    *Stok fisik tidak akan dipotong langsung. Surat Jalan (Delivery Order) akan dibuat untuk ditindaklanjuti gudang.
-                  </p>
-                )}
-              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Catatan Transaksi</label>

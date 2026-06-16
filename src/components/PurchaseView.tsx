@@ -811,8 +811,27 @@ export default function PurchaseView({
                       setSalesOrderId(so.id);
                       setSalesOrderNumberDisplay(so.orderNumber);
                       if (so && so.items && so.items.length > 0) {
+                        const pendingItems: any[] = [];
+                        
+                        so.items.forEach((item) => {
+                          if (so.source === 'pos') {
+                            // For POS, only items that are in a 'Draft' DeliveryOrder are PO items
+                            const poQty = so.deliveryOrders?.filter(d => d.status === 'Draft')
+                              .flatMap(d => d.items || [])
+                              .filter(di => di.productId === item.productId)
+                              .reduce((sum, di) => sum + di.quantity, 0) || 0;
+                            
+                            if (poQty > 0) {
+                              pendingItems.push({ ...item, quantity: poQty });
+                            }
+                          } else {
+                            // For ERP, all items can be purchased (we don't strictly filter yet)
+                            pendingItems.push(item);
+                          }
+                        });
+
                         setFormItems(
-                          so.items.map((item, index) => ({
+                          pendingItems.map((item, index) => ({
                             id: `form-item-${Date.now()}-${index}`,
                             productId: item.productId || "",
                             quantity: item.quantity,
