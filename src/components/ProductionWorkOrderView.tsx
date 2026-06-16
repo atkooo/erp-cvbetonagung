@@ -864,7 +864,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                       setSelectedSalesOrderItemIndex('');
                       const salesOrder = salesOrders.find(so => so.id === val);
                       if (salesOrder?.items?.length) {
-                        applySalesOrderItemToForm(salesOrder, 0);
+                        const unfulfilledIndex = salesOrder.items.findIndex(item => getItemOutstandingQty(val, item) > 0);
+                        if (unfulfilledIndex !== -1) {
+                          applySalesOrderItemToForm(salesOrder, unfulfilledIndex);
+                        } else {
+                          setSelectedSalesOrderItemIndex('');
+                        }
                       }
                     }}
                     options={activeSalesOrders.map(so => ({
@@ -901,12 +906,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     value={selectedSalesOrderItemIndex}
                     onChange={(e) => {
                       const salesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
-                      if (salesOrder) {
+                      if (salesOrder && e.target.value !== '') {
                         applySalesOrderItemToForm(salesOrder, Number(e.target.value));
                       }
                     }}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
                   >
+                    <option value="" disabled>-- Pilih Item --</option>
                     {salesOrders
                       .find(so => so.id === selectedSalesOrderId)
                       ?.items?.map((item, index) => {
