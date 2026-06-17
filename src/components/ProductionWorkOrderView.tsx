@@ -52,12 +52,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const [sourceLabel, setSourceLabel] = useState('');
   const [targetQty, setTargetQty] = useState(1);
   const [dueDate, setDueDate] = useState('');
-  const [stage, setStage] = useState('Cetak');
+  const [stage, setStage] = useState('Cetak & Curing');
 
   // Form States - Input Log
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [logWorkDate, setLogWorkDate] = useState(new Date().toISOString().split('T')[0]);
-  const [logStage, setLogStage] = useState('Cetak');
+  const [logStage, setLogStage] = useState('Cetak & Curing');
   const [logMaxQty, setLogMaxQty] = useState<number | null>(null);
   const [madeQty, setMadeQty] = useState(0);
   const [rejectQty, setRejectQty] = useState(0);
@@ -65,7 +65,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const [logNotes, setLogNotes] = useState('');
 
   // Form States - Update Stage
-  const [updateStageValue, setUpdateStageValue] = useState('Cetak');
+  const [updateStageValue, setUpdateStageValue] = useState('Cetak & Curing');
 
   // Form States - Receive Stock
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -175,7 +175,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     setSourceLabel('');
     setTargetQty(100);
     setDueDate(new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split('T')[0]);
-    setStage('Cetak');
+    setStage('Cetak & Curing');
     setIsCreateModalOpen(true);
   };
 
@@ -231,7 +231,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const handleOpenLogModal = () => {
     setSelectedEmployeeId(employees[0]?.id || '');
     setLogWorkDate(new Date().toISOString().split('T')[0]);
-    setLogStage(selectedWo?.stage || 'Cetak');
+    setLogStage(selectedWo?.stage || 'Cetak & Curing');
     setMadeQty(0);
     setRejectQty(0);
     setOkQty(0);
@@ -439,9 +439,9 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   // Worker rekap summary for selected WO
   const logsList = selectedWo?.logs || [];
-  // Total barang yang diciptakan hanya dihitung dari tahap Cetak
-  const totalMade = logsList.filter(l => l.stage === 'Cetak').reduce((sum, l) => sum + l.madeQty, 0);
-  // Total reject dihitung dari seluruh tahap (Cetak, Finishing, QC, dll)
+  // Total barang yang diciptakan hanya dihitung dari tahap Cetak & Curing
+  const totalMade = logsList.filter(l => l.stage === 'Cetak & Curing').reduce((sum, l) => sum + l.madeQty, 0);
+  // Total reject dihitung dari seluruh tahap (Cetak & Curing, Finishing, QC, dll)
   const totalReject = logsList.reduce((sum, l) => sum + l.rejectQty, 0);
   // Total Bagus (OK) adalah barang yang dicetak dikurangi semua reject di sepanjang proses
   const totalOk = Math.max(0, totalMade - totalReject);

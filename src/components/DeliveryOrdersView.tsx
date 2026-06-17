@@ -577,7 +577,6 @@ export default function DeliveryOrdersView({
                   <div className="text-xs text-slate-800 space-y-1">
                     <p className="flex justify-between"><span className="font-bold">Status:</span> <span className="uppercase font-bold text-slate-900">{printDo.status}</span></p>
                     <p className="flex justify-between"><span className="font-bold">Penerima:</span> <span>{printDo.receiverName || "-"}</span></p>
-                    <p className="flex justify-between"><span className="font-bold">Tgl Terima:</span> <span>{printDo.receivedAt || "-"}</span></p>
                   </div>
                 </div>
               </div>

@@ -208,6 +208,26 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     }));
   };
 
+  const setQuantity = (cartItemId: string, qtyRaw: string | number) => {
+    let newQty = typeof qtyRaw === 'string' ? parseInt(qtyRaw) : qtyRaw;
+    if (isNaN(newQty)) newQty = 0; // Allow temporarily empty
+
+    setCart(prev => prev.map(item => {
+      if (item.id === cartItemId) {
+        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
+        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
+
+        if (item.fulfillment_type === 'take_away' && newQty > maxStock) {
+          onTriggerNotification(`Maksimal Bawa Sendiri adalah ${maxStock} (sesuai stok).`);
+          return { ...item, quantity: maxStock > 0 ? maxStock : 1 };
+        }
+
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
   const removeFromCart = (cartItemId: string) => {
     setCart(prev => prev.filter(item => item.id !== cartItemId));
   };
@@ -420,8 +440,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       <body>
         <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
         <div class="text-center border-b mb-2" style="font-size: 10px;">
-          ${companyProfile?.address || 'Jl. Raya Konstruksi No.123'}<br>
-          Telp: ${companyProfile?.phone || '0812-3456-7890'}
+          ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
+          <br>Telp: ${companyProfile?.phone || '0812-3456-7890'}
         </div>
         
         <div class="mb-2" style="font-size: 10px;">
@@ -441,9 +461,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <tr>
                 <td colspan="3">
                   ${item.product.name}
-                  <span style="font-size: 9px; border: 1px solid #000; border-radius: 3px; padding: 1px 3px; margin-left: 4px; display: inline-block;">
-                    ${item.fulfillment_type === 'delivery' ? 'DELIVERY' : 'TAKE AWAY'}
-                  </span>
                 </td>
               </tr>
               <tr>
@@ -474,12 +491,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         
         <div class="text-center mb-2 font-bold" style="font-size: 11px;">
           STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
-        </div>
-        
-        <div class="text-center mb-2 mt-4" style="font-size: 10px;">
-          *** TERIMA KASIH ***<br>
-          Barang yang sudah dibeli<br>
-          tidak dapat ditukar/dikembalikan
         </div>
         
         <script>
@@ -530,8 +541,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         <div style="font-size: 12px; font-weight: 600; line-height: 1.2;">
           <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
           <div class="text-center border-b mb-2" style="font-size: 10px;">
-            ${companyProfile?.address || 'Jl. Raya Konstruksi No.123'}<br>
-            Telp: ${companyProfile?.phone || '0812-3456-7890'}
+            ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
+            <br>Telp: ${companyProfile?.phone || '0812-3456-7890'}
           </div>
           
           <div class="mb-2" style="font-size: 10px;">
@@ -551,9 +562,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 <tr>
                   <td colspan="3">
                     ${item.product.name}
-                    <span style="font-size: 9px; border: 1px solid #000; border-radius: 3px; padding: 1px 3px; margin-left: 4px; display: inline-block;">
-                      ${item.fulfillment_type === 'delivery' ? 'DELIVERY' : 'TAKE AWAY'}
-                    </span>
                   </td>
                 </tr>
                 <tr>
@@ -584,12 +592,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           
           <div class="text-center mb-2 font-bold" style="font-size: 11px;">
             STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
-          </div>
-          
-          <div class="text-center mb-2 mt-4" style="font-size: 10px;">
-            *** TERIMA KASIH ***<br>
-            Barang yang sudah dibeli<br>
-            tidak dapat ditukar/dikembalikan
           </div>
         </div>
       `;
@@ -705,8 +707,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       appendBytes(lineFeed);
       appendBytes(boldOff);
 
-      appendStr(companyProfile?.address || 'Jl. Raya Konstruksi No.123');
-      appendBytes(lineFeed);
+      const addressLines = (companyProfile?.address || 'Jl. Raya Konstruksi No.123').split('\n');
+      addressLines.forEach(line => {
+        appendStr(line.trim());
+        appendBytes(lineFeed);
+      });
+
       appendStr('Telp: ' + (companyProfile?.phone || '0812-3456-7890'));
       appendBytes(lineFeed);
       appendStr('-'.repeat(WIDTH));
@@ -728,7 +734,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
         const subtotal = price * item.quantity;
 
-        appendStr(item.product.name + (item.fulfillment_type === 'delivery' ? ' (DELIVERY)' : ''));
+        appendStr(item.product.name);
         appendBytes(lineFeed);
 
         const qtyStr = `${item.quantity}x`;
@@ -759,16 +765,11 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       appendBytes(center);
       appendBytes(lineFeed);
+      appendBytes(lineFeed);
       appendStr(`STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}`);
       appendBytes(lineFeed);
       appendBytes(boldOff);
 
-      appendBytes(lineFeed);
-      appendStr('*** TERIMA KASIH ***');
-      appendBytes(lineFeed);
-      appendStr('Barang yang sudah dibeli');
-      appendBytes(lineFeed);
-      appendStr('tidak dapat ditukar/dikembalikan');
       appendBytes(lineFeed);
       appendBytes(lineFeed);
       appendBytes(lineFeed);
@@ -1054,7 +1055,16 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                       >
                         <Minus size={14} />
                       </button>
-                      <span className="w-6 text-center text-sm font-bold">{item.quantity}</span>
+                      <input 
+                        type="number"
+                        min="1"
+                        value={item.quantity === 0 ? '' : item.quantity}
+                        onChange={(e) => setQuantity(item.id, e.target.value)}
+                        onBlur={() => {
+                          if (item.quantity === 0) setQuantity(item.id, 1);
+                        }}
+                        className="w-12 text-center text-sm font-bold bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded hide-arrows"
+                      />
                       <button
                         onClick={() => updateQuantity(item.id, 1)}
                         className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-600"

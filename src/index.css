@@ -20,3 +20,13 @@
     background: white;
   }
 }
+
+/* Hide number input arrows */
+input.hide-arrows::-webkit-outer-spin-button,
+input.hide-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number].hide-arrows {
+  -moz-appearance: textfield;
+}
