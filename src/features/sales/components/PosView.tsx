@@ -394,19 +394,20 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       <head>
         <title>Struk Pembayaran - ${info.orderNumber}</title>
         <style>
-          @page { margin: 0; size: 80mm auto; }
+          @page { margin: 0; size: 72mm auto; }
           body { 
-            font-family: 'Courier New', Courier, monospace; 
-            width: 80mm; 
-            margin: 0; 
-            padding: 10px; 
+            font-family: 'Consolas', 'Courier New', Courier, monospace; 
+            width: 68mm; 
+            margin: 0 auto; 
+            padding: 2mm; 
             font-size: 12px; 
+            font-weight: 600;
             line-height: 1.2;
             color: #000;
           }
           .text-center { text-align: center; }
           .text-right { text-align: right; }
-          .font-bold { font-weight: bold; }
+          .font-bold { font-weight: 900; }
           .mb-1 { margin-bottom: 5px; }
           .mb-2 { margin-bottom: 10px; }
           .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }

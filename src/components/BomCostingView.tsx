@@ -642,6 +642,7 @@ export default function BomCostingView({
                     onChange={(product) => setProductId(product.id)}
                     typeFilter="finished_good"
                     placeholder="-- Pilih Produk --"
+                    showCategoryFilter={true}
                   />
                 </div>
 
@@ -715,6 +716,7 @@ export default function BomCostingView({
                         }}
                         typeFilter="raw_material"
                         placeholder="-- Pilih Material --"
+                        showCategoryFilter={true}
                       />
                     </div>
                   ) : (
