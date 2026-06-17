@@ -7,6 +7,9 @@ import type { Product, Customer } from '../../../types';
 import { toApiDate } from '../../../utils/date';
 import { customersApi } from '../../customers/api';
 import SearchableSelect from '../../../components/SearchableSelect';
+import PosProductGrid from './pos/PosProductGrid';
+import PosCartSidebar from './pos/PosCartSidebar';
+import { printReceipt as psPrintReceipt, downloadReceipt as psDownloadReceipt, printBluetoothReceipt as psPrintBluetoothReceipt } from './pos/PosPrintService';
 
 interface PosViewProps {
   onTriggerNotification: (message: string) => void;
@@ -364,402 +367,15 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   };
 
   const printReceipt = (infoToPrint?: any) => {
-    const info = infoToPrint || checkoutSuccessInfo;
-    if (!info) return;
-
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      onTriggerNotification('Gagal membuka jendela cetak. Pastikan pop-up diizinkan.');
-      return;
-    }
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Struk Pembayaran - ${info.orderNumber}</title>
-        <style>
-          @page { margin: 0; size: auto; }
-          body { 
-            font-family: 'Consolas', 'Courier New', Courier, monospace; 
-            width: 69mm; 
-            margin: 0; 
-            padding: 0 2mm; 
-            box-sizing: border-box;
-            font-size: 12px; 
-            font-weight: 600;
-            line-height: 1.2;
-            color: #000;
-          }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .font-bold { font-weight: 900; }
-          .mb-1 { margin-bottom: 5px; }
-          .mb-2 { margin-bottom: 10px; }
-          .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-          .flex { display: flex; justify-content: space-between; }
-          table { width: 100%; border-collapse: collapse; }
-          td { padding: 2px 0; vertical-align: top; }
-        </style>
-      </head>
-      <body>
-        <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
-        <div class="text-center border-b mb-2" style="font-size: 10px;">
-          ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
-          <br>Telp: ${companyProfile?.phone || '0812-3456-7890'}
-        </div>
-        
-        <div class="mb-2" style="font-size: 10px;">
-          <div class="flex"><span>No:</span> <span>${info.orderNumber}</span></div>
-          <div class="flex"><span>Tgl:</span> <span>${info.date}</span></div>
-          <div class="flex"><span>Kasir:</span> <span>Admin</span></div>
-          <div class="flex"><span>Plg:</span> <span>${info.customerName}</span></div>
-        </div>
-        
-        <div class="border-b"></div>
-        
-        <table class="mb-2" style="font-size: 11px;">
-          ${info.items.map((item: any) => {
-      const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-      const subtotal = price * item.quantity;
-      return `
-              <tr>
-                <td colspan="3">
-                  ${item.product.name}
-                </td>
-              </tr>
-              <tr>
-                <td>${item.quantity}x</td>
-                <td>${new Intl.NumberFormat('id-ID').format(price)}</td>
-                <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
-              </tr>
-            `;
-    }).join('')}
-        </table>
-        
-        <div class="border-b"></div>
-        
-        <table class="mb-2 font-bold" style="font-size: 11px;">
-          <tr>
-            <td>TOTAL</td>
-            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
-          </tr>
-          <tr>
-            <td>BAYAR (DP)</td>
-            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
-          </tr>
-          <tr>
-            <td>${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}</td>
-            <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(Math.abs(info.change))}</td>
-          </tr>
-        </table>
-        
-        <div class="text-center mb-2 font-bold" style="font-size: 11px;">
-          STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
-        </div>
-        
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          }
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+    psPrintReceipt(infoToPrint || checkoutSuccessInfo, companyProfile, stocks, onTriggerNotification);
   };
 
   const downloadReceipt = async (infoToPrint?: any) => {
-    const info = infoToPrint || checkoutSuccessInfo;
-    if (!info) return;
-
-    try {
-      const { toPng } = await import('html-to-image');
-
-      const container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.top = '-9999px';
-      container.style.left = '-9999px';
-      container.style.width = '69mm';
-      container.style.backgroundColor = '#ffffff';
-      container.style.color = '#000000';
-      container.style.padding = '5mm';
-      container.style.fontFamily = "'Consolas', 'Courier New', Courier, monospace";
-      container.style.boxSizing = 'border-box';
-
-      const htmlContent = `
-        <style>
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .font-bold { font-weight: 900; }
-          .mb-1 { margin-bottom: 5px; }
-          .mb-2 { margin-bottom: 10px; }
-          .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-          .flex { display: flex; justify-content: space-between; }
-          table { width: 100%; border-collapse: collapse; }
-          td { padding: 2px 0; vertical-align: top; }
-        </style>
-        <div style="font-size: 12px; font-weight: 600; line-height: 1.2;">
-          <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
-          <div class="text-center border-b mb-2" style="font-size: 10px;">
-            ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
-            <br>Telp: ${companyProfile?.phone || '0812-3456-7890'}
-          </div>
-          
-          <div class="mb-2" style="font-size: 10px;">
-            <div class="flex"><span>No:</span> <span>${info.orderNumber}</span></div>
-            <div class="flex"><span>Tgl:</span> <span>${info.date}</span></div>
-            <div class="flex"><span>Kasir:</span> <span>Admin</span></div>
-            <div class="flex"><span>Plg:</span> <span>${info.customerName}</span></div>
-          </div>
-          
-          <div class="border-b"></div>
-          
-          <table class="mb-2" style="font-size: 11px;">
-            ${info.items.map((item: any) => {
-        const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-        const subtotal = price * item.quantity;
-        return `
-                <tr>
-                  <td colspan="3">
-                    ${item.product.name}
-                  </td>
-                </tr>
-                <tr>
-                  <td>${item.quantity}x</td>
-                  <td>${new Intl.NumberFormat('id-ID').format(price)}</td>
-                  <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
-                </tr>
-              `;
-      }).join('')}
-          </table>
-          
-          <div class="border-b"></div>
-          
-          <table class="mb-2 font-bold" style="font-size: 11px;">
-            <tr>
-              <td>TOTAL</td>
-              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
-            </tr>
-            <tr>
-              <td>BAYAR (DP)</td>
-              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
-            </tr>
-            <tr>
-              <td>${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}</td>
-              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(Math.abs(info.change))}</td>
-            </tr>
-          </table>
-          
-          <div class="text-center mb-2 font-bold" style="font-size: 11px;">
-            STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = htmlContent;
-      document.body.appendChild(container);
-
-      // Wait for the browser to render the DOM node properly before capturing
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
-      const dataUrl = canvas.toDataURL('image/png');
-
-      const { jsPDF } = await import('jspdf');
-
-      const pxToMm = 0.264583;
-      const heightInMm = container.offsetHeight * pxToMm;
-      const docWidth = 80;
-      const docHeight = Math.max(100, heightInMm + 10);
-
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [docWidth, docHeight]
-      });
-
-      doc.addImage(dataUrl, 'PNG', 5.5, 5, 69, heightInMm);
-      doc.save(`Struk_${info.orderNumber}.pdf`);
-
-      document.body.removeChild(container);
-      onTriggerNotification('Struk berhasil diunduh sebagai PDF');
-    } catch (error) {
-      console.error('Failed to download receipt', error);
-      onTriggerNotification('Gagal mendownload struk pembayaran');
-    }
+    psDownloadReceipt(infoToPrint || checkoutSuccessInfo, companyProfile, stocks, onTriggerNotification);
   };
 
   const printBluetoothReceipt = async (infoToPrint?: any) => {
-    const info = infoToPrint || checkoutSuccessInfo;
-    if (!info) return;
-
-    if (!(navigator as any).bluetooth) {
-      onTriggerNotification('Browser ini tidak mendukung Web Bluetooth API. Gunakan Chrome terbaru.');
-      return;
-    }
-
-    try {
-      const device = await (navigator as any).bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-          '0000fee7-0000-1000-8000-00805f9b34fb',
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455'
-        ]
-      });
-
-      if (!device.gatt) return;
-
-      const server = await device.gatt.connect();
-      let printCharacteristic: any = null;
-
-      const services = await server.getPrimaryServices();
-      for (const service of services) {
-        const characteristics = await service.getCharacteristics();
-        for (const char of characteristics) {
-          if (char.properties.write || char.properties.writeWithoutResponse) {
-            printCharacteristic = char;
-            break;
-          }
-        }
-        if (printCharacteristic) break;
-      }
-
-      if (!printCharacteristic) {
-        onTriggerNotification('Tidak menemukan layanan print pada perangkat Bluetooth ini.');
-        return;
-      }
-
-      const encoder = new TextEncoder();
-      const ESC = 0x1B;
-      const GS = 0x1D;
-
-      const center = new Uint8Array([ESC, 0x61, 1]);
-      const left = new Uint8Array([ESC, 0x61, 0]);
-      const boldOn = new Uint8Array([ESC, 0x45, 1]);
-      const boldOff = new Uint8Array([ESC, 0x45, 0]);
-      const init = new Uint8Array([ESC, 0x40]);
-      const lineFeed = new Uint8Array([0x0A]);
-
-      const formatRupiahStr = (num: number) => new Intl.NumberFormat('id-ID').format(num);
-      const WIDTH = 48; // Assume 80mm generic bluetooth
-
-      let payload = new Uint8Array([...init, ...center, ...boldOn]);
-
-      const appendStr = (str: string) => {
-        const bytes = encoder.encode(str);
-        const newPayload = new Uint8Array(payload.length + bytes.length);
-        newPayload.set(payload);
-        newPayload.set(bytes, payload.length);
-        payload = newPayload;
-      };
-
-      const appendBytes = (bytes: Uint8Array) => {
-        const newPayload = new Uint8Array(payload.length + bytes.length);
-        newPayload.set(payload);
-        newPayload.set(bytes, payload.length);
-        payload = newPayload;
-      };
-
-      appendStr(companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG');
-      appendBytes(lineFeed);
-      appendBytes(boldOff);
-
-      const addressLines = (companyProfile?.address || 'Jl. Raya Konstruksi No.123').split('\n');
-      addressLines.forEach(line => {
-        appendStr(line.trim());
-        appendBytes(lineFeed);
-      });
-
-      appendStr('Telp: ' + (companyProfile?.phone || '0812-3456-7890'));
-      appendBytes(lineFeed);
-      appendStr('-'.repeat(WIDTH));
-      appendBytes(lineFeed);
-
-      appendBytes(left);
-      appendStr(`No   : ${info.orderNumber}`);
-      appendBytes(lineFeed);
-      appendStr(`Tgl  : ${info.date}`);
-      appendBytes(lineFeed);
-      appendStr(`Kasir: Admin`);
-      appendBytes(lineFeed);
-      appendStr(`Plg  : ${info.customerName}`);
-      appendBytes(lineFeed);
-      appendStr('-'.repeat(WIDTH));
-      appendBytes(lineFeed);
-
-      info.items.forEach((item: any) => {
-        const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-        const subtotal = price * item.quantity;
-
-        appendStr(item.product.name);
-        appendBytes(lineFeed);
-
-        const qtyStr = `${item.quantity}x`;
-        const priceStr = formatRupiahStr(price);
-        const subtotalStr = formatRupiahStr(subtotal);
-
-        const leftPart = `${qtyStr.padEnd(6)}${priceStr}`;
-        const spaces = WIDTH - leftPart.length - subtotalStr.length;
-        appendStr(leftPart + ' '.repeat(Math.max(0, spaces)) + subtotalStr);
-        appendBytes(lineFeed);
-      });
-
-      appendStr('-'.repeat(WIDTH));
-      appendBytes(lineFeed);
-
-      appendBytes(boldOn);
-      const totalStr = `TOTAL              Rp ${formatRupiahStr(info.cartTotal).padStart(12)}`;
-      appendStr(totalStr.padStart(WIDTH));
-      appendBytes(lineFeed);
-
-      const bayarStr = `BAYAR (DP)         Rp ${formatRupiahStr(info.amountPaid).padStart(12)}`;
-      appendStr(bayarStr.padStart(WIDTH));
-      appendBytes(lineFeed);
-
-      const sisaStr = `${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}       Rp ${formatRupiahStr(Math.abs(info.change)).padStart(12)}`;
-      appendStr(sisaStr.padStart(WIDTH));
-      appendBytes(lineFeed);
-
-      appendBytes(center);
-      appendBytes(lineFeed);
-      appendBytes(lineFeed);
-      appendStr(`STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}`);
-      appendBytes(lineFeed);
-      appendBytes(boldOff);
-
-      appendBytes(lineFeed);
-      appendBytes(lineFeed);
-      appendBytes(lineFeed);
-      appendBytes(lineFeed);
-
-      // Cut command
-      appendBytes(new Uint8Array([GS, 0x56, 0x41, 0x00]));
-
-      // Send to printer in 512 byte chunks
-      const chunkSize = 512;
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        const chunk = payload.slice(i, i + chunkSize);
-        await printCharacteristic.writeValue(chunk);
-      }
-
-      onTriggerNotification('Berhasil mencetak ke Bluetooth Printer!');
-
-      setTimeout(() => {
-        if (device.gatt?.connected) device.gatt.disconnect();
-      }, 1000);
-
-    } catch (error) {
-      console.error(error);
-      onTriggerNotification('Gagal mencetak Bluetooth: ' + (error as Error).message);
-    }
+    psPrintBluetoothReceipt(infoToPrint || checkoutSuccessInfo, companyProfile, stocks, onTriggerNotification);
   };
 
   const [isKioskMode, setIsKioskMode] = useState(false);
@@ -830,250 +446,44 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="w-64 shrink-0">
-              <SearchableSelect
-                value={selectedCategoryId}
-                onChange={setSelectedCategoryId}
-                options={[{ value: '', label: 'Semua Kategori' }, ...categories.map(c => ({ value: c.id, label: c.name }))]}
-                placeholder="Pilih Kategori"
-              />
-            </div>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
-                type="text"
-                placeholder="Cari nama produk atau SKU..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-xl text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {filteredProducts.map((product) => {
-              const price = parseFloat(product.sellingPrice?.toString() || (product as any).selling_price?.toString() || '0');
-              const inCart = cart.find(c => c.product.id === product.id);
-
-              const productStocks = stocks.filter(s => s.product_id === product.id && parseFloat(s.quantity) > 0);
-              const physicalStock = productStocks.reduce((sum, s) => sum + parseFloat(s.quantity), 0);
-              const bookedStock = Number(product.bookedStock || (product as any).booked_stock || 0);
-              const totalStock = Math.max(0, physicalStock - bookedStock);
-
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className={`bg-white rounded-2xl p-4 cursor-pointer transition-all duration-200 border-2 ${inCart ? 'border-emerald-500 shadow-md transform scale-[0.98]' : 'border-transparent hover:border-emerald-200 shadow-sm'} relative flex flex-col justify-between min-h-[140px]`}
-                >
-                  {inCart && (
-                    <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10">
-                      {inCart.quantity}
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-[10px] font-mono text-slate-400 mb-1">{product.sku || 'NO-SKU'}</div>
-                    <div className="font-bold text-slate-700 leading-tight line-clamp-2">
-                      {product.name}
-                      {Number((product as any).is_customizable) ? <span className="ml-1.5 inline-block bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-black uppercase">PO</span> : null}
-                    </div>
-
-                    <div className="text-[11px] mt-1.5 text-slate-500">
-                      {Number((product as any).is_customizable) ? (
-                        <span className="text-amber-600 font-bold">Barang Inden / PO</span>
-                      ) : (
-                        <div className="flex flex-col">
-                          <span className={totalStock > 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
-                            {totalStock > 0 ? `Tersedia: ${totalStock}` : 'Stok Habis'}
-                          </span>
-                          <span className="text-slate-400">
-                            (Fisik: {physicalStock}, Dipesan: {bookedStock})
-                          </span>
-                        </div>
-                      )}
-                      {productStocks.length > 0 && (
-                        <div className="flex flex-col gap-0.5 mt-1 border-t border-slate-100 pt-1">
-                          {productStocks.map(s => {
-                            const locName = `${s.location?.warehouse?.name ? s.location.warehouse.name + ' - ' : ''}${s.location?.name || 'Unknown'}`;
-                            return (
-                              <div key={s.location_id} className="flex justify-between items-center text-[9px]">
-                                <span className="text-slate-400 truncate pr-1" title={locName}>
-                                  {locName}
-                                </span>
-                                <span className="font-bold text-slate-600 bg-slate-100 px-1 rounded shrink-0">
-                                  {parseFloat(s.quantity)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-end justify-between">
-                    <div className="bg-emerald-50 px-2 py-1 rounded-lg">
-                      <div className="text-emerald-700 font-black text-sm">{formatRupiah(price)}</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {filteredProducts.length === 0 && (
-              <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400">
-                <Package size={48} className="mb-4 text-slate-300" />
-                <p>Tidak ada produk ditemukan.</p>
-              </div>
-            )}
+            <PosProductGrid
+              categories={categories}
+              selectedCategoryId={selectedCategoryId}
+              setSelectedCategoryId={setSelectedCategoryId}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filteredProducts={filteredProducts}
+              stocks={stocks}
+              cart={cart}
+              addToCart={addToCart}
+              formatRupiah={formatRupiah}
+            />
           </div>
         </div>
       </div>
 
       {/* RIGHT PANEL: CART */}
-      <div className="w-[400px] flex flex-col bg-white shrink-0 z-30 shadow-2xl border-l border-slate-200">
-        <div className="p-5 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center gap-3">
-          <ShoppingCart size={20} />
-          <h2 className="font-bold tracking-wide">Struk Belanja</h2>
-        </div>
-
-        <div className="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
-          <div>
-            <label className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
-              <User size={12} /> Pelanggan
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <SearchableSelect
-                  value={selectedCustomerId}
-                  onChange={setSelectedCustomerId}
-                  placeholder="-- Pilih Pelanggan --"
-                  options={customers.map(c => ({ value: c.id, label: c.name || (c as any).company_name }))}
-                />
-              </div>
-              <button
-                onClick={() => setShowAddCustomerModal(true)}
-                className="px-3 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors flex items-center justify-center shrink-0 border border-emerald-200"
-                title="Tambah Pelanggan Baru"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-          {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-              <ShoppingCart size={40} className="mb-3 text-slate-300" />
-              <p className="text-sm">Belum ada barang.</p>
-            </div>
-          ) : (
-            cart.map(item => {
-              const price = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
-              const itemStocks = stocks.filter(s => s.product_id === item.product.id && parseFloat(s.quantity) > 0);
-
-              return (
-                <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md transition-shadow relative group">
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                  <div className="flex-1">
-                    <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
-                    <div className="text-emerald-600 font-semibold text-sm">{formatRupiah(price)}</div>
-
-                    <button
-                      onClick={() => toggleItemFulfillment(item.id)}
-                      className="mt-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors bg-slate-100 hover:bg-slate-200 text-slate-600"
-                    >
-                      {item.fulfillment_type === 'take_away' ? (
-                        <><FaCarSide size={12} className="text-emerald-600" /> Bawa Sendiri</>
-                      ) : (
-                        <><FaTruck size={12} className="text-indigo-500" /> Diantar</>
-                      )}
-                    </button>
-
-                    <div className="mt-2">
-                      <select
-                        value={item.location_id}
-                        onChange={(e) => updateCartItemLocation(item.id, e.target.value)}
-                        className="w-full border border-slate-200 rounded px-2 py-1 text-[10px] bg-slate-50 text-slate-700 outline-none focus:border-emerald-400"
-                      >
-                        <option value="">-- Pilih Gudang --</option>
-                        {itemStocks.map(s => (
-                          <option key={s.location_id} value={s.location_id}>
-                            {s.location?.warehouse?.name ? s.location.warehouse.name + ' - ' : ''}{s.location?.name} (Stok: {parseFloat(s.quantity)})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end justify-between">
-                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-rose-600"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <input 
-                        type="number"
-                        min="1"
-                        value={item.quantity === 0 ? '' : item.quantity}
-                        onChange={(e) => setQuantity(item.id, e.target.value)}
-                        onBlur={() => {
-                          if (item.quantity === 0) setQuantity(item.id, 1);
-                        }}
-                        className="w-12 text-center text-sm font-bold bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded hide-arrows"
-                      />
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-600"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)]">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-slate-500 font-bold">Total Pembayaran</span>
-            <span className="text-2xl font-black text-slate-900">{formatRupiah(cartTotal)}</span>
-          </div>
-          <button
-            onClick={() => {
-              if (!selectedCustomerId || cart.length === 0) {
-                onTriggerNotification('Mohon lengkapi data pelanggan dan keranjang.');
-                return;
-              }
-              if (cart.some(item => !item.location_id)) {
-                onTriggerNotification('Mohon pilih gudang untuk setiap barang di keranjang.');
-                return;
-              }
-              if (accounts.length > 0 && !selectedAccountId) {
-                // Auto-select first account if not selected
-                setSelectedAccountId(accounts[0].id);
-              }
-              setAmountPaid(cartTotal.toString());
-              setShowCheckoutModal(true);
-            }}
-            disabled={cart.length === 0}
-            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-          >
-            <CheckCircle2 size={24} className="drop-shadow-sm" />
-            BAYAR SEKARANG
-          </button>
-        </div>
-      </div>
+      <PosCartSidebar
+        cart={cart}
+        customers={customers}
+        selectedCustomerId={selectedCustomerId}
+        setSelectedCustomerId={setSelectedCustomerId}
+        setShowAddCustomerModal={setShowAddCustomerModal}
+        removeFromCart={removeFromCart}
+        toggleItemFulfillment={toggleItemFulfillment}
+        updateCartItemLocation={updateCartItemLocation}
+        updateQuantity={updateQuantity}
+        setQuantity={setQuantity}
+        cartTotal={cartTotal}
+        formatRupiah={formatRupiah}
+        stocks={stocks}
+        onTriggerNotification={onTriggerNotification}
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        setSelectedAccountId={setSelectedAccountId}
+        setAmountPaid={setAmountPaid}
+        setShowCheckoutModal={setShowCheckoutModal}
+      />
 
       {/* CHECKOUT MODAL */}
       {showCheckoutModal && (
