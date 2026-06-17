@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download, Bluetooth } from 'lucide-react';
 import { FaCarSide, FaTruck } from 'react-icons/fa6';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
@@ -503,18 +503,18 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
     try {
       const { toPng } = await import('html-to-image');
-      
+
       const container = document.createElement('div');
       container.style.position = 'fixed';
       container.style.top = '-9999px';
       container.style.left = '-9999px';
-      container.style.width = '69mm'; 
+      container.style.width = '69mm';
       container.style.backgroundColor = '#ffffff';
       container.style.color = '#000000';
-      container.style.padding = '5mm'; 
+      container.style.padding = '5mm';
       container.style.fontFamily = "'Consolas', 'Courier New', Courier, monospace";
       container.style.boxSizing = 'border-box';
-      
+
       const htmlContent = `
         <style>
           .text-center { text-align: center; }
@@ -545,9 +545,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           
           <table class="mb-2" style="font-size: 11px;">
             ${info.items.map((item: any) => {
-              const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-              const subtotal = price * item.quantity;
-              return `
+        const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+        const subtotal = price * item.quantity;
+        return `
                 <tr>
                   <td colspan="3">
                     ${item.product.name}
@@ -562,7 +562,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
                 </tr>
               `;
-            }).join('')}
+      }).join('')}
           </table>
           
           <div class="border-b"></div>
@@ -593,38 +593,206 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           </div>
         </div>
       `;
-      
+
       container.innerHTML = htmlContent;
       document.body.appendChild(container);
-      
+
       // Wait for the browser to render the DOM node properly before capturing
       await new Promise(resolve => setTimeout(resolve, 150));
-      
+
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
       const dataUrl = canvas.toDataURL('image/png');
-      
+
       const { jsPDF } = await import('jspdf');
-      
+
       const pxToMm = 0.264583;
       const heightInMm = container.offsetHeight * pxToMm;
       const docWidth = 80;
       const docHeight = Math.max(100, heightInMm + 10);
-      
+
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: [docWidth, docHeight]
       });
-      
+
       doc.addImage(dataUrl, 'PNG', 5.5, 5, 69, heightInMm);
       doc.save(`Struk_${info.orderNumber}.pdf`);
-      
+
       document.body.removeChild(container);
       onTriggerNotification('Struk berhasil diunduh sebagai PDF');
     } catch (error) {
       console.error('Failed to download receipt', error);
       onTriggerNotification('Gagal mendownload struk pembayaran');
+    }
+  };
+
+  const printBluetoothReceipt = async (infoToPrint?: any) => {
+    const info = infoToPrint || checkoutSuccessInfo;
+    if (!info) return;
+
+    if (!(navigator as any).bluetooth) {
+      onTriggerNotification('Browser ini tidak mendukung Web Bluetooth API. Gunakan Chrome terbaru.');
+      return;
+    }
+
+    try {
+      const device = await (navigator as any).bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+          '0000fee7-0000-1000-8000-00805f9b34fb',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+        ]
+      });
+
+      if (!device.gatt) return;
+
+      const server = await device.gatt.connect();
+      let printCharacteristic: any = null;
+
+      const services = await server.getPrimaryServices();
+      for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            printCharacteristic = char;
+            break;
+          }
+        }
+        if (printCharacteristic) break;
+      }
+
+      if (!printCharacteristic) {
+        onTriggerNotification('Tidak menemukan layanan print pada perangkat Bluetooth ini.');
+        return;
+      }
+
+      const encoder = new TextEncoder();
+      const ESC = 0x1B;
+      const GS = 0x1D;
+
+      const center = new Uint8Array([ESC, 0x61, 1]);
+      const left = new Uint8Array([ESC, 0x61, 0]);
+      const boldOn = new Uint8Array([ESC, 0x45, 1]);
+      const boldOff = new Uint8Array([ESC, 0x45, 0]);
+      const init = new Uint8Array([ESC, 0x40]);
+      const lineFeed = new Uint8Array([0x0A]);
+
+      const formatRupiahStr = (num: number) => new Intl.NumberFormat('id-ID').format(num);
+      const WIDTH = 48; // Assume 80mm generic bluetooth
+
+      let payload = new Uint8Array([...init, ...center, ...boldOn]);
+
+      const appendStr = (str: string) => {
+        const bytes = encoder.encode(str);
+        const newPayload = new Uint8Array(payload.length + bytes.length);
+        newPayload.set(payload);
+        newPayload.set(bytes, payload.length);
+        payload = newPayload;
+      };
+
+      const appendBytes = (bytes: Uint8Array) => {
+        const newPayload = new Uint8Array(payload.length + bytes.length);
+        newPayload.set(payload);
+        newPayload.set(bytes, payload.length);
+        payload = newPayload;
+      };
+
+      appendStr(companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG');
+      appendBytes(lineFeed);
+      appendBytes(boldOff);
+
+      appendStr(companyProfile?.address || 'Jl. Raya Konstruksi No.123');
+      appendBytes(lineFeed);
+      appendStr('Telp: ' + (companyProfile?.phone || '0812-3456-7890'));
+      appendBytes(lineFeed);
+      appendStr('-'.repeat(WIDTH));
+      appendBytes(lineFeed);
+
+      appendBytes(left);
+      appendStr(`No   : ${info.orderNumber}`);
+      appendBytes(lineFeed);
+      appendStr(`Tgl  : ${info.date}`);
+      appendBytes(lineFeed);
+      appendStr(`Kasir: Admin`);
+      appendBytes(lineFeed);
+      appendStr(`Plg  : ${info.customerName}`);
+      appendBytes(lineFeed);
+      appendStr('-'.repeat(WIDTH));
+      appendBytes(lineFeed);
+
+      info.items.forEach((item: any) => {
+        const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+        const subtotal = price * item.quantity;
+
+        appendStr(item.product.name + (item.fulfillment_type === 'delivery' ? ' (DELIVERY)' : ''));
+        appendBytes(lineFeed);
+
+        const qtyStr = `${item.quantity}x`;
+        const priceStr = formatRupiahStr(price);
+        const subtotalStr = formatRupiahStr(subtotal);
+
+        const leftPart = `${qtyStr.padEnd(6)}${priceStr}`;
+        const spaces = WIDTH - leftPart.length - subtotalStr.length;
+        appendStr(leftPart + ' '.repeat(Math.max(0, spaces)) + subtotalStr);
+        appendBytes(lineFeed);
+      });
+
+      appendStr('-'.repeat(WIDTH));
+      appendBytes(lineFeed);
+
+      appendBytes(boldOn);
+      const totalStr = `TOTAL              Rp ${formatRupiahStr(info.cartTotal).padStart(12)}`;
+      appendStr(totalStr.padStart(WIDTH));
+      appendBytes(lineFeed);
+
+      const bayarStr = `BAYAR (DP)         Rp ${formatRupiahStr(info.amountPaid).padStart(12)}`;
+      appendStr(bayarStr.padStart(WIDTH));
+      appendBytes(lineFeed);
+
+      const sisaStr = `${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}       Rp ${formatRupiahStr(Math.abs(info.change)).padStart(12)}`;
+      appendStr(sisaStr.padStart(WIDTH));
+      appendBytes(lineFeed);
+
+      appendBytes(center);
+      appendBytes(lineFeed);
+      appendStr(`STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}`);
+      appendBytes(lineFeed);
+      appendBytes(boldOff);
+
+      appendBytes(lineFeed);
+      appendStr('*** TERIMA KASIH ***');
+      appendBytes(lineFeed);
+      appendStr('Barang yang sudah dibeli');
+      appendBytes(lineFeed);
+      appendStr('tidak dapat ditukar/dikembalikan');
+      appendBytes(lineFeed);
+      appendBytes(lineFeed);
+      appendBytes(lineFeed);
+      appendBytes(lineFeed);
+
+      // Cut command
+      appendBytes(new Uint8Array([GS, 0x56, 0x41, 0x00]));
+
+      // Send to printer in 512 byte chunks
+      const chunkSize = 512;
+      for (let i = 0; i < payload.length; i += chunkSize) {
+        const chunk = payload.slice(i, i + chunkSize);
+        await printCharacteristic.writeValue(chunk);
+      }
+
+      onTriggerNotification('Berhasil mencetak ke Bluetooth Printer!');
+
+      setTimeout(() => {
+        if (device.gatt?.connected) device.gatt.disconnect();
+      }, 1000);
+
+    } catch (error) {
+      console.error(error);
+      onTriggerNotification('Gagal mencetak Bluetooth: ' + (error as Error).message);
     }
   };
 
@@ -1141,6 +1309,13 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   Cetak Struk
                 </button>
                 <button
+                  onClick={() => printBluetoothReceipt(checkoutSuccessInfo)}
+                  className="flex-1 py-3.5 border-2 border-blue-500 text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Bluetooth size={20} />
+                  Bluetooth
+                </button>
+                <button
                   onClick={() => downloadReceipt(checkoutSuccessInfo)}
                   className="flex-1 py-3.5 border-2 border-slate-500 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
                 >
@@ -1269,7 +1444,29 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                             onClick={() => {
                               const info = {
                                 orderNumber: tx.order_number,
-                                change: 0, 
+                                change: 0,
+                                fulfillmentType: 'take_away',
+                                customerName: tx.customer?.name || 'Pelanggan',
+                                amountPaid: parseFloat(tx.total),
+                                cartTotal: parseFloat(tx.total),
+                                items: (tx.items || []).map((i: any) => ({
+                                  product: i.product,
+                                  quantity: i.quantity,
+                                })),
+                                date: tx.order_date,
+                              };
+                              printBluetoothReceipt(info);
+                            }}
+                            className="px-3 py-1.5 border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
+                            title="Cetak Bluetooth"
+                          >
+                            <Bluetooth size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const info = {
+                                orderNumber: tx.order_number,
+                                change: 0,
                                 fulfillmentType: 'take_away',
                                 customerName: tx.customer?.name || 'Pelanggan',
                                 amountPaid: parseFloat(tx.total),
