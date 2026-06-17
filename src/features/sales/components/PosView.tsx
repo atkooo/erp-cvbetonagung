@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download } from 'lucide-react';
 import { FaCarSide, FaTruck } from 'react-icons/fa6';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
@@ -149,7 +149,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => {
       const maxStock = productStocks.find(s => s.location_id === defaultLocationId)?.quantity || 0;
       const isCustom = Number((product as any).is_customizable);
-      
+
       let itemFulfillment = fulfillmentType;
 
       if (fulfillmentType === 'take_away') {
@@ -271,7 +271,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
         const newType = item.fulfillment_type === 'take_away' ? 'delivery' : 'take_away';
-        
+
         if (newType === 'take_away') {
           if (Number((item.product as any).is_customizable)) {
             onTriggerNotification(`Barang Custom/PO wajib Diantar/Indent.`);
@@ -284,7 +284,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             return item;
           }
         }
-        
+
         return { ...item, fulfillment_type: newType, id: `${item.product.id}-${item.location_id}-${newType}-${Date.now()}` };
       }
       return item;
@@ -394,12 +394,13 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       <head>
         <title>Struk Pembayaran - ${info.orderNumber}</title>
         <style>
-          @page { margin: 0; size: 72mm auto; }
+          @page { margin: 0; size: auto; }
           body { 
             font-family: 'Consolas', 'Courier New', Courier, monospace; 
-            width: 68mm; 
-            margin: 0 auto; 
-            padding: 2mm; 
+            width: 69mm; 
+            margin: 0; 
+            padding: 0 2mm; 
+            box-sizing: border-box;
             font-size: 12px; 
             font-weight: 600;
             line-height: 1.2;
@@ -496,6 +497,137 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     printWindow.document.close();
   };
 
+  const downloadReceipt = async (infoToPrint?: any) => {
+    const info = infoToPrint || checkoutSuccessInfo;
+    if (!info) return;
+
+    try {
+      const { toPng } = await import('html-to-image');
+      
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.top = '-9999px';
+      container.style.left = '-9999px';
+      container.style.width = '69mm'; 
+      container.style.backgroundColor = '#ffffff';
+      container.style.color = '#000000';
+      container.style.padding = '5mm'; 
+      container.style.fontFamily = "'Consolas', 'Courier New', Courier, monospace";
+      container.style.boxSizing = 'border-box';
+      
+      const htmlContent = `
+        <style>
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-bold { font-weight: 900; }
+          .mb-1 { margin-bottom: 5px; }
+          .mb-2 { margin-bottom: 10px; }
+          .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+          .flex { display: flex; justify-content: space-between; }
+          table { width: 100%; border-collapse: collapse; }
+          td { padding: 2px 0; vertical-align: top; }
+        </style>
+        <div style="font-size: 12px; font-weight: 600; line-height: 1.2;">
+          <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
+          <div class="text-center border-b mb-2" style="font-size: 10px;">
+            ${companyProfile?.address || 'Jl. Raya Konstruksi No.123'}<br>
+            Telp: ${companyProfile?.phone || '0812-3456-7890'}
+          </div>
+          
+          <div class="mb-2" style="font-size: 10px;">
+            <div class="flex"><span>No:</span> <span>${info.orderNumber}</span></div>
+            <div class="flex"><span>Tgl:</span> <span>${info.date}</span></div>
+            <div class="flex"><span>Kasir:</span> <span>Admin</span></div>
+            <div class="flex"><span>Plg:</span> <span>${info.customerName}</span></div>
+          </div>
+          
+          <div class="border-b"></div>
+          
+          <table class="mb-2" style="font-size: 11px;">
+            ${info.items.map((item: any) => {
+              const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+              const subtotal = price * item.quantity;
+              return `
+                <tr>
+                  <td colspan="3">
+                    ${item.product.name}
+                    <span style="font-size: 9px; border: 1px solid #000; border-radius: 3px; padding: 1px 3px; margin-left: 4px; display: inline-block;">
+                      ${item.fulfillment_type === 'delivery' ? 'DELIVERY' : 'TAKE AWAY'}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>${item.quantity}x</td>
+                  <td>${new Intl.NumberFormat('id-ID').format(price)}</td>
+                  <td class="text-right">${new Intl.NumberFormat('id-ID').format(subtotal)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </table>
+          
+          <div class="border-b"></div>
+          
+          <table class="mb-2 font-bold" style="font-size: 11px;">
+            <tr>
+              <td>TOTAL</td>
+              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
+            </tr>
+            <tr>
+              <td>BAYAR (DP)</td>
+              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
+            </tr>
+            <tr>
+              <td>${info.change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}</td>
+              <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(Math.abs(info.change))}</td>
+            </tr>
+          </table>
+          
+          <div class="text-center mb-2 font-bold" style="font-size: 11px;">
+            STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
+          </div>
+          
+          <div class="text-center mb-2 mt-4" style="font-size: 10px;">
+            *** TERIMA KASIH ***<br>
+            Barang yang sudah dibeli<br>
+            tidak dapat ditukar/dikembalikan
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = htmlContent;
+      document.body.appendChild(container);
+      
+      // Wait for the browser to render the DOM node properly before capturing
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      const { jsPDF } = await import('jspdf');
+      
+      const pxToMm = 0.264583;
+      const heightInMm = container.offsetHeight * pxToMm;
+      const docWidth = 80;
+      const docHeight = Math.max(100, heightInMm + 10);
+      
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [docWidth, docHeight]
+      });
+      
+      doc.addImage(dataUrl, 'PNG', 5.5, 5, 69, heightInMm);
+      doc.save(`Struk_${info.orderNumber}.pdf`);
+      
+      document.body.removeChild(container);
+      onTriggerNotification('Struk berhasil diunduh sebagai PDF');
+    } catch (error) {
+      console.error('Failed to download receipt', error);
+      onTriggerNotification('Gagal mendownload struk pembayaran');
+    }
+  };
+
   const [isKioskMode, setIsKioskMode] = useState(false);
 
   const formatRupiah = (number: number) => {
@@ -525,7 +657,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 <p className="text-xs text-slate-500">Pilih produk untuk ditambahkan ke keranjang</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
@@ -719,8 +851,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   <div className="flex-1">
                     <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
                     <div className="text-emerald-600 font-semibold text-sm">{formatRupiah(price)}</div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => toggleItemFulfillment(item.id)}
                       className="mt-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors bg-slate-100 hover:bg-slate-200 text-slate-600"
                     >
@@ -1000,13 +1132,22 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             </div>
 
             <div className="p-6 space-y-3 bg-white">
-              <button
-                onClick={() => printReceipt(checkoutSuccessInfo)}
-                className="w-full py-3.5 border-2 border-emerald-500 text-emerald-700 font-bold rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <Package size={20} />
-                Cetak Struk Pembayaran
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => printReceipt(checkoutSuccessInfo)}
+                  className="flex-1 py-3.5 border-2 border-emerald-500 text-emerald-700 font-bold rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Package size={20} />
+                  Cetak Struk
+                </button>
+                <button
+                  onClick={() => downloadReceipt(checkoutSuccessInfo)}
+                  className="flex-1 py-3.5 border-2 border-slate-500 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={20} />
+                  Download PDF
+                </button>
+              </div>
 
               {checkoutSuccessInfo.fulfillmentType === 'delivery' && (
                 <button
@@ -1101,28 +1242,51 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="font-black text-slate-900">{formatRupiah(parseFloat(tx.total))}</div>
-                        <button
-                          onClick={() => {
-                            // Map backend sales order to info format
-                            const info = {
-                              orderNumber: tx.order_number,
-                              change: 0, // Not saved in SO
-                              fulfillmentType: 'take_away',
-                              customerName: tx.customer?.name || 'Pelanggan',
-                              amountPaid: parseFloat(tx.total),
-                              cartTotal: parseFloat(tx.total),
-                              items: (tx.items || []).map((i: any) => ({
-                                product: i.product,
-                                quantity: i.quantity,
-                              })),
-                              date: tx.order_date,
-                            };
-                            printReceipt(info);
-                          }}
-                          className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors"
-                        >
-                          Cetak
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => {
+                              const info = {
+                                orderNumber: tx.order_number,
+                                change: 0,
+                                fulfillmentType: 'take_away',
+                                customerName: tx.customer?.name || 'Pelanggan',
+                                amountPaid: parseFloat(tx.total),
+                                cartTotal: parseFloat(tx.total),
+                                items: (tx.items || []).map((i: any) => ({
+                                  product: i.product,
+                                  quantity: i.quantity,
+                                })),
+                                date: tx.order_date,
+                              };
+                              downloadReceipt(info);
+                            }}
+                            className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
+                            title="Download Struk (PDF)"
+                          >
+                            <Download size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const info = {
+                                orderNumber: tx.order_number,
+                                change: 0, 
+                                fulfillmentType: 'take_away',
+                                customerName: tx.customer?.name || 'Pelanggan',
+                                amountPaid: parseFloat(tx.total),
+                                cartTotal: parseFloat(tx.total),
+                                items: (tx.items || []).map((i: any) => ({
+                                  product: i.product,
+                                  quantity: i.quantity,
+                                })),
+                                date: tx.order_date,
+                              };
+                              printReceipt(info);
+                            }}
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
+                          >
+                            <Package size={16} /> Cetak
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

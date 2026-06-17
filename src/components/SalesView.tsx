@@ -1023,7 +1023,7 @@ export default function SalesView({
                                       const p = val || 1;
                                       updateFormItem(index, {
                                         pieceCount: val,
-                                        quantity: item.pricingMethod === 'per_dimension' ? parseFloat((p * l).toFixed(2)) : p
+                                        quantity: parseFloat((p * l).toFixed(2))
                                       });
                                     }}
                                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
@@ -1043,7 +1043,7 @@ export default function SalesView({
                                       const l = val || 1;
                                       updateFormItem(index, {
                                         length: val,
-                                        quantity: item.pricingMethod === 'per_dimension' ? parseFloat((p * l).toFixed(2)) : p
+                                        quantity: parseFloat((p * l).toFixed(2))
                                       });
                                     }}
                                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
@@ -1051,7 +1051,7 @@ export default function SalesView({
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.pricingMethod === 'per_dimension' ? item.unit || 'M' : 'Item'})</label>
+                                  <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.unit || 'Item'})</label>
                                   <input
                                     type="number"
                                     required
