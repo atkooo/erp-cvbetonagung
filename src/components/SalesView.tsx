@@ -622,9 +622,14 @@ export default function SalesView({
                         
                         if (poQty > 0) {
                           isPo = true;
-                          itemLabel = "Barang PO / Inden";
+                          const totalQty = item.pieceCount || item.quantity;
+                          if (poQty < totalQty) {
+                            itemLabel = `Sisa PO: ${poQty} | Sudah Diambil: ${totalQty - poQty}`;
+                          } else {
+                            itemLabel = "Barang PO / Inden";
+                          }
                         } else {
-                          itemLabel = "Sudah Diambil / Siap Kirim";
+                          itemLabel = "Sudah Diambil / Selesai";
                         }
                       }
 

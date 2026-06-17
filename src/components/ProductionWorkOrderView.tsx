@@ -155,9 +155,11 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     const item = salesOrder.items?.[itemIndex];
     if (!item?.productId) return;
 
+    const outstanding = getItemOutstandingQty(salesOrder.id, item);
+
     setSelectedSalesOrderItemIndex(String(itemIndex));
     setSelectedProductId(item.productId);
-    setTargetQty(item.pieceCount || item.quantity);
+    setTargetQty(outstanding);
     
     let label = `SO: ${salesOrder.orderNumber}`;
     if (item.pieceCount && item.length) {
@@ -189,10 +191,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     const selectedSalesOrderItem = selectedSalesOrderItemIndex !== ''
       ? selectedSalesOrder?.items?.[Number(selectedSalesOrderItemIndex)]
       : undefined;
-    const requiredQty = selectedSalesOrderItem?.pieceCount || selectedSalesOrderItem?.quantity || 0;
+    const requiredQty = selectedSalesOrderItem ? getItemOutstandingQty(selectedSalesOrderId, selectedSalesOrderItem) : 0;
     if (selectedSalesOrderItem && targetQty < requiredQty) {
       onTriggerNotification(
-        `Target produksi tidak boleh kurang dari kebutuhan SO: ${requiredQty}.`
+        `Target produksi tidak boleh kurang dari kebutuhan sisa SO (Indent/PO): ${requiredQty}.`
       );
       return;
     }

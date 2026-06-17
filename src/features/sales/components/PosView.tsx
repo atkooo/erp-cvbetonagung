@@ -168,10 +168,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === itemFulfillment);
       if (existing) {
-        if (itemFulfillment === 'take_away' && existing.quantity + 1 > parseFloat(maxStock)) {
-          onTriggerNotification(`Stok tersisa ${parseFloat(maxStock)}. Bawa Sendiri maksimal sesuai stok. Ubah mode ke Diantar jika ingin menambah lagi.`);
-          return prev;
-        }
 
         return prev.map(item =>
           item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === fulfillmentType
@@ -194,14 +190,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
 
-        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
-        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-
-        if (item.fulfillment_type === 'take_away' && newQty > maxStock && delta > 0) {
-          onTriggerNotification(`Maksimal Bawa Sendiri adalah ${maxStock} (sesuai stok). Tambahkan barang yang sama lagi dengan mode Diantar untuk sisanya.`);
-          return item;
-        }
-
         return { ...item, quantity: newQty };
       }
       return item;
@@ -214,13 +202,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
-        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
-        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-
-        if (item.fulfillment_type === 'take_away' && newQty > maxStock) {
-          onTriggerNotification(`Maksimal Bawa Sendiri adalah ${maxStock} (sesuai stok).`);
-          return { ...item, quantity: maxStock > 0 ? maxStock : 1 };
-        }
 
         return { ...item, quantity: newQty };
       }
@@ -268,18 +249,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const updateCartItemLocation = (cartItemId: string, newLocationId: string) => {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
-        const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === newLocationId);
-        const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-
         let newQty = item.quantity;
-        if (item.fulfillment_type === 'take_away' && newQty > maxStock) {
-          newQty = maxStock || 1;
-          if (maxStock > 0) {
-            onTriggerNotification(`Karena Bawa Sendiri, jumlah diturunkan ke sisa stok gudang (${maxStock})`);
-          } else {
-            onTriggerNotification(`Perhatian: Stok gudang kosong (0). Item ini harus Diantar (Backorder).`);
-          }
-        }
 
         return { ...item, location_id: newLocationId, quantity: newQty };
       }
@@ -297,12 +267,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             onTriggerNotification(`Barang Custom/PO wajib Diantar/Indent.`);
             return item;
           }
-          const locationStock = stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id);
-          const maxStock = locationStock ? parseFloat(locationStock.quantity) : 0;
-          if (item.quantity > maxStock) {
-            onTriggerNotification(`Tidak bisa ubah ke Bawa Sendiri karena Qty (${item.quantity}) melebihi Stok (${maxStock}). Silakan kurangi Qty terlebih dahulu.`);
-            return item;
-          }
+
         }
 
         return { ...item, fulfillment_type: newType, id: `${item.product.id}-${item.location_id}-${newType}-${Date.now()}` };
