@@ -29,7 +29,7 @@ export default function PosProductGrid({
 }: PosProductGridProps) {
   return (
     <>
-      <div className="px-4 pb-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm z-20 sticky top-[73px]">
+      <div className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm z-20 sticky top-[73px]">
         <div className="flex items-center gap-3">
           <div className="w-64 shrink-0">
             <SearchableSelect
@@ -53,7 +53,7 @@ export default function PosProductGrid({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredProducts.map((product) => {
             const price = parseFloat(product.sellingPrice?.toString() || (product as any).selling_price?.toString() || '0');
             const inCart = cart.find(c => c.product.id === product.id);
@@ -90,7 +90,7 @@ export default function PosProductGrid({
                           {totalStock > 0 ? `Tersedia: ${totalStock}` : 'Stok Habis'}
                         </span>
                         <span className="text-slate-400">
-                          (Fisik: ${physicalStock}, Dipesan: ${bookedStock})
+                          (Fisik: {physicalStock}, Dipesan: {bookedStock})
                         </span>
                       </div>
                     )}

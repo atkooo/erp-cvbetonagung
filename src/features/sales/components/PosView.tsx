@@ -444,22 +444,19 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <PosProductGrid
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              setSelectedCategoryId={setSelectedCategoryId}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filteredProducts={filteredProducts}
-              stocks={stocks}
-              cart={cart}
-              addToCart={addToCart}
-              formatRupiah={formatRupiah}
-            />
-          </div>
         </div>
+        <PosProductGrid
+          categories={categories}
+          selectedCategoryId={selectedCategoryId}
+          setSelectedCategoryId={setSelectedCategoryId}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredProducts={filteredProducts}
+          stocks={stocks}
+          cart={cart}
+          addToCart={addToCart}
+          formatRupiah={formatRupiah}
+        />
       </div>
 
       {/* RIGHT PANEL: CART */}
