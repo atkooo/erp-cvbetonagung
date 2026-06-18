@@ -29,4 +29,5 @@ input.hide-arrows::-webkit-inner-spin-button {
 }
 input[type=number].hide-arrows {
   -moz-appearance: textfield;
+  appearance: textfield;
 }

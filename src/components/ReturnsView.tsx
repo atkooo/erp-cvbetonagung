@@ -34,6 +34,7 @@ import { Supplier, Customer, SalesOrder, PurchaseOrder } from "../types";
 
 interface ReturnsViewProps {
   onTriggerNotification: (message: string) => void;
+  defaultType?: "customer" | "supplier";
 }
 
 const Panel = ({
@@ -97,6 +98,7 @@ const StatusPill = ({
 
 export default function ReturnsView({
   onTriggerNotification,
+  defaultType,
 }: ReturnsViewProps) {
   const [returns, setReturns] = useState<Return[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -108,7 +110,7 @@ export default function ReturnsView({
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "customer" | "supplier">(
-    "all",
+    defaultType || "all",
   );
 
   // Modals
@@ -116,7 +118,14 @@ export default function ReturnsView({
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Form State
-  const [type, setType] = useState<"customer" | "supplier">("customer");
+  const [type, setType] = useState<"customer" | "supplier">(defaultType || "customer");
+
+  useEffect(() => {
+    if (defaultType) {
+      setFilterType(defaultType);
+      setType(defaultType);
+    }
+  }, [defaultType]);
   const [selectedPartnerId, setSelectedPartnerId] = useState("");
   const [selectedRefId, setSelectedRefId] = useState("");
   const [reason, setReason] = useState("");
@@ -337,8 +346,8 @@ export default function ReturnsView({
     <div className="space-y-6 text-xs font-sans">
       <Header
         icon={<RotateCcw size={20} />}
-        title="Retur Barang (Customer & Supplier)"
-        desc="Pusat pengelolaan retur barang rusak/cacat dari pelanggan atau pengembalian klaim ke pihak supplier."
+        title={defaultType === 'customer' ? "Retur Penjualan (Customer)" : defaultType === 'supplier' ? "Retur Pembelian (Supplier)" : "Retur Barang (Customer & Supplier)"}
+        desc={defaultType === 'customer' ? "Pusat pengelolaan retur barang masuk dari pelanggan." : defaultType === 'supplier' ? "Pusat pengembalian klaim keluar ke pihak pemasok." : "Pusat pengelolaan retur barang rusak/cacat dari pelanggan atau pengembalian klaim ke pihak supplier."}
       />
 
       {/* Control Panel */}
@@ -359,25 +368,27 @@ export default function ReturnsView({
           </div>
 
           {/* Type Filter */}
-          <div className="flex items-center gap-1.5">
-            {[
-              ["all", "Semua"],
-              ["customer", "Retur Customer"],
-              ["supplier", "Retur Supplier"],
-            ].map(([t, label]) => (
-              <button
-                key={t}
-                onClick={() => setFilterType(t as any)}
-                className={`px-3 py-1.5 rounded-lg font-bold border transition ${
-                  filterType === t
-                    ? "bg-slate-900 text-white border-slate-950"
-                    : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {!defaultType && (
+            <div className="flex items-center gap-1.5">
+              {[
+                ["all", "Semua"],
+                ["customer", "Retur Customer"],
+                ["supplier", "Retur Supplier"],
+              ].map(([t, label]) => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t as any)}
+                  className={`px-3 py-1.5 rounded-lg font-bold border transition ${
+                    filterType === t
+                      ? "bg-slate-900 text-white border-slate-950"
+                      : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -667,12 +678,13 @@ export default function ReturnsView({
                     Tipe Retur
                   </label>
                   <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white disabled:bg-slate-50 disabled:text-slate-500"
                     value={type}
                     onChange={(e) => {
                       setType(e.target.value as any);
                       resetForm();
                     }}
+                    disabled={!!defaultType}
                     required
                   >
                     <option value="customer">

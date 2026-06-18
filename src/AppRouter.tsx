@@ -1,7 +1,8 @@
 import React from 'react';
-import { createBrowserRouter, RouteObject, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, RouteObject, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { pathForView, ViewType } from './routes';
+import { pathForView } from './routes';
+import type { ViewType } from './types';
 
 // Lazy-loaded view modules
 const DashboardView = React.lazy(() => import('./pages/dashboard'));
@@ -85,6 +86,38 @@ const ViewWrapper = ({ Component, componentProps }: { Component: React.Component
   );
 };
 
+const QrViewWrapper = () => {
+  const { triggerNotification } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const currentSubView = location.pathname.includes('scan-qr-product') 
+    ? 'scanner' 
+    : location.pathname.includes('scanned-product-detail') 
+      ? 'detail' 
+      : 'list';
+
+  const [scannedSku, setScannedSku] = React.useState<string | null>(null);
+
+  const handleNavigateSubView = (subView: 'list' | 'scanner' | 'detail', sku?: string | null) => {
+    if (sku) setScannedSku(sku);
+    if (subView === 'list') navigate('/qr-products');
+    if (subView === 'scanner') navigate('/scan-qr-product');
+    if (subView === 'detail') navigate('/scanned-product-detail');
+  };
+
+  return (
+    <React.Suspense fallback={<LoadingFallback />}>
+      <QrView
+        currentSubView={currentSubView}
+        scannedSku={scannedSku}
+        onNavigateSubView={handleNavigateSubView}
+        onTriggerNotification={triggerNotification}
+      />
+    </React.Suspense>
+  );
+};
+
 const lazyRoute = (Component: React.ComponentType<any>, props?: any) => (
   <ViewWrapper Component={Component} componentProps={props} />
 );
@@ -111,23 +144,35 @@ const routes: RouteObject[] = [
       { path: 'pos', element: lazyRoute(PosView) },
       { path: 'sales/quotation', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/order', element: lazyRoute(SalesView, { type: 'sales-order' }) },
+      { path: 'delivery-orders', element: lazyRoute(DeliveryOrdersView) },
+      { path: 'returns', element: lazyRoute(ReturnsView, { defaultType: 'customer' }) },
       
       // Finance
       { path: 'finance/billing', element: lazyRoute(InvoicesView) },
+      { path: 'invoices', element: lazyRoute(InvoicesView) },
+      { path: 'sales/invoice', element: lazyRoute(InvoicesView) },
       { path: 'finance/cashier', element: lazyRoute(PaymentsView) },
+      { path: 'payments', element: lazyRoute(PaymentsView) },
       { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView) },
+      { path: 'receivables-payables', element: lazyRoute(ReceivablesPayablesView) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
+      { path: 'cash-expense', element: lazyRoute(CashExpenseView) },
       { path: 'accounts', element: <FinanceAccountsView /> },
       
       // Purchasing
       { path: 'purchasing/po', element: lazyRoute(PurchaseView) },
       { path: 'purchase-requests', element: lazyRoute(PurchaseRequestView) },
       { path: 'rfq', element: lazyRoute(RfqView) },
+      { path: 'purchase-returns', element: lazyRoute(ReturnsView, { defaultType: 'supplier' }) },
       
       // Inventory
       { path: 'inventory/stock', element: lazyRoute(InventoryView, { initialTab: 'stok' }) },
       { path: 'inventory/stock-in', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
       { path: 'inventory/stock-out', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
+      { path: 'stock-management', element: lazyRoute(InventoryView, { initialTab: 'stok' }) },
+      { path: 'incoming-goods', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
+      { path: 'outgoing-goods', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
+      { path: 'stock-movement-history', element: lazyRoute(InventoryView, { initialTab: 'riwayat' }) },
       { path: 'stock-opname', element: lazyRoute(StockOpnameView) },
       { path: 'multi-warehouse', element: lazyRoute(MultiWarehouseView) },
       
@@ -148,6 +193,7 @@ const routes: RouteObject[] = [
       
       // Reporting & Misc
       { path: 'reports', element: lazyRoute(FinanceReportView) },
+      { path: 'finance-reports', element: lazyRoute(FinanceReportView) },
       { path: 'inventory-reports', element: lazyRoute(InventoryReportView) },
       { path: 'audit-logs', element: lazyRoute(AuditLogView) },
       { path: 'approval-workflows', element: lazyRoute(ApprovalWorkflowView) },
@@ -155,6 +201,13 @@ const routes: RouteObject[] = [
       { path: 'users', element: lazyRoute(UsersView) },
       { path: 'profile', element: lazyRoute(ProfileView) },
       { path: 'settings', element: lazyRoute(SettingsView) },
+      { path: 'reminders', element: lazyRoute(RemindersView) },
+      { path: 'document-exports', element: lazyRoute(DocumentExportsView) },
+      
+      // QR / Barcode
+      { path: 'qr-products', element: <QrViewWrapper /> },
+      { path: 'scan-qr-product', element: <QrViewWrapper /> },
+      { path: 'scanned-product-detail', element: <QrViewWrapper /> },
       
       // Fallback
       { path: '*', element: <div className="p-8 text-center text-slate-500 font-sans">Halaman tidak ditemukan atau sedang dalam konstruksi.</div> }

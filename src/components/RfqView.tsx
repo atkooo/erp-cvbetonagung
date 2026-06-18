@@ -16,7 +16,6 @@ import { suppliersApi } from "../features/suppliers/api";
 import { purchasingApi } from "../features/purchasing/api";
 import PurchaseRequestPicker from "./PurchaseRequestPicker";
 import ProductPicker from "./ProductPicker";
-import SupplierPicker from "./SupplierPicker";
 import CurrencyInput from "./CurrencyInput";
 import { useReactToPrint } from "react-to-print";
 import { formatDate } from "../utils/date";

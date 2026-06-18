@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag } from '@/src/components/icons';
 import { Product, Category } from '../types';
 import { DEFAULT_UNITS, productsApi } from '../features/products/api';
-import { UnitDto } from '../features/products/types';
+import { UnitDto, ProductFormData } from '../features/products/types';
 import { inventoryApi } from '../features/inventory/api';
 import { apiClient } from '../services/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
