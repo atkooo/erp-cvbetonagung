@@ -186,32 +186,28 @@ export const authApi = {
 export const systemApi = {
   async downloadBackup() {
     const token = authStorage.getToken();
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/system/backup`, {
+    const response = await fetch(`${API_BASE_URL}/system/backup`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token ?? ''}` },
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Gagal mengunduh backup.' }));
-      throw new Error(error.message || 'Gagal mengunduh backup.');
+      const body = await response.json().catch(() => ({ message: 'Gagal mengunduh backup.' }));
+      throw new Error(body.message || 'Gagal mengunduh backup.');
     }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    
+
     const contentDisposition = response.headers.get('Content-Disposition');
     let filename = `cvba-backup-${new Date().getTime()}.sql`;
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-      if (filenameMatch && filenameMatch.length === 2) {
-        filename = filenameMatch[1];
-      }
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) filename = match[1];
     }
-    
+
     a.download = filename;
     document.body.appendChild(a);
     a.click();

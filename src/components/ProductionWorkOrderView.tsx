@@ -18,6 +18,7 @@ import { salesApi } from '../features/sales/api';
 import { SkeletonTable, SkeletonCard, ErrorCard } from './Skeleton';
 import { ProductionWorkOrder, ProductionWorkLog, Employee, Product, Project, SalesOrder } from '../types';
 import Swal from 'sweetalert2';
+import { toApiDate } from '../utils/date';
 
 interface ProductionWorkOrderViewProps {
   initialWoId?: string | null;
@@ -56,7 +57,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   // Form States - Input Log
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [logWorkDate, setLogWorkDate] = useState(new Date().toISOString().split('T')[0]);
+  const [logWorkDate, setLogWorkDate] = useState(toApiDate());
   const [logStage, setLogStage] = useState('Cetak & Curing');
   const [logMaxQty, setLogMaxQty] = useState<number | null>(null);
   const [madeQty, setMadeQty] = useState(0);
@@ -176,7 +177,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     setSelectedProjectId('');
     setSourceLabel('');
     setTargetQty(100);
-    setDueDate(new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split('T')[0]);
+    setDueDate(toApiDate(new Date(Date.now() + 7 * 24 * 3600 * 1000)));
     setStage('Cetak & Curing');
     setIsCreateModalOpen(true);
   };
@@ -232,7 +233,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   const handleOpenLogModal = () => {
     setSelectedEmployeeId(employees[0]?.id || '');
-    setLogWorkDate(new Date().toISOString().split('T')[0]);
+    setLogWorkDate(toApiDate());
     setLogStage(selectedWo?.stage || 'Cetak & Curing');
     setMadeQty(0);
     setRejectQty(0);

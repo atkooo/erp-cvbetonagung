@@ -35,6 +35,7 @@ import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
 import ProductPicker from './ProductPicker';
 import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
+import { toApiDate } from '../utils/date';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -258,7 +259,7 @@ export default function SalesView({
 
     try {
       const d = new Date();
-      const todayStr = d.toISOString().split('T')[0];
+      const todayStr = toApiDate(d);
       const validUntil = new Date(d);
       validUntil.setDate(d.getDate() + 14); // 14 days valid
 
@@ -267,7 +268,7 @@ export default function SalesView({
         await salesApi.createQuotation({
           customer_id: custId,
           quotation_date: todayStr,
-          valid_until: validUntil.toISOString().split('T')[0],
+          valid_until: toApiDate(validUntil),
           notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,

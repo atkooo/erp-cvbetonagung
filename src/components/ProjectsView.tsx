@@ -33,6 +33,7 @@ import { authStorage } from "../services/api";
 import { projectsApi } from "../features/projects/api";
 import { customersApi } from "../features/customers/api";
 import { productionApi } from "../features/production/api";
+import { toApiDate } from "../utils/date";
 
 interface ProjectsViewProps {
   selectedProjectId: string | null;
@@ -184,7 +185,7 @@ export default function ProjectsView({
     if (!project || !newDesc) return;
 
     try {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = toApiDate();
 
       // Map stage to database status and progress
       let progress = project.progress;
@@ -342,14 +343,14 @@ export default function ProjectsView({
                                 try {
                                   await projectsApi.updateProjectTask(task.id, {
                                     status: newStatus,
-                                    completed_date: newStatus === 'Completed' ? new Date().toISOString().split('T')[0] : undefined
+                                    completed_date: newStatus === 'Completed' ? toApiDate() : undefined
                                   });
                                   
                                   // Update the timeline too
                                   if (newStatus === 'Completed') {
                                     await projectsApi.createTimelineEvent({
                                       project_id: project.id,
-                                      event_date: new Date().toISOString().split('T')[0],
+                                      event_date: toApiDate(),
                                       stage: task.taskName,
                                       description: `Tahapan ${task.taskName} telah diselesaikan.`,
                                       icon: 'CheckCircle'

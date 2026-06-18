@@ -9,7 +9,7 @@ import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, 
 import { Invoice, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
-import { formatDate } from '../utils/date';
+import { formatDate, toApiDate } from '../utils/date';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import { salesApi } from '../features/sales/api';
 import { SalesOrder } from '../types/sales';
@@ -41,11 +41,11 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [selectedSOId, setSelectedSOId] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState(toApiDate());
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    return d.toISOString().split('T')[0];
+    return toApiDate(d);
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 

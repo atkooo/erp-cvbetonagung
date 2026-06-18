@@ -5,25 +5,25 @@ import { pathForView } from './routes';
 import type { ViewType } from './types';
 
 // Lazy-loaded view modules
-const DashboardView = React.lazy(() => import('./pages/dashboard'));
+const DashboardView = React.lazy(() => import('./components/DashboardView'));
 const EmployeeDashboardView = React.lazy(() => import('./components/EmployeeDashboardView'));
-const CustomersView = React.lazy(() => import('./pages/master/customer'));
-const SuppliersView = React.lazy(() => import('./pages/master/supplier'));
-const ProductsView = React.lazy(() => import('./pages/master/product'));
+const CustomersView = React.lazy(() => import('./components/CustomersView'));
+const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
+const ProductsView = React.lazy(() => import('./components/ProductsView'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
 const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
 const PosView = React.lazy(() => import('./features/sales/components/PosView'));
-const SalesView = React.lazy(() => import('./pages/sales/quotation'));
-const InvoicesView = React.lazy(() => import('./pages/finance/billing'));
-const PaymentsView = React.lazy(() => import('./pages/finance/cashier'));
-const PurchaseView = React.lazy(() => import('./pages/purchasing/po'));
+const SalesView = React.lazy(() => import('./components/SalesView'));
+const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
+const PaymentsView = React.lazy(() => import('./components/PaymentsView'));
+const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
 const PurchaseRequestView = React.lazy(() => import('./components/PurchaseRequestView'));
 const RfqView = React.lazy(() => import('./components/RfqView'));
 const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
 const QrView = React.lazy(() => import('./components/QrView'));
-const FinanceReportView = React.lazy(() => import('./pages/reports'));
+const FinanceReportView = React.lazy(() => import('./components/FinanceReportView'));
 const InventoryReportView = React.lazy(() => import('./components/InventoryReportView'));
 const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
@@ -43,8 +43,8 @@ const DocumentExportsView = React.lazy(() => import('./components/DocumentExport
 const ReturnsView = React.lazy(() => import('./components/ReturnsView'));
 const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudgetingView'));
 const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
-const ReceivablesPayablesView = React.lazy(() => import('./pages/finance/account-payable'));
-const CashExpenseView = React.lazy(() => import('./pages/finance/cash-bank'));
+const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
+const CashExpenseView = React.lazy(() => import('./components/CashExpenseView'));
 import { FinanceAccountsView } from './features/finance/components/FinanceAccountsView';
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 const UsersView = React.lazy(() => import('./components/UsersView'));
@@ -149,14 +149,9 @@ const routes: RouteObject[] = [
       
       // Finance
       { path: 'finance/billing', element: lazyRoute(InvoicesView) },
-      { path: 'invoices', element: lazyRoute(InvoicesView) },
-      { path: 'sales/invoice', element: lazyRoute(InvoicesView) },
       { path: 'finance/cashier', element: lazyRoute(PaymentsView) },
-      { path: 'payments', element: lazyRoute(PaymentsView) },
       { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView) },
-      { path: 'receivables-payables', element: lazyRoute(ReceivablesPayablesView) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
-      { path: 'cash-expense', element: lazyRoute(CashExpenseView) },
       { path: 'accounts', element: <FinanceAccountsView /> },
       
       // Purchasing
@@ -169,9 +164,6 @@ const routes: RouteObject[] = [
       { path: 'inventory/stock', element: lazyRoute(InventoryView, { initialTab: 'stok' }) },
       { path: 'inventory/stock-in', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
       { path: 'inventory/stock-out', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
-      { path: 'stock-management', element: lazyRoute(InventoryView, { initialTab: 'stok' }) },
-      { path: 'incoming-goods', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
-      { path: 'outgoing-goods', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
       { path: 'stock-movement-history', element: lazyRoute(InventoryView, { initialTab: 'riwayat' }) },
       { path: 'stock-opname', element: lazyRoute(StockOpnameView) },
       { path: 'multi-warehouse', element: lazyRoute(MultiWarehouseView) },
@@ -193,7 +185,6 @@ const routes: RouteObject[] = [
       
       // Reporting & Misc
       { path: 'reports', element: lazyRoute(FinanceReportView) },
-      { path: 'finance-reports', element: lazyRoute(FinanceReportView) },
       { path: 'inventory-reports', element: lazyRoute(InventoryReportView) },
       { path: 'audit-logs', element: lazyRoute(AuditLogView) },
       { path: 'approval-workflows', element: lazyRoute(ApprovalWorkflowView) },

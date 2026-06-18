@@ -1,4 +1,4 @@
-import { apiClient, authStorage } from '../../services/api';
+import { apiClient } from '../../services/api';
 import { toApiDate, toApiDateTime } from '../../utils/date';
 import {
   ProductStockDto, StockMovementDto, MovementFormData,
@@ -12,22 +12,6 @@ import {
 } from './mappers';
 
 const STOCK_OPNAME_ITEM_PAGE_SIZE = 100;
-
-/** Generate nomor opname lokal (fallback jika backend tidak mengenerate otomatis). */
-const generateOpnameNumber = (): string => {
-  const now = new Date();
-  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `OPN-${ym}-${rand}`;
-};
-
-/** Generate nomor approval lokal (fallback jika backend tidak mengenerate otomatis). */
-const generateApprovalNumber = (): string => {
-  const now = new Date();
-  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `APP-${ym}-${rand}`;
-};
 
 export const inventoryApi = {
   // Product Stocks
@@ -143,7 +127,6 @@ export const inventoryApi = {
   async createStockOpnameSession(data: { warehouse_id: string; notes?: string }): Promise<StockOpnameSession> {
     const response = await apiClient.post<{ data: StockOpnameSessionDto }>('/inventory/stock-opname-sessions', {
       ...data,
-      opname_number: generateOpnameNumber(),
       status: 'draft',
       started_at: new Date().toISOString(),
     });
@@ -236,14 +219,8 @@ export const inventoryApi = {
     change_summary: string;
     amount?: number;
   }): Promise<ApprovalRequest> {
-    // Ambil user dari authStorage — bukan langsung dari localStorage
-    const authUser = authStorage.getUser();
-    const requester_id = authUser?.id;
-
     const response = await apiClient.post<{ data: ApprovalRequestDto }>('/inventory/approval-requests', {
       ...data,
-      approval_number: generateApprovalNumber(),
-      requester_id,
       status: 'pending',
       requested_at: toApiDateTime(),
     });

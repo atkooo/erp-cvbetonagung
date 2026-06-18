@@ -12,7 +12,7 @@ import { apiClient, authStorage } from '../services/api';
 import ProductPicker from './ProductPicker';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
-import { formatDate } from '../utils/date';
+import { formatDate, toApiDate } from '../utils/date';
 
 import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
 
@@ -97,8 +97,8 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
       const user = authStorage.getUser();
       const newPr = await purchasingApi.createPurchaseRequest({
         requester_id: user?.id || '00000000-0000-0000-0000-000000000000', // fallback to uuid if no user
-        request_date: new Date().toISOString().split('T')[0],
-        required_date: new Date().toISOString().split('T')[0],
+        request_date: toApiDate(),
+        required_date: toApiDate(),
         department,
         items: validItems.map(item => ({
           product_id: item.productId,

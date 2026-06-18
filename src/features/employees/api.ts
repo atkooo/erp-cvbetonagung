@@ -16,24 +16,12 @@ export const employeesApi = {
   },
 
   async updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
-    const payload: any = {};
-    if (data.businessUnit !== undefined) payload.business_unit = data.businessUnit;
-    if (data.employeeNumber !== undefined) payload.employee_number = data.employeeNumber;
-    if (data.name !== undefined) payload.name = data.name;
-    if (data.roleName !== undefined) payload.role_name = data.roleName;
-    if (data.department !== undefined) payload.department = data.department;
-    if (data.phone !== undefined) payload.phone = data.phone || null;
-    if (data.address !== undefined) payload.address = data.address || null;
-    if (data.joinDate !== undefined) payload.join_date = data.joinDate || null;
-    if (data.employeeType !== undefined) {
-      const typeMapInv: any = { 'Tetap': 'permanent', 'Kontrak': 'contract', 'Harian': 'daily', 'Borongan': 'borongan' };
-      payload.employee_type = typeMapInv[data.employeeType];
-    }
-    if (data.dailyRate !== undefined) payload.daily_rate = data.dailyRate;
-    if (data.pieceRate !== undefined) payload.piece_rate = data.pieceRate;
-    if (data.status !== undefined) {
-      payload.status = data.status === 'Aktif' ? 'active' : 'inactive';
-    }
+    // Build a full DTO from the partial data (filling defaults from an empty base) then
+    // drop keys whose source field was undefined so we only PATCH what was provided.
+    const full = mapEmployeeToCreateDto({ ...data } as Omit<Employee, 'id'>);
+    const payload = Object.fromEntries(
+      Object.entries(full).filter(([, v]) => v !== undefined)
+    );
 
     const response = await apiClient.put<{ data: EmployeeDto }>(`/identity/employees/${id}`, payload);
     return mapEmployeeFromDto(response.data);

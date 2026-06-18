@@ -11,7 +11,7 @@ import Swal from 'sweetalert2';
 import { financeApi } from '../features/finance/api';
 import { Invoice } from '../types';
 import { SupplierPayable, AccountDto } from '../features/finance/types';
-import { formatDate } from '../utils/date';
+import { formatDate, toApiDate } from '../utils/date';
 import { X } from 'lucide-react';
 import CurrencyInput from './CurrencyInput';
 
@@ -68,7 +68,7 @@ const formatIDR = (num: number) => {
 
 const dateOnly = (value: string | null | undefined) => {
   if (!value || value === '-') return '';
-  return value.split('T')[0];
+  return toApiDate(new Date(value));
 };
 
 export default function ReceivablesPayablesView({ onTriggerNotification }: ReceivablesPayablesViewProps) {
@@ -186,7 +186,7 @@ export default function ReceivablesPayablesView({ onTriggerNotification }: Recei
   };
 
   // Calculations
-  const today = new Date().toISOString().split('T')[0];
+  const today = toApiDate();
 
   // Invoices that are not paid
   const outstandingInvoices = invoices.filter(inv => inv.status !== 'Lunas');
