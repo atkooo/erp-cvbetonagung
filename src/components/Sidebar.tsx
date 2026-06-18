@@ -4,20 +4,19 @@ import { NAVIGATION_SECTIONS } from '../config/navigation';
 import type { NavigationItem } from '../config/navigation';
 import type { ViewType, AuthPermission } from '../types';
 
-interface SidebarProps {
-  currentView: ViewType;
-  onViewChange: (view: ViewType) => void;
-  onLogout: () => void;
-  userRoleName: string;
-  userRoleCode: string;
-  userPermissions?: AuthPermission[];
-}
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { viewFromPath, pathForView } from '../routes';
 
 const isItemActive = (item: NavigationItem, currentView: ViewType) => {
   return item.view === currentView || Boolean(item.activeViews?.includes(currentView));
 };
 
-export default function Sidebar({ currentView, onViewChange, onLogout, userRoleName, userRoleCode, userPermissions }: SidebarProps) {
+export default function Sidebar() {
+  const { userRoleName, userRoleCode, authUser, handleLogout } = useAuth();
+  const userPermissions = authUser?.role?.permissions;
+  const location = useLocation();
+  const currentView = viewFromPath(location.pathname) || 'dashboard';
   const [isPinned, setIsPinned] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     NAVIGATION_SECTIONS.reduce<Record<string, boolean>>((acc, section) => {
@@ -68,9 +67,9 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
       : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors justify-center rounded-lg';
 
     return (
-      <button
+      <Link
         key={item.view}
-        onClick={() => onViewChange(item.view)}
+        to={pathForView(item.view)}
         title={!isPinned ? item.label : undefined}
         className={`w-full flex items-center py-2 text-xs transition-all ${
           active ? activeClass : inactiveClass
@@ -78,7 +77,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
       >
         <Icon size={isPinned ? 13 : 16} />
         {isPinned && <span>{item.label}</span>}
-      </button>
+      </Link>
     );
   };
 
@@ -122,7 +121,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
             </div>
           </div>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             title="Keluar dari Sistem"
             className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
           >
@@ -135,7 +134,7 @@ export default function Sidebar({ currentView, onViewChange, onLogout, userRoleN
             {userRoleName.substring(0, 2).toUpperCase()}
           </div>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             title="Keluar dari Sistem"
             className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           >

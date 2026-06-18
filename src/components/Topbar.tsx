@@ -6,17 +6,16 @@
 import React, { useState } from 'react';
 import { Bell, User, AlertTriangle, ShieldCheck } from '@/src/components/icons';
 import { VIEW_TITLES } from '../config/navigation';
-import type { ViewType } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { viewFromPath, pathForView } from '../routes';
 
-interface TopbarProps {
-  currentView: ViewType;
-  userRole: string;
-  onTriggerNotification: (message: string) => void;
-  userEmail: string;
-  userName?: string;
-}
-
-export default function Topbar({ currentView, userRole, onTriggerNotification, userEmail, userName }: TopbarProps) {
+export default function Topbar() {
+  const { userRoleName, authUser, userEmail } = useAuth();
+  const userName = authUser?.name;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentView = viewFromPath(location.pathname) || 'dashboard';
   const [showNotifications, setShowNotifications] = useState(false);
 
   const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
@@ -36,7 +35,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200">
           <ShieldCheck size={14} className="text-slate-500" />
           <span className="text-[10px] uppercase font-mono text-slate-400">Hak Akses:</span>
-          <span className="text-slate-900 font-bold">{userRole}</span>
+          <span className="text-slate-900 font-bold">{userRoleName}</span>
         </div>
 
         {/* Notifications Toggle */}
@@ -60,7 +59,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
                 <button
                   onClick={() => {
                     setShowNotifications(false);
-                    window.dispatchEvent(new CustomEvent('navigate', { detail: 'reminders' }));
+                    navigate(pathForView('reminders'));
                   }}
                   className="mt-3 text-[10px] text-indigo-600 hover:text-indigo-800 font-bold"
                 >
@@ -75,8 +74,7 @@ export default function Topbar({ currentView, userRole, onTriggerNotification, u
         <div 
           className="flex items-center gap-2 pl-2 border-l border-slate-200 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
           onClick={() => {
-            // Trigger navigation to profile
-            window.dispatchEvent(new CustomEvent('navigate', { detail: 'profile' }));
+            navigate(pathForView('profile'));
           }}
           title="Buka Profil Saya"
         >
