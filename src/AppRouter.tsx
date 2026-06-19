@@ -1,5 +1,5 @@
 import React from 'react';
-import { createBrowserRouter, RouteObject, useNavigate, useLocation } from 'react-router-dom';
+import { createBrowserRouter, RouteObject, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { pathForView } from './routes';
 import type { ViewType } from './types';
@@ -122,6 +122,11 @@ const lazyRoute = (Component: React.ComponentType<any>, props?: any) => (
   <ViewWrapper Component={Component} componentProps={props} />
 );
 
+const NavigateToHome = () => {
+  const { userRoleCode } = useAuth();
+  return <Navigate to={userRoleCode === 'employee' ? '/employee-dashboard' : '/dashboard'} replace />;
+};
+
 // We define a standard set of routes that will eventually replace the switch(currentView) logic.
 // This is the "Shadow Router" for Phase 1. It is not yet active in main.tsx.
 const routes: RouteObject[] = [
@@ -129,6 +134,8 @@ const routes: RouteObject[] = [
     path: '/',
     element: <RootLayout />,
     children: [
+      // Index: redirect '/' → '/dashboard' (admin) atau '/employee-dashboard' (karyawan)
+      { index: true, element: <NavigateToHome /> },
       { path: 'dashboard', element: lazyRoute(DashboardView) },
       { path: 'employee-dashboard', element: lazyRoute(EmployeeDashboardView) },
       

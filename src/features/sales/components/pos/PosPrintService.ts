@@ -291,7 +291,8 @@ export const printBluetoothReceipt = async (
     const fontNormal = new Uint8Array([GS, 0x21, 0x00]);
     const fontLarge = new Uint8Array([GS, 0x21, 0x11]);
 
-    const WIDTH = 32;
+    // WIDTH 48 = printer 80mm (sesuai dengan USB/kabel yang pakai width 69mm)
+    const WIDTH = 48;
 
     const formatRupiahStr = (num: number) => {
       return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(num);
@@ -303,7 +304,7 @@ export const printBluetoothReceipt = async (
     appendBytes(fontLarge);
     appendStr(companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG');
     appendBytes(lineFeed);
-
+    // Reset font ke normal SEBELUM teks berikutnya agar tidak ikut membesar
     appendBytes(fontNormal);
     appendBytes(boldOff);
     const addressLines = (companyProfile?.address || 'Jl. Raya Konstruksi No.123').split('\\n');
@@ -313,6 +314,7 @@ export const printBluetoothReceipt = async (
     });
     appendStr(`Telp: ${companyProfile?.phone || '0812-3456-7890'}`);
     appendBytes(lineFeed);
+    appendStr('-'.repeat(WIDTH));
     appendBytes(lineFeed);
 
     appendBytes(left);
@@ -325,6 +327,7 @@ export const printBluetoothReceipt = async (
     appendStr(`Plg  : ${info.customerName}`);
     appendBytes(lineFeed);
     appendStr('-'.repeat(WIDTH));
+    appendBytes(lineFeed);
     appendBytes(lineFeed);
 
     info.items.forEach((item: any) => {

@@ -25,3 +25,7 @@ export const pathForView = (view: ViewType): string => {
   return VIEW_TO_PATH[view] || `/${view}`;
 };
 
+export const viewFromPath = (path: string): ViewType | undefined => {
+  const entry = Object.entries(VIEW_TO_PATH).find(([, p]) => p === path || path.startsWith(p + '/'));
+  return entry ? (entry[0] as ViewType) : undefined;
+};
