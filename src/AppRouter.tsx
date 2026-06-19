@@ -127,8 +127,6 @@ const NavigateToHome = () => {
   return <Navigate to={userRoleCode === 'employee' ? '/employee-dashboard' : '/dashboard'} replace />;
 };
 
-// We define a standard set of routes that will eventually replace the switch(currentView) logic.
-// This is the "Shadow Router" for Phase 1. It is not yet active in main.tsx.
 const routes: RouteObject[] = [
   {
     path: '/',

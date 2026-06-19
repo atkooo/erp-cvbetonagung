@@ -8,13 +8,10 @@ import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 import {
   ArrowRight,
-  Building2,
-  CheckCircle2,
   KeyRound,
   Loader2,
   LockKeyhole,
   Mail,
-  ShieldCheck,
 } from "@/src/components/icons";
 import { authApi } from "../services/api";
 import type { AuthSession } from "../types";

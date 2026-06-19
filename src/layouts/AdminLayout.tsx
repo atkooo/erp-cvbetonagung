@@ -24,14 +24,7 @@ export default function AdminLayout() {
 
         <div className="flex-1 overflow-y-auto p-6 bg-[#f8fafc]">
           <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
-            <React.Suspense fallback={
-              <div className="p-12 text-center bg-white rounded-lg border border-slate-200/80 shadow-sm">
-                <div className="w-6 h-6 mx-auto border-2 border-slate-900 border-t-transparent rounded-full animate-spin mb-2.5" />
-                <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">Memuat Modul ERP...</p>
-              </div>
-            }>
-              <Outlet />
-            </React.Suspense>
+            <Outlet />
           </div>
         </div>
       </div>

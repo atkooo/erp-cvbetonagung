@@ -9,7 +9,6 @@ import {
   Boxes,
   Calculator,
   ClipboardCheck,
-  CalendarCheck,
   Compass,
   CreditCard,
   Download,
@@ -193,12 +192,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: WalletCards,
         requiredModule: "finance",
       },
-      // {
-      //   view: "cash-expense",
-      //   label: "Kas & Biaya",
-      //   icon: Calculator,
-      //   requiredModule: "finance",
-      // },
     ],
   },
   {
@@ -297,36 +290,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: UserCog,
         requiredModule: "employees",
       },
-      //     {
-      //       view: "attendance-dashboard",
-      //       label: "Dashboard Absensi",
-      //       icon: CalendarCheck,
-      //       requiredModule: "employees",
-      //     },
-      //     {
-      //       view: "attendance-scanner",
-      //       label: "Scan Absensi (QR)",
-      //       icon: Scan,
-      //       requiredModule: "employees",
-      //     },
-      //     {
-      //       view: "leave-management",
-      //       label: "Pengajuan Cuti",
-      //       icon: FileCheck,
-      //       requiredModule: "employees",
-      //     },
-      //     {
-      //       view: "payroll-management",
-      //       label: "Payroll",
-      //       icon: Calculator,
-      //       requiredModule: "finance",
-      //     },
-      //     {
-      //       view: "employee-loans",
-      //       label: "Pinjaman Karyawan",
-      //       icon: Handshake,
-      //       requiredModule: "finance",
-      //     },
     ],
   },
   {
@@ -447,30 +410,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       { view: "reminders", label: "Reminder Center", icon: BellRing },
     ],
   },
-  // {
-  //   id: "reports",
-  //   title: "Report",
-  //   collapsible: true,
-  //   items: [
-  //     {
-  //       view: "document-exports",
-  //       label: "Export Dokumen",
-  //       icon: FileDown,
-  //     },
-  //     {
-  //       view: "finance-reports",
-  //       label: "Laporan Keuangan & Omset",
-  //       icon: TrendingUp,
-  //       requiredModule: "reports",
-  //     },
-  //     {
-  //       view: "inventory-reports",
-  //       label: "Mutasi & Turnover Stok",
-  //       icon: TrendingUp,
-  //       requiredModule: "reports",
-  //     },
-  //   ],
-  // },
   {
     id: "system",
     separator: true,
