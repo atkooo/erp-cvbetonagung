@@ -1,6 +1,5 @@
 import type { ViewType } from './types';
 
-export const DEFAULT_AUTHENTICATED_VIEW: ViewType = 'dashboard';
 
 export const VIEW_TO_PATH: Partial<Record<ViewType, string>> = {
   dashboard: '/dashboard',
@@ -21,9 +20,8 @@ export const VIEW_TO_PATH: Partial<Record<ViewType, string>> = {
   'finance-reports': '/reports',
 };
 
-export const pathForView = (view: ViewType): string => {
-  return VIEW_TO_PATH[view] || `/${view}`;
-};
+export const pathForView = (view: ViewType): string =>
+  VIEW_TO_PATH[view] ?? `/${view}`;
 
 export const viewFromPath = (path: string): ViewType | undefined => {
   const entry = Object.entries(VIEW_TO_PATH).find(([, p]) => p === path || path.startsWith(p + '/'));

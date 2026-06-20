@@ -45,7 +45,7 @@ const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudget
 const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
 const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
 const CashExpenseView = React.lazy(() => import('./components/CashExpenseView'));
-import { FinanceAccountsView } from './features/finance/components/FinanceAccountsView';
+const FinanceAccountsView = React.lazy(() => import('./features/finance/components/FinanceAccountsView').then(m => ({ default: m.FinanceAccountsView })));
 const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
 const UsersView = React.lazy(() => import('./components/UsersView'));
 const ProfileView = React.lazy(() => import('./components/ProfileView'));
@@ -60,7 +60,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Helper to wrap lazy components and inject legacy props for backward compatibility during migration
+// TODO: remove ViewWrapper after all views use hooks (useNavigate, useAuth) directly
 const ViewWrapper = ({ Component, componentProps }: { Component: React.ComponentType<any>, componentProps?: any }) => {
   const { triggerNotification } = useAuth();
   const navigate = useNavigate();
@@ -157,7 +157,7 @@ const routes: RouteObject[] = [
       { path: 'finance/cashier', element: lazyRoute(PaymentsView) },
       { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
-      { path: 'accounts', element: <FinanceAccountsView /> },
+      { path: 'accounts', element: lazyRoute(FinanceAccountsView) },
       
       // Purchasing
       { path: 'purchasing/po', element: lazyRoute(PurchaseView) },
@@ -212,6 +212,3 @@ const routes: RouteObject[] = [
 ];
 
 export const appRouter = createBrowserRouter(routes);
-
-// Default export for potential future use
-export default appRouter;
