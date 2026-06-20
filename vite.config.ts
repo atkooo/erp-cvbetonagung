@@ -8,7 +8,7 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss(), basicSsl()],
 
-    base: './',
+    base: '/',
 
     resolve: {
       alias: {
