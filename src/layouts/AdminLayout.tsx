@@ -22,7 +22,7 @@ export default function AdminLayout() {
         <Topbar />
 
         <div className="flex-1 overflow-y-auto p-6 bg-[#f8fafc]">
-          <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
+          <div className="w-full mx-auto space-y-6 animate-in fade-in duration-200">
             <Outlet />
           </div>
         </div>
