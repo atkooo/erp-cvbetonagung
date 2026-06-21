@@ -456,6 +456,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           cart={cart}
           addToCart={addToCart}
           formatRupiah={formatRupiah}
+          isKioskMode={isKioskMode}
         />
       </div>
 

@@ -37,6 +37,7 @@ export default function ProductPicker({
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // To display the selected product name in the button
   const selectedProduct = products.find(p => p.id === value);
@@ -117,7 +118,16 @@ export default function ProductPicker({
         className={`w-full p-2.5 border rounded-lg flex items-center justify-between cursor-pointer bg-white hover:bg-slate-50 transition-colors ${className}`}
       >
         <div className="flex items-center gap-2 overflow-hidden w-full">
-          <Package size={16} className="text-slate-400 shrink-0" />
+          {selectedProduct && ((selectedProduct as any).image_url || (selectedProduct as any).imageUrl) ? (
+            <img 
+              src={(selectedProduct as any).image_url || (selectedProduct as any).imageUrl} 
+              alt={selectedProduct.name} 
+              className="w-5 h-5 rounded-md object-cover shrink-0 border border-slate-200"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <Package size={16} className="text-slate-400 shrink-0" />
+          )}
           {isLoading && value && !selectedProduct ? (
             <div className="h-4 bg-slate-200 animate-pulse rounded w-2/3"></div>
           ) : (
@@ -199,8 +209,31 @@ export default function ProductPicker({
                         }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-slate-100 border flex items-center justify-center shrink-0">
-                          <Package size={20} className="text-slate-400" />
+                        <div 
+                          className="w-10 h-10 rounded-lg bg-slate-100 border flex items-center justify-center shrink-0 overflow-hidden relative group"
+                          onClick={(e) => {
+                            const imgUrl = (product as any).image_url || (product as any).imageUrl;
+                            if (imgUrl) {
+                              e.stopPropagation();
+                              setLightboxUrl(imgUrl);
+                            }
+                          }}
+                        >
+                          {((product as any).image_url || (product as any).imageUrl) ? (
+                            <>
+                              <img 
+                                src={(product as any).image_url || (product as any).imageUrl} 
+                                alt={product.name} 
+                                className="w-full h-full object-cover transition-opacity group-hover:opacity-70"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                                <Search size={14} className="text-white" />
+                              </div>
+                            </>
+                          ) : (
+                            <Package size={20} className="text-slate-400" />
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-xs text-slate-800">
@@ -237,8 +270,28 @@ export default function ProductPicker({
                 </div>
               )}
             </div>
-
           </div>
+        </div>
+      )}
+
+      {/* Lightbox Overlay */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Preview Produk"
+            className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </>

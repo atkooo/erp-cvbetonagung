@@ -19,6 +19,7 @@ export interface Product {
   minStock: number;
   status: 'Aman' | 'Menipis' | 'Habis';
   qrValue?: string;
+  imageUrl?: string | null;
 }
 
 export interface Category {

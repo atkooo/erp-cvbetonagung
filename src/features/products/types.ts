@@ -42,6 +42,8 @@ export interface ProductDto {
   stock_status: 'safe' | 'low' | 'out_of_stock';
   booked_stock?: string | number;
   qr_value: string | null;
+  image?: string | null;
+  image_url?: string | null;
   status: 'active' | 'inactive';
   category?: CategoryDto;
   unit?: UnitDto;

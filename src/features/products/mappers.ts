@@ -34,7 +34,9 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   status: dto.stock_status === 'safe' ? 'Aman' : dto.stock_status === 'low' ? 'Menipis' : 'Habis',
   qrValue: dto.qr_value || dto.sku,
   location: 'Gudang Utama',
+  imageUrl: dto.image_url || null,
 });
+
 
 export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> => ({
   business_unit: formData.business_unit || 'CV Beton Agung',

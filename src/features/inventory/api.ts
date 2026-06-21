@@ -125,8 +125,10 @@ export const inventoryApi = {
   },
 
   async createStockOpnameSession(data: { warehouse_id: string; notes?: string }): Promise<StockOpnameSession> {
+    const opname_number = `OPN-${Date.now().toString().slice(-6)}`;
     const response = await apiClient.post<{ data: StockOpnameSessionDto }>('/inventory/stock-opname-sessions', {
       ...data,
+      opname_number,
       status: 'draft',
       started_at: new Date().toISOString(),
     });
@@ -219,8 +221,10 @@ export const inventoryApi = {
     change_summary: string;
     amount?: number;
   }): Promise<ApprovalRequest> {
+    const approval_number = `APP-${Date.now().toString().slice(-6)}`;
     const response = await apiClient.post<{ data: ApprovalRequestDto }>('/inventory/approval-requests', {
       ...data,
+      approval_number,
       status: 'pending',
       requested_at: toApiDateTime(),
     });

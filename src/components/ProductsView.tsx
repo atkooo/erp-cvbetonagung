@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag } from '@/src/components/icons';
+import React, { useState, useRef } from 'react';
+import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag, Camera, ImageOff } from '@/src/components/icons';
 import { Product, Category } from '../types';
 import { DEFAULT_UNITS, productsApi } from '../features/products/api';
 import { UnitDto, ProductFormData } from '../features/products/types';
@@ -49,6 +49,12 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Image states
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
   const filteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === type);
@@ -145,6 +151,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setUnit(initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
     setLocation(storageLocations[0]?.id || '');
     setMinStock(10);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleOpenAddModal = () => {
@@ -174,6 +182,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setUnit(selectedUnit?.id || initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
     setLocation(storageLocations[0]?.id || '');
     setMinStock(product.minStock);
+    // Show existing image as preview
+    setImageFile(null);
+    setImagePreview(product.imageUrl || null);
     setShowAddModal(true);
   };
 
@@ -229,6 +240,17 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
       if (editingProduct) {
         const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
+        // Upload image if a new file was selected
+        let finalImageUrl = editingProduct.imageUrl || null;
+        if (imageFile) {
+          setIsUploadingImage(true);
+          try {
+            const imgResult = await productsApi.uploadProductImage(editingProduct.id, imageFile);
+            finalImageUrl = imgResult.image_url;
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
         setProducts((prev) => prev.map((prod) => {
           if (prod.id !== editingProduct.id) {
             return prod;
@@ -246,17 +268,30 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             stock: liveStock,
             location: prod.location,
             status: stockStatus,
+            imageUrl: finalImageUrl,
           };
         }));
         onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name}`);
       } else {
         const newProd = await productsApi.createProduct(payload);
+        // Upload image if a file was selected
+        let finalImageUrl: string | null = null;
+        if (imageFile) {
+          setIsUploadingImage(true);
+          try {
+            const imgResult = await productsApi.uploadProductImage(newProd.id, imageFile);
+            finalImageUrl = imgResult.image_url;
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
+        const newProdWithImage = { ...newProd, imageUrl: finalImageUrl };
         if (stock > 0 && location) {
           await inventoryApi.updateProductStock(newProd.id, location, stock);
           // Update the list immediately to reflect new stock
           await fetchData();
         } else {
-          setProducts((prev) => [newProd, ...prev]);
+          setProducts((prev) => [newProdWithImage, ...prev]);
         }
         onTriggerNotification(`Sukses menambahkan Produk Baru: ${name}`);
       }
@@ -387,7 +422,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             <table className="w-full text-left border-collapse min-w-225">
               <thead>
                 <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                  <th className="p-3.5 pl-5">SKU / ID</th>
+                  <th className="p-3.5 pl-5">Foto</th>
+                  <th className="p-3.5">SKU / ID</th>
                   <th className="p-3.5">Unit Bisnis</th>
                   <th className="p-3.5">Nama Produk</th>
                   <th className="p-3.5">Kategori</th>
@@ -402,14 +438,28 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-12 text-slate-400 font-medium">
+                    <td colSpan={11} className="text-center py-12 text-slate-400 font-medium">
                       Tidak ditemukan kecocokan produk untuk kata kunci pencarian tersebut.
                     </td>
                   </tr>
                 ) : (
                   paginatedProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="p-3.5 pl-5 font-mono font-bold text-indigo-600">
+                      <td className="p-3.5 pl-5">
+                        {p.imageUrl ? (
+                          <img
+                            src={p.imageUrl}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
+                            <ImageOff size={14} className="text-slate-300" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-mono font-bold text-indigo-600">
                         {p.sku}
                       </td>
                       <td className="p-3.5 text-slate-600">
@@ -691,6 +741,51 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
 
 
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-600 uppercase">Foto Produk (Opsional)</label>
+                <div
+                  className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors cursor-pointer flex items-center justify-center overflow-hidden"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImageFile(null);
+                          setImagePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                      >
+                        <X size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Camera size={28} className="text-slate-300" />
+                      <span className="text-[11px] font-medium">Klik untuk upload foto produk</span>
+                      <span className="text-[10px]">JPG, PNG, WebP · maks 2MB</span>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(file));
+                    }}
+                  />
+                </div>
+              </div>
+
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
@@ -705,10 +800,10 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isUploadingImage}
                   className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  {isSubmitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan SKU Baru'}
+                  {isSubmitting || isUploadingImage ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan SKU Baru'}
                 </button>
               </div>
             </form>

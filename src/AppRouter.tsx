@@ -71,7 +71,7 @@ const ViewWrapper = ({ Component, componentProps }: { Component: React.Component
   };
 
   const handleNavigateToProject = (view: ViewType, pid: string) => {
-    navigate(`/project-detail/${pid}`);
+    navigate(`/projects/detail/${pid}`);
   };
 
   return (
@@ -91,19 +91,19 @@ const QrViewWrapper = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const currentSubView = location.pathname.includes('scan-qr-product') 
-    ? 'scanner' 
-    : location.pathname.includes('scanned-product-detail') 
-      ? 'detail' 
+  const currentSubView = location.pathname.includes('/inventory/scan/detail')
+    ? 'detail'
+    : location.pathname.includes('/inventory/scan')
+      ? 'scanner'
       : 'list';
 
   const [scannedSku, setScannedSku] = React.useState<string | null>(null);
 
   const handleNavigateSubView = (subView: 'list' | 'scanner' | 'detail', sku?: string | null) => {
     if (sku) setScannedSku(sku);
-    if (subView === 'list') navigate('/qr-products');
-    if (subView === 'scanner') navigate('/scan-qr-product');
-    if (subView === 'detail') navigate('/scanned-product-detail');
+    if (subView === 'list') navigate('/inventory/qr');
+    if (subView === 'scanner') navigate('/inventory/scan');
+    if (subView === 'detail') navigate('/inventory/scan/detail');
   };
 
   return (
@@ -132,79 +132,79 @@ const routes: RouteObject[] = [
     path: '/',
     element: <RootLayout />,
     children: [
-      // Index: redirect '/' → '/dashboard' (admin) atau '/employee-dashboard' (karyawan)
       { index: true, element: <NavigateToHome /> },
       { path: 'dashboard', element: lazyRoute(DashboardView) },
       { path: 'employee-dashboard', element: lazyRoute(EmployeeDashboardView) },
-      
+
       // Master Data
       { path: 'master/customer', element: lazyRoute(CustomersView) },
       { path: 'master/supplier', element: lazyRoute(SuppliersView) },
       { path: 'master/product', element: lazyRoute(ProductsView) },
-      { path: 'categories', element: lazyRoute(CategoriesView) },
-      { path: 'units', element: lazyRoute(UnitsView) },
-      { path: 'warehouses', element: lazyRoute(WarehouseMasterView) },
-      
-      // Sales & POS
-      { path: 'pos', element: lazyRoute(PosView) },
+      { path: 'master/categories', element: lazyRoute(CategoriesView) },
+      { path: 'master/units', element: lazyRoute(UnitsView) },
+      { path: 'master/warehouses', element: lazyRoute(WarehouseMasterView) },
+
+      // Sales
+      { path: 'sales/pos', element: lazyRoute(PosView) },
       { path: 'sales/quotation', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/order', element: lazyRoute(SalesView, { type: 'sales-order' }) },
-      { path: 'delivery-orders', element: lazyRoute(DeliveryOrdersView) },
-      { path: 'returns', element: lazyRoute(ReturnsView, { defaultType: 'customer' }) },
-      
+      { path: 'sales/delivery-orders', element: lazyRoute(DeliveryOrdersView) },
+      { path: 'sales/returns', element: lazyRoute(ReturnsView, { defaultType: 'customer' }) },
+
       // Finance
       { path: 'finance/billing', element: lazyRoute(InvoicesView) },
       { path: 'finance/cashier', element: lazyRoute(PaymentsView) },
       { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
-      { path: 'accounts', element: lazyRoute(FinanceAccountsView) },
-      
+      { path: 'finance/accounts', element: lazyRoute(FinanceAccountsView) },
+      { path: 'finance/reports', element: lazyRoute(FinanceReportView) },
+
       // Purchasing
+      { path: 'purchasing/requests', element: lazyRoute(PurchaseRequestView) },
+      { path: 'purchasing/rfq', element: lazyRoute(RfqView) },
       { path: 'purchasing/po', element: lazyRoute(PurchaseView) },
-      { path: 'purchase-requests', element: lazyRoute(PurchaseRequestView) },
-      { path: 'rfq', element: lazyRoute(RfqView) },
-      { path: 'purchase-returns', element: lazyRoute(ReturnsView, { defaultType: 'supplier' }) },
-      
+      { path: 'purchasing/returns', element: lazyRoute(ReturnsView, { defaultType: 'supplier' }) },
+
       // Inventory
       { path: 'inventory/stock', element: lazyRoute(InventoryView, { initialTab: 'stok' }) },
       { path: 'inventory/stock-in', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
       { path: 'inventory/stock-out', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
-      { path: 'stock-movement-history', element: lazyRoute(InventoryView, { initialTab: 'riwayat' }) },
-      { path: 'stock-opname', element: lazyRoute(StockOpnameView) },
-      { path: 'multi-warehouse', element: lazyRoute(MultiWarehouseView) },
-      
-      // HR / Employee
-      { path: 'employees', element: lazyRoute(EmployeeMasterView) },
-      { path: 'attendance-dashboard', element: lazyRoute(AttendanceDashboardView) },
-      { path: 'attendance-scanner', element: lazyRoute(AttendanceScannerView) },
-      { path: 'leave-management', element: lazyRoute(LeaveManagementView) },
-      { path: 'payroll-management', element: lazyRoute(PayrollManagementView) },
-      { path: 'employee-loans', element: lazyRoute(EmployeeLoanView) },
-      
+      { path: 'inventory/history', element: lazyRoute(InventoryView, { initialTab: 'riwayat' }) },
+      { path: 'inventory/opname', element: lazyRoute(StockOpnameView) },
+      { path: 'inventory/warehouses', element: lazyRoute(MultiWarehouseView) },
+      { path: 'inventory/qr', element: <QrViewWrapper /> },
+      { path: 'inventory/scan', element: <QrViewWrapper /> },
+      { path: 'inventory/scan/detail', element: <QrViewWrapper /> },
+
       // Production & Projects
-      { path: 'production-work-orders', element: lazyRoute(ProductionWorkOrderView) },
-      { path: 'bom-costing', element: lazyRoute(BomCostingView) },
+      { path: 'production/work-orders', element: lazyRoute(ProductionWorkOrderView) },
+      { path: 'production/bom', element: lazyRoute(BomCostingView) },
       { path: 'projects', element: lazyRoute(ProjectsView) },
-      { path: 'project-detail/:id', element: lazyRoute(ProjectsView) },
-      { path: 'project-budgeting', element: lazyRoute(ProjectBudgetingView) },
-      
-      // Reporting & Misc
-      { path: 'reports', element: lazyRoute(FinanceReportView) },
-      { path: 'inventory-reports', element: lazyRoute(InventoryReportView) },
-      { path: 'audit-logs', element: lazyRoute(AuditLogView) },
-      { path: 'approval-workflows', element: lazyRoute(ApprovalWorkflowView) },
-      { path: 'role-permissions', element: lazyRoute(RolePermissionView) },
-      { path: 'users', element: lazyRoute(UsersView) },
-      { path: 'profile', element: lazyRoute(ProfileView) },
+      { path: 'projects/detail/:id', element: lazyRoute(ProjectsView) },
+      { path: 'projects/budgeting', element: lazyRoute(ProjectBudgetingView) },
+
+      // HRD
+      { path: 'hrd/employees', element: lazyRoute(EmployeeMasterView) },
+      { path: 'hrd/attendance', element: lazyRoute(AttendanceDashboardView) },
+      { path: 'hrd/attendance/scan', element: lazyRoute(AttendanceScannerView) },
+      { path: 'hrd/leave', element: lazyRoute(LeaveManagementView) },
+      { path: 'hrd/payroll', element: lazyRoute(PayrollManagementView) },
+      { path: 'hrd/loans', element: lazyRoute(EmployeeLoanView) },
+
+      // Reports
+      { path: 'reports/inventory', element: lazyRoute(InventoryReportView) },
+
+      // System & Control
+      { path: 'system/approvals', element: lazyRoute(ApprovalWorkflowView) },
+      { path: 'system/audit', element: lazyRoute(AuditLogView) },
+      { path: 'system/reminders', element: lazyRoute(RemindersView) },
+      { path: 'system/exports', element: lazyRoute(DocumentExportsView) },
+      { path: 'system/roles', element: lazyRoute(RolePermissionView) },
+      { path: 'system/users', element: lazyRoute(UsersView) },
+
       { path: 'settings', element: lazyRoute(SettingsView) },
-      { path: 'reminders', element: lazyRoute(RemindersView) },
-      { path: 'document-exports', element: lazyRoute(DocumentExportsView) },
-      
-      // QR / Barcode
-      { path: 'qr-products', element: <QrViewWrapper /> },
-      { path: 'scan-qr-product', element: <QrViewWrapper /> },
-      { path: 'scanned-product-detail', element: <QrViewWrapper /> },
-      
+      { path: 'profile', element: lazyRoute(ProfileView) },
+
       // Fallback
       { path: '*', element: <div className="p-8 text-center text-slate-500 font-sans">Halaman tidak ditemukan atau sedang dalam konstruksi.</div> }
     ]

@@ -136,4 +136,18 @@ export const productsApi = {
   async deleteProduct(id: string): Promise<void> {
     await apiClient.delete(`/master-data/products/${id}`);
   },
+
+  async uploadProductImage(id: string, file: File): Promise<{ image_url: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await apiClient.request<{ data: { image: string; image_url: string } }>(
+      `/master-data/products/${id}/image`,
+      { method: 'POST', body: formData }
+    );
+    return response.data;
+  },
+
+  async deleteProductImage(id: string): Promise<void> {
+    await apiClient.delete(`/master-data/products/${id}/image`);
+  },
 };
