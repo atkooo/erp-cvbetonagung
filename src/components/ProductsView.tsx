@@ -53,6 +53,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   // Image states
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isImageDeleted, setIsImageDeleted] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,6 +154,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     setMinStock(10);
     setImageFile(null);
     setImagePreview(null);
+    setIsImageDeleted(false);
   };
 
   const handleOpenAddModal = () => {
@@ -185,6 +187,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     // Show existing image as preview
     setImageFile(null);
     setImagePreview(product.imageUrl || null);
+    setIsImageDeleted(false);
     setShowAddModal(true);
   };
 
@@ -249,6 +252,13 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             finalImageUrl = imgResult.image_url;
           } finally {
             setIsUploadingImage(false);
+          }
+        } else if (isImageDeleted) {
+          try {
+            await productsApi.deleteProductImage(editingProduct.id);
+            finalImageUrl = null;
+          } catch (e) {
+            console.error('Failed to delete image', e);
           }
         }
         setProducts((prev) => prev.map((prod) => {
@@ -757,6 +767,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                           e.stopPropagation();
                           setImageFile(null);
                           setImagePreview(null);
+                          setIsImageDeleted(true);
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
                         className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
