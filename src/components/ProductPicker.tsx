@@ -28,7 +28,7 @@ export default function ProductPicker({
   typeFilter,
   locationIdFilter,
   excludedProductIds = [],
-  showCategoryFilter = false,
+  showCategoryFilter = true,
   placeholder = 'Pilih Produk / Material...',
   className = ''
 }: ProductPickerProps) {

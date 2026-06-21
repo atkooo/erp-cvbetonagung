@@ -137,8 +137,9 @@ export default function DeliveryOrdersView({
 
   const handleOpenCreateModal = () => {
     // Generate auto DO number
-    const count = deliveryOrders.length + 1;
-    setDeliveryNumber(`DO-2026-06${count < 10 ? "0" + count : count}`);
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    setDeliveryNumber(`DO-${dateStr}-${randomSuffix}`);
     setSelectedSalesOrderId("");
     setDeliveryDate(new Date().toISOString().split("T")[0]);
     setNotes("");
