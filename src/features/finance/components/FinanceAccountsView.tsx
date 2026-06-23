@@ -105,40 +105,42 @@ export const FinanceAccountsView: React.FC = () => {
   );
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-          <Wallet className="w-8 h-8 text-indigo-500" />
-          Buku Kas & Bank
-        </h1>
-        <p className="text-slate-500 mt-2">Kelola daftar rekening bank, kas kecil, dan dompet digital untuk pencatatan transaksi pembayaran.</p>
+    <div className="space-y-6 text-xs font-sans">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg"><Wallet size={20} /></div>
+          <div>
+            <h3 className="font-sans font-bold text-sm text-slate-800">Buku Kas & Bank</h3>
+            <p className="text-[10px] text-slate-400 mt-0.5">Kelola daftar rekening bank, kas kecil, dan dompet digital untuk pencatatan transaksi pembayaran.</p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Cari kode atau nama akun..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none w-80"
+              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none w-64 text-xs"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={fetchAccounts}
-              className="p-2 border-2 border-slate-200 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+              className="p-2 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
               title="Refresh Data"
             >
-              <RefreshCcw className="w-5 h-5" />
+              <RefreshCcw className="w-4 h-4" />
             </button>
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-colors font-semibold"
+              className="flex items-center gap-1.5 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors font-bold text-xs"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Tambah Akun
             </button>
           </div>
@@ -147,16 +149,16 @@ export const FinanceAccountsView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-4 font-semibold text-slate-600">Kode Akun</th>
-                <th className="p-4 font-semibold text-slate-600">Nama Akun</th>
-                <th className="p-4 font-semibold text-slate-600">Jenis</th>
-                <th className="p-4 font-semibold text-slate-600 text-right">Saldo Saat Ini</th>
-                <th className="p-4 font-semibold text-slate-600 text-center">Status</th>
-                <th className="p-4 font-semibold text-slate-600 text-right">Aksi</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                <th className="p-3.5 pl-5">Kode Akun</th>
+                <th className="p-3.5">Nama Akun</th>
+                <th className="p-3.5 text-center">Jenis</th>
+                <th className="p-3.5 text-right">Saldo Saat Ini</th>
+                <th className="p-3.5 text-center">Status</th>
+                <th className="p-3.5 pr-5 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500">Memuat data akun...</td>
@@ -167,41 +169,41 @@ export const FinanceAccountsView: React.FC = () => {
                 </tr>
               ) : (
                 filteredAccounts.map((account) => (
-                  <tr key={account.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-                    <td className="p-4">
-                      <span className="font-mono text-slate-600 font-medium">{account.code}</span>
+                  <tr key={account.id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="p-3.5 pl-5">
+                      <span className="font-mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{account.code}</span>
                     </td>
-                    <td className="p-4 font-bold text-slate-800">{account.name}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                        account.type === 'cash' ? 'bg-emerald-100 text-emerald-700' : 
-                        account.type === 'bank' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                    <td className="p-3.5 font-bold text-slate-800">{account.name}</td>
+                    <td className="p-3.5 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                        account.type === 'cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                        account.type === 'bank' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-slate-50 text-slate-700 border-slate-200'
                       }`}>
                         {account.type}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-bold text-indigo-600">
+                    <td className="p-3.5 text-right font-mono font-bold text-slate-800">
                       {formatRupiah(parseFloat(account.balance.toString()))}
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3.5 text-center">
                       {account.is_active ? (
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">Aktif</span>
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">Aktif</span>
                       ) : (
-                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">Tidak Aktif</span>
+                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold">Tidak Aktif</span>
                       )}
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="p-3.5 pr-5 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleOpenModal(account)}
-                          className="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
+                          className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                           title="Edit Akun"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(account.id, account.name)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                           title="Hapus Akun"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -218,38 +220,38 @@ export const FinanceAccountsView: React.FC = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-800">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-xl overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-sm font-bold text-slate-800">
                 {editingId ? 'Edit Akun Kas/Bank' : 'Tambah Akun Baru'}
               </h2>
               <button 
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
-                &times;
+                <Plus size={20} className="rotate-45" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleSubmit} className="p-5 overflow-y-auto">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Kode Akun *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Kode Akun *</label>
                     <input
                       type="text"
                       required
                       value={formData.code}
                       onChange={(e) => setFormData({...formData, code: e.target.value})}
-                      className="w-full p-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Jenis Akun</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Jenis Akun</label>
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({...formData, type: e.target.value})}
-                      className="w-full p-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none text-xs"
                     >
                       <option value="cash">Kas Tunai (Laci)</option>
                       <option value="bank">Rekening Bank</option>
@@ -259,24 +261,24 @@ export const FinanceAccountsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Nama Akun *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Akun *</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Kas Kecil, BCA 12345678"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full p-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Keterangan / Deskripsi</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Keterangan / Deskripsi</label>
                   <input
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full p-2.5 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none text-xs"
                   />
                 </div>
 
@@ -288,24 +290,24 @@ export const FinanceAccountsView: React.FC = () => {
                       checked={formData.is_active}
                       onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                    <span className="ml-3 text-sm font-bold text-slate-700">Akun Aktif (Muncul di Kasir)</span>
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                    <span className="ml-3 text-[11px] font-bold text-slate-700">Akun Aktif (Muncul di Kasir)</span>
                   </label>
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-end gap-3">
+              <div className="mt-8 pt-4 border-t border-slate-100 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors text-xs"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-xs"
                 >
                   {isSubmitting ? 'Menyimpan...' : 'Simpan Akun'}
                 </button>
