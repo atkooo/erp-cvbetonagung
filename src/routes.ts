@@ -24,7 +24,8 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   // Finance
   invoices:                 '/finance/billing',
   payments:                 '/finance/cashier',
-  'receivables-payables':   '/finance/account-payable',
+  'accounts-receivable':    '/finance/account-receivable',
+  'accounts-payable':       '/finance/account-payable',
   'cash-expense':           '/finance/cash-bank',
   accounts:                 '/finance/accounts',
   'finance-reports':        '/finance/reports',

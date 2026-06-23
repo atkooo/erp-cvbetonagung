@@ -520,7 +520,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 )}
                 {parseFloat(amountPaid || '0') < cartTotal && (
                   <div className="mt-2 text-right">
-                    <span className="text-sm text-slate-500">Sisa Piutang: </span>
+                    <span className="text-sm text-slate-500">Sisa Outstanding Receivable: </span>
                     <span className="font-bold text-rose-500">{formatRupiah(cartTotal - parseFloat(amountPaid || '0'))}</span>
                   </div>
                 )}
@@ -674,7 +674,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Sisa Piutang</p>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Sisa Outstanding Receivable</p>
                   <div className="text-4xl font-black text-rose-600">
                     {formatRupiah(Math.abs(checkoutSuccessInfo.change))}
                   </div>

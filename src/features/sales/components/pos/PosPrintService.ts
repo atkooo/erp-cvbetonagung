@@ -99,7 +99,7 @@ export const printReceipt = (
       </table>
       
       <div class="text-center mb-2 font-bold" style="font-size: 11px;">
-        STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
+        STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (OUTSTANDING RECEIVABLE)'}
       </div>
       
       <script>
@@ -192,7 +192,7 @@ export const downloadReceipt = async (
         </table>
         
         <div class="text-center mb-2 font-bold" style="text-align: center; margin-bottom: 10px; font-size: 11px; font-weight: 900;">
-          STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}
+          STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (OUTSTANDING RECEIVABLE)'}
         </div>
       </div>
     `;
@@ -374,7 +374,7 @@ export const printBluetoothReceipt = async (
     appendBytes(center);
     appendBytes(lineFeed);
     appendBytes(lineFeed);
-    appendStr(`STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (PIUTANG)'}`);
+    appendStr(`STATUS: ${info.change >= 0 ? 'LUNAS' : 'BELUM LUNAS (OUTSTANDING RECEIVABLE)'}`);
     appendBytes(lineFeed);
     appendBytes(boldOff);
 

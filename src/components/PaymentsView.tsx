@@ -145,7 +145,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
       return;
     }
     if (paymentAmount > selectedOutstanding) {
-      onTriggerNotification('Gagal: nominal penerimaan melebihi sisa piutang invoice.');
+      onTriggerNotification('Gagal: nominal penerimaan melebihi sisa outstanding receivable invoice.');
       return;
     }
     if (!selectedAccountId) {
@@ -353,7 +353,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
 
                 <form onSubmit={handleRecordPayment} className="p-5 space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Invoice / Piutang Pelanggan</label>
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">Invoice / Outstanding Receivable Pelanggan</label>
                     <SearchableSelect
                       value={selectedInvoiceId}
                       onChange={(val) => handleInvoiceChange(val)}
@@ -367,7 +367,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
 
                   {selectedInvoice && (
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                      <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Ringkasan Piutang</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Ringkasan Outstanding Receivable</span>
                       <p className="font-bold text-slate-800 text-xs">{selectedInvoice.invoiceNumber} - {selectedInvoice.customerName}</p>
                       <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-500 pt-1.5 border-t border-slate-200 mt-1">
                         <span>Total: <strong>{formatIDR(selectedInvoice.total)}</strong></span>

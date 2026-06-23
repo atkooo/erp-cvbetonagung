@@ -174,7 +174,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
           <h3 className="font-sans font-bold text-sm text-slate-800 uppercase tracking-tight flex items-center gap-2">
             E-Faktur / Invoice Penjualan
           </h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa piutang, dan status jatuh tempo.</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Penayangan termin tagihan pelanggan, sisa outstanding receivable, dan status jatuh tempo.</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -368,7 +368,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               <div className="flex justify-between items-center bg-slate-50 p-4 border border-slate-100 rounded-xl">
                 <div>
                   <span className="text-[9px] uppercase font-mono font-bold text-slate-400 block">Kondisi Validasi</span>
-                  <strong className="text-slate-700 text-xs mt-0.5 block">Sisa Hutang: <span className="font-mono text-indigo-750 font-black">{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</span></strong>
+                  <strong className="text-slate-700 text-xs mt-0.5 block">Sisa Outstanding: <span className="font-mono text-indigo-750 font-black">{formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}</span></strong>
                 </div>
 
                 <span className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider ${selectedInvoice.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :

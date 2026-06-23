@@ -154,7 +154,8 @@ const routes: RouteObject[] = [
       // Finance
       { path: 'finance/billing', element: lazyRoute(InvoicesView) },
       { path: 'finance/cashier', element: lazyRoute(PaymentsView) },
-      { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView) },
+      { path: 'finance/account-receivable', element: lazyRoute(ReceivablesPayablesView, { initialMode: 'ar' }) },
+      { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView, { initialMode: 'ap' }) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
       { path: 'finance/accounts', element: lazyRoute(FinanceAccountsView) },
       { path: 'finance/reports', element: lazyRoute(FinanceReportView) },

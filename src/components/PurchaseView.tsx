@@ -674,11 +674,11 @@ export default function PurchaseView({
                                     <button
                                       onClick={() => {
                                         sessionStorage.setItem('action_pay_ap', po.poNumber);
-                                        onNavigate('receivables-payables');
+                                        onNavigate('accounts-payable');
                                       }}
                                       className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
                                     >
-                                      <span>Lanjut ke Pembayaran / Hutang (AP)</span>
+                                      <span>Lanjut ke Outstanding Payable (AP)</span>
                                       <ChevronRight size={14} />
                                     </button>
                                   </div>

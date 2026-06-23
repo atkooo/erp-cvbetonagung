@@ -34,7 +34,8 @@ export type ViewType =
   | 'delivery-orders'
   | 'invoices'
   | 'payments'
-  | 'receivables-payables'
+  | 'accounts-receivable'
+  | 'accounts-payable'
   | 'cash-expense'
   | 'accounts'
   // Purchasing

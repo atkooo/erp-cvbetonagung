@@ -145,6 +145,41 @@ export default function DashboardView({
     }
   });
 
+  // Calculate Chart Data (Jan - Jun)
+  const chartData = [
+    { label: "Jan", custom: 0, general: 0 },
+    { label: "Feb", custom: 0, general: 0 },
+    { label: "Mar", custom: 0, general: 0 },
+    { label: "Apr", custom: 0, general: 0 },
+    { label: "Mei", custom: 0, general: 0 },
+    { label: "Jun", custom: 0, general: 0 },
+  ];
+
+  salesOrders.forEach((so) => {
+    const d = new Date(so.date);
+    const monthIndex = d.getMonth(); // 0 for Jan, 1 for Feb, etc.
+    if (monthIndex >= 0 && monthIndex <= 5) { // Jan to Jun
+      let customTotal = 0;
+      let generalTotal = 0;
+      
+      so.items.forEach(item => {
+        // Simple logic to distinguish "custom" projects and general sales.
+        // Assuming Custom/Project items have "Custom" in name or something,
+        // For now, if the SO is from a project/custom type, let's group by product type or name.
+        if (item.productName.toLowerCase().includes('custom') || item.productName.toLowerCase().includes('proyek')) {
+          customTotal += (item.price * item.quantity);
+        } else {
+          generalTotal += (item.price * item.quantity);
+        }
+      });
+      
+      chartData[monthIndex].custom += customTotal;
+      chartData[monthIndex].general += generalTotal;
+    }
+  });
+  
+  const maxVal = Math.max(...chartData.map(d => d.custom + d.general), 1); // prevent division by zero
+
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
@@ -375,7 +410,7 @@ export default function DashboardView({
               {/* Simple Custom Fully Responsive SVG Area Chart to avoid any Recharts crash */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/80 flex-1 flex flex-col justify-between min-h-55">
                 <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono border-b border-slate-200/50 pb-1 mb-2">
-                  <span>Rp Milyar</span>
+                  <span>Rp Juta</span>
                   <div className="flex gap-4">
                     <span className="flex items-center gap-1">
                       <span className="w-2.5 h-1 bg-slate-700 rounded" />
@@ -403,7 +438,29 @@ export default function DashboardView({
                     <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400 font-mono">
                       Belum ada data penjualan.
                     </div>
-                  ) : null}
+                  ) : (
+                    chartData.map((data, idx) => {
+                      const total = data.custom + data.general;
+                      const customPct = total > 0 ? (data.custom / total) * 100 : 0;
+                      const generalPct = total > 0 ? (data.general / total) * 100 : 0;
+                      const heightPct = (total / maxVal) * 100;
+                      
+                      return (
+                        <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end z-10 group">
+                          <div 
+                            className="w-full max-w-10 rounded-t-sm flex flex-col-reverse overflow-hidden transition-all duration-500 ease-out group-hover:opacity-80"
+                            style={{ height: `${Math.max(heightPct, 2)}%` }}
+                          >
+                            <div className="w-full bg-slate-400" style={{ height: `${generalPct}%` }} title={`General: Rp ${(data.general / 1000000).toFixed(1)} Juta`} />
+                            <div className="w-full bg-slate-700" style={{ height: `${customPct}%` }} title={`Custom: Rp ${(data.custom / 1000000).toFixed(1)} Juta`} />
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-bold mt-2 font-mono">
+                            {data.label}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
