@@ -35,6 +35,7 @@ const AttendanceScannerView = React.lazy(() => import('./components/AttendanceSc
 const DeliveryOrdersView = React.lazy(() => import('./components/DeliveryOrdersView'));
 const ProductionWorkOrderView = React.lazy(() => import('./components/ProductionWorkOrderView'));
 const BomCostingView = React.lazy(() => import('./components/BomCostingView'));
+const BagView = React.lazy(() => import('./features/inventory/components/BagView'));
 const StockOpnameView = React.lazy(() => import('./components/StockOpnameView'));
 const ApprovalWorkflowView = React.lazy(() => import('./components/ApprovalWorkflowView'));
 const AuditLogView = React.lazy(() => import('./components/AuditLogView'));
@@ -171,6 +172,7 @@ const routes: RouteObject[] = [
       { path: 'inventory/stock-in', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
       { path: 'inventory/stock-out', element: lazyRoute(InventoryView, { initialTab: 'keluar' }) },
       { path: 'inventory/history', element: lazyRoute(InventoryView, { initialTab: 'riwayat' }) },
+      { path: 'inventory/bag', element: lazyRoute(BagView) },
       { path: 'inventory/opname', element: lazyRoute(StockOpnameView) },
       { path: 'inventory/warehouses', element: lazyRoute(MultiWarehouseView) },
       { path: 'inventory/qr', element: <QrViewWrapper /> },

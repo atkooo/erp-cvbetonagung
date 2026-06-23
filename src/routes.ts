@@ -42,6 +42,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   'incoming-goods':         '/inventory/stock-in',
   'outgoing-goods':         '/inventory/stock-out',
   'stock-movement-history': '/inventory/history',
+  'berita-acara-gudang':    '/inventory/bag',
   'stock-opname':           '/inventory/opname',
   'multi-warehouse':        '/inventory/warehouses',
   'qr-products':            '/inventory/qr',

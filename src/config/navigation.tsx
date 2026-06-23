@@ -74,6 +74,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "incoming-goods": "Penerimaan Barang Masuk",
   "outgoing-goods": "Barang Keluar (Internal)",
   "stock-movement-history": "Timeline & Riwayat Pergerakan Stok",
+  "berita-acara-gudang": "Berita Acara Gudang (BAG)",
   "stock-opname": "Stock Opname Gudang",
   "multi-warehouse": "Multi Warehouse / Lokasi Stok",
   pos: "Kasir / Point of Sale",
@@ -326,6 +327,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "stock-movement-history",
         label: "Riwayat Stok",
         icon: History,
+        requiredModule: "inventory",
+      },
+      {
+        view: "berita-acara-gudang",
+        label: "Berita Acara Gudang",
+        icon: FileCheck,
         requiredModule: "inventory",
       },
       {

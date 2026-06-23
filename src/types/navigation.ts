@@ -22,6 +22,7 @@ export type ViewType =
   | 'outgoing-goods'
   | 'stock-movement-history'
   | 'goods-receipts'
+  | 'berita-acara-gudang'
   | 'stock-opname'
   | 'multi-warehouse'
   | 'qr-products'

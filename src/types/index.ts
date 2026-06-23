@@ -8,7 +8,7 @@
 
 export type { Customer, Supplier } from './master';
 export type { Product, Category, QrProduct } from './product';
-export type { StockMovement } from './inventory';
+export type { StockMovement, Bag, BagItem } from './inventory';
 export type { SalesOrder, Quotation, Invoice, Payment, DeliveryOrder, DeliveryOrderItem } from './sales';
 export type {
   PurchaseOrder, PurchaseOrderItem,
