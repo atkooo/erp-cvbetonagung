@@ -58,7 +58,8 @@ export type ViewType =
   | 'payroll-management'
   | 'employee-loans'
   | 'attendance-scanner'
-  // Finance Reports
+  // Reports
+  | 'report-center'
   | 'finance-reports'
   | 'inventory-reports'
   // Support & System

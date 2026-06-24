@@ -64,7 +64,8 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   'payroll-management':     '/hrd/payroll',
   'employee-loans':         '/hrd/loans',
 
-  // Inventory Reports
+  // Reports
+  'report-center':          '/reports',
   'inventory-reports':      '/reports/inventory',
 
   // Support & System

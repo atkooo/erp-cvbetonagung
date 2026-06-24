@@ -25,6 +25,7 @@ const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
 const QrView = React.lazy(() => import('./components/QrView'));
 const FinanceReportView = React.lazy(() => import('./components/FinanceReportView'));
 const InventoryReportView = React.lazy(() => import('./components/InventoryReportView'));
+const ReportCenterView = React.lazy(() => import('./features/reports/components/ReportCenterView'));
 const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
 const AttendanceDashboardView = React.lazy(() => import('./components/AttendanceDashboardView'));
@@ -195,6 +196,7 @@ const routes: RouteObject[] = [
       { path: 'hrd/loans', element: lazyRoute(EmployeeLoanView) },
 
       // Reports
+      { path: 'reports', element: lazyRoute(ReportCenterView) },
       { path: 'reports/inventory', element: lazyRoute(InventoryReportView) },
 
       // System & Control

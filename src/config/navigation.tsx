@@ -116,6 +116,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   settings: "Pengaturan Sistem ERP",
   profile: "Profil & Akun Saya",
   users: "Manajemen User & Akun",
+  "report-center": "Pusat Laporan Terpadu",
 };
 
 // Dynamic RBAC: Backend Modules -> users, roles, employees, customers, suppliers, products, inventory, sales, purchasing, projects, finance, production, approvals, reports, settings
@@ -346,6 +347,18 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Multi Warehouse",
         icon: Warehouse,
         requiredModule: "inventory",
+      },
+    ],
+  },
+  {
+    id: "reports",
+    title: "Pusat Laporan & Analitik",
+    collapsible: true,
+    items: [
+      {
+        view: "report-center",
+        label: "Semua Laporan",
+        icon: TrendingUp,
       },
     ],
   },
