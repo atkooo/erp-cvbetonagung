@@ -103,6 +103,14 @@ export default function QrView({
   const [scanProgress, setScanProgress] = useState(0); // 0 to 100 for simulated camera scan delay
   const [scanTriggered, setScanTriggered] = useState<string | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Reset to page 1 if search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const hiddenStickerRef = useRef<HTMLDivElement>(null);
   const stickerRef = useRef<HTMLDivElement>(null);
@@ -421,7 +429,118 @@ export default function QrView({
   }
 
   // -------------------------------------------------------------
-  // 2. SCANNER DESIGN
+  // 2. LIST VIEW DESIGN
+  // -------------------------------------------------------------
+  if (currentSubView === 'list') {
+    const filteredProducts = products.filter(p => p.sku.toLowerCase().includes(search.toLowerCase()) || p.name.toLowerCase().includes(search.toLowerCase()));
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari produk berdasarkan SKU atau Nama..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-sans text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">SKU / Nama Produk</th>
+                  <th className="p-3.5">Kategori</th>
+                  <th className="p-3.5">Stok Fisik</th>
+                  <th className="p-3.5">Lokasi</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedProducts.map((prod) => (
+                  <tr key={prod.id} className="hover:bg-slate-50/40">
+                    <td className="p-3.5 pl-5">
+                      <span className="font-mono font-bold text-slate-800">{prod.sku}</span>
+                      <p className="font-bold text-slate-600 mt-0.5 truncate max-w-[200px]">{prod.name}</p>
+                    </td>
+                    <td className="p-3.5">
+                      <span className="px-2 py-0.5 bg-slate-100 rounded border text-[10px] font-semibold text-slate-600">
+                        {prod.category}
+                      </span>
+                    </td>
+                    <td className="p-3.5 font-mono font-black text-slate-700">
+                      {prod.stock} {prod.unit}
+                    </td>
+                    <td className="p-3.5 font-bold text-slate-600 flex items-center gap-1.5">
+                      <MapPin size={13} className="text-slate-400" />
+                      <span>{prod.location}</span>
+                    </td>
+                    <td className="p-3.5 pr-5 text-right space-x-2">
+                      <button
+                        onClick={() => {
+                          onTriggerNotification(`Berhasil memindai kode: ${prod.qrValue || prod.sku}`);
+                          onNavigateSubView('detail', prod.qrValue || prod.sku);
+                        }}
+                        className="px-2.5 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded"
+                      >
+                        Lihat Detail
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12 text-slate-400">
+                      Tidak ada produk ditemukan.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+              <div className="text-[10px] text-slate-400 font-mono">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredProducts.length)} dari {filteredProducts.length} data
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-500 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // 3. SCANNER DESIGN
   // -------------------------------------------------------------
   if (currentSubView === 'scanner') {
     return (
@@ -474,183 +593,6 @@ export default function QrView({
     );
   }
 
-  // -------------------------------------------------------------
-  // 3. DAFTAR BARCODE PRODUK LIST DESIGN
-  // -------------------------------------------------------------
-  return (
-    <div className="space-y-6">
-      {/* Search Header and navigation action triggers */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search SKU atau Nama Produk untuk mencetak stiker Barcode..."
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs"
-          />
-        </div>
-
-        <button
-          onClick={() => onNavigateSubView('scanner')}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white font-bold hover:bg-slate-800 rounded-lg text-xs flex items-center gap-2 shadow cursor-pointer"
-        >
-          <Scan size={16} className="text-white" />
-          <span>Buka Scanner Kamera</span>
-        </button>
-      </div>
-
-      {/* Main product listings table displaying Barcodes */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-sans text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                <th className="p-3.5 pl-5">SKU No. / Barcode</th>
-                <th className="p-3.5">Nama Item Produk</th>
-                <th className="p-3.5">Sisa Kuantitas</th>
-                <th className="p-3.5">Visual Barcode Label</th>
-                <th className="p-3.5">Kondisi Stok</th>
-                <th className="p-3.5 pr-5 text-right">Aksi Tempelan Barcode</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {products
-                .filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()))
-                .map((p, idx) => (
-                  <tr key={p.id} className="hover:bg-slate-50/40">
-                    <td className="p-3.5 pl-5">
-                      <span className="font-mono font-bold text-slate-800 block">{p.sku}</span>
-                      <span className="text-[10px] text-indigo-600 font-mono font-semibold block mt-0.5">Barcode: {p.qrValue || p.sku}</span>
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-700">{p.name}</td>
-                    <td className="p-3.5 font-mono text-slate-500">{p.stock} {p.unit}</td>
-                    <td className="p-3.5">
-                      <div className="py-1 flex items-center gap-2">
-                        {drawBarcode(p.qrValue || p.sku)}
-                        <span className="text-[10px] font-mono text-slate-400">Label format: G1-A</span>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        p.status === 'Aman' ? 'bg-emerald-100 text-emerald-800' :
-                        p.status === 'Menipis' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setShowQrModal(p);
-                            onTriggerNotification(`Membuka popup sticker Barcode ${p.sku}`);
-                          }}
-                          className="px-2 py-1.5 border border-slate-200 hover:border-slate-300 text-[10px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 rounded flex items-center gap-1.5 transition-colors"
-                        >
-                          <Eye size={12} />
-                          <span>Lihat</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPrintProduct(p);
-                            onTriggerNotification(`Menyiapkan cetak stiker Barcode [${p.sku}] ke printer zebra harian...`);
-                          }}
-                          className="px-2 py-1.5 border border-cyan-200 text-[10px] font-semibold text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 rounded flex items-center gap-1.5 transition-colors"
-                        >
-                          <Printer size={12} />
-                          <span>Cetak</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Hidden layout for direct print */}
-      <div style={{ overflow: 'hidden', height: 0, width: 0, position: 'absolute' }}>
-        {printProduct && (
-          <div ref={hiddenStickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white w-[350px]">
-            <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">{(companyProfile?.name || 'CV Beton Agung').toUpperCase()} LOGISTIC</p>
-            <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
-              <div className="relative group">
-                {drawBarcode(printProduct.qrValue || printProduct.sku, true)}
-              </div>
-            </div>
-            <div className="space-y-1.5 text-center">
-              <strong className="text-base font-sans font-black text-slate-800 tracking-tight leading-tight">{printProduct.sku}</strong>
-              <p className="text-xs font-bold text-slate-650 text-slate-500 max-w-[200px] leading-snug">{printProduct.name}</p>
-              <div className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono inline-block border border-slate-200 mt-1">
-                Barcode: <strong className="text-slate-800">{printProduct.qrValue || printProduct.sku}</strong>
-              </div>
-              <div className="pt-2 text-[9px] font-mono text-slate-400">
-                Storage Rak: <strong className="text-slate-600">{printProduct.location}</strong>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Modal View Barcode Sticker layout */}
-      {showQrModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            {/* Header modal */}
-            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
-              <h4 className="font-bold">Kartu Sticker Barcode</h4>
-              <button onClick={() => setShowQrModal(null)} className="text-slate-400 hover:text-white">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Sticker panel display */}
-            <div ref={stickerRef} className="p-8 text-center space-y-5 flex flex-col items-center bg-white">
-              <p className="text-[10px] uppercase font-mono text-slate-400 font-bold tracking-widest leading-none">{(companyProfile?.name || 'CV Beton Agung').toUpperCase()} LOGISTIC</p>
-              
-              <div className="mt-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-slate-200">
-                <div className="relative group">
-                  {drawBarcode(showQrModal.qrValue || showQrModal.sku, true)}
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-center">
-                <strong className="text-base font-sans font-black text-slate-800 tracking-tight leading-tight">{showQrModal.sku}</strong>
-                <p className="text-xs font-bold text-slate-650 text-slate-500 max-w-[200px] leading-snug">{showQrModal.name}</p>
-                <div className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono inline-block border border-slate-200 mt-1">
-                  Barcode: <strong className="text-slate-800">{showQrModal.qrValue || showQrModal.sku}</strong>
-                </div>
-                <div className="pt-2 text-[9px] font-mono text-slate-400">
-                  Storage Rak: <strong className="text-slate-600">{showQrModal.location}</strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Buttons action */}
-            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-1.5 text-xs font-bold">
-              <button
-                onClick={handleDownloadPng}
-                className="px-3 py-1.5 border hover:bg-slate-150 rounded-lg flex items-center gap-1 text-slate-650"
-              >
-                <Download size={13} />
-                <span>Download PNG</span>
-              </button>
-              <button
-                onClick={handlePrint}
-                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-1"
-              >
-                <Printer size={13} />
-                <span>Cetak Stiker</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
+

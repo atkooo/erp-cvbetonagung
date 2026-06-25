@@ -183,6 +183,17 @@ export default function PurchaseView({
     return matchesSearch && matchesStatus;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredPOs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPOs = filteredPOs.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -526,174 +537,202 @@ export default function PurchaseView({
                     </td>
                   </tr>
                 ) : (
-                  filteredPOs.map((po) => {
-                    const isExpanded = expandedPoId === po.id;
-                    const statusColors: Record<string, string> = {
-                      Draft: "bg-slate-100 text-slate-600",
-                      Dipesan: "bg-blue-100 text-blue-700 border-blue-200",
-                      "Diterima Sebagian":
-                        "bg-amber-100 text-amber-700 border-amber-300 animate-pulse",
-                      "Diterima Penuh":
-                        "bg-emerald-100 text-emerald-800 border-emerald-200",
-                      Dibatalkan: "bg-slate-100 text-slate-400",
-                    };
+                  <>
+                    {paginatedPOs.map((po) => {
+                      const isExpanded = expandedPoId === po.id;
+                      const statusColors: Record<string, string> = {
+                        Draft: "bg-slate-100 text-slate-600",
+                        Dipesan: "bg-blue-100 text-blue-700 border-blue-200",
+                        "Diterima Sebagian":
+                          "bg-amber-100 text-amber-700 border-amber-300 animate-pulse",
+                        "Diterima Penuh":
+                          "bg-emerald-100 text-emerald-800 border-emerald-200",
+                        Dibatalkan: "bg-slate-100 text-slate-400",
+                      };
 
-                    return (
-                      <React.Fragment key={po.id}>
-                        <tr className="hover:bg-slate-50/40">
-                          <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
-                            <button
-                              onClick={() =>
-                                setExpandedPoId(isExpanded ? null : po.id)
-                              }
-                              className="flex items-center gap-1.5 focus:outline-none text-left"
-                            >
-                              {isExpanded ? (
-                                <ChevronDown
-                                  size={14}
-                                  className="text-cyan-500"
-                                />
-                              ) : (
-                                <ChevronRight
-                                  size={14}
-                                  className="text-slate-400"
-                                />
+                      return (
+                        <React.Fragment key={po.id}>
+                          <tr className="hover:bg-slate-50/40">
+                            <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
+                              <button
+                                onClick={() =>
+                                  setExpandedPoId(isExpanded ? null : po.id)
+                                }
+                                className="flex items-center gap-1.5 focus:outline-none text-left"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown
+                                    size={14}
+                                    className="text-cyan-500"
+                                  />
+                                ) : (
+                                  <ChevronRight
+                                    size={14}
+                                    className="text-slate-400"
+                                  />
+                                )}
+                                <span>{po.poNumber}</span>
+                              </button>
+                            </td>
+                            <td className="p-3.5 font-bold text-slate-700">
+                              {po.supplierName}
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-500">
+                              {formatDate(po.date)}
+                            </td>
+                            <td className="p-3.5 font-mono font-black text-slate-900">
+                              {formatIDR(po.total)}
+                            </td>
+                            <td className="p-3.5">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || "bg-slate-100"}`}
+                              >
+                                {po.status}
+                              </span>
+                            </td>
+                            <td className="p-3.5 pr-5 text-right whitespace-nowrap">
+                              {po.status === "Draft" && (
+                                <>
+                                  <button
+                                    onClick={() =>
+                                      handleApprove(po.id, po.poNumber)
+                                    }
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleCancel(po.id, po.poNumber)
+                                    }
+                                    className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
+                                  >
+                                    Batal
+                                  </button>
+                                </>
                               )}
-                              <span>{po.poNumber}</span>
-                            </button>
-                          </td>
-                          <td className="p-3.5 font-bold text-slate-700">
-                            {po.supplierName}
-                          </td>
-                          <td className="p-3.5 font-mono text-slate-500">
-                            {formatDate(po.date)}
-                          </td>
-                          <td className="p-3.5 font-mono font-black text-slate-900">
-                            {formatIDR(po.total)}
-                          </td>
-                          <td className="p-3.5">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || "bg-slate-100"}`}
-                            >
-                              {po.status}
-                            </span>
-                          </td>
-                          <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                            {po.status === "Draft" && (
-                              <>
-                                <button
-                                  onClick={() =>
-                                    handleApprove(po.id, po.poNumber)
-                                  }
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    handleCancel(po.id, po.poNumber)
-                                  }
-                                  className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
-                                >
-                                  Batal
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => {
-                                setPrintPoId(po.id);
-                                onTriggerNotification(
-                                  `Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`,
-                                );
-                                setTimeout(() => handlePrintAction(), 300);
-                              }}
-                              className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
-                              title="Print PO"
-                            >
-                              Cetak
-                            </button>
-                          </td>
-                        </tr>
-
-                        {/* Expandable PO items block */}
-                        {isExpanded && (
-                          <tr className="bg-slate-50/50">
-                            <td
-                              colSpan={6}
-                              className="p-4 pl-12 border-b border-slate-100"
-                            >
-                              <div className="space-y-4 max-w-xl">
-                                <div className="flex items-center gap-3">
-                                  <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
-                                    KOMPONEN RESTOCK BORONGAN
-                                  </h5>
-                                  {po.salesOrderNumber && (
-                                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 flex items-center gap-1">
-                                      <ShoppingCart size={10} />
-                                      Terkait SO: {po.salesOrderNumber}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="space-y-1.5">
-                                  {po.items?.map((it, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs"
-                                    >
-                                      <div>
-                                        <strong className="text-slate-700 block">
-                                          {it.productName}
-                                        </strong>
-                                        <span className="text-slate-400 font-mono text-[10px]">
-                                          {it.quantity} Pcs x{" "}
-                                          {formatIDR(it.price)}
-                                        </span>
-                                      </div>
-                                      <strong className="font-mono text-slate-950">
-                                        {formatIDR(it.quantity * it.price)}
-                                      </strong>
-                                    </div>
-                                  ))}
-                                </div>
-                                {onNavigate && po.status === "Dipesan" && (
-                                  <div className="pt-2">
-                                    <button
-                                      onClick={() => {
-                                        sessionStorage.setItem('action_receive_po', po.id);
-                                        onNavigate('goods-receipts');
-                                      }}
-                                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                                    >
-                                      <span>Lanjut ke Penerimaan Barang (GRN)</span>
-                                      <ChevronRight size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                                {onNavigate && (po.status === "Diterima Sebagian" || po.status === "Diterima Penuh") && (
-                                  <div className="pt-2">
-                                    <button
-                                      onClick={() => {
-                                        sessionStorage.setItem('action_pay_ap', po.poNumber);
-                                        onNavigate('accounts-payable');
-                                      }}
-                                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                                    >
-                                      <span>Lanjut ke Outstanding Payable (AP)</span>
-                                      <ChevronRight size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              <button
+                                onClick={() => {
+                                  setPrintPoId(po.id);
+                                  onTriggerNotification(
+                                    `Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`,
+                                  );
+                                  setTimeout(() => handlePrintAction(), 300);
+                                }}
+                                className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
+                                title="Print PO"
+                              >
+                                Cetak
+                              </button>
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
+
+                          {/* Expandable PO items block */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50/50">
+                              <td
+                                colSpan={6}
+                                className="p-4 pl-12 border-b border-slate-100"
+                              >
+                                <div className="space-y-4 max-w-xl">
+                                  <div className="flex items-center gap-3">
+                                    <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
+                                      KOMPONEN RESTOCK BORONGAN
+                                    </h5>
+                                    {po.salesOrderNumber && (
+                                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 flex items-center gap-1">
+                                        <ShoppingCart size={10} />
+                                        Terkait SO: {po.salesOrderNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {po.items?.map((it, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs"
+                                      >
+                                        <div>
+                                          <strong className="text-slate-700 block">
+                                            {it.productName}
+                                          </strong>
+                                          <span className="text-slate-400 font-mono text-[10px]">
+                                            {it.quantity} Pcs x{" "}
+                                            {formatIDR(it.price)}
+                                          </span>
+                                        </div>
+                                        <strong className="font-mono text-slate-950">
+                                          {formatIDR(it.quantity * it.price)}
+                                        </strong>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {onNavigate && po.status === "Dipesan" && (
+                                    <div className="pt-2">
+                                      <button
+                                        onClick={() => {
+                                          sessionStorage.setItem('action_receive_po', po.id);
+                                          onNavigate('goods-receipts');
+                                        }}
+                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                      >
+                                        <span>Lanjut ke Penerimaan Barang (GRN)</span>
+                                        <ChevronRight size={14} />
+                                      </button>
+                                    </div>
+                                  )}
+                                  {onNavigate && (po.status === "Diterima Sebagian" || po.status === "Diterima Penuh") && (
+                                    <div className="pt-2">
+                                      <button
+                                        onClick={() => {
+                                          sessionStorage.setItem('action_pay_ap', po.poNumber);
+                                          onNavigate('accounts-payable');
+                                        }}
+                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                      >
+                                        <span>Lanjut ke Outstanding Payable (AP)</span>
+                                        <ChevronRight size={14} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </>
                 )}
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+              <div className="text-[10px] text-slate-400 font-mono">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredPOs.length)} dari {filteredPOs.length} data
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-500 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

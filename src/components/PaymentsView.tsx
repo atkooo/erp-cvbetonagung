@@ -118,6 +118,16 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     return matchesSearch && matchesMethod;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, methodFilter]);
+
   const openReceivePaymentModal = () => {
     const firstInvoice = unpaidInvoices[0] || null;
     setSelectedInvoiceId(firstInvoice?.id || '');
@@ -292,7 +302,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredPayments.map((pay) => (
+                  {paginatedPayments.map((pay) => (
                     <tr key={pay.id} className="hover:bg-slate-50/40">
                       <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-1.5">
                         <CreditCard size={13} className="text-slate-400" />
@@ -333,9 +343,42 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                       </td>
                     </tr>
                   ))}
+                  {paginatedPayments.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-12 text-slate-400">
+                        Tidak ditemukan kecocokan dokumen pembayaran.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredPayments.length)} dari {filteredPayments.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {showReceiveModal && (

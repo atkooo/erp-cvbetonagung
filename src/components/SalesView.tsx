@@ -227,6 +227,16 @@ export default function SalesView({
     return matchesSearch && matchesStatus;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedDocs = filteredDocs.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   // Handle create document
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -476,85 +486,114 @@ export default function SalesView({
       ) : errorMessage ? (
         <ErrorCard message={errorMessage} onRetry={loadData} />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-sans text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">Nomor Dokumen</th>
-                  <th className="p-3.5">Sumber</th>
-                  <th className="p-3.5">Nama Relasi Customer</th>
-                  <th className="p-3.5">Tanggal Dokumen</th>
-                  {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
-                  <th className="p-3.5">Nilai Transaksi (Gross)</th>
-                  <th className="p-3.5">Status Alur</th>
-                  <th className="p-3.5 pr-5 text-right">Rincian</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredDocs.length === 0 ? (
-                  <tr>
-                    <td colSpan={isQuotation ? 8 : 7} className="text-center py-12 text-slate-400 font-medium">
-                      Tidak ada dokumen transaksi terekam saat ini.
-                    </td>
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                    <th className="p-3.5 pl-5">Nomor Dokumen</th>
+                    <th className="p-3.5">Sumber</th>
+                    <th className="p-3.5">Nama Relasi Customer</th>
+                    <th className="p-3.5">Tanggal Dokumen</th>
+                    {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
+                    <th className="p-3.5">Nilai Transaksi (Gross)</th>
+                    <th className="p-3.5">Status Alur</th>
+                    <th className="p-3.5 pr-5 text-right">Rincian</th>
                   </tr>
-                ) : (
-                  filteredDocs.map((doc: any, idx) => {
-                    const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
-                    const statusColors: Record<string, string> = {
-                      Draft: 'bg-slate-100 text-slate-600',
-                      Terkirim: 'bg-blue-100 text-blue-700',
-                      Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                      Ditolak: 'bg-red-100 text-red-700',
-                      Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
-                      pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
-                      Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                      completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                      Dibatalkan: 'bg-slate-100 text-slate-400',
-                    };
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedDocs.length === 0 ? (
+                    <tr>
+                      <td colSpan={isQuotation ? 8 : 7} className="text-center py-12 text-slate-400 font-medium">
+                        Tidak ada dokumen transaksi terekam saat ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedDocs.map((doc: any, idx) => {
+                      const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
+                      const statusColors: Record<string, string> = {
+                        Draft: 'bg-slate-100 text-slate-600',
+                        Terkirim: 'bg-blue-100 text-blue-700',
+                        Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        Ditolak: 'bg-red-100 text-red-700',
+                        Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                        pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
+                        Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        Dibatalkan: 'bg-slate-100 text-slate-400',
+                      };
 
-                    return (
-                      <tr key={idx} className="hover:bg-slate-50/40">
-                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
-                          {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
-                          <span>{docNum}</span>
-                        </td>
-                        <td className="p-3.5">
-                          {!isQuotation && doc.source === 'pos' ? (
-                            <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold uppercase tracking-wider">Kasir (POS)</span>
-                          ) : !isQuotation ? (
-                            <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[9px] font-bold uppercase tracking-wider">B2B (ERP)</span>
-                          ) : (
-                            <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-bold uppercase tracking-wider">-</span>
-                          )}
-                        </td>
-                        <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
-                        <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
-                        {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
-                        <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
-                        <td className="p-3.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || 'bg-slate-50'}`}>
-                            {doc.status}
-                          </span>
-                        </td>
-                        <td className="p-3.5 pr-5 text-right">
-                          <button
-                            onClick={() => {
-                              setSelectedDoc(doc);
-                              onTriggerNotification(`Membuka rincian item dokumen ${docNum}`);
-                            }}
-                            className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2"
-                          >
-                            Rincian Item
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/40">
+                          <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
+                            {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
+                            <span>{docNum}</span>
+                          </td>
+                          <td className="p-3.5">
+                            {!isQuotation && doc.source === 'pos' ? (
+                              <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold uppercase tracking-wider">Kasir (POS)</span>
+                            ) : !isQuotation ? (
+                              <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[9px] font-bold uppercase tracking-wider">B2B (ERP)</span>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-bold uppercase tracking-wider">-</span>
+                            )}
+                          </td>
+                          <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
+                          <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
+                          {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
+                          <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
+                          <td className="p-3.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || 'bg-slate-50'}`}>
+                              {doc.status}
+                            </span>
+                          </td>
+                          <td className="p-3.5 pr-5 text-right">
+                            <button
+                              onClick={() => {
+                                setSelectedDoc(doc);
+                                onTriggerNotification(`Membuka rincian item dokumen ${docNum}`);
+                              }}
+                              className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2"
+                            >
+                              Rincian Item
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2 px-2">
+              <div className="text-[10px] text-slate-400 font-mono">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredDocs.length)} dari {filteredDocs.length} data
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-500 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

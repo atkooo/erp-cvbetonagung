@@ -104,6 +104,16 @@ export const FinanceAccountsView: React.FC = () => {
     acc.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAccounts = filteredAccounts.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   return (
     <div className="space-y-6 text-xs font-sans">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
@@ -168,7 +178,7 @@ export const FinanceAccountsView: React.FC = () => {
                   <td colSpan={6} className="p-8 text-center text-slate-500">Tidak ada akun yang ditemukan.</td>
                 </tr>
               ) : (
-                filteredAccounts.map((account) => (
+                paginatedAccounts.map((account) => (
                   <tr key={account.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-3.5 pl-5">
                       <span className="font-mono text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{account.code}</span>
@@ -216,6 +226,32 @@ export const FinanceAccountsView: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+            <div className="text-[10px] text-slate-400 font-mono">
+              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredAccounts.length)} dari {filteredAccounts.length} data
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Prev
+              </button>
+              <span className="text-slate-500 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (

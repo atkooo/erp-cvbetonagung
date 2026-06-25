@@ -300,6 +300,16 @@ export default function ReturnsView({
     return matchesSearch && matchesType;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredReturns.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedReturns = filteredReturns.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType]);
+
   const getQcStatusLabel = (status: string) => {
     switch (status) {
       case "pending_qc":
@@ -414,7 +424,7 @@ export default function ReturnsView({
       </Panel>
 
       {/* Table Panel */}
-      <Panel className="overflow-hidden">
+      <Panel className="overflow-hidden space-y-4 pb-4">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <RefreshCw className="animate-spin text-slate-400" size={24} />
@@ -425,68 +435,97 @@ export default function ReturnsView({
             <p>Tidak ada data retur barang.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-187.5">
-              <thead>
-                <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                  <th className="p-3.5 pl-5">No Retur</th>
-                  <th className="p-3.5">Jenis</th>
-                  <th className="p-3.5">Nama Partner</th>
-                  <th className="p-3.5">Referensi SO/PO</th>
-                  <th className="p-3.5">Alasan Retur</th>
-                  <th className="p-3.5">Status QC</th>
-                  <th className="p-3.5">Tanggal</th>
-                  <th className="p-3.5 pr-5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredReturns.map((ret) => (
-                  <tr key={ret.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 pl-5 font-mono text-cyan-600 font-bold">
-                      {ret.returnNumber}
-                    </td>
-                    <td className="p-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          ret.type === "customer"
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {ret.type === "customer" ? "Customer" : "Supplier"}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-700">
-                      {ret.partnerName}
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-500">
-                      {ret.referenceNumber}
-                    </td>
-                    <td className="p-3.5 text-slate-600 font-medium">
-                      {ret.reason}
-                    </td>
-                    <td className="p-3.5">
-                      <StatusPill tone={getQcStatusTone(ret.qcStatus)}>
-                        {getQcStatusLabel(ret.qcStatus)}
-                      </StatusPill>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-400">
-                      {ret.createdAt}
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <button
-                        onClick={() => setSelectedReturn(ret)}
-                        className="px-2.5 py-1.5 border rounded-lg bg-slate-50 hover:bg-slate-100 text-[10px] font-bold text-slate-600 ml-auto transition flex items-center gap-1"
-                      >
-                        <Eye size={12} />
-                        <span>QC Detail</span>
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-187.5">
+                <thead>
+                  <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                    <th className="p-3.5 pl-5">No Retur</th>
+                    <th className="p-3.5">Jenis</th>
+                    <th className="p-3.5">Nama Partner</th>
+                    <th className="p-3.5">Referensi SO/PO</th>
+                    <th className="p-3.5">Alasan Retur</th>
+                    <th className="p-3.5">Status QC</th>
+                    <th className="p-3.5">Tanggal</th>
+                    <th className="p-3.5 pr-5 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedReturns.map((ret) => (
+                    <tr key={ret.id} className="hover:bg-slate-50/50">
+                      <td className="p-3.5 pl-5 font-mono text-cyan-600 font-bold">
+                        {ret.returnNumber}
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            ret.type === "customer"
+                              ? "bg-indigo-50 text-indigo-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {ret.type === "customer" ? "Customer" : "Supplier"}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-700">
+                        {ret.partnerName}
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-500">
+                        {ret.referenceNumber}
+                      </td>
+                      <td className="p-3.5 text-slate-600 font-medium">
+                        {ret.reason}
+                      </td>
+                      <td className="p-3.5">
+                        <StatusPill tone={getQcStatusTone(ret.qcStatus)}>
+                          {getQcStatusLabel(ret.qcStatus)}
+                        </StatusPill>
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-400">
+                        {ret.createdAt}
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        <button
+                          onClick={() => setSelectedReturn(ret)}
+                          className="px-2.5 py-1.5 border rounded-lg bg-slate-50 hover:bg-slate-100 text-[10px] font-bold text-slate-600 ml-auto transition flex items-center gap-1"
+                        >
+                          <Eye size={12} />
+                          <span>QC Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 pt-2">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredReturns.length)} dari {filteredReturns.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Panel>
 

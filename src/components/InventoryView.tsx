@@ -108,9 +108,13 @@ export default function InventoryView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fetchedPoDetailIds = React.useRef<Set<string>>(new Set());
 
-  const loadData = async () => {
+  const fetchIdRef = React.useRef(0);
+
+  const loadData = React.useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
+    const fetchId = ++fetchIdRef.current;
+    
     try {
       const needsProducts =
         activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
@@ -153,6 +157,8 @@ export default function InventoryView({
             : Promise.resolve({ data: warehouses }),
         ]);
 
+      if (fetchId !== fetchIdRef.current) return;
+
       setRawProducts(prods);
       setWarehouses(whRes.data);
       setProductStocks(stocks);
@@ -175,17 +181,20 @@ export default function InventoryView({
         setInLocationId((prev) => prev || locRes.data[0].id);
       }
     } catch (err) {
+      if (fetchId !== fetchIdRef.current) return;
       setErrorMessage(
         err instanceof Error ? err.message : "Gagal memuat data inventory",
       );
     } finally {
-      setIsLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [activeTab, rawProducts, productStocks, locations, warehouses]);
 
   React.useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   React.useEffect(() => {
     const selectedPo = purchaseOrders.find((po) => po.poNumber === inDoc);

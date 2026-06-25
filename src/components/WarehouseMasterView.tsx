@@ -92,6 +92,16 @@ export default function WarehouseMasterView({
     (loc) => loc.warehouse_id === selectedWarehouseId,
   );
 
+  const [currentPageLoc, setCurrentPageLoc] = useState(1);
+  const itemsPerPageLoc = 10;
+  const totalPagesLoc = Math.ceil(selectedLocations.length / itemsPerPageLoc);
+  const startIndexLoc = (currentPageLoc - 1) * itemsPerPageLoc;
+  const paginatedLocations = selectedLocations.slice(startIndexLoc, startIndexLoc + itemsPerPageLoc);
+
+  useEffect(() => {
+    setCurrentPageLoc(1);
+  }, [selectedWarehouseId]);
+
   const openWarehouseCreate = () => {
     setWarehouseForm(emptyWarehouse);
     setShowWarehouseModal(true);
@@ -402,14 +412,14 @@ export default function WarehouseMasterView({
                       Pilih gudang untuk melihat lokasi/rak.
                     </td>
                   </tr>
-                ) : selectedLocations.length === 0 ? (
+                ) : paginatedLocations.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="p-8 text-center text-slate-400">
                       Belum ada rak di gudang ini.
                     </td>
                   </tr>
                 ) : (
-                  selectedLocations.map((location) => (
+                  paginatedLocations.map((location) => (
                     <tr key={location.id} className="hover:bg-slate-50/50">
                       <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
                         {location.code}
@@ -441,6 +451,32 @@ export default function WarehouseMasterView({
                 )}
               </tbody>
             </table>
+            {totalPagesLoc > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndexLoc + 1} - {Math.min(startIndexLoc + itemsPerPageLoc, selectedLocations.length)} dari {selectedLocations.length} rak
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPageLoc(p => Math.max(1, p - 1))}
+                    disabled={currentPageLoc === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPageLoc} of {totalPagesLoc}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPageLoc(p => Math.min(totalPagesLoc, p + 1))}
+                    disabled={currentPageLoc === totalPagesLoc}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

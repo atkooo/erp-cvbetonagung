@@ -299,6 +299,16 @@ export default function BomCostingView({
         b.productSku.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredBoms.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBoms = filteredBoms.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const relatedProduct = products.find((p) => p.id === selectedBom?.productId);
   const sellingPrice = relatedProduct?.sellingPrice || 0;
   const totalCost = selectedBom?.totalCost || 0;
@@ -428,7 +438,7 @@ export default function BomCostingView({
               </div>
 
               <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-                {filteredBoms.map((bom) => (
+                {paginatedBoms.map((bom) => (
                   <div
                     key={bom.id}
                     onClick={() => setSelectedBomId(bom.id)}
@@ -481,12 +491,38 @@ export default function BomCostingView({
                     </div>
                   </div>
                 ))}
-                {filteredBoms.length === 0 && (
+                {paginatedBoms.length === 0 && (
                   <div className="p-12 text-center text-slate-400">
                     Tidak ada resep BOM ditemukan.
                   </div>
                 )}
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredBoms.length)} dari {filteredBoms.length} data
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-slate-500 px-2">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Item Recipe Details */}

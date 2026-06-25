@@ -398,6 +398,16 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     (w.sourceLabel && w.sourceLabel.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredWos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedWos = filteredWos.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   // Group counts
   const getWoStatus = (wo: ProductionWorkOrder) => {
     // 1. Fulfilled target
@@ -541,7 +551,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
               </div>
 
               <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
-                {filteredWos.map((wo) => (
+                {paginatedWos.map((wo) => (
                   <div
                     key={wo.id}
                     onClick={() => setSelectedWoId(wo.id)}
@@ -580,10 +590,36 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     </div>
                   </div>
                 ))}
-                {filteredWos.length === 0 && (
+                {paginatedWos.length === 0 && (
                   <div className="p-12 text-center text-slate-400">Tidak ada Work Order ditemukan.</div>
                 )}
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredWos.length)} dari {filteredWos.length} data
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-slate-500 px-2">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Detailed Monitor Card */}

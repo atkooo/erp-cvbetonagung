@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   HandCoins,
   Plus,
@@ -48,6 +48,21 @@ export default function EmployeeLoanView({
       status: "Pending",
     },
   ];
+
+  const filteredLoans = loans.filter((l) =>
+    l.employee.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.number.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredLoans.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLoans = filteredLoans.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   return (
     <div className="space-y-6 font-sans text-xs">
@@ -148,7 +163,14 @@ export default function EmployeeLoanView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loans.map((l) => (
+            {paginatedLoans.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-5 text-center text-slate-400 italic">
+                  Tidak ada data kasbon ditemukan.
+                </td>
+              </tr>
+            ) : (
+              paginatedLoans.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50/50">
                 <td className="p-3.5 pl-5 font-mono font-bold text-indigo-600">
                   {l.number}
@@ -199,9 +221,36 @@ export default function EmployeeLoanView({
                   )}
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+            <div className="text-[10px] text-slate-400 font-mono">
+              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredLoans.length)} dari {filteredLoans.length} data
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Prev
+              </button>
+              <span className="text-slate-500 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (

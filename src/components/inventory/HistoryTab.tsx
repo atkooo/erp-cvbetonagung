@@ -12,21 +12,60 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
   stockMovements,
   search,
 }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 15;
+
+  const filteredMovements = stockMovements.filter(
+    (m) =>
+      m.productName.toLowerCase().includes(search.toLowerCase()) ||
+      m.sku.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedMovements = filteredMovements.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 if search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   return (
     <div className="p-6">
-      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-5 flex items-center gap-2">
-        <Clock size={16} className="text-cyan-500" />
-        <span>Timeline Log Mutasi Fisik Sejarah Gudang</span>
-      </h4>
+      <div className="flex items-center justify-between mb-5">
+        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <Clock size={16} className="text-cyan-500" />
+          <span>Timeline Log Mutasi Fisik Sejarah Gudang</span>
+        </h4>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+            >
+              Prev
+            </button>
+            <span className="text-slate-500">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="relative border-l border-slate-200 pl-6 ml-3 space-y-6">
-        {stockMovements
-          .filter(
-            (m) =>
-              m.productName.toLowerCase().includes(search.toLowerCase()) ||
-              m.sku.toLowerCase().includes(search.toLowerCase()),
-          )
-          .map((m, idx) => (
+        {paginatedMovements.length === 0 ? (
+          <div className="text-xs text-slate-400 italic">Tidak ada log mutasi ditemukan.</div>
+        ) : (
+          paginatedMovements.map((m, idx) => (
             <div key={idx} className="relative text-xs">
               {/* Circle indicators */}
               <span
@@ -84,8 +123,31 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
                 )}
               </div>
             </div>
-          ))}
+          ))
+        )}
       </div>
+      
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2 text-xs font-mono">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold"
+          >
+            Previous
+          </button>
+          <span className="text-slate-500 px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };

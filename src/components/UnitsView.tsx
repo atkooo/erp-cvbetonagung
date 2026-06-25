@@ -144,6 +144,12 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(units.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedUnits = units.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6">
       <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex items-center justify-between">
@@ -175,60 +181,86 @@ export default function UnitsView({ onTriggerNotification }: UnitsViewProps) {
               <th className="p-3.5 text-right">Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoading ? (
-              <tr>
-                <td colSpan={3} className="p-8 text-center text-slate-400">
-                  Memuat master satuan...
-                </td>
-              </tr>
-            ) : units.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="p-8 text-center text-slate-400">
-                  Belum ada satuan. Tambahkan satuan pertama untuk produk.
-                </td>
-              </tr>
-            ) : (
-              units.map((unit) => (
-                <tr key={unit.id} className="hover:bg-slate-50/60">
-                  <td className="p-3.5">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 text-slate-700 font-mono font-bold">
-                      <Tag size={11} />
-                      {unit.code}
-                    </span>
-                  </td>
-                  <td className="p-3.5 font-bold text-slate-800">
-                    {unit.name}
-                  </td>
-                  <td className="p-3.5">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-medium">
-                      {unit.type === 'raw_material' ? 'Hanya Bahan Baku' : unit.type === 'finished_good' ? 'Hanya Barang Jadi' : 'Semua Tipe'}
-                    </span>
-                  </td>
-                  <td className="p-3.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEditModal(unit)}
-                        className="p-1.5 text-slate-500 hover:text-cyan-700 hover:bg-cyan-50 rounded transition-colors"
-                        title="Edit Satuan"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(unit)}
-                        className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                        title="Hapus Satuan"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              <tbody className="divide-y divide-slate-100">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={3} className="p-8 text-center text-slate-400">
+                      Memuat master satuan...
+                    </td>
+                  </tr>
+                ) : paginatedUnits.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-slate-400">
+                      Belum ada satuan. Tambahkan satuan pertama untuk produk.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedUnits.map((unit) => (
+                    <tr key={unit.id} className="hover:bg-slate-50/60">
+                      <td className="p-3.5">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 text-slate-700 font-mono font-bold">
+                          <Tag size={11} />
+                          {unit.code}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-800">
+                        {unit.name}
+                      </td>
+                      <td className="p-3.5">
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-medium">
+                          {unit.type === 'raw_material' ? 'Hanya Bahan Baku' : unit.type === 'finished_good' ? 'Hanya Barang Jadi' : 'Semua Tipe'}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openEditModal(unit)}
+                            className="p-1.5 text-slate-500 hover:text-cyan-700 hover:bg-cyan-50 rounded transition-colors"
+                            title="Edit Satuan"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(unit)}
+                            className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                            title="Hapus Satuan"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, units.length)} dari {units.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">

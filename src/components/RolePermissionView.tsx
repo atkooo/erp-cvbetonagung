@@ -240,6 +240,16 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
               actionOrder.some(action => getActionLabel(action).toLowerCase().includes(searchQuery.toLowerCase()))
     ));
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(moduleRows.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRows = moduleRows.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedRoleId]);
+
   return (
     <div className="space-y-6 text-xs font-sans">
       <Header
@@ -358,7 +368,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {moduleRows.map(row => (
+                {paginatedRows.map(row => (
                   <tr key={row.module} className="hover:bg-slate-50/40 transition-colors">
                     <td className="p-3.5 pl-5">
                       <div className="flex items-center gap-2">
@@ -403,6 +413,32 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, moduleRows.length)} dari {moduleRows.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
         <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-500 flex flex-col md:flex-row md:items-center md:justify-between gap-2">

@@ -80,6 +80,17 @@ export const InwardTab: React.FC<InwardTabProps> = ({
     return grn.warehouseId || "-";
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  const totalPages = Math.ceil(filteredReceipts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedReceipts = filteredReceipts.slice(startIndex, startIndex + itemsPerPage);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto">
@@ -97,7 +108,7 @@ export const InwardTab: React.FC<InwardTabProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredReceipts.length === 0 ? (
+            {paginatedReceipts.length === 0 ? (
               <tr>
                 <td
                   colSpan={8}
@@ -107,7 +118,7 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredReceipts.map((grn) => {
+              paginatedReceipts.map((grn) => {
                 const isExpanded = expandedId === grn.id;
                 return (
                   <React.Fragment key={grn.id}>
@@ -253,6 +264,33 @@ export const InwardTab: React.FC<InwardTabProps> = ({
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-slate-200 pt-4 px-2">
+          <div className="text-[10px] text-slate-400 font-mono">
+            Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredReceipts.length)} dari {filteredReceipts.length} data
+          </div>
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold"
+            >
+              Prev
+            </button>
+            <span className="text-slate-500 px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="hidden">
         <div

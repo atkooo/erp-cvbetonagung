@@ -166,6 +166,16 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     return matchesSearch && matchesStatus;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   return (
     <div className="space-y-6">
       {/* Overview Banner */}
@@ -244,14 +254,14 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredInvoices.length === 0 ? (
+                {paginatedInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12 text-slate-400">
                       Tidak ditemukan kecocokan dokumen invoice.
                     </td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((inv) => {
+                  paginatedInvoices.map((inv) => {
                     const badgeColors: Record<string, string> = {
                       'Belum Lunas': 'bg-slate-100 text-slate-600 border-slate-200',
                       'Sebagian Dibayar': 'bg-blue-100 text-blue-700 border-blue-200',
@@ -293,6 +303,32 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+              <div className="text-[10px] text-slate-400 font-mono">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredInvoices.length)} dari {filteredInvoices.length} data
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Prev
+                </button>
+                <span className="text-slate-500 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

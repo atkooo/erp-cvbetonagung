@@ -81,6 +81,16 @@ export default function SuppliersView({
     return matchesSearch && matchesStatus;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   const resetForm = () => {
     setName("");
     setContactName("");
@@ -271,7 +281,7 @@ export default function SuppliersView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredSuppliers.length === 0 ? (
+                {paginatedSuppliers.length === 0 ? (
                   <tr>
                     <td
                       colSpan={8}
@@ -282,7 +292,7 @@ export default function SuppliersView({
                     </td>
                   </tr>
                 ) : (
-                  filteredSuppliers.map((supp) => (
+                  paginatedSuppliers.map((supp) => (
                     <tr
                       key={supp.id}
                       className="hover:bg-slate-50/50 transition-colors"
@@ -356,26 +366,30 @@ export default function SuppliersView({
           </div>
 
           {/* Footer Pagination */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>
-              Menampilkan 1-{filteredSuppliers.length} dari {suppliers.length}{" "}
-              item
-            </span>
-            <div className="flex gap-1">
-              <button
-                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
-                disabled
-              >
-                Sebelumnya
-              </button>
-              <button
-                className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px]"
-                disabled
-              >
-                Berikutnya
-              </button>
+          {totalPages > 1 && (
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+              <span className="font-mono">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredSuppliers.length)} dari {filteredSuppliers.length} item
+              </span>
+              <div className="flex items-center gap-2 font-mono">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px] font-bold shadow-sm"
+                >
+                  Sebelumnya
+                </button>
+                <span className="px-2 font-medium">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1 border border-slate-200 rounded bg-white hover:bg-slate-100 disabled:opacity-50 text-[10px] font-bold shadow-sm"
+                >
+                  Berikutnya
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

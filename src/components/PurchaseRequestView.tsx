@@ -153,6 +153,16 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
     return matchesSearch && matchesStatus;
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(filteredPRs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPRs = filteredPRs.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   return (
     <>
     <div className="print:hidden space-y-6 font-sans text-xs">
@@ -201,70 +211,106 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-            {filteredPRs.map((pr) => {
-              const isExpanded = expandedPrId === pr.id;
-              return (
-                <React.Fragment key={pr.id}>
-                  <tr className="hover:bg-slate-50/40">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
-                      <button onClick={() => setExpandedPrId(isExpanded ? null : pr.id)} className="flex items-center gap-1.5 focus:outline-none text-left">
-                        {isExpanded ? <ChevronDown size={14} className="text-cyan-500" /> : <ChevronRight size={14} className="text-slate-400" />} <span>{pr.prNumber}</span>
-                      </button>
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-700">{pr.requesterName}</td>
-                    <td className="p-3.5 font-bold">{pr.department}</td>
-                    <td className="p-3.5 font-mono text-slate-500">{formatDate(pr.requiredDate)}</td>
-                    <td className="p-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${pr.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>{pr.status}</span>
-                    </td>
-                    <td className="p-3.5 text-right pr-5">
-                      {pr.status === 'Draft' && (
-                        <button onClick={() => handleApprove(pr.id, pr.prNumber)} className="px-2 py-1 bg-emerald-600 text-white rounded mr-2 text-[10px] font-bold shadow-sm">Approve</button>
-                      )}
-                      <button onClick={() => {
-                        if (expandedPrId !== pr.id) {
-                          setExpandedPrId(pr.id);
-                        }
-                        onTriggerNotification(`Menyiapkan dokumen ${pr.prNumber} untuk dicetak...`);
-                        setTimeout(() => handlePrintAction(), 300);
-                      }} className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650">Cetak</button>
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr className="bg-slate-50/50">
-                      <td colSpan={6} className="p-4 pl-12">
-                        <div className="space-y-2">
-                          <div className="font-bold text-[10px] text-slate-400 mb-2">RINCIAN KEBUTUHAN BARANG</div>
-                          {pr.items.map(it => (
-                            <div key={it.id} className="p-2 border bg-white rounded flex justify-between">
-                              <span className="font-bold">{it.productName}</span>
-                              <span className="font-mono text-cyan-600">{it.quantity} {it.unit || 'Unit'}</span>
-                            </div>
-                          ))}
-                          {onNavigate && pr.status === 'Disetujui' && (
-                            <div className="pt-2">
-                              <button
-                                onClick={() => {
-                                  sessionStorage.setItem('action_create_rfq', pr.id);
-                                  onNavigate('rfq');
-                                }}
-                                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                              >
-                                <span>Lanjut Buat Request for Quotation (RFQ)</span>
-                                <ChevronRight size={14} />
-                              </button>
-                            </div>
+            {filteredPRs.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-slate-400 font-medium">
+                  Tidak ditemukan data Purchase Request yang terekam.
+                </td>
+              </tr>
+            ) : (
+              <>
+                {paginatedPRs.map((pr) => {
+                  const isExpanded = expandedPrId === pr.id;
+                  return (
+                    <React.Fragment key={pr.id}>
+                      <tr className="hover:bg-slate-50/40">
+                        <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
+                          <button onClick={() => setExpandedPrId(isExpanded ? null : pr.id)} className="flex items-center gap-1.5 focus:outline-none text-left">
+                            {isExpanded ? <ChevronDown size={14} className="text-cyan-500" /> : <ChevronRight size={14} className="text-slate-400" />} <span>{pr.prNumber}</span>
+                          </button>
+                        </td>
+                        <td className="p-3.5 font-bold text-slate-700">{pr.requesterName}</td>
+                        <td className="p-3.5 font-bold">{pr.department}</td>
+                        <td className="p-3.5 font-mono text-slate-500">{formatDate(pr.requiredDate)}</td>
+                        <td className="p-3.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${pr.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>{pr.status}</span>
+                        </td>
+                        <td className="p-3.5 text-right pr-5">
+                          {pr.status === 'Draft' && (
+                            <button onClick={() => handleApprove(pr.id, pr.prNumber)} className="px-2 py-1 bg-emerald-600 text-white rounded mr-2 text-[10px] font-bold shadow-sm">Approve</button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
+                          <button onClick={() => {
+                            if (expandedPrId !== pr.id) {
+                              setExpandedPrId(pr.id);
+                            }
+                            onTriggerNotification(`Menyiapkan dokumen ${pr.prNumber} untuk dicetak...`);
+                            setTimeout(() => handlePrintAction(), 300);
+                          }} className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650">Cetak</button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-slate-50/50">
+                          <td colSpan={6} className="p-4 pl-12">
+                            <div className="space-y-2">
+                              <div className="font-bold text-[10px] text-slate-400 mb-2">RINCIAN KEBUTUHAN BARANG</div>
+                              {pr.items.map(it => (
+                                <div key={it.id} className="p-2 border bg-white rounded flex justify-between">
+                                  <span className="font-bold">{it.productName}</span>
+                                  <span className="font-mono text-cyan-600">{it.quantity} {it.unit || 'Unit'}</span>
+                                </div>
+                              ))}
+                              {onNavigate && pr.status === 'Disetujui' && (
+                                <div className="pt-2">
+                                  <button
+                                    onClick={() => {
+                                      sessionStorage.setItem('action_create_rfq', pr.id);
+                                      onNavigate('rfq');
+                                    }}
+                                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                  >
+                                    <span>Lanjut Buat Request for Quotation (RFQ)</span>
+                                    <ChevronRight size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            )}
+            </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+            <div className="text-[10px] text-slate-400 font-mono">
+              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredPRs.length)} dari {filteredPRs.length} data
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Prev
+              </button>
+              <span className="text-slate-500 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showAddModal && (

@@ -66,6 +66,18 @@ export default function PayrollManagementView({
     },
   ];
 
+  const [currentPagePayroll, setCurrentPagePayroll] = useState(1);
+  const itemsPerPagePayroll = 15;
+  const totalPagesPayroll = Math.ceil(payrolls.length / itemsPerPagePayroll);
+  const startIndexPayroll = (currentPagePayroll - 1) * itemsPerPagePayroll;
+  const paginatedPayrolls = payrolls.slice(startIndexPayroll, startIndexPayroll + itemsPerPagePayroll);
+
+  const [currentPageComp, setCurrentPageComp] = useState(1);
+  const itemsPerPageComp = 15;
+  const totalPagesComp = Math.ceil(components.length / itemsPerPageComp);
+  const startIndexComp = (currentPageComp - 1) * itemsPerPageComp;
+  const paginatedComponents = components.slice(startIndexComp, startIndexComp + itemsPerPageComp);
+
   return (
     <div className="space-y-6 font-sans text-xs">
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
@@ -127,34 +139,68 @@ export default function PayrollManagementView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {payrolls.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 pl-5 font-mono font-bold text-indigo-600">
-                      {p.number}
-                    </td>
-                    <td className="p-3.5 font-bold text-slate-800">
-                      {p.employee}
-                    </td>
-                    <td className="p-3.5">{p.period}</td>
-                    <td className="p-3.5 font-mono">
-                      Rp {p.total.toLocaleString("id-ID")}
-                    </td>
-                    <td className="p-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.status === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 pr-5 text-right">
-                      <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded font-bold text-slate-600">
-                        Lihat Slip
-                      </button>
+                {paginatedPayrolls.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-5 text-center text-slate-400 italic">
+                      Tidak ada data payroll.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedPayrolls.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/50">
+                      <td className="p-3.5 pl-5 font-mono font-bold text-indigo-600">
+                        {p.number}
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-800">
+                        {p.employee}
+                      </td>
+                      <td className="p-3.5">{p.period}</td>
+                      <td className="p-3.5 font-mono">
+                        Rp {p.total.toLocaleString("id-ID")}
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.status === "Paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
+                        >
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded font-bold text-slate-600">
+                          Lihat Slip
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+            {totalPagesPayroll > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndexPayroll + 1} - {Math.min(startIndexPayroll + itemsPerPagePayroll, payrolls.length)} dari {payrolls.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPagePayroll(p => Math.max(1, p - 1))}
+                    disabled={currentPagePayroll === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPagePayroll} of {totalPagesPayroll}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPagePayroll(p => Math.min(totalPagesPayroll, p + 1))}
+                    disabled={currentPagePayroll === totalPagesPayroll}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -182,24 +228,58 @@ export default function PayrollManagementView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {components.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 pl-5 font-mono font-bold">{c.code}</td>
-                    <td className="p-3.5 font-bold text-slate-800">{c.name}</td>
-                    <td className="p-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold border ${c.type === "Pendapatan" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}
-                      >
-                        {c.type}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono">
-                      Rp {c.amount.toLocaleString("id-ID")}
+                {paginatedComponents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-5 text-center text-slate-400 italic">
+                      Tidak ada komponen.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedComponents.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/50">
+                      <td className="p-3.5 pl-5 font-mono font-bold">{c.code}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{c.name}</td>
+                      <td className="p-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${c.type === "Pendapatan" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}
+                        >
+                          {c.type}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-mono">
+                        Rp {c.amount.toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+            {totalPagesComp > 1 && (
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+                <div className="text-[10px] text-slate-400 font-mono">
+                  Menampilkan {startIndexComp + 1} - {Math.min(startIndexComp + itemsPerPageComp, components.length)} dari {components.length} data
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <button
+                    onClick={() => setCurrentPageComp(p => Math.max(1, p - 1))}
+                    disabled={currentPageComp === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-slate-500 px-2">
+                    Page {currentPageComp} of {totalPagesComp}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPageComp(p => Math.min(totalPagesComp, p + 1))}
+                    disabled={currentPageComp === totalPagesComp}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

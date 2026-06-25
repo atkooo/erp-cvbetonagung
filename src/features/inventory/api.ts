@@ -30,18 +30,82 @@ export const inventoryApi = {
 
   // Stock Movements
   async getStockMovements(): Promise<StockMovement[]> {
-    const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-movements?include=product,handledBy&sort=-movement_at');
-    return response.data.map(mapStockMovementFromDto);
+    const firstParams = new URLSearchParams({
+      include: 'product,handledBy',
+      sort: '-movement_at',
+      per_page: '100',
+    });
+
+    const firstResponse = await apiClient.get<{
+      data: StockMovementDto[];
+      meta?: { current_page: number; last_page: number };
+    }>(`/inventory/stock-movements?${firstParams.toString()}`);
+
+    const movements = [...firstResponse.data];
+    const lastPage = firstResponse.meta?.last_page ?? 1;
+
+    for (let page = 2; page <= lastPage; page += 1) {
+      const params = new URLSearchParams({
+        include: 'product,handledBy',
+        sort: '-movement_at',
+        per_page: '100',
+        page: String(page),
+      });
+      const response = await apiClient.get<{ data: StockMovementDto[] }>(`/inventory/stock-movements?${params.toString()}`);
+      movements.push(...response.data);
+    }
+
+    return movements.map(mapStockMovementFromDto);
   },
 
   async getStockIns(): Promise<StockMovement[]> {
-    const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-ins');
-    return response.data.map(mapStockMovementFromDto);
+    const firstParams = new URLSearchParams({
+      per_page: '100',
+    });
+
+    const firstResponse = await apiClient.get<{
+      data: StockMovementDto[];
+      meta?: { current_page: number; last_page: number };
+    }>(`/inventory/stock-ins?${firstParams.toString()}`);
+
+    const movements = [...firstResponse.data];
+    const lastPage = firstResponse.meta?.last_page ?? 1;
+
+    for (let page = 2; page <= lastPage; page += 1) {
+      const params = new URLSearchParams({
+        per_page: '100',
+        page: String(page),
+      });
+      const response = await apiClient.get<{ data: StockMovementDto[] }>(`/inventory/stock-ins?${params.toString()}`);
+      movements.push(...response.data);
+    }
+
+    return movements.map(mapStockMovementFromDto);
   },
 
   async getStockOuts(): Promise<StockMovement[]> {
-    const response = await apiClient.get<{ data: StockMovementDto[] }>('/inventory/stock-outs');
-    return response.data.map(mapStockMovementFromDto);
+    const firstParams = new URLSearchParams({
+      per_page: '100',
+    });
+
+    const firstResponse = await apiClient.get<{
+      data: StockMovementDto[];
+      meta?: { current_page: number; last_page: number };
+    }>(`/inventory/stock-outs?${firstParams.toString()}`);
+
+    const movements = [...firstResponse.data];
+    const lastPage = firstResponse.meta?.last_page ?? 1;
+
+    for (let page = 2; page <= lastPage; page += 1) {
+      const params = new URLSearchParams({
+        per_page: '100',
+        page: String(page),
+      });
+      const response = await apiClient.get<{ data: StockMovementDto[] }>(`/inventory/stock-outs?${params.toString()}`);
+      movements.push(...response.data);
+    }
+
+    return movements.map(mapStockMovementFromDto);
   },
 
   async transferStock(data: {

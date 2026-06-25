@@ -69,11 +69,19 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     setNewBagDate(new Date().toISOString().split('T')[0]);
   }, []);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(bags.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBags = bags.slice(startIndex, startIndex + itemsPerPage);
+
   const fetchBags = async () => {
     setIsLoading(true);
     try {
       const res = await apiClient.get<{ data: Bag[] }>('/inventory/bags?include=warehouse,location,items.product');
       setBags(res.data);
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error fetching BAGs:', error);
       onTriggerNotification?.('Gagal memuat Berita Acara Gudang.');
@@ -185,32 +193,56 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
             ) : bags.length === 0 ? (
               <p className="text-slate-400 text-center py-8">Belum ada dokumen BAG.</p>
             ) : (
-              <div className="space-y-2 max-h-120 overflow-y-auto pr-1">
-                {bags.map((bag) => (
-                  <div
-                    key={bag.id}
-                    onClick={() => setSelectedBag(bag)}
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedBag?.id === bag.id
-                        ? 'border-cyan-500 bg-cyan-50/30'
-                        : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono font-bold text-slate-800">{bag.bag_number}</span>
-                      <StatusPill tone={bag.type === 'in' ? 'emerald' : bag.type === 'out' ? 'amber' : 'cyan'}>
-                        {bag.type.toUpperCase()}
-                      </StatusPill>
+              <div className="space-y-4">
+                <div className="space-y-2 max-h-120 overflow-y-auto pr-1">
+                  {paginatedBags.map((bag) => (
+                    <div
+                      key={bag.id}
+                      onClick={() => setSelectedBag(bag)}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedBag?.id === bag.id
+                          ? 'border-cyan-500 bg-cyan-50/30'
+                          : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono font-bold text-slate-800">{bag.bag_number}</span>
+                        <StatusPill tone={bag.type === 'in' ? 'emerald' : bag.type === 'out' ? 'amber' : 'cyan'}>
+                          {bag.type.toUpperCase()}
+                        </StatusPill>
+                      </div>
+                      <p className="text-slate-600 font-medium mb-1 flex items-center gap-1">
+                        <Warehouse size={12} className="text-slate-400" />
+                        <span>{bag.warehouse?.name}</span>
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 border-t pt-1.5 border-slate-100">
+                        <span>{bag.date}</span>
+                        <span>Item: {bag.items?.length || 0}</span>
+                      </div>
                     </div>
-                    <p className="text-slate-600 font-medium mb-1 flex items-center gap-1">
-                      <Warehouse size={12} className="text-slate-400" />
-                      <span>{bag.warehouse?.name}</span>
-                    </p>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 border-t pt-1.5 border-slate-100">
-                      <span>{bag.date}</span>
-                      <span>Item: {bag.items?.length || 0}</span>
+                  ))}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-mono">
+                    <span className="text-slate-400">Hal {currentPage} / {totalPages}</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed rounded font-bold"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-2 py-1 bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed rounded font-bold"
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </Panel>

@@ -18,6 +18,12 @@ export default function LeaveManagementView({ onTriggerNotification }: LeaveMana
     { id: 2, name: 'Budi Santoso', type: 'Sakit', startDate: '2026-06-05', endDate: '2026-06-06', days: 2, status: 'Disetujui' },
   ];
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+  const totalPages = Math.ceil(leaves.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLeaves = leaves.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="space-y-6 font-sans text-xs">
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex justify-between items-center relative overflow-hidden">
@@ -53,7 +59,7 @@ export default function LeaveManagementView({ onTriggerNotification }: LeaveMana
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {leaves.map((item) => (
+            {paginatedLeaves.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50/50">
                 <td className="p-3.5 pl-5 font-bold text-slate-800">{item.name}</td>
                 <td className="p-3.5 text-slate-700 font-medium">{item.type}</td>
@@ -78,8 +84,41 @@ export default function LeaveManagementView({ onTriggerNotification }: LeaveMana
                 </td>
               </tr>
             ))}
+            {paginatedLeaves.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-slate-400">
+                  Tidak ada data cuti.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
+            <div className="text-[10px] text-slate-400 font-mono">
+              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, leaves.length)} dari {leaves.length} data
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Prev
+              </button>
+              <span className="text-slate-500 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
