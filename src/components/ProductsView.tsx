@@ -3,42 +3,58 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
-import { Package, Search, Plus, Filter, Archive, Edit, Trash2, X, Tag, Camera, ImageOff } from '@/src/components/icons';
-import { Product, Category } from '../types';
-import { DEFAULT_UNITS, productsApi } from '../features/products/api';
-import { UnitDto, ProductFormData } from '../features/products/types';
-import { inventoryApi } from '../features/inventory/api';
-import { apiClient } from '../services/api';
-import { SkeletonTable, ErrorCard } from './Skeleton';
-import CurrencyInput from './CurrencyInput';
-import Swal from 'sweetalert2';
+import React, { useState, useRef } from "react";
+import {
+  Package,
+  Search,
+  Plus,
+  Filter,
+  Edit,
+  Trash2,
+  X,
+  Tag,
+  Camera,
+  ImageOff,
+} from "@/src/components/icons";
+import { Product, Category } from "../types";
+import { DEFAULT_UNITS, productsApi } from "../features/products/api";
+import { UnitDto, ProductFormData } from "../features/products/types";
+import { inventoryApi } from "../features/inventory/api";
+import { apiClient } from "../services/api";
+import { SkeletonTable, ErrorCard } from "./Skeleton";
+import CurrencyInput from "./CurrencyInput";
+import Swal from "sweetalert2";
 
 interface ProductsViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
-export default function ProductsView({ onTriggerNotification }: ProductsViewProps) {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+export default function ProductsView({
+  onTriggerNotification,
+}: ProductsViewProps) {
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // New product states
-  const [businessUnit, setBusinessUnit] = useState('CV Beton Agung');
-  const [sku, setSku] = useState('');
-  const [name, setName] = useState('');
-  const [type, setType] = useState<'raw_material' | 'finished_good' | 'service'>('finished_good');
+  const [businessUnit, setBusinessUnit] = useState("CV Beton Agung");
+  const [sku, setSku] = useState("");
+  const [name, setName] = useState("");
+  const [type, setType] = useState<
+    "raw_material" | "finished_good" | "service"
+  >("finished_good");
   const [isCustomizable, setIsCustomizable] = useState(false);
-  const [pricingMethod, setPricingMethod] = useState<'per_item' | 'per_dimension'>('per_item');
-  const [category, setCategory] = useState('');
+  const [pricingMethod, setPricingMethod] = useState<
+    "per_item" | "per_dimension"
+  >("per_item");
+  const [category, setCategory] = useState("");
   const [costPrice, setCostPrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
   const [stock, setStock] = useState(0);
-  const [unit, setUnit] = useState('');
-  const [location, setLocation] = useState('Gudang Utama');
+  const [unit, setUnit] = useState("");
+  const [location, setLocation] = useState("Gudang Utama");
   const [minStock, setMinStock] = useState(10);
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -58,7 +74,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
-  const filteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === type);
+  const filteredUnits = visibleUnits.filter(
+    (u) => !u.type || u.type === "both" || u.type === type,
+  );
 
   const fetchData = () => {
     setIsLoading(true);
@@ -69,34 +87,42 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       productsApi.getCategories(),
       productsApi.getUnits(),
       inventoryApi.getProductStocks(),
-      apiClient.get<{ data: any[] }>('/master-data/storage-locations'),
+      apiClient.get<{ data: any[] }>("/master-data/storage-locations"),
     ])
       .then(([productsData, catsData, unitsData, stockData, locRes]) => {
         const productsWithStock = productsData.map((product) => {
-          const productStocks = stockData.filter((stockRow) => (
-            stockRow.product_id === product.id || stockRow.product?.sku === product.sku
-          ));
-          const totalStock = productStocks.reduce((sum, stockRow) => sum + Number(stockRow.quantity || 0), 0);
-          const locationNames = Array.from(new Set(
-            productStocks
-              .filter((stockRow) => Number(stockRow.quantity || 0) > 0)
-              .map((stockRow) => stockRow.location?.name)
-              .filter(Boolean)
-          ));
-          const stockStatus: Product['status'] = totalStock <= 0
-            ? 'Habis'
-            : totalStock <= product.minStock
-              ? 'Menipis'
-              : 'Aman';
+          const productStocks = stockData.filter(
+            (stockRow) =>
+              stockRow.product_id === product.id ||
+              stockRow.product?.sku === product.sku,
+          );
+          const totalStock = productStocks.reduce(
+            (sum, stockRow) => sum + Number(stockRow.quantity || 0),
+            0,
+          );
+          const locationNames = Array.from(
+            new Set(
+              productStocks
+                .filter((stockRow) => Number(stockRow.quantity || 0) > 0)
+                .map((stockRow) => stockRow.location?.name)
+                .filter(Boolean),
+            ),
+          );
+          const stockStatus: Product["status"] =
+            totalStock <= 0
+              ? "Habis"
+              : totalStock <= product.minStock
+                ? "Menipis"
+                : "Aman";
 
           return {
             ...product,
             stock: totalStock,
             location:
               locationNames.length === 0
-                ? 'Belum ada stok'
+                ? "Belum ada stok"
                 : locationNames.length === 1
-                  ? locationNames[0]
+                  ? (locationNames[0] ?? "Belum ada stok")
                   : `${locationNames.length} lokasi`,
             status: stockStatus,
           };
@@ -132,25 +158,31 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [search, categoryFilter, statusFilter]);
+  }, [search, categoryFilter]);
 
   const formatIDR = (num: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(num);
   };
 
   const resetForm = () => {
-    setSku('');
-    setName('');
+    setSku("");
+    setName("");
     setIsCustomizable(false);
-    setPricingMethod('per_item');
-    setType('finished_good');
-    setCategory(categories[0]?.id || '');
+    setPricingMethod("per_item");
+    setType("finished_good");
+    setCategory(categories[0]?.id || "");
     setCostPrice(0);
     setSellingPrice(0);
     setStock(0);
-    const initialFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === 'finished_good');
-    setUnit(initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
-    setLocation(storageLocations[0]?.id || '');
+    const initialFilteredUnits = visibleUnits.filter(
+      (u) => !u.type || u.type === "both" || u.type === "finished_good",
+    );
+    setUnit(initialFilteredUnits[0]?.id || visibleUnits[0]?.id || "");
+    setLocation(storageLocations[0]?.id || "");
     setMinStock(10);
     setImageFile(null);
     setImagePreview(null);
@@ -165,24 +197,38 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const handleOpenEditModal = (product: Product) => {
     setEditingProduct(product);
-    setBusinessUnit(product.businessUnit || 'CV Beton Agung');
+    setBusinessUnit(product.businessUnit || "CV Beton Agung");
     setSku(product.sku);
     setName(product.name);
     setIsCustomizable(product.isCustomizable || false);
-    setPricingMethod(product.pricingMethod || 'per_item');
-    setType(product.type || 'finished_good');
-    
-    const selectedCategory = categories.find((cat) => cat.name === product.category);
-    const selectedUnit = visibleUnits.find((u) => u.id === product.unitId || u.code === product.unit || u.name === product.unit);
-    setCategory(selectedCategory?.id || categories[0]?.id || '');
+    setPricingMethod(product.pricingMethod || "per_item");
+    setType(product.type || "finished_good");
+
+    const selectedCategory = categories.find(
+      (cat) => cat.name === product.category,
+    );
+    const selectedUnit = visibleUnits.find(
+      (u) =>
+        u.id === product.unitId ||
+        u.code === product.unit ||
+        u.name === product.unit,
+    );
+    setCategory(selectedCategory?.id || categories[0]?.id || "");
     setCostPrice(product.costPrice);
     setSellingPrice(product.sellingPrice);
     setStock(0);
-    
-    const prodType = product.type || 'finished_good';
-    const initialFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === prodType);
-    setUnit(selectedUnit?.id || initialFilteredUnits[0]?.id || visibleUnits[0]?.id || '');
-    setLocation(storageLocations[0]?.id || '');
+
+    const prodType = product.type || "finished_good";
+    const initialFilteredUnits = visibleUnits.filter(
+      (u) => !u.type || u.type === "both" || u.type === prodType,
+    );
+    setUnit(
+      selectedUnit?.id ||
+        initialFilteredUnits[0]?.id ||
+        visibleUnits[0]?.id ||
+        "",
+    );
+    setLocation(storageLocations[0]?.id || "");
     setMinStock(product.minStock);
     // Show existing image as preview
     setImageFile(null);
@@ -196,30 +242,28 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
     const matchesSearch =
       prod.name.toLowerCase().includes(search.toLowerCase()) ||
       prod.sku.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = categoryFilter === 'All' || prod.category === categoryFilter;
+    const matchesCategory =
+      categoryFilter === "All" || prod.category === categoryFilter;
 
-    let matchesStatus = true;
-    if (statusFilter !== 'All') {
-      matchesStatus = prod.status === statusFilter;
-    }
-
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory;
   });
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) {
-      onTriggerNotification('Gagal menyimpan: Harap lengkapi nama produk!');
+      onTriggerNotification("Gagal menyimpan: Harap lengkapi nama produk!");
       return;
     }
     if (units.length === 0) {
-      onTriggerNotification('Gagal menyimpan: Master satuan belum tersedia. Tambahkan data satuan di backend terlebih dahulu.');
+      onTriggerNotification(
+        "Gagal menyimpan: Master satuan belum tersedia. Tambahkan data satuan di backend terlebih dahulu.",
+      );
       return;
     }
 
@@ -238,17 +282,23 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         cost_price: costPrice,
         selling_price: sellingPrice,
         min_stock: minStock,
-        status: 'active',
+        status: "active",
       };
 
       if (editingProduct) {
-        const updatedProduct = await productsApi.updateProduct(editingProduct.id, payload);
+        const updatedProduct = await productsApi.updateProduct(
+          editingProduct.id,
+          payload,
+        );
         // Upload image if a new file was selected
         let finalImageUrl = editingProduct.imageUrl || null;
         if (imageFile) {
           setIsUploadingImage(true);
           try {
-            const imgResult = await productsApi.uploadProductImage(editingProduct.id, imageFile);
+            const imgResult = await productsApi.uploadProductImage(
+              editingProduct.id,
+              imageFile,
+            );
             finalImageUrl = imgResult.image_url;
           } finally {
             setIsUploadingImage(false);
@@ -258,30 +308,35 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             await productsApi.deleteProductImage(editingProduct.id);
             finalImageUrl = null;
           } catch (e) {
-            console.error('Failed to delete image', e);
+            console.error("Failed to delete image", e);
           }
         }
-        setProducts((prev) => prev.map((prod) => {
-          if (prod.id !== editingProduct.id) {
-            return prod;
-          }
+        setProducts((prev) =>
+          prev.map((prod) => {
+            if (prod.id !== editingProduct.id) {
+              return prod;
+            }
 
-          const liveStock = prod.stock;
-          const stockStatus: Product['status'] = liveStock <= 0
-            ? 'Habis'
-            : liveStock <= updatedProduct.minStock
-              ? 'Menipis'
-              : 'Aman';
+            const liveStock = prod.stock;
+            const stockStatus: Product["status"] =
+              liveStock <= 0
+                ? "Habis"
+                : liveStock <= updatedProduct.minStock
+                  ? "Menipis"
+                  : "Aman";
 
-          return {
-            ...updatedProduct,
-            stock: liveStock,
-            location: prod.location,
-            status: stockStatus,
-            imageUrl: finalImageUrl,
-          };
-        }));
-        onTriggerNotification(`Sukses memperbarui Produk: ${updatedProduct.name}`);
+            return {
+              ...updatedProduct,
+              stock: liveStock,
+              location: prod.location,
+              status: stockStatus,
+              imageUrl: finalImageUrl,
+            };
+          }),
+        );
+        onTriggerNotification(
+          `Sukses memperbarui Produk: ${updatedProduct.name}`,
+        );
       } else {
         const newProd = await productsApi.createProduct(payload);
         // Upload image if a file was selected
@@ -289,7 +344,10 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         if (imageFile) {
           setIsUploadingImage(true);
           try {
-            const imgResult = await productsApi.uploadProductImage(newProd.id, imageFile);
+            const imgResult = await productsApi.uploadProductImage(
+              newProd.id,
+              imageFile,
+            );
             finalImageUrl = imgResult.image_url;
           } finally {
             setIsUploadingImage(false);
@@ -307,11 +365,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       }
       setShowAddModal(false);
       setEditingProduct(null);
-      setBusinessUnit('CV Beton Agung');
-      setSku('');
+      setBusinessUnit("CV Beton Agung");
+      setSku("");
       resetForm();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Gagal menyimpan produk';
+      const msg = err instanceof Error ? err.message : "Gagal menyimpan produk";
       setErrorMessage(msg);
       onTriggerNotification(msg);
     } finally {
@@ -321,14 +379,14 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
   const handleDelete = async (product: Product) => {
     const result = await Swal.fire({
-      title: 'Apakah Anda yakin?',
+      title: "Apakah Anda yakin?",
       text: `Menghapus produk ${product.name} (${product.sku}) tidak dapat dibatalkan!`,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal'
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Batal",
     });
 
     if (!result.isConfirmed) return;
@@ -339,18 +397,18 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
       setProducts((prev) => prev.filter((prod) => prod.id !== product.id));
 
       Swal.fire({
-        title: 'Terhapus!',
+        title: "Terhapus!",
         text: `Produk ${product.name} berhasil dihapus.`,
-        icon: 'success',
+        icon: "success",
         timer: 2000,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Gagal menghapus produk';
+      const msg = err instanceof Error ? err.message : "Gagal menghapus produk";
       Swal.fire({
-        title: 'Gagal!',
+        title: "Gagal!",
         text: msg,
-        icon: 'error'
+        icon: "error",
       });
       onTriggerNotification(msg);
     }
@@ -383,21 +441,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 className="text-[11px] font-sans text-slate-600 bg-transparent py-1 focus:outline-none focus:ring-0 cursor-pointer"
               >
                 <option value="All">Semua Kategori</option>
-                {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-              <Archive size={13} className="text-slate-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-[11px] font-sans text-slate-600 bg-transparent py-1 focus:outline-none focus:ring-0 cursor-pointer"
-              >
-                <option value="All">Semua Ketersediaan</option>
-                <option value="Aman">Ketersediaan: Aman</option>
-                <option value="Menipis">Ketersediaan: Menipis</option>
-                <option value="Habis">Ketersediaan: Habis / Kosong</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -421,7 +469,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Katalog Umum & Daftar Item Pabrik CV Beton Agung ({filteredProducts.length} Item)
+              Katalog Umum & Daftar Item Pabrik CV Beton Agung (
+              {filteredProducts.length} Item)
             </h3>
             <span className="text-[10px] text-slate-400 font-mono">
               Backend API
@@ -440,28 +489,36 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   <th className="p-3.5">Harga Modal (COGS)</th>
                   <th className="p-3.5">Harga Jual (MSRP)</th>
                   <th className="p-3.5">Stok Saat Ini</th>
-                  <th className="p-3.5">Gudang / Lokasi</th>
-                  <th className="p-3.5">Status Alaram</th>
                   <th className="p-3.5 pr-5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="text-center py-12 text-slate-400 font-medium">
-                      Tidak ditemukan kecocokan produk untuk kata kunci pencarian tersebut.
+                    <td
+                      colSpan={9}
+                      className="text-center py-12 text-slate-400 font-medium"
+                    >
+                      Tidak ditemukan kecocokan produk untuk kata kunci
+                      pencarian tersebut.
                     </td>
                   </tr>
                 ) : (
                   paginatedProducts.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50/40 transition-colors"
+                    >
                       <td className="p-3.5 pl-5">
                         {p.imageUrl ? (
                           <img
                             src={p.imageUrl}
                             alt={p.name}
                             className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                            }}
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
@@ -474,7 +531,7 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                       </td>
                       <td className="p-3.5 text-slate-600">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                          {p.businessUnit || 'CV Beton Agung'}
+                          {p.businessUnit || "CV Beton Agung"}
                         </span>
                       </td>
                       <td className="p-3.5">
@@ -485,7 +542,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                           <Tag size={10} className="text-slate-400" />
                           <span>{p.category}</span>
                         </span>
-                        <div className="text-[9px] text-slate-400 mt-0.5 capitalize">{p.type?.replace('_', ' ')}</div>
+                        <div className="text-[9px] text-slate-400 mt-0.5 capitalize">
+                          {p.type?.replace("_", " ")}
+                        </div>
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
                         {formatIDR(p.costPrice)}
@@ -495,19 +554,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                       </td>
                       <td className="p-3.5">
                         <div className="font-mono font-bold">
-                          {p.stock} <span className="text-[10px] font-normal text-slate-400">{p.unit}</span>
+                          {p.stock}{" "}
+                          <span className="text-[10px] font-normal text-slate-400">
+                            {p.unit}
+                          </span>
                         </div>
-                      </td>
-                      <td className="p-3.5 text-slate-500 font-medium">
-                        {p.location}
-                      </td>
-                      <td className="p-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${p.status === 'Aman' ? 'bg-emerald-100 text-emerald-800' :
-                          p.status === 'Menipis' ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-200' :
-                            'bg-red-100 text-red-800 font-sans'
-                          }`}>
-                          {p.status}
-                        </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -537,7 +588,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
           {/* Catalog pagination summary */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-slate-500 text-[11px]">
             <span>
-              Menampilkan {paginatedProducts.length} dari total {filteredProducts.length} SKU katalog terdaftar
+              Menampilkan {paginatedProducts.length} dari total{" "}
+              {filteredProducts.length} SKU katalog terdaftar
             </span>
             {totalPages > 1 ? (
               <div className="flex items-center gap-1">
@@ -552,7 +604,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-2.5 py-1 bg-white border border-slate-200 rounded shadow-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
                 >
@@ -560,7 +614,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                 </button>
               </div>
             ) : (
-              <span className="font-medium text-slate-400">CV Beton Agung Admin Desk</span>
+              <span className="font-medium text-slate-400">
+                CV Beton Agung Admin Desk
+              </span>
             )}
           </div>
         </div>
@@ -575,7 +631,9 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
               <div className="flex items-center gap-2">
                 <Package size={18} className="text-cyan-400" />
                 <h3 className="font-sans font-bold text-sm">
-                  {editingProduct ? 'Edit SKU & Desain Produk' : 'Entri SKU & Desain Produk Baru'}
+                  {editingProduct
+                    ? "Edit SKU & Desain Produk"
+                    : "Entri SKU & Desain Produk Baru"}
                 </h3>
               </div>
               <button
@@ -593,23 +651,25 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">
-                      Unit Bisnis / Perusahaan *
-                    </label>
-                    <select
-                      required
-                      value={businessUnit}
-                      onChange={(e) => setBusinessUnit(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
-                    >
-                      <option value="CV Beton Agung">CV Beton Agung</option>
-                      <option value="Griya Flora">Griya Flora</option>
-                    </select>
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Unit Bisnis / Perusahaan *
+                  </label>
+                  <select
+                    required
+                    value={businessUnit}
+                    onChange={(e) => setBusinessUnit(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="CV Beton Agung">CV Beton Agung</option>
+                    <option value="Griya Flora">Griya Flora</option>
+                  </select>
+                </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Nomor SKU (Biarkan 'AUTO GENERATED' utk otomatis)</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Nomor SKU (AUTO GENERATED)
+                  </label>
                   <input
                     type="text"
                     value={sku}
@@ -619,41 +679,61 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Kategori Konstruksi</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Kategori Konstruksi
+                  </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
                   >
-                    {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Tipe Produk</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Tipe Produk
+                  </label>
                   <select
                     value={type}
                     onChange={(e) => {
                       const newType = e.target.value as any;
                       setType(newType);
-                      const newFilteredUnits = visibleUnits.filter(u => !u.type || u.type === 'both' || u.type === newType);
-                      if (newFilteredUnits.length > 0 && !newFilteredUnits.find(u => u.id === unit)) {
+                      const newFilteredUnits = visibleUnits.filter(
+                        (u) =>
+                          !u.type || u.type === "both" || u.type === newType,
+                      );
+                      if (
+                        newFilteredUnits.length > 0 &&
+                        !newFilteredUnits.find((u) => u.id === unit)
+                      ) {
                         setUnit(newFilteredUnits[0].id);
                       } else if (newFilteredUnits.length === 0) {
-                        setUnit('');
+                        setUnit("");
                       }
                     }}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
                   >
-                    <option value="raw_material">Raw Material (Bahan Baku)</option>
-                    <option value="finished_good">Finished Good (Barang Jadi)</option>
+                    <option value="raw_material">
+                      Raw Material (Bahan Baku)
+                    </option>
+                    <option value="finished_good">
+                      Finished Good (Barang Jadi)
+                    </option>
                     {/* <option value="service">Service (Jasa)</option> */}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Deskripsi / Nama Varian Item</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Deskripsi / Nama Varian Item
+                  </label>
                   <input
                     type="text"
                     required
@@ -674,20 +754,29 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                       onChange={(e) => setIsCustomizable(e.target.checked)}
                       className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                     />
-                    <span className="text-[11px] font-bold text-indigo-900 uppercase">Barang Bisa Di-Custom</span>
+                    <span className="text-[11px] font-bold text-indigo-900 uppercase">
+                      Barang Bisa Di-Custom
+                    </span>
                   </label>
-                  <p className="text-[9px] text-indigo-600/70 ml-6 leading-tight">Centang jika ukuran produk bisa dipesan khusus oleh pelanggan di Sales Order.</p>
+                  <p className="text-[9px] text-indigo-600/70 ml-6 leading-tight">
+                    Centang jika ukuran produk bisa dipesan khusus oleh
+                    pelanggan di Sales Order.
+                  </p>
                 </div>
                 {isCustomizable && (
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-indigo-900 uppercase">Metode Hitung Tagihan</label>
+                    <label className="text-[11px] font-bold text-indigo-900 uppercase">
+                      Metode Hitung Tagihan
+                    </label>
                     <select
                       value={pricingMethod}
                       onChange={(e) => setPricingMethod(e.target.value as any)}
                       className="w-full px-3 py-2 border border-indigo-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-indigo-900"
                     >
                       <option value="per_item">Harga Per Batang / Pcs</option>
-                      <option value="per_dimension">Harga Per Meter / Dimensi</option>
+                      <option value="per_dimension">
+                        Harga Per Meter / Dimensi
+                      </option>
                     </select>
                   </div>
                 )}
@@ -695,18 +784,22 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Pokok Modal (Rp) (Opsional)</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Harga Pokok Modal
+                  </label>
                   <CurrencyInput
-                    value={costPrice || ''}
+                    value={costPrice || ""}
                     onValueChange={(val) => setCostPrice(Number(val))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">Harga Jual Pasar (Rp)</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Harga Jual Pasar (Rp)
+                  </label>
                   <CurrencyInput
                     required
-                    value={sellingPrice || ''}
+                    value={sellingPrice || ""}
                     onValueChange={(val) => setSellingPrice(Number(val))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
@@ -715,15 +808,21 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Satuan</label>
+                  <label className="text-[11px] font-bold text-slate-600">
+                    Satuan
+                  </label>
                   <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className={`w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${filteredUnits.length === 0 ? 'border-red-300 bg-red-50' : ''}`}
+                    className={`w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${filteredUnits.length === 0 ? "border-red-300 bg-red-50" : ""}`}
                     disabled={filteredUnits.length === 0}
                   >
                     {filteredUnits.length > 0 ? (
-                      filteredUnits.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)
+                      filteredUnits.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.code})
+                        </option>
+                      ))
                     ) : (
                       <option value="">Tidak ada satuan</option>
                     )}
@@ -739,28 +838,34 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   ) : null}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Batas Minim Alaram</label>
+                  <label className="text-[11px] font-bold text-slate-600">
+                    Batas Minim Alaram
+                  </label>
                   <input
                     type="number"
-                    value={minStock || ''}
+                    value={minStock || ""}
                     onChange={(e) => setMinStock(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
               </div>
 
-
-
               {/* Image Upload */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">Foto Produk (Opsional)</label>
+                <label className="text-[11px] font-bold text-slate-600 uppercase">
+                  Foto Produk (Opsional)
+                </label>
                 <div
                   className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors cursor-pointer flex items-center justify-center overflow-hidden"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {imagePreview ? (
                     <>
-                      <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+                      <img
+                        src={imagePreview}
+                        alt="preview"
+                        className="w-full h-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={(e) => {
@@ -768,7 +873,8 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                           setImageFile(null);
                           setImagePreview(null);
                           setIsImageDeleted(true);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
                         }}
                         className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
                       >
@@ -778,8 +884,12 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <Camera size={28} className="text-slate-300" />
-                      <span className="text-[11px] font-medium">Klik untuk upload foto produk</span>
-                      <span className="text-[10px]">JPG, PNG, WebP · maks 2MB</span>
+                      <span className="text-[11px] font-medium">
+                        Klik untuk upload foto produk
+                      </span>
+                      <span className="text-[10px]">
+                        JPG, PNG, WebP · maks 2MB
+                      </span>
                     </div>
                   )}
                   <input
@@ -814,7 +924,11 @@ export default function ProductsView({ onTriggerNotification }: ProductsViewProp
                   disabled={isSubmitting || isUploadingImage}
                   className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  {isSubmitting || isUploadingImage ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Simpan SKU Baru'}
+                  {isSubmitting || isUploadingImage
+                    ? "Menyimpan..."
+                    : editingProduct
+                      ? "Simpan Perubahan"
+                      : "Simpan SKU Baru"}
                 </button>
               </div>
             </form>
