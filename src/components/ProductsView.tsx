@@ -41,6 +41,7 @@ export default function ProductsView({
   // New product states
   const [businessUnit, setBusinessUnit] = useState("CV Beton Agung");
   const [sku, setSku] = useState("");
+  const [qrValue, setQrValue] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState<
     "raw_material" | "finished_good" | "service"
@@ -170,6 +171,7 @@ export default function ProductsView({
 
   const resetForm = () => {
     setSku("");
+    setQrValue("");
     setName("");
     setIsCustomizable(false);
     setPricingMethod("per_item");
@@ -199,6 +201,7 @@ export default function ProductsView({
     setEditingProduct(product);
     setBusinessUnit(product.businessUnit || "CV Beton Agung");
     setSku(product.sku);
+    setQrValue(product.qrValue && product.qrValue !== product.sku ? product.qrValue : "");
     setName(product.name);
     setIsCustomizable(product.isCustomizable || false);
     setPricingMethod(product.pricingMethod || "per_item");
@@ -273,6 +276,7 @@ export default function ProductsView({
       const payload: ProductFormData = {
         business_unit: businessUnit,
         sku: sku,
+        qr_value: qrValue || null,
         name,
         is_customizable: isCustomizable,
         pricing_method: pricingMethod,
@@ -673,9 +677,10 @@ export default function ProductsView({
                   <input
                     type="text"
                     value={sku}
-                    onChange={(e) => setSku(e.target.value)}
+                    readOnly
+                    disabled
                     placeholder="AUTO GENERATED"
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-lg text-xs font-mono focus:outline-none cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1">
@@ -693,6 +698,18 @@ export default function ProductsView({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Barcode / QR Value (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={qrValue}
+                    onChange={(e) => setQrValue(e.target.value)}
+                    placeholder="Scan barcode pabrik..."
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
                 </div>
               </div>
 

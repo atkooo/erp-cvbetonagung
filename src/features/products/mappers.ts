@@ -41,6 +41,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
 export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> => ({
   business_unit: formData.business_unit || 'CV Beton Agung',
   sku: formData.sku,
+  qr_value: formData.qr_value || null,
   type: formData.type || 'finished_good',
   name: formData.name,
   is_customizable: formData.is_customizable,

@@ -54,6 +54,7 @@ export interface ProductDto {
 export interface ProductFormData {
   business_unit?: string;
   sku?: string;
+  qr_value?: string | null;
   type?: 'raw_material' | 'finished_good' | 'service';
   name: string;
   is_customizable?: boolean;
