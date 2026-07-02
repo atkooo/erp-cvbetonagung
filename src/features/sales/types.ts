@@ -8,6 +8,7 @@ export interface QuotationItemDto {
   specification: string | null;
   quantity: number;
   unit_price: number;
+  discount_amount?: string | number | null;
   subtotal: number;
   product?: {
     id: string;
@@ -35,6 +36,9 @@ export interface QuotationDto {
     id: string;
     name: string;
   };
+  global_discount_type?: 'percentage' | 'nominal' | null;
+  global_discount_value?: string | number | null;
+  global_discount_amount?: string | number | null;
   items?: QuotationItemDto[];
 }
 
@@ -48,6 +52,7 @@ export interface SalesOrderItemDto {
   specification: string | null;
   quantity: number;
   unit_price: number;
+  discount_amount?: string | number | null;
   subtotal: number;
   product?: {
     id: string;
@@ -80,6 +85,9 @@ export interface SalesOrderDto {
     id: string;
     quotation_number: string;
   };
+  global_discount_type?: 'percentage' | 'nominal' | null;
+  global_discount_value?: string | number | null;
+  global_discount_amount?: string | number | null;
   items?: SalesOrderItemDto[];
   invoices?: {
     id: string;
@@ -100,8 +108,12 @@ export interface CreateQuotationDto {
     specification?: string;
     quantity: number;
     unit_price: number;
+    discount_amount?: number;
     description?: string;
   }[];
+  global_discount_type?: 'percentage' | 'nominal' | null;
+  global_discount_value?: number;
+  global_discount_amount?: number;
 }
 
 export interface CreateSalesOrderDto {
@@ -116,8 +128,12 @@ export interface CreateSalesOrderDto {
     specification?: string;
     quantity: number;
     unit_price: number;
+    discount_amount?: number;
     description?: string;
   }[];
+  global_discount_type?: 'percentage' | 'nominal' | null;
+  global_discount_value?: number;
+  global_discount_amount?: number;
 }
 
 export interface DeliveryOrderItemDto {

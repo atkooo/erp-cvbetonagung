@@ -42,6 +42,9 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   validUntil: dto.valid_until ? dto.valid_until.split('T')[0] : '',
   total: Number(dto.total),
   status: mapQuotationStatus(dto.status),
+  globalDiscountType: dto.global_discount_type,
+  globalDiscountValue: dto.global_discount_value != null ? Number(dto.global_discount_value) : undefined,
+  globalDiscountAmount: dto.global_discount_amount != null ? Number(dto.global_discount_amount) : undefined,
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     productId: item.product_id || item.product?.id || '',
@@ -52,6 +55,7 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
     description: item.description || undefined,
     quantity: Number(item.quantity),
     price: Number(item.unit_price),
+    discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,
     unit: item.product?.unit?.name
   }))
 });
@@ -66,6 +70,9 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   total: Number(dto.total),
   status: mapSalesOrderStatus(dto.status),
   source: dto.source,
+  globalDiscountType: dto.global_discount_type,
+  globalDiscountValue: dto.global_discount_value != null ? Number(dto.global_discount_value) : undefined,
+  globalDiscountAmount: dto.global_discount_amount != null ? Number(dto.global_discount_amount) : undefined,
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     id: item.id,
@@ -77,6 +84,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     description: item.description || undefined,
     quantity: Number(item.quantity),
     price: Number(item.unit_price),
+    discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,
     unit: item.product?.unit?.name
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),

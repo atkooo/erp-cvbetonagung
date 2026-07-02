@@ -45,6 +45,8 @@ export interface ProductDto {
   image?: string | null;
   image_url?: string | null;
   status: 'active' | 'inactive';
+  discount_type?: 'percentage' | 'nominal' | null;
+  discount_value?: number | null;
   category?: CategoryDto;
   unit?: UnitDto;
   created_at?: string;
@@ -65,4 +67,6 @@ export interface ProductFormData {
   selling_price: number;
   min_stock: number;
   status?: 'active' | 'inactive';
+  discount_type?: 'percentage' | 'nominal' | null;
+  discount_value?: number | null;
 }

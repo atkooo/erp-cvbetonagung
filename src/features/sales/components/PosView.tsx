@@ -21,6 +21,7 @@ interface CartItem {
   quantity: number;
   location_id: string;
   fulfillment_type: 'take_away' | 'delivery';
+  discount_amount?: number;
 }
 
 export default function PosView({ onTriggerNotification }: PosViewProps) {
@@ -39,6 +40,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [amountPaid, setAmountPaid] = useState<string>('');
+  
+  const [globalDiscountType, setGlobalDiscountType] = useState<'percentage'|'nominal'>('nominal');
+  const [globalDiscountValue, setGlobalDiscountValue] = useState<string>('');
 
   const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
   const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
@@ -93,9 +97,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         ]);
 
         setCategories(catRes.data || []);
-        setAccounts(accRes.data || []);
-
         setStocks(stockRes.data || []);
+        setAccounts(accRes.data || []);
 
         // Normalize products (from /master/products or /master-data/products)
         const allProducts = prodRes.data || [];
@@ -138,10 +141,25 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
   const cartTotal = useMemo(() => {
     return cart.reduce((total, item) => {
-      const price = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
-      return total + (price * item.quantity);
+      const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
+      const discount = item.discount_amount || 0;
+      const subtotal = (defaultPrice * item.quantity) - discount;
+      return total + Math.max(0, subtotal);
     }, 0);
   }, [cart]);
+
+  const globalDiscountAmountComputed = useMemo(() => {
+    const val = parseFloat(globalDiscountValue || '0');
+    if (isNaN(val) || val < 0) return 0;
+    if (globalDiscountType === 'percentage') {
+      return cartTotal * (val / 100);
+    }
+    return Math.min(val, cartTotal);
+  }, [cartTotal, globalDiscountType, globalDiscountValue]);
+
+  const grandTotal = useMemo(() => {
+    return Math.max(0, cartTotal - globalDiscountAmountComputed);
+  }, [cartTotal, globalDiscountAmountComputed]);
 
   const addToCart = (product: any) => {
     const productStocks = stocks.filter(s => s.product_id === product.id && parseFloat(s.quantity) > 0);
@@ -169,12 +187,19 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         }
       }
 
+      let baseDiscount = 0;
+      if (product.discount_type === 'percentage') {
+        const defaultPrice = parseFloat(product.sellingPrice?.toString() || product.selling_price?.toString() || '0');
+        baseDiscount = defaultPrice * (parseFloat(product.discount_value || 0) / 100);
+      } else if (product.discount_type === 'nominal') {
+        baseDiscount = parseFloat(product.discount_value || 0);
+      }
+
       const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === itemFulfillment);
       if (existing) {
-
         return prev.map(item =>
           item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === fulfillmentType
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + 1, discount_amount: baseDiscount * (item.quantity + 1) }
             : item
         );
       }
@@ -183,7 +208,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         product,
         quantity: 1,
         location_id: defaultLocationId,
-        fulfillment_type: itemFulfillment
+        fulfillment_type: itemFulfillment,
+        discount_amount: baseDiscount * 1
       }];
     });
   };
@@ -192,8 +218,16 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
+        
+        let baseDiscount = 0;
+        if (item.product.discount_type === 'percentage') {
+          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+          baseDiscount = defaultPrice * (parseFloat(item.product.discount_value || 0) / 100);
+        } else if (item.product.discount_type === 'nominal') {
+          baseDiscount = parseFloat(item.product.discount_value || 0);
+        }
 
-        return { ...item, quantity: newQty };
+        return { ...item, quantity: newQty, discount_amount: baseDiscount * newQty };
       }
       return item;
     }));
@@ -205,8 +239,15 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
+        let baseDiscount = 0;
+        if (item.product.discount_type === 'percentage') {
+          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
+          baseDiscount = defaultPrice * (parseFloat(item.product.discount_value || 0) / 100);
+        } else if (item.product.discount_type === 'nominal') {
+          baseDiscount = parseFloat(item.product.discount_value || 0);
+        }
 
-        return { ...item, quantity: newQty };
+        return { ...item, quantity: newQty, discount_amount: baseDiscount * newQty };
       }
       return item;
     }));
@@ -304,14 +345,21 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         payment_account_id: selectedAccountId,
         amount_paid: Number(amountPaid.replace(/\D/g, '')),
         notes: notes || undefined,
-        items: cart.map(item => ({
-          product_id: item.product.id,
-          location_id: item.location_id,
-          quantity: item.quantity,
-          unit_price: parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0'),
-          fulfillment_type: item.fulfillment_type,
-          description: item.product.name,
-        })),
+        items: cart.map(item => {
+          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
+          return {
+            product_id: item.product.id,
+            location_id: item.location_id,
+            quantity: item.quantity,
+            unit_price: defaultPrice,
+            discount_amount: item.discount_amount,
+            fulfillment_type: item.fulfillment_type,
+            description: item.product.name,
+          };
+        }),
+        global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
+        global_discount_value: parseFloat(globalDiscountValue || '0'),
+        global_discount_amount: globalDiscountAmountComputed,
       });
 
       const txInfo = {
@@ -321,6 +369,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'Pelanggan',
         amountPaid: paid,
         cartTotal: cartTotal,
+        grandTotal: grandTotal,
+        globalDiscountAmount: globalDiscountAmountComputed,
         items: [...cart],
         date: toApiDate(),
       };
@@ -344,6 +394,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart([]);
     setAmountPaid('');
     setNotes('');
+    setGlobalDiscountType('nominal');
+    setGlobalDiscountValue('');
     setFulfillmentType('take_away');
     setCheckoutSuccessInfo(null);
   };
@@ -473,6 +525,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         updateQuantity={updateQuantity}
         setQuantity={setQuantity}
         cartTotal={cartTotal}
+        grandTotal={grandTotal}
+        globalDiscountType={globalDiscountType}
+        setGlobalDiscountType={setGlobalDiscountType}
+        globalDiscountValue={globalDiscountValue}
+        setGlobalDiscountValue={setGlobalDiscountValue}
+        globalDiscountAmountComputed={globalDiscountAmountComputed}
         formatRupiah={formatRupiah}
         stocks={stocks}
         onTriggerNotification={onTriggerNotification}
@@ -489,7 +547,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 text-center border-b border-slate-100">
               <h3 className="text-2xl font-black text-slate-900">Pembayaran</h3>
-              <p className="text-slate-500 mt-1">Total Tagihan: <span className="font-bold text-emerald-600">{formatRupiah(cartTotal)}</span></p>
+              <p className="text-slate-500 mt-1">Total Tagihan: <span className="font-bold text-emerald-600">{formatRupiah(grandTotal)}</span></p>
             </div>
 
             <div className="p-6 space-y-4 bg-slate-50">
@@ -512,16 +570,16 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   className="w-full text-2xl font-bold p-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-0 outline-none transition-colors text-right"
                   placeholder="0"
                 />
-                {parseFloat(amountPaid || '0') >= cartTotal && (
+                {parseFloat(amountPaid || '0') >= grandTotal && (
                   <div className="mt-2 text-right">
                     <span className="text-sm text-slate-500">Kembalian: </span>
-                    <span className="font-bold text-emerald-600">{formatRupiah(parseFloat(amountPaid || '0') - cartTotal)}</span>
+                    <span className="font-bold text-emerald-600">{formatRupiah(parseFloat(amountPaid || '0') - grandTotal)}</span>
                   </div>
                 )}
-                {parseFloat(amountPaid || '0') < cartTotal && (
+                {parseFloat(amountPaid || '0') < grandTotal && (
                   <div className="mt-2 text-right">
                     <span className="text-sm text-slate-500">Sisa Outstanding Receivable: </span>
-                    <span className="font-bold text-rose-500">{formatRupiah(cartTotal - parseFloat(amountPaid || '0'))}</span>
+                    <span className="font-bold text-rose-500">{formatRupiah(grandTotal - parseFloat(amountPaid || '0'))}</span>
                   </div>
                 )}
               </div>

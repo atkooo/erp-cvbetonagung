@@ -21,8 +21,12 @@ export interface SalesOrder {
     description?: string;
     quantity: number;
     price: number;
+    discountAmount?: number;
     unit?: string;
   }[];
+  globalDiscountType?: 'percentage' | 'nominal' | null;
+  globalDiscountValue?: number;
+  globalDiscountAmount?: number;
   hasPaidInvoice?: boolean;
   hasInvoice?: boolean;
   deliveryOrders?: DeliveryOrder[];
@@ -47,8 +51,12 @@ export interface Quotation {
     description?: string;
     quantity: number;
     price: number;
+    discountAmount?: number;
     unit?: string;
   }[];
+  globalDiscountType?: 'percentage' | 'nominal' | null;
+  globalDiscountValue?: number;
+  globalDiscountAmount?: number;
 }
 
 export interface InvoiceItem {

@@ -12,6 +12,7 @@ interface SearchableSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  size?: 'sm' | 'md';
 }
 
 export default function SearchableSelect({
@@ -19,7 +20,8 @@ export default function SearchableSelect({
   value,
   onChange,
   placeholder = 'Pilih...',
-  disabled = false
+  disabled = false,
+  size = 'md'
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -40,14 +42,17 @@ export default function SearchableSelect({
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
 
+  const sizeClasses = size === 'sm' ? 'px-2 py-1 text-[10px]' : 'px-3 py-2 text-sm';
+  const iconSize = size === 'sm' ? 12 : 14;
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div
-        className={`w-full px-3 py-2 border border-slate-200 rounded flex items-center justify-between cursor-pointer ${disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'}`}
+        className={`w-full ${sizeClasses} border border-slate-200 rounded flex items-center justify-between cursor-pointer ${disabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'}`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        <ChevronRight size={14} className={`transform transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+        <ChevronRight size={iconSize} className={`transform transition-transform ${isOpen ? 'rotate-90' : ''}`} />
       </div>
 
       {isOpen && !disabled && (

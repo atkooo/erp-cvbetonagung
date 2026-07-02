@@ -101,8 +101,12 @@ export const salesApi = {
       specification?: string;
       quantity: number;
       unit_price: number;
+      discount_amount?: number;
       fulfillment_type?: 'take_away' | 'delivery';
     }>;
+    global_discount_type?: 'percentage' | 'nominal' | null;
+    global_discount_value?: number;
+    global_discount_amount?: number;
   }): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/pos', payload);
     return mapSalesOrderFromDto(response.data);

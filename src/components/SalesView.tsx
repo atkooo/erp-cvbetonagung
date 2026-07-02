@@ -54,6 +54,7 @@ interface SalesFormItem {
   description?: string;
   isCustomizable?: boolean;
   pricingMethod?: 'per_item' | 'per_dimension';
+  discountAmount?: number;
 }
 
 export default function SalesView({
@@ -76,7 +77,7 @@ export default function SalesView({
   const [showAddForm, setShowAddForm] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // API states
+  // API states 
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -98,6 +99,8 @@ export default function SalesView({
   const [custId, setCustId] = useState('');
   const [quotationId, setQuotationId] = useState('');
   const [documentNotes, setDocumentNotes] = useState('');
+  const [globalDiscountType, setGlobalDiscountType] = useState<'percentage' | 'nominal'>('nominal');
+  const [globalDiscountValue, setGlobalDiscountValue] = useState('');
   const [formItems, setFormItems] = useState<SalesFormItem[]>([
     { productId: '', quantity: 1, unitPrice: 0 }
   ]);
@@ -192,12 +195,40 @@ export default function SalesView({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
-  const formTotal = formItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  const formTotal = formItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice) - (item.discountAmount || 0), 0);
+
+  const globalDiscountAmountComputed = React.useMemo(() => {
+    const val = parseFloat(globalDiscountValue || '0');
+    if (isNaN(val) || val < 0) return 0;
+    if (globalDiscountType === 'percentage') {
+      return formTotal * (val / 100);
+    }
+    return Math.min(val, formTotal);
+  }, [formTotal, globalDiscountType, globalDiscountValue]);
+
+  const grandTotal = React.useMemo(() => {
+    return Math.max(0, formTotal - globalDiscountAmountComputed);
+  }, [formTotal, globalDiscountAmountComputed]);
 
   const updateFormItem = (index: number, patch: Partial<SalesFormItem>) => {
-    setFormItems(prev => prev.map((item, itemIndex) => (
-      itemIndex === index ? { ...item, ...patch } : item
-    )));
+    setFormItems(prev => prev.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const updatedItem = { ...item, ...patch };
+
+      const prod = products.find(p => p.id === updatedItem.productId);
+      if (prod && (patch.productId !== undefined || patch.quantity !== undefined || patch.unitPrice !== undefined)) {
+        let baseDiscount = 0;
+        if (prod.discountType === 'percentage') {
+          const defaultPrice = parseFloat(prod.sellingPrice?.toString() || '0');
+          baseDiscount = defaultPrice * (parseFloat(prod.discountValue?.toString() || '0') / 100);
+        } else if (prod.discountType === 'nominal') {
+          baseDiscount = parseFloat(prod.discountValue?.toString() || '0');
+        }
+        updatedItem.discountAmount = baseDiscount * (updatedItem.quantity || 1);
+      }
+
+      return updatedItem;
+    }));
   };
 
   const addFormItem = () => {
@@ -210,10 +241,25 @@ export default function SalesView({
 
   const resetFormItems = () => {
     const defaultProduct = products.find(p => (isQuotation ? true : p.type === 'finished_good')) || products[0];
-    setFormItems(defaultProduct
-      ? [{ productId: defaultProduct.id, quantity: 1, unitPrice: defaultProduct.sellingPrice || 0, unit: defaultProduct.unit, stock: defaultProduct.stock }]
-      : [{ productId: '', quantity: 1, unitPrice: 0 }]
-    );
+    if (defaultProduct) {
+      let baseDiscount = 0;
+      if (defaultProduct.discountType === 'percentage') {
+        const defaultPrice = parseFloat(defaultProduct.sellingPrice?.toString() || '0');
+        baseDiscount = defaultPrice * (parseFloat(defaultProduct.discountValue?.toString() || '0') / 100);
+      } else if (defaultProduct.discountType === 'nominal') {
+        baseDiscount = parseFloat(defaultProduct.discountValue?.toString() || '0');
+      }
+      setFormItems([{
+        productId: defaultProduct.id,
+        quantity: 1,
+        unitPrice: defaultProduct.sellingPrice || 0,
+        unit: defaultProduct.unit,
+        stock: defaultProduct.stock,
+        discountAmount: baseDiscount
+      }]);
+    } else {
+      setFormItems([{ productId: '', quantity: 1, unitPrice: 0 }]);
+    }
   };
 
   // Filter logic
@@ -286,8 +332,12 @@ export default function SalesView({
             length: item.length,
             quantity: item.quantity,
             unit_price: item.unitPrice,
+            discount_amount: item.discountAmount,
             description: item.description
-          }))
+          })),
+          global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
+          global_discount_value: parseFloat(globalDiscountValue || '0'),
+          global_discount_amount: globalDiscountAmountComputed,
         });
         successMsg = `Sukses menerbitkan Quotation.`;
       } else {
@@ -302,8 +352,12 @@ export default function SalesView({
             length: item.length,
             quantity: item.quantity,
             unit_price: item.unitPrice,
+            discount_amount: item.discountAmount,
             description: item.description
-          }))
+          })),
+          global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
+          global_discount_value: parseFloat(globalDiscountValue || '0'),
+          global_discount_amount: globalDiscountAmountComputed,
         });
         successMsg = `Sukses menerbitkan Sales Order.`;
       }
@@ -370,7 +424,7 @@ export default function SalesView({
         await salesApi.updateQuotation(docId, { status: 'approved' });
         onTriggerNotification(`Sukses menyetujui Quotation ${quoteNum}.`);
         await loadData();
-        
+
         handlePrintAction();
         setTimeout(() => {
           setSelectedDoc(null);
@@ -567,7 +621,7 @@ export default function SalesView({
               </table>
             </div>
           </div>
-          
+
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2 px-2">
               <div className="text-[10px] text-slate-400 font-mono">
@@ -653,13 +707,13 @@ export default function SalesView({
                     {selectedDoc.items?.map((item: any, idx: number) => {
                       let itemLabel = "";
                       let isPo = false;
-                      
+
                       if (!isQuotation && selectedDoc.source === 'pos') {
                         const poQty = selectedDoc.deliveryOrders?.filter((d: any) => d.status === 'Draft')
                           .flatMap((d: any) => d.items || [])
                           .filter((di: any) => di.productId === item.productId)
                           .reduce((sum: number, di: any) => sum + di.quantity, 0) || 0;
-                        
+
                         if (poQty > 0) {
                           isPo = true;
                           const totalQty = item.pieceCount || item.quantity;
@@ -762,14 +816,14 @@ export default function SalesView({
                     </button>
                   </div>
                 ) : (
-                    <button
-                      onClick={() => setSelectedDoc(null)}
-                      className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
-                    >
-                      Tutup
-                    </button>
+                  <button
+                    onClick={() => setSelectedDoc(null)}
+                    className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
+                  >
+                    Tutup
+                  </button>
                 )}
-                
+
                 {isQuotation && selectedDoc.status === 'Disetujui' && (
                   <button
                     onClick={() => {
@@ -871,14 +925,31 @@ export default function SalesView({
                         <td className="border border-black p-2 text-right font-mono align-top">
                           {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
                         </td>
-                        <td className="border border-black p-2 text-right font-mono align-top">{formatIDR(item.price)}</td>
-                        <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(item.quantity * item.price)}</td>
+                        <td className="border border-black p-2 text-right font-mono align-top">
+                          {formatIDR(item.price)}
+                          {item.discountAmount ? <div className="text-[9px] text-rose-600 mt-1">- Diskon: {formatIDR(item.discountAmount)}</div> : null}
+                        </td>
+                        <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR((item.quantity * item.price) - (item.discountAmount || 0))}</td>
                       </tr>
                     ))}
                     {!selectedDoc.items?.length && (
                       <tr>
                         <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>Tidak ada item.</td>
                       </tr>
+                    )}
+                    {selectedDoc.globalDiscountAmount > 0 && (
+                      <>
+                        <tr className="bg-slate-50">
+                          <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">SUBTOTAL</td>
+                          <td className="border border-black p-2 text-right font-mono text-sm">{formatIDR(selectedDoc.total + selectedDoc.globalDiscountAmount)}</td>
+                        </tr>
+                        <tr className="bg-rose-50 text-rose-700">
+                          <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
+                            DISKON GLOBAL {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? `(${selectedDoc.globalDiscountValue}%)` : ''}
+                          </td>
+                          <td className="border border-black p-2 text-right font-mono text-sm">- {formatIDR(selectedDoc.globalDiscountAmount)}</td>
+                        </tr>
+                      </>
                     )}
                     <tr className="bg-slate-100">
                       <td colSpan={4} className="border border-black p-3 text-right font-black">TOTAL KESELURUHAN</td>
@@ -1132,16 +1203,27 @@ export default function SalesView({
                             </div>
                           )}
 
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-600">
-                              Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                            </label>
-                            <CurrencyInput
-                              required
-                              value={item.unitPrice || ''}
-                              onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600">
+                                Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                              </label>
+                              <CurrencyInput
+                                required
+                                value={item.unitPrice || ''}
+                                onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600">
+                                Total Diskon (Rp)
+                              </label>
+                              <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                <span>Rp</span>
+                                <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -1173,12 +1255,46 @@ export default function SalesView({
                   />
                 </div>
               </div>
-              <div className="p-4 border-t bg-slate-50 flex justify-between items-center shrink-0">
-                <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400">Total Proyeksi Kontrak</span>
-                  <p className="text-sm font-black text-indigo-750 font-mono leading-none mt-0.5">{formatIDR(formTotal)}</p>
+              <div className="p-4 border-t bg-slate-50 flex justify-between items-end shrink-0">
+                <div className="flex flex-col gap-2 w-1/2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Subtotal</span>
+                    <span className="text-xs font-mono font-bold text-slate-700">{formatIDR(formTotal)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Diskon Global</span>
+                    <div className="flex flex-1 items-center bg-white rounded-lg border border-slate-200 overflow-hidden h-8">
+                      <select
+                        value={globalDiscountType}
+                        onChange={(e) => {
+                          setGlobalDiscountType(e.target.value as 'percentage' | 'nominal');
+                          setGlobalDiscountValue('');
+                        }}
+                        className="bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 border-r border-slate-200 outline-none w-14 cursor-pointer h-full"
+                      >
+                        <option value="nominal">Rp</option>
+                        <option value="percentage">%</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={globalDiscountValue}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9.]/g, '');
+                          if (globalDiscountType === 'percentage' && parseFloat(val) > 100) val = '100';
+                          if (globalDiscountType === 'nominal' && parseFloat(val) > formTotal) val = formTotal.toString();
+                          setGlobalDiscountValue(val);
+                        }}
+                        placeholder="0"
+                        className="w-full px-2 py-1 text-xs font-mono font-bold text-slate-700 outline-none h-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200 mt-1">
+                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400 w-24">Grand Total</span>
+                    <p className="text-sm font-black text-indigo-750 font-mono leading-none mt-0.5">{formatIDR(grandTotal)}</p>
+                  </div>
                 </div>
-                <div className="flex gap-2 text-xs font-bold">
+                <div className="flex gap-2 text-xs font-bold mb-1">
                   <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-100">Batal</button>
                   <button type="submit" className="px-5 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-800">Penerbitan Draft</button>
                 </div>
