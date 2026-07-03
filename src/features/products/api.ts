@@ -1,4 +1,4 @@
-import { apiClient } from '../../services/api';
+import { apiClient, getFileUrl } from '../../services/api';
 import { CategoryDto, CategoryFormData, ProductDto, ProductFormData, UnitDto, UnitFormData } from './types';
 import { Category, Product } from '../../types';
 import { mapCategoryFromDto, mapCategoryToDto, mapProductFromDto, mapProductToDto } from './mappers';
@@ -144,7 +144,10 @@ export const productsApi = {
       `/master-data/products/${id}/image`,
       { method: 'POST', body: formData }
     );
-    return response.data;
+    return {
+      ...response.data,
+      image_url: getFileUrl(response.data.image_url) || response.data.image_url,
+    };
   },
 
   async deleteProductImage(id: string): Promise<void> {

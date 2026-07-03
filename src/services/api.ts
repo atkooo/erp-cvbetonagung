@@ -1,6 +1,6 @@
 import type { AuthSession, AuthUser } from '../types/auth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const TOKEN_STORAGE_KEY = 'cvba_api_token';
 const USER_STORAGE_KEY = 'cvba_api_user';
 
@@ -17,6 +17,21 @@ export interface ApiListEnvelope<T> {
     total: number;
   };
 }
+
+export const getFileUrl = (path: string | null): string | null => {
+  if (!path) return null;
+  let cleanPath = path;
+  if (path.startsWith('http')) {
+    try {
+      cleanPath = new URL(path).pathname;
+    } catch {
+      // ignore
+    }
+  }
+  if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+  const base = API_BASE_URL.replace(/\/api\/?$/, '');
+  return `${base}${cleanPath}`;
+};
 
 interface LoginResponse {
   token_type: 'Bearer';
