@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download, Bluetooth, Car, Truck } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download, Bluetooth, Car, Truck, ScanLine } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import BarcodeScannerModal from '../../../components/BarcodeScannerModal';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
 import type { Product, Customer } from '../../../types';
@@ -47,6 +49,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
   const [lastTransactionInfo, setLastTransactionInfo] = useState<any>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const locationUrl = useLocation();
+  const navigate = useNavigate();
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
@@ -212,6 +217,22 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       }];
     });
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(locationUrl.search);
+    const addSku = params.get('add_sku');
+
+    if (addSku && products.length > 0) {
+      const productToAdd = products.find(p => p.sku === addSku || p.qrValue === addSku);
+      if (productToAdd) {
+        addToCart(productToAdd);
+        onTriggerNotification(`Berhasil memasukkan ${productToAdd.name} ke keranjang.`);
+      } else {
+        onTriggerNotification(`Produk dengan SKU ${addSku} tidak ditemukan di sistem POS.`);
+      }
+      navigate(locationUrl.pathname, { replace: true });
+    }
+  }, [locationUrl.search, products, navigate, onTriggerNotification]);
 
   const updateQuantity = (cartItemId: string, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -461,6 +482,14 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowScannerModal(true)}
+                className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-emerald-200"
+                title="Scan Barcode Produk"
+              >
+                <ScanLine size={16} />
+                <span className="hidden sm:inline">Scan Barcode</span>
+              </button>
+              <button
                 onClick={() => {
                   setHistoryPage(1);
                   setHistorySearch('');
@@ -539,6 +568,23 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         setAmountPaid={setAmountPaid}
         setShowCheckoutModal={setShowCheckoutModal}
       />
+
+      {/* BARCODE SCANNER MODAL */}
+      {showScannerModal && (
+        <BarcodeScannerModal
+          onClose={() => setShowScannerModal(false)}
+          onScan={(decodedText) => {
+            const productToAdd = products.find(p => p.sku === decodedText || p.qrValue === decodedText);
+            if (productToAdd) {
+              addToCart(productToAdd);
+              onTriggerNotification(`Berhasil memasukkan ${productToAdd.name} ke keranjang.`);
+              setShowScannerModal(false);
+            } else {
+              onTriggerNotification(`Produk dengan SKU/Kode ${decodedText} tidak ditemukan.`);
+            }
+          }}
+        />
+      )}
 
       {/* CHECKOUT MODAL */}
       {showCheckoutModal && (

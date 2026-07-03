@@ -31,58 +31,10 @@ import Barcode from 'react-barcode';
 import { Html5Qrcode } from 'html5-qrcode';
 import * as htmlToImage from 'html-to-image';
 import { useReactToPrint } from 'react-to-print';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Plus, Minus } from 'lucide-react';
+import RealScanner from './RealScanner';
 
-
-function RealScanner({ onScan }: { onScan: (text: string) => void }) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const initScanner = async () => {
-      try {
-        if (!scannerRef.current) {
-          scannerRef.current = new Html5Qrcode('reader');
-        }
-
-        // Wait a small tick to ensure the DOM element exists
-        setTimeout(async () => {
-          if (!isMounted || !scannerRef.current) return;
-          try {
-            await scannerRef.current.start(
-              { facingMode: 'environment' },
-              { fps: 10, qrbox: { width: 250, height: 250 } },
-              (decodedText) => {
-                onScan(decodedText);
-                if (scannerRef.current?.isScanning) {
-                  scannerRef.current.stop().catch(console.error);
-                }
-              },
-              (errorMessage) => { }
-            );
-          } catch (err) {
-            console.error("Failed to start camera", err);
-          }
-        }, 100);
-      } catch (err) {
-        console.error("Error initializing scanner", err);
-      }
-    };
-
-    initScanner();
-
-    return () => {
-      isMounted = false;
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().then(() => {
-          scannerRef.current?.clear();
-        }).catch(console.error);
-      }
-    };
-  }, []);
-
-  return <div id="reader" className="w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden aspect-square border-4 border-slate-800" />;
-}
 
 interface QrViewProps {
   currentSubView: 'list' | 'scanner' | 'detail';
@@ -97,6 +49,7 @@ export default function QrView({
   onNavigateSubView,
   onTriggerNotification,
 }: QrViewProps) {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showQrModal, setShowQrModal] = useState<Product | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
@@ -320,12 +273,44 @@ export default function QrView({
                 />
               </div>
 
-              <div className="flex justify-between items-center bg-slate-50 p-2 border.rounded-lg border-dashed border-slate-200 mt-2 text-[10px]">
+              <div className="flex justify-between items-center bg-slate-50 p-2 border rounded-lg border-dashed border-slate-200 mt-2 text-[10px]">
                 <span className="text-slate-400">Min Stock Safety:</span>
-                <span className="font-mono font-bold text-slate-705">{scannedProduct.minStock} {scannedProduct.unit}</span>
+                <span className="font-mono font-bold text-slate-700">{scannedProduct.minStock} {scannedProduct.unit}</span>
               </div>
 
-              {/* Actions removed */}
+              <div className="pt-4 border-t border-slate-100 mt-4 space-y-2">
+                <button
+                  onClick={() => navigate(`/sales/pos?add_sku=${scannedProduct.qrValue || scannedProduct.sku}`)}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-sm shadow-emerald-600/20"
+                >
+                  <ShoppingCart size={18} />
+                  <span>Tambahkan ke POS</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => navigate(`/inventory/stock-in?sku=${scannedProduct.sku}`)}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold transition-colors border border-blue-200"
+                  >
+                    <Plus size={16} />
+                    <span className="text-[11px]">Stok Masuk</span>
+                  </button>
+                  <button
+                    onClick={() => navigate(`/inventory/stock-out?sku=${scannedProduct.sku}`)}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-bold transition-colors border border-amber-200"
+                  >
+                    <Minus size={16} />
+                    <span className="text-[11px]">Stok Keluar</span>
+                  </button>
+                  <button
+                    onClick={() => navigate(`/inventory/opname?sku=${scannedProduct.sku}`)}
+                    className="col-span-2 flex items-center justify-center gap-1.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold transition-colors border border-indigo-200"
+                  >
+                    <CheckCircle size={16} />
+                    <span className="text-[11px]">Stock Opname</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -444,15 +429,6 @@ export default function QrView({
                       <span>{prod.location}</span>
                     </td>
                     <td className="p-3.5 pr-5 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          onTriggerNotification(`Berhasil memindai kode: ${prod.qrValue || prod.sku}`);
-                          onNavigateSubView('detail', prod.qrValue || prod.sku);
-                        }}
-                        className="px-2.5 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded"
-                      >
-                        Lihat Detail
-                      </button>
                       <button
                         onClick={() => setShowQrModal(prod)}
                         className="px-2.5 py-1 text-[10px] bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-bold rounded border border-cyan-200"
