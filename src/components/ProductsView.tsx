@@ -16,7 +16,7 @@ import {
   Camera,
   ImageOff,
 } from "@/src/components/icons";
-import { Product, Category } from "../types";
+import { Product, Category, Discount } from "../types";
 import { DEFAULT_UNITS, productsApi } from "../features/products/api";
 import { UnitDto, ProductFormData } from "../features/products/types";
 import { inventoryApi } from "../features/inventory/api";
@@ -57,11 +57,11 @@ export default function ProductsView({
   const [unit, setUnit] = useState("");
   const [location, setLocation] = useState("Gudang Utama");
   const [minStock, setMinStock] = useState(10);
-  const [discountType, setDiscountType] = useState<"percentage" | "nominal" | "none">("none");
-  const [discountValue, setDiscountValue] = useState(0);
+  const [discountId, setDiscountId] = useState<string>("");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<UnitDto[]>([]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [storageLocations, setStorageLocations] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,8 +91,9 @@ export default function ProductsView({
       productsApi.getUnits(),
       inventoryApi.getProductStocks(),
       apiClient.get<{ data: any[] }>("/master-data/storage-locations"),
+      apiClient.get<{ data: Discount[] }>("/master-data/discounts"),
     ])
-      .then(([productsData, catsData, unitsData, stockData, locRes]) => {
+      .then(([productsData, catsData, unitsData, stockData, locRes, discRes]) => {
         const productsWithStock = productsData.map((product) => {
           const productStocks = stockData.filter(
             (stockRow) =>
@@ -134,6 +135,7 @@ export default function ProductsView({
         setProducts(productsWithStock);
         setCategories(catsData);
         setStorageLocations(locRes.data || []);
+        setDiscounts(discRes.data || []);
         const nextUnits = unitsData.length > 0 ? unitsData : DEFAULT_UNITS;
         setUnits(unitsData);
         if (catsData.length > 0) {
@@ -188,8 +190,7 @@ export default function ProductsView({
     setUnit(initialFilteredUnits[0]?.id || visibleUnits[0]?.id || "");
     setLocation(storageLocations[0]?.id || "");
     setMinStock(10);
-    setDiscountType("none");
-    setDiscountValue(0);
+    setDiscountId("");
     setImageFile(null);
     setImagePreview(null);
     setIsImageDeleted(false);
@@ -237,8 +238,7 @@ export default function ProductsView({
     );
     setLocation(storageLocations[0]?.id || "");
     setMinStock(product.minStock);
-    setDiscountType(product.discountType || "none");
-    setDiscountValue(product.discountValue || 0);
+    setDiscountId(product.discountId || "");
     // Show existing image as preview
     setImageFile(null);
     setImagePreview(product.imageUrl || null);
@@ -292,8 +292,7 @@ export default function ProductsView({
         cost_price: costPrice,
         selling_price: sellingPrice,
         min_stock: minStock,
-        discount_type: discountType === "none" ? null : discountType,
-        discount_value: discountType === "none" ? null : discountValue,
+        discount_id: discountId || null,
         status: "active",
       };
 
@@ -831,48 +830,24 @@ export default function ProductsView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3.5 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100/50">
+              <div className="grid grid-cols-1 gap-3.5 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100/50">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-emerald-900 uppercase">
-                    Tipe Diskon
+                    Master Diskon
                   </label>
                   <select
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as any)}
+                    value={discountId}
+                    onChange={(e) => setDiscountId(e.target.value)}
                     className="w-full px-3 py-2 border border-emerald-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-emerald-900"
                   >
-                    <option value="none">Tanpa Diskon</option>
-                    <option value="percentage">Persentase (%)</option>
-                    <option value="nominal">Nominal (Rp)</option>
+                    <option value="">Tanpa Diskon (Pilih Diskon)</option>
+                    {discounts.filter(d => d.is_active).map((discount) => (
+                      <option key={discount.id} value={discount.id}>
+                        {discount.name} ({discount.type === 'percentage' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`})
+                      </option>
+                    ))}
                   </select>
                 </div>
-                {discountType !== "none" && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-emerald-900 uppercase">
-                      Nilai Diskon
-                    </label>
-                    {discountType === "percentage" ? (
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={discountValue || ""}
-                          onChange={(e) => setDiscountValue(Number(e.target.value))}
-                          className="w-full px-3 py-2 border border-emerald-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-emerald-900 pr-8"
-                        />
-                        <span className="absolute inset-y-0 right-3 flex items-center text-emerald-900 font-bold">%</span>
-                      </div>
-                    ) : (
-                      <CurrencyInput
-                        value={discountValue || ""}
-                        onValueChange={(val) => setDiscountValue(Number(val))}
-                        className="w-full px-3 py-2 border border-emerald-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-emerald-900"
-                      />
-                    )}
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3.5">

@@ -35,6 +35,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   qrValue: dto.qr_value || dto.sku,
   location: 'Gudang Utama',
   imageUrl: dto.image_url || null,
+  discountId: dto.discount_id || null,
 });
 
 
@@ -52,4 +53,5 @@ export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> 
   selling_price: formData.selling_price.toString(),
   min_stock: formData.min_stock.toString(),
   status: formData.status,
+  discount_id: formData.discount_id || null,
 });

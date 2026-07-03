@@ -70,6 +70,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   categories: "Kategori Produk",
   units: "Master Satuan Produk",
   warehouses: "Master Gudang & Rak",
+  discounts: "Master Diskon",
   "stock-management": "Manajemen Stok Produk",
   "incoming-goods": "Penerimaan Barang Masuk",
   "outgoing-goods": "Barang Keluar (Internal)",
@@ -394,6 +395,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       {
         view: "units",
         label: "Satuan Produk",
+        icon: Tag,
+        requiredModule: "products",
+      },
+      {
+        view: "discounts",
+        label: "Master Diskon",
         icon: Tag,
         requiredModule: "products",
       },

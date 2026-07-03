@@ -13,6 +13,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   categories:               '/master/categories',
   units:                    '/master/units',
   warehouses:               '/master/warehouses',
+  discounts:                '/master/discounts',
 
   // Sales
   pos:                      '/sales/pos',

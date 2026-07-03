@@ -21,3 +21,11 @@ export interface Supplier {
   address: string;
   status: 'Aktif' | 'Nonaktif';
 }
+
+export interface Discount {
+  id: string;
+  name: string;
+  type: 'percentage' | 'nominal';
+  value: number;
+  is_active: boolean;
+}

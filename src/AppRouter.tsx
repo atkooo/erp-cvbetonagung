@@ -13,6 +13,7 @@ const ProductsView = React.lazy(() => import('./components/ProductsView'));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
 const UnitsView = React.lazy(() => import('./components/UnitsView'));
 const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
+const DiscountsView = React.lazy(() => import('./components/DiscountsView'));
 const InventoryView = React.lazy(() => import('./components/InventoryView'));
 const PosView = React.lazy(() => import('./features/sales/components/PosView'));
 const SalesView = React.lazy(() => import('./components/SalesView'));
@@ -145,6 +146,7 @@ const routes: RouteObject[] = [
       { path: 'master/categories', element: lazyRoute(CategoriesView) },
       { path: 'master/units', element: lazyRoute(UnitsView) },
       { path: 'master/warehouses', element: lazyRoute(WarehouseMasterView) },
+      { path: 'master/discounts', element: lazyRoute(DiscountsView) },
 
       // Sales
       { path: 'sales/pos', element: lazyRoute(PosView) },

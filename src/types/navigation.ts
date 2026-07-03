@@ -16,6 +16,7 @@ export type ViewType =
   | 'categories'
   | 'units'
   | 'warehouses'
+  | 'discounts'
   // Inventory
   | 'stock-management'
   | 'incoming-goods'

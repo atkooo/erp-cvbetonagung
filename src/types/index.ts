@@ -6,7 +6,7 @@
  * Impor per domain jika memungkinkan untuk tree-shaking yang lebih baik.
  */
 
-export type { Customer, Supplier } from './master';
+export type { Customer, Supplier, Discount } from './master';
 export type { Product, Category, QrProduct } from './product';
 export type { StockMovement, Bag, BagItem } from './inventory';
 export type { SalesOrder, Quotation, Invoice, Payment, DeliveryOrder, DeliveryOrderItem } from './sales';

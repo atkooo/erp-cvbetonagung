@@ -20,8 +20,7 @@ export interface Product {
   status: 'Aman' | 'Menipis' | 'Habis';
   qrValue?: string;
   imageUrl?: string | null;
-  discountType?: 'percentage' | 'nominal' | null;
-  discountValue?: number | null;
+  discountId?: string | null;
 }
 
 export interface Category {
