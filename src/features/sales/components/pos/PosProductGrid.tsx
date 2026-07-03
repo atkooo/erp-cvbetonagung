@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Package, X, ZoomIn } from 'lucide-react';
 import SearchableSelect from '../../../../components/SearchableSelect';
+import { getFileUrl } from '../../../../services/api';
 
 interface PosProductGridProps {
   categories: any[];
@@ -63,7 +64,8 @@ export default function PosProductGrid({
           {filteredProducts.map((product) => {
             const price = parseFloat(product.sellingPrice?.toString() || (product as any).selling_price?.toString() || '0');
             const inCart = cart.find(c => c.product.id === product.id);
-            const imageUrl: string | null = (product as any).image_url || product.imageUrl || null;
+            const rawImageUrl = (product as any).image_url || product.imageUrl || null;
+            const imageUrl: string | null = getFileUrl(rawImageUrl);
 
             const productStocks = stocks.filter(s => s.product_id === product.id && parseFloat(s.quantity) > 0);
             const physicalStock = productStocks.reduce((sum, s) => sum + parseFloat(s.quantity), 0);
