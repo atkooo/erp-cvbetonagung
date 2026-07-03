@@ -209,7 +209,7 @@ export default function ProductsView({
     setEditingProduct(product);
     setBusinessUnit(product.businessUnit || "CV Beton Agung");
     setSku(product.sku);
-    setQrValue(product.qrValue && product.qrValue !== product.sku ? product.qrValue : "");
+    setQrValue(product.qrValue || "");
     setName(product.name);
     setIsCustomizable(product.isCustomizable || false);
     setPricingMethod(product.pricingMethod || "per_item");
@@ -235,9 +235,9 @@ export default function ProductsView({
     );
     setUnit(
       selectedUnit?.id ||
-        initialFilteredUnits[0]?.id ||
-        visibleUnits[0]?.id ||
-        "",
+      initialFilteredUnits[0]?.id ||
+      visibleUnits[0]?.id ||
+      "",
     );
     setLocation(storageLocations[0]?.id || "");
     setMinStock(product.minStock);
@@ -665,7 +665,7 @@ export default function ProductsView({
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5 flex flex-col flex-1 overflow-hidden text-xs">
               <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* Kolom Kiri: Info Dasar & Harga */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3.5">
@@ -697,7 +697,7 @@ export default function ProductsView({
                         className="w-full px-3 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-lg text-xs font-mono focus:outline-none cursor-not-allowed"
                       />
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">
                         Kategori Konstruksi
@@ -717,7 +717,7 @@ export default function ProductsView({
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">
-                        Barcode / QR Value (Opsional)
+                        Barcode / QR Value
                       </label>
                       <input
                         type="text"
@@ -758,7 +758,7 @@ export default function ProductsView({
                         <option value="finished_good">Finished Good (Barang Jadi)</option>
                       </select>
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">
                         Deskripsi / Nama Varian Item
