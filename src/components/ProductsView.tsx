@@ -15,6 +15,7 @@ import {
   Tag,
   Camera,
   ImageOff,
+  Image,
 } from "@/src/components/icons";
 import { Product, Category, Discount } from "../types";
 import { DEFAULT_UNITS, productsApi } from "../features/products/api";
@@ -24,6 +25,7 @@ import { apiClient } from "../services/api";
 import { SkeletonTable, ErrorCard } from "./Skeleton";
 import CurrencyInput from "./CurrencyInput";
 import Swal from "sweetalert2";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 interface ProductsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -74,6 +76,7 @@ export default function ProductsView({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isImageDeleted, setIsImageDeleted] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
@@ -902,10 +905,7 @@ export default function ProductsView({
                     <label className="text-[11px] font-bold text-slate-600 uppercase">
                       Foto Produk (Opsional)
                     </label>
-                    <div
-                      className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors cursor-pointer flex items-center justify-center overflow-hidden"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
+                    <div className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden group">
                       {imagePreview ? (
                         <>
                           <img
@@ -920,21 +920,34 @@ export default function ProductsView({
                               setImageFile(null);
                               setImagePreview(null);
                               setIsImageDeleted(true);
-                              if (fileInputRef.current)
-                                fileInputRef.current.value = "";
+                              if (fileInputRef.current) fileInputRef.current.value = "";
                             }}
-                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
                           >
                             <X size={12} />
                           </button>
                         </>
                       ) : (
-                        <div className="flex flex-col items-center gap-2 text-slate-400">
-                          <Camera size={28} className="text-slate-300" />
-                          <span className="text-[11px] font-medium">
-                            Klik untuk upload foto produk
-                          </span>
-                          <span className="text-[10px]">
+                        <div className="flex flex-col items-center justify-center w-full h-full gap-2 p-3">
+                          <div className="flex w-full gap-2 h-full">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:border-cyan-400 hover:bg-cyan-50/50 transition-all text-slate-500 shadow-sm"
+                            >
+                              <Image size={20} className="text-slate-400" />
+                              <span className="text-[10px] font-bold">Galeri / File</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowCameraModal(true)}
+                              className="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:border-cyan-400 hover:bg-cyan-50/50 transition-all text-slate-500 shadow-sm"
+                            >
+                              <Camera size={20} className="text-slate-400" />
+                              <span className="text-[10px] font-bold">Buka Kamera</span>
+                            </button>
+                          </div>
+                          <span className="text-[9px] text-slate-400 mt-1">
                             JPG, PNG, WebP · maks 2MB
                           </span>
                         </div>
@@ -942,7 +955,7 @@ export default function ProductsView({
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        accept="image/*"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -984,6 +997,16 @@ export default function ProductsView({
           </div>
         </div>
       )}
+
+      {/* Camera Capture Modal */}
+      <CameraCaptureModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        onCapture={(file) => {
+          setImageFile(file);
+          setImagePreview(URL.createObjectURL(file));
+        }}
+      />
     </div>
   );
 }
