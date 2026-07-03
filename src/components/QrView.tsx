@@ -38,13 +38,13 @@ function RealScanner({ onScan }: { onScan: (text: string) => void }) {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const initScanner = async () => {
       try {
         if (!scannerRef.current) {
           scannerRef.current = new Html5Qrcode('reader');
         }
-        
+
         // Wait a small tick to ensure the DOM element exists
         setTimeout(async () => {
           if (!isMounted || !scannerRef.current) return;
@@ -58,7 +58,7 @@ function RealScanner({ onScan }: { onScan: (text: string) => void }) {
                   scannerRef.current.stop().catch(console.error);
                 }
               },
-              (errorMessage) => {}
+              (errorMessage) => { }
             );
           } catch (err) {
             console.error("Failed to start camera", err);
@@ -75,7 +75,7 @@ function RealScanner({ onScan }: { onScan: (text: string) => void }) {
       isMounted = false;
       if (scannerRef.current && scannerRef.current.isScanning) {
         scannerRef.current.stop().then(() => {
-           scannerRef.current?.clear();
+          scannerRef.current?.clear();
         }).catch(console.error);
       }
     };
@@ -262,8 +262,8 @@ export default function QrView({
 
   const drawBarcode = (value: string, large = false) => {
     return (
-      <div className={`bg-white p-2 border border-slate-200 rounded ${large ? 'shadow-sm' : ''} inline-block`}>
-        <Barcode renderer="img" value={value || 'EMPTY'} width={large ? 2 : 1.2} height={large ? 60 : 35} fontSize={large ? 14 : 10} margin={0} background="#ffffff" lineColor="#0f172a" />
+      <div className={`bg-white p-2 border border-black rounded ${large ? 'shadow-sm' : ''} inline-block`}>
+        <Barcode renderer="img" value={value || 'EMPTY'} width={large ? 2 : 1.2} height={large ? 60 : 35} fontSize={large ? 14 : 10} margin={0} background="#ffffff" lineColor="#000000" />
       </div>
     );
   };
@@ -274,15 +274,10 @@ export default function QrView({
   // -------------------------------------------------------------
   // 1. DETAIL SCAN VIEW DESIGN
   // -------------------------------------------------------------
-  if (currentSubView === 'detail' && scannedProduct) {
-    const productImages: Record<string, string> = {
-      'KBH-GRC-D6': 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&q=80&w=400',
-      'KBH-ENM-D4': 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&q=80&w=400',
-      'LSP-BTN-C30': 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&q=80&w=400',
-      'RST-BTN-MIN': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400',
-    };
+  let viewContent = null;
 
-    return (
+  if (currentSubView === 'detail' && scannedProduct) {
+    viewContent = (
       <div className="space-y-6 max-w-4xl mx-auto font-sans text-xs">
         {/* Title action bar */}
         <div className="flex items-center justify-between pb-3 border-b">
@@ -304,15 +299,10 @@ export default function QrView({
           {/* Col 1 Left: Visual Photo & Stock Meter */}
           <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
             <div className="aspect-video w-full overflow-hidden bg-slate-50 border rounded-xl relative">
-              <img
-                src={productImages[scannedProduct.sku] || 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=400'}
-                alt={scannedProduct.name}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-              <span className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/80 text-white rounded font-mono text-[9px] font-bold">
-                Photo Asset
-              </span>
+              <div className="flex flex-col items-center justify-center w-full h-full text-slate-300">
+                <Package size={48} className="mb-2" />
+                <span className="text-[10px] font-medium">No Image Available</span>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -323,42 +313,19 @@ export default function QrView({
                 </span>
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   style={{ width: `${Math.min((scannedProduct.stock / (scannedProduct.minStock * 4)) * 100, 100)}%` }}
-                  className={`h-full rounded-full ${
-                    scannedProduct.stock <= scannedProduct.minStock ? 'bg-amber-500' : 'bg-cyan-500'
-                  }`}
+                  className={`h-full rounded-full ${scannedProduct.stock <= scannedProduct.minStock ? 'bg-amber-500' : 'bg-cyan-500'
+                    }`}
                 />
               </div>
-              
+
               <div className="flex justify-between items-center bg-slate-50 p-2 border.rounded-lg border-dashed border-slate-200 mt-2 text-[10px]">
                 <span className="text-slate-400">Min Stock Safety:</span>
                 <span className="font-mono font-bold text-slate-705">{scannedProduct.minStock} {scannedProduct.unit}</span>
               </div>
 
-              {/* Adjust stock quick simulation on scan result screen */}
-              <div className="pt-2 flex gap-1 bg-slate-55 p-1 rounded-md border text-[10px]">
-                <button
-                  onClick={() => {
-                    handleUpdateProductStock(scannedProduct.sku, 10);
-                  }}
-                  className="flex-1 py-1.5 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded font-bold transition-all text-center"
-                >
-                  +10 Reorder
-                </button>
-                <button
-                  onClick={() => {
-                    if (scannedProduct.stock >= 5) {
-                      handleUpdateProductStock(scannedProduct.sku, -5);
-                    } else {
-                      onTriggerNotification('Gagal: Stok tidak mencukupi!');
-                    }
-                  }}
-                  className="flex-1 py-1.5 bg-rose-50 text-rose-800 hover:bg-rose-150 rounded font-bold transition-all text-center"
-                >
-                  -5 Distribusi
-                </button>
-              </div>
+              {/* Actions removed */}
             </div>
           </div>
 
@@ -394,7 +361,7 @@ export default function QrView({
                   <MapPin size={14} className="text-cyan-500" />
                   <span>{scannedProduct.location}</span>
                 </strong>
-                <span className="text-[9px] text-slate-400">Workshop & Gudang Cabang Sda</span>
+                <span className="text-[9px] text-slate-400">Posisi Gudang / Rak</span>
               </div>
             </div>
 
@@ -402,24 +369,15 @@ export default function QrView({
             <div className="space-y-1.5 text-slate-500 text-[11px] leading-relaxed">
               <strong className="text-slate-700 uppercase font-bold text-[10px] block">Deskripsi Teknis Material:</strong>
               <p>
-                Produk pracetak beton {companyProfile?.name || 'CV Beton Agung'} diproduksi menggunakan formula pasir Lumajang super dipadukan semen Portland kualitas tinggi SNI. Diperkuat dengan besi wiremesh M8 antikarat di dalam cetakannya. Mampu menahan beban cuaca eksternal dan memiliki estetika relief yang sangat presisi, dipastikan lulus uji QA laboratorium sipil {companyProfile?.name || 'CV Beton Agung'}.
+                {scannedProduct.description || 'Tidak ada deskripsi material yang tersedia.'}
               </p>
             </div>
 
             {/* Short Stock Movement history loop */}
             <div className="pt-2">
               <strong className="text-slate-750 uppercase font-bold text-[10px] tracking-widest font-mono text-slate-400 block mb-2">Riwayat Alur Logistik Singkat</strong>
-              <div className="space-y-1.5 border-l border-slate-200 pl-4 ml-1">
-                <div className="relative text-[10px]">
-                  <span className="absolute -left-[21px] top-0.5 w-2 h-2 bg-emerald-500 rounded-full" />
-                  <p className="text-slate-700 font-bold">Produk Masuk Gudang (Inward)</p>
-                  <span className="text-slate-400 text-[9px] font-mono block">28 Mei - Referensi PO-012 | Kuantitas: +150</span>
-                </div>
-                <div className="relative text-[10px]">
-                  <span className="absolute -left-[21px] top-0.5 w-2 h-2 bg-rose-500 rounded-full" />
-                  <p className="text-slate-700 font-bold">Pengiriman Material ke Sidoarjo (Outward)</p>
-                  <span className="text-slate-400 text-[9px] font-mono block">29 Mei - Referensi SO-088 | Kuantitas: -350</span>
-                </div>
+              <div className="text-slate-400 text-center py-4 border border-dashed rounded-lg bg-slate-50 text-[10px]">
+                Belum ada data riwayat logistik yang terhubung untuk produk ini.
               </div>
             </div>
           </div>
@@ -437,7 +395,7 @@ export default function QrView({
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
-    return (
+    viewContent = (
       <div className="space-y-6">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
@@ -495,6 +453,12 @@ export default function QrView({
                       >
                         Lihat Detail
                       </button>
+                      <button
+                        onClick={() => setShowQrModal(prod)}
+                        className="px-2.5 py-1 text-[10px] bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-bold rounded border border-cyan-200"
+                      >
+                        Cetak Barcode
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -543,7 +507,7 @@ export default function QrView({
   // 3. SCANNER DESIGN
   // -------------------------------------------------------------
   if (currentSubView === 'scanner') {
-    return (
+    viewContent = (
       <div className="space-y-6 max-w-xl mx-auto font-sans text-xs">
         {/* Top Visual panel */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
@@ -566,33 +530,92 @@ export default function QrView({
           />
         </div>
 
-        {/* Dynamic testing list of triggers */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <p className="text-[10px] uppercase font-mono font-bold text-slate-400 tracking-wider mb-3">Pindai Cepat (Untuk Testing)</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {products.slice(0, 4).map((p, pIdx) => (
-              <button
-                key={pIdx}
-                disabled={!!scanTriggered}
-                onClick={() => {
-                  onTriggerNotification(`Berhasil memindai kode: ${p.qrValue || p.sku}`);
-                  onNavigateSubView('detail', p.qrValue || p.sku);
-                }}
-                className="p-3 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 hover:border-slate-350 rounded-xl transition-all shadow-sm text-left flex items-center justify-between gap-1"
-              >
-                <div>
-                  <span className="font-mono text-[9px] text-cyan-600 font-black">{p.qrValue || p.sku}</span>
-                  <strong className="text-slate-850 block mt-0.5 truncate max-w-[120px]">{p.name}</strong>
-                </div>
-                {drawBarcode(p.qrValue || p.sku)}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     );
   }
 
-  return null;
+  return (
+    <>
+      {viewContent}
+
+      {/* Modal Cetak Barcode */}
+      {showQrModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm">Cetak Barcode Label</h3>
+              <button onClick={() => setShowQrModal(null)} className="text-slate-400 hover:text-rose-500">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 flex flex-col items-center justify-center space-y-4 bg-slate-50">
+              <div ref={stickerRef} className="bg-white p-5 rounded-xl border-2 border-black inline-flex flex-col items-center justify-center" style={{ width: '240px' }}>
+                
+                <h4 className="font-black text-black text-[12px] uppercase tracking-widest mb-3 mt-1">
+                  {companyProfile?.name || 'CV Beton Agung'}
+                </h4>
+                
+                <div className="bg-white p-1.5 rounded-lg border-2 border-black mb-3">
+                  {drawBarcode(showQrModal.qrValue || showQrModal.sku, true)}
+                </div>
+                
+                <div className="w-full border-t-2 border-dashed border-black pt-2.5 text-center">
+                  <p className="font-bold text-[11px] text-black leading-snug line-clamp-2">
+                    {showQrModal.name}
+                  </p>
+                  <p className="text-[10px] font-mono font-bold text-black mt-1 uppercase tracking-widest">
+                    {showQrModal.category}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex gap-2 justify-end bg-slate-50">
+              <button
+                onClick={handleDownloadPng}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
+              >
+                <Download size={16} />
+                <span>Download</span>
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold transition-colors shadow-sm shadow-cyan-600/20"
+              >
+                <Printer size={16} />
+                <span>Print Stiker</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden container for print Product quick action */}
+      <div className="hidden">
+        <div ref={hiddenStickerRef} className="bg-white p-5 rounded-xl border-2 border-black inline-flex flex-col items-center justify-center" style={{ width: '240px' }}>
+          
+          <h4 className="font-black text-black text-[12px] uppercase tracking-widest mb-3 mt-1">
+            {companyProfile?.name || 'CV Beton Agung'}
+          </h4>
+          
+          <div className="bg-white p-1.5 rounded-lg border-2 border-black mb-3">
+            {printProduct && drawBarcode(printProduct.qrValue || printProduct.sku, true)}
+          </div>
+          
+          {printProduct && (
+            <div className="w-full border-t-2 border-dashed border-black pt-2.5 text-center">
+              <p className="font-bold text-[11px] text-black leading-snug line-clamp-2">
+                {printProduct.name}
+              </p>
+              <p className="text-[10px] font-mono font-bold text-black mt-1 uppercase tracking-widest">
+                {printProduct.category}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
