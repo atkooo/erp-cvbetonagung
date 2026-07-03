@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download, Bluetooth } from 'lucide-react';
-import { FaCarSide, FaTruck } from 'react-icons/fa6';
+import { ShoppingCart, Plus, Minus, Trash2, Search, Package, CheckCircle2, User, MapPin, Maximize, Minimize, Download, Bluetooth, Car, Truck } from 'lucide-react';
 import { apiClient } from '../../../services/api';
 import { salesApi } from '../api';
 import type { Product, Customer } from '../../../types';
@@ -40,8 +39,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [amountPaid, setAmountPaid] = useState<string>('');
-  
-  const [globalDiscountType, setGlobalDiscountType] = useState<'percentage'|'nominal'>('nominal');
+
+  const [globalDiscountType, setGlobalDiscountType] = useState<'percentage' | 'nominal'>('nominal');
   const [globalDiscountValue, setGlobalDiscountValue] = useState<string>('');
 
   const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
@@ -218,7 +217,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
-        
+
         let baseDiscount = 0;
         if (item.product.discount_type === 'percentage') {
           const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');

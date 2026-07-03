@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, User, Plus, Minus, Trash2, CheckCircle2, Edit2 } from 'lucide-react';
-import { FaCarSide, FaTruck } from 'react-icons/fa6';
+import { ShoppingCart, User, Plus, Minus, Trash2, CheckCircle2, Edit2, Car, Truck } from 'lucide-react';
 import SearchableSelect from '../../../../components/SearchableSelect';
 
 interface PosCartSidebarProps {
@@ -130,9 +129,9 @@ export default function PosCartSidebar({
                     className="mt-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors bg-slate-100 hover:bg-slate-200 text-slate-600"
                   >
                     {item.fulfillment_type === 'take_away' ? (
-                      <><FaCarSide size={12} className="text-emerald-600" /> Bawa Sendiri</>
+                      <><Car size={16} className="text-emerald-600" /> Bawa Sendiri</>
                     ) : (
-                      <><FaTruck size={12} className="text-indigo-500" /> Diantar</>
+                      <><Truck size={16} className="text-indigo-500" /> Diantar</>
                     )}
                   </button>
 

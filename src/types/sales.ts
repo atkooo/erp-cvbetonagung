@@ -3,87 +3,126 @@
 export interface SalesOrder {
   id: string;
   orderNumber: string;
-  quotationNumber?: string;
+  quotationId?: string | null;
   customerId?: string;
-  customerName: string;
-  date: string;
+  orderDate: string;
   total: number;
-  status: 'Draft' | 'Diproses' | 'Disetujui' | 'Selesai' | 'Dibatalkan';
+  status: string; // Draft, Diproses, Disetujui, Selesai, Dibatalkan
   source?: 'erp' | 'pos';
-  notes?: string;
+  notes?: string | null;
   items: {
-    id?: string; // Add id to items for matching with DO items
-    productId?: string;
-    productName: string;
-    pieceCount?: number;
-    length?: number;
-    specification?: string;
-    description?: string;
+    id?: string;
+    productId: string;
+    description?: string | null;
+    pieceCount?: number | null;
+    length?: number | null;
+    specification?: string | null;
     quantity: number;
-    price: number;
-    discountAmount?: number;
-    unit?: string;
+    unitPrice: number;
+    discountAmount?: number | string | null;
+    subtotal?: number;
+    product?: {
+      id: string;
+      sku: string;
+      name: string;
+      unit?: {
+        code: string;
+        name: string;
+      };
+    };
   }[];
   globalDiscountType?: 'percentage' | 'nominal' | null;
-  globalDiscountValue?: number;
-  globalDiscountAmount?: number;
-  hasPaidInvoice?: boolean;
-  hasInvoice?: boolean;
+  globalDiscountValue?: number | string | null;
+  globalDiscountAmount?: number | string | null;
+  customer?: {
+    id: string;
+    name: string;
+  };
+  quotation?: {
+    id: string;
+    quotationNumber: string;
+  };
+  invoices?: {
+    id: string;
+    paidAmount: string | number;
+  }[];
   deliveryOrders?: DeliveryOrder[];
 }
 
 export interface Quotation {
   id: string;
-  quoteNumber: string;
-  customerId?: string;
-  customerName: string;
-  date: string;
+  quotationNumber: string;
+  customerId: string;
+  quotationDate: string;
   validUntil: string;
   total: number;
-  status: 'Draft' | 'Terkirim' | 'Disetujui' | 'Ditolak';
-  notes?: string;
+  status: string; // Draft, Terkirim, Disetujui, Ditolak
+  notes?: string | null;
   items: {
-    productId?: string;
-    productName: string;
-    pieceCount?: number;
-    length?: number;
-    specification?: string;
-    description?: string;
+    id?: string;
+    productId: string;
+    description?: string | null;
+    pieceCount?: number | null;
+    length?: number | null;
+    specification?: string | null;
     quantity: number;
-    price: number;
-    discountAmount?: number;
-    unit?: string;
+    unitPrice: number;
+    discountAmount?: number | string | null;
+    subtotal?: number;
+    product?: {
+      id: string;
+      sku: string;
+      name: string;
+      unit?: {
+        code: string;
+        name: string;
+      };
+    };
   }[];
   globalDiscountType?: 'percentage' | 'nominal' | null;
-  globalDiscountValue?: number;
-  globalDiscountAmount?: number;
+  globalDiscountValue?: number | string | null;
+  globalDiscountAmount?: number | string | null;
+  customer?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface InvoiceItem {
   id: string;
   productId?: string;
-  productName: string;
   description?: string;
   pieceCount?: number;
   length?: number;
-  unit?: string;
   quantity: number;
   unitPrice: number;
   subtotal: number;
+  product?: {
+    id: string;
+    name: string;
+    unit?: {
+      name: string;
+    };
+  };
 }
 
 export interface Invoice {
   id: string;
   invoiceNumber: string;
   salesOrderId?: string;
-  salesOrderNumber?: string;
-  customerName: string;
-  customerPhone?: string;
-  date: string;
+  salesOrder?: {
+    id: string;
+    orderNumber: string;
+  };
+  customer?: {
+    name: string;
+    phone?: string;
+  };
+  invoiceDate: string;
   dueDate: string;
   total: number;
   paidAmount: number;
-  status: 'Belum Lunas' | 'Sebagian Dibayar' | 'Lunas' | 'Overdue';
+  status: string; // Belum Lunas, Sebagian Dibayar, Lunas, Overdue
   items?: InvoiceItem[];
 }
 
@@ -92,7 +131,7 @@ export interface Payment {
   paymentNumber: string;
   invoiceNumber: string;
   customerName: string;
-  date: string;
+  paymentDate: string;
   method: 'Cash' | 'Transfer' | 'QRIS';
   amount: number;
   status: 'Verified' | 'Pending' | 'Gagal';
@@ -100,24 +139,41 @@ export interface Payment {
 
 export interface DeliveryOrderItem {
   id: string;
+  deliveryOrderId: string;
+  salesOrderItemId: string | null;
   productId: string;
-  productName: string;
-  productSku: string;
   quantity: number;
-  length?: number;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+    unit?: {
+      code: string;
+      name: string;
+    };
+  };
+  salesOrderItem?: {
+    length?: number | null;
+  };
 }
 
 export interface DeliveryOrder {
   id: string;
   deliveryNumber: string;
   salesOrderId: string;
-  salesOrderNumber?: string;
   customerId: string;
-  customerName?: string;
-  deliveryDate: string;
-  receivedAt?: string;
-  receiverName?: string;
-  status: 'Draft' | 'Siap Muat' | 'Dikirim' | 'Diterima' | 'Dibatalkan';
-  notes?: string;
+  deliveryDate: string | null;
+  receivedAt: string | null;
+  receiverName: string | null;
+  status: 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+  notes: string | null;
+  salesOrder?: {
+    id: string;
+    orderNumber: string;
+  };
+  customer?: {
+    id: string;
+    name: string;
+  };
   items?: DeliveryOrderItem[];
 }

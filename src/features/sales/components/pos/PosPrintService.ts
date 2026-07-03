@@ -204,9 +204,8 @@ export const downloadReceipt = async (
 
     await new Promise(resolve => setTimeout(resolve, 150));
 
-    const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
-    const dataUrl = canvas.toDataURL('image/png');
+    const { toPng } = await import('html-to-image');
+    const dataUrl = await toPng(container, { pixelRatio: 2, backgroundColor: '#ffffff' });
 
     const { jsPDF } = await import('jspdf');
 
