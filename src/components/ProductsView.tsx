@@ -636,7 +636,7 @@ export default function ProductsView({
       {/* Modal Add Product Form */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[95vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
             {/* Header */}
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -660,298 +660,303 @@ export default function ProductsView({
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Unit Bisnis / Perusahaan *
-                  </label>
-                  <select
-                    required
-                    value={businessUnit}
-                    onChange={(e) => setBusinessUnit(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="CV Beton Agung">CV Beton Agung</option>
-                    <option value="Griya Flora">Griya Flora</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Nomor SKU (AUTO GENERATED)
-                  </label>
-                  <input
-                    type="text"
-                    value={sku}
-                    readOnly
-                    disabled
-                    placeholder="AUTO GENERATED"
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-lg text-xs font-mono focus:outline-none cursor-not-allowed"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Kategori Konstruksi
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Barcode / QR Value (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    value={qrValue}
-                    onChange={(e) => setQrValue(e.target.value)}
-                    placeholder="Scan barcode pabrik..."
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Tipe Produk
-                  </label>
-                  <select
-                    value={type}
-                    onChange={(e) => {
-                      const newType = e.target.value as any;
-                      setType(newType);
-                      const newFilteredUnits = visibleUnits.filter(
-                        (u) =>
-                          !u.type || u.type === "both" || u.type === newType,
-                      );
-                      if (
-                        newFilteredUnits.length > 0 &&
-                        !newFilteredUnits.find((u) => u.id === unit)
-                      ) {
-                        setUnit(newFilteredUnits[0].id);
-                      } else if (newFilteredUnits.length === 0) {
-                        setUnit("");
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
-                  >
-                    <option value="raw_material">
-                      Raw Material (Bahan Baku)
-                    </option>
-                    <option value="finished_good">
-                      Finished Good (Barang Jadi)
-                    </option>
-                    {/* <option value="service">Service (Jasa)</option> */}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Deskripsi / Nama Varian Item
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Kubah GRC / Tiang Serut"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50">
-                <div className="space-y-1">
-                  <label className="flex items-center gap-2 cursor-pointer mt-1">
-                    <input
-                      type="checkbox"
-                      checked={isCustomizable}
-                      onChange={(e) => setIsCustomizable(e.target.checked)}
-                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                    />
-                    <span className="text-[11px] font-bold text-indigo-900 uppercase">
-                      Barang Bisa Di-Custom
-                    </span>
-                  </label>
-                  <p className="text-[9px] text-indigo-600/70 ml-6 leading-tight">
-                    Centang jika ukuran produk bisa dipesan khusus oleh
-                    pelanggan di Sales Order.
-                  </p>
-                </div>
-                {isCustomizable && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-indigo-900 uppercase">
-                      Metode Hitung Tagihan
-                    </label>
-                    <select
-                      value={pricingMethod}
-                      onChange={(e) => setPricingMethod(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-indigo-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-indigo-900"
-                    >
-                      <option value="per_item">Harga Per Batang / Pcs</option>
-                      <option value="per_dimension">
-                        Harga Per Meter / Dimensi
-                      </option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Harga Pokok Modal
-                  </label>
-                  <CurrencyInput
-                    value={costPrice || ""}
-                    onValueChange={(val) => setCostPrice(Number(val))}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Harga Jual Pasar (Rp)
-                  </label>
-                  <CurrencyInput
-                    required
-                    value={sellingPrice || ""}
-                    onValueChange={(val) => setSellingPrice(Number(val))}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3.5 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100/50">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-emerald-900 uppercase">
-                    Master Diskon
-                  </label>
-                  <select
-                    value={discountId}
-                    onChange={(e) => setDiscountId(e.target.value)}
-                    className="w-full px-3 py-2 border border-emerald-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-emerald-900"
-                  >
-                    <option value="">Tanpa Diskon (Pilih Diskon)</option>
-                    {discounts.filter(d => d.is_active).map((discount) => (
-                      <option key={discount.id} value={discount.id}>
-                        {discount.name} ({discount.type === 'percentage' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">
-                    Satuan
-                  </label>
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className={`w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${filteredUnits.length === 0 ? "border-red-300 bg-red-50" : ""}`}
-                    disabled={filteredUnits.length === 0}
-                  >
-                    {filteredUnits.length > 0 ? (
-                      filteredUnits.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.code})
-                        </option>
-                      ))
-                    ) : (
-                      <option value="">Tidak ada satuan</option>
-                    )}
-                  </select>
-                  {filteredUnits.length === 0 ? (
-                    <p className="text-[10px] text-red-600 font-semibold mt-1">
-                      Belum ada master satuan yang cocok untuk tipe produk ini.
-                    </p>
-                  ) : units.length === 0 ? (
-                    <p className="text-[10px] text-amber-600 font-semibold mt-1">
-                      Master satuan belum tersedia di database.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">
-                    Batas Minim Alaram
-                  </label>
-                  <input
-                    type="number"
-                    value={minStock || ""}
-                    onChange={(e) => setMinStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-              </div>
-
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-600 uppercase">
-                  Foto Produk (Opsional)
-                </label>
-                <div
-                  className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors cursor-pointer flex items-center justify-center overflow-hidden"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {imagePreview ? (
-                    <>
-                      <img
-                        src={imagePreview}
-                        alt="preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImageFile(null);
-                          setImagePreview(null);
-                          setIsImageDeleted(true);
-                          if (fileInputRef.current)
-                            fileInputRef.current.value = "";
-                        }}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+            <form onSubmit={handleSubmit} className="p-5 flex flex-col flex-1 overflow-hidden text-xs">
+              <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Kolom Kiri: Info Dasar & Harga */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Unit Bisnis / Perusahaan *
+                      </label>
+                      <select
+                        required
+                        value={businessUnit}
+                        onChange={(e) => setBusinessUnit(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
                       >
-                        <X size={12} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <Camera size={28} className="text-slate-300" />
-                      <span className="text-[11px] font-medium">
-                        Klik untuk upload foto produk
-                      </span>
-                      <span className="text-[10px]">
-                        JPG, PNG, WebP · maks 2MB
-                      </span>
+                        <option value="CV Beton Agung">CV Beton Agung</option>
+                        <option value="Griya Flora">Griya Flora</option>
+                      </select>
                     </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/jpg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setImageFile(file);
-                      setImagePreview(URL.createObjectURL(file));
-                    }}
-                  />
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Nomor SKU (AUTO GENERATED)
+                      </label>
+                      <input
+                        type="text"
+                        value={sku}
+                        readOnly
+                        disabled
+                        placeholder="AUTO GENERATED"
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-100 text-slate-500 rounded-lg text-xs font-mono focus:outline-none cursor-not-allowed"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Kategori Konstruksi
+                      </label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Barcode / QR Value (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        value={qrValue}
+                        onChange={(e) => setQrValue(e.target.value)}
+                        placeholder="Scan barcode pabrik..."
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Tipe Produk
+                      </label>
+                      <select
+                        value={type}
+                        onChange={(e) => {
+                          const newType = e.target.value as any;
+                          setType(newType);
+                          const newFilteredUnits = visibleUnits.filter(
+                            (u) =>
+                              !u.type || u.type === "both" || u.type === newType,
+                          );
+                          if (
+                            newFilteredUnits.length > 0 &&
+                            !newFilteredUnits.find((u) => u.id === unit)
+                          ) {
+                            setUnit(newFilteredUnits[0].id);
+                          } else if (newFilteredUnits.length === 0) {
+                            setUnit("");
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium"
+                      >
+                        <option value="raw_material">Raw Material (Bahan Baku)</option>
+                        <option value="finished_good">Finished Good (Barang Jadi)</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Deskripsi / Nama Varian Item
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Contoh: Kubah GRC / Tiang Serut"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Harga Pokok Modal
+                      </label>
+                      <CurrencyInput
+                        value={costPrice || ""}
+                        onValueChange={(val) => setCostPrice(Number(val))}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Harga Jual Pasar (Rp)
+                      </label>
+                      <CurrencyInput
+                        required
+                        value={sellingPrice || ""}
+                        onValueChange={(val) => setSellingPrice(Number(val))}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kolom Kanan: Pengaturan Khusus, Satuan, & Foto */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3.5 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50">
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-2 cursor-pointer mt-1">
+                        <input
+                          type="checkbox"
+                          checked={isCustomizable}
+                          onChange={(e) => setIsCustomizable(e.target.checked)}
+                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                        />
+                        <span className="text-[11px] font-bold text-indigo-900 uppercase">
+                          Barang Bisa Di-Custom
+                        </span>
+                      </label>
+                      <p className="text-[9px] text-indigo-600/70 ml-6 leading-tight">
+                        Centang jika ukuran produk bisa dipesan khusus oleh
+                        pelanggan di Sales Order.
+                      </p>
+                    </div>
+                    {isCustomizable && (
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-indigo-900 uppercase">
+                          Metode Hitung Tagihan
+                        </label>
+                        <select
+                          value={pricingMethod}
+                          onChange={(e) => setPricingMethod(e.target.value as any)}
+                          className="w-full px-3 py-2 border border-indigo-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-indigo-900"
+                        >
+                          <option value="per_item">Harga Per Batang / Pcs</option>
+                          <option value="per_dimension">Harga Per Meter / Dimensi</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3.5 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100/50">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-900 uppercase">
+                        Master Diskon
+                      </label>
+                      <select
+                        value={discountId}
+                        onChange={(e) => setDiscountId(e.target.value)}
+                        className="w-full px-3 py-2 border border-emerald-200 bg-white focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-emerald-900"
+                      >
+                        <option value="">Tanpa Diskon (Pilih Diskon)</option>
+                        {discounts.filter(d => d.is_active).map((discount) => (
+                          <option key={discount.id} value={discount.id}>
+                            {discount.name} ({discount.type === 'percentage' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600">
+                        Satuan
+                      </label>
+                      <select
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                        className={`w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 ${filteredUnits.length === 0 ? "border-red-300 bg-red-50" : ""}`}
+                        disabled={filteredUnits.length === 0}
+                      >
+                        {filteredUnits.length > 0 ? (
+                          filteredUnits.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({u.code})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Tidak ada satuan</option>
+                        )}
+                      </select>
+                      {filteredUnits.length === 0 ? (
+                        <p className="text-[10px] text-red-600 font-semibold mt-1">
+                          Belum ada master satuan yang cocok untuk tipe produk ini.
+                        </p>
+                      ) : units.length === 0 ? (
+                        <p className="text-[10px] text-amber-600 font-semibold mt-1">
+                          Master satuan belum tersedia di database.
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600">
+                        Batas Minim Alaram
+                      </label>
+                      <input
+                        type="number"
+                        value={minStock || ""}
+                        onChange={(e) => setMinStock(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Foto Produk (Opsional)
+                    </label>
+                    <div
+                      className="relative w-full h-36 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-cyan-400 hover:bg-cyan-50/30 transition-colors cursor-pointer flex items-center justify-center overflow-hidden"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {imagePreview ? (
+                        <>
+                          <img
+                            src={imagePreview}
+                            alt="preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setImageFile(null);
+                              setImagePreview(null);
+                              setIsImageDeleted(true);
+                              if (fileInputRef.current)
+                                fileInputRef.current.value = "";
+                            }}
+                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                          >
+                            <X size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                          <Camera size={28} className="text-slate-300" />
+                          <span className="text-[11px] font-medium">
+                            Klik untuk upload foto produk
+                          </span>
+                          <span className="text-[10px]">
+                            JPG, PNG, WebP · maks 2MB
+                          </span>
+                        </div>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <div className="pt-4 mt-2 border-t border-slate-100 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
