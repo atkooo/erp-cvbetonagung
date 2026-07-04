@@ -114,7 +114,7 @@ export default function InventoryView({
     setIsLoading(true);
     setErrorMessage(null);
     const fetchId = ++fetchIdRef.current;
-    
+
     try {
       const needsProducts =
         activeTab === "stok" || activeTab === "masuk" || activeTab === "keluar";
@@ -128,58 +128,61 @@ export default function InventoryView({
 
       const [prods, stocks, movs, grns, locRes, pos, sos, emps, whRes] =
         await Promise.all([
-          needsProducts ? productsApi.getProducts() : Promise.resolve(rawProducts),
+          needsProducts ? productsApi.getProducts() : Promise.resolve(null),
           needsStocks
             ? inventoryApi.getProductStocks()
-            : Promise.resolve(productStocks),
+            : Promise.resolve(null),
           needsHistory
             ? inventoryApi.getStockMovements()
             : needsOutbound
               ? inventoryApi.getStockOuts()
-              : Promise.resolve([]),
+              : Promise.resolve(null),
           needsInbound
             ? purchasingApi.getGoodsReceiptNotes()
-            : Promise.resolve([]),
+            : Promise.resolve(null),
           needsLocations
             ? apiClient.get<{ data: LocationDto[] }>(
-                "/master-data/storage-locations",
-              )
-            : Promise.resolve({ data: locations }),
+              "/master-data/storage-locations",
+            )
+            : Promise.resolve(null),
           needsInbound
             ? purchasingApi.getPurchaseOrders()
-            : Promise.resolve([]),
-          needsOutbound ? salesApi.getSalesOrders() : Promise.resolve([]),
+            : Promise.resolve(null),
+          needsOutbound ? salesApi.getSalesOrders() : Promise.resolve(null),
           needsInbound || needsOutbound
             ? employeesApi.getEmployees()
-            : Promise.resolve([]),
-          needsLocations 
+            : Promise.resolve(null),
+          needsLocations
             ? apiClient.get<{ data: any[] }>('/master-data/warehouses')
-            : Promise.resolve({ data: warehouses }),
+            : Promise.resolve(null),
         ]);
 
       if (fetchId !== fetchIdRef.current) return;
 
-      setRawProducts(prods);
-      setWarehouses(whRes.data);
-      setProductStocks(stocks);
-      setLocations(locRes.data);
-      setStockMovements(movs);
-      setGoodsReceipts(grns);
-      setPurchaseOrders(pos);
-      setSalesOrders(sos);
-      setEmployees(emps);
-
-      if (prods.length > 0) {
-        setInManualItems((prev) =>
-          prev.length > 0 && prev[0].sku
-            ? prev
-            : [{ sku: prods[0].sku, qty: 0 }],
-        );
-        setOutSku((prev) => prev || prods[0].sku);
+      if (prods !== null) {
+        setRawProducts(prods);
+        if (prods.length > 0) {
+          setInManualItems((prev) =>
+            prev.length > 0 && prev[0].sku
+              ? prev
+              : [{ sku: prods[0].sku, qty: 0 }],
+          );
+          setOutSku((prev) => prev || prods[0].sku);
+        }
       }
-      if (locRes.data.length > 0) {
-        setInLocationId((prev) => prev || locRes.data[0].id);
+      if (whRes !== null) setWarehouses(whRes.data);
+      if (stocks !== null) setProductStocks(stocks);
+      if (locRes !== null) {
+        setLocations(locRes.data);
+        if (locRes.data.length > 0) {
+          setInLocationId((prev) => prev || locRes.data[0].id);
+        }
       }
+      if (movs !== null) setStockMovements(movs);
+      if (grns !== null) setGoodsReceipts(grns);
+      if (pos !== null) setPurchaseOrders(pos);
+      if (sos !== null) setSalesOrders(sos);
+      if (emps !== null) setEmployees(emps);
     } catch (err) {
       if (fetchId !== fetchIdRef.current) return;
       setErrorMessage(
@@ -190,7 +193,7 @@ export default function InventoryView({
         setIsLoading(false);
       }
     }
-  }, [activeTab, rawProducts, productStocks, locations, warehouses]);
+  }, [activeTab]);
 
   React.useEffect(() => {
     loadData();
@@ -237,7 +240,7 @@ export default function InventoryView({
     const pendingPoId = sessionStorage.getItem('action_receive_po');
     if (pendingPoId) {
       sessionStorage.removeItem('action_receive_po');
-      
+
       const checkAndOpen = setInterval(() => {
         setPurchaseOrders((currentPos) => {
           if (currentPos.length > 0) {
@@ -253,7 +256,7 @@ export default function InventoryView({
           return currentPos;
         });
       }, 500);
-      
+
       setTimeout(() => clearInterval(checkAndOpen), 10000);
     }
   }, []);
@@ -285,7 +288,7 @@ export default function InventoryView({
           : totalStock <= p.minStock
             ? "Menipis"
             : "Aman";
-      
+
       const locationNames = stockRows
         .filter((s) => Number(s.quantity || 0) > 0)
         .map((s) => s.location?.name)
@@ -612,7 +615,7 @@ export default function InventoryView({
   const soOptions = salesOrders.map((so) => ({
     id: so.id,
     number: so.orderNumber,
-    label: so.customerName,
+    label: so.customer?.name || '',
     subLabel: so.status,
   }));
 

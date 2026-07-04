@@ -61,7 +61,13 @@ export const printReceipt = (
       <table class="mb-2" style="font-size: 11px;">
         ${info.items.map((item: any) => {
     const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-    const subtotal = price * item.quantity;
+    const discountAmount = item.discount_amount || 0;
+    const subtotal = (price * item.quantity) - discountAmount;
+    const hasActiveDiscount = item.product.discount && (item.product.discount.is_active === true || item.product.discount.is_active === 1);
+    const discountType = hasActiveDiscount ? item.product.discount.type : null;
+    const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
+    const discountLabel = discountAmount > 0 ? `<div style="font-size: 10px; color: #555; margin-top: 2px;">Diskon ${discountType === 'percentage' ? '(' + parseFloat(discountValue) + '%)' : ''}: -Rp ${new Intl.NumberFormat('id-ID').format(discountAmount)}</div>` : '';
+    
     const maxStock = parseFloat(stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id)?.quantity || '0');
     const isCustom = Number((item.product as any).is_customizable);
     const indentQty = isCustom ? item.quantity : Math.max(0, item.quantity - maxStock);
@@ -71,6 +77,7 @@ export const printReceipt = (
               <td colspan="3">
                 ${item.product.name}
                 ${indentText}
+                ${discountLabel}
               </td>
             </tr>
             <tr>
@@ -86,9 +93,19 @@ export const printReceipt = (
       
       <table class="mb-2 font-bold" style="font-size: 11px;">
         <tr>
-          <td>TOTAL</td>
+          <td>SUBTOTAL</td>
           <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
         </tr>
+        ${info.globalDiscountAmount > 0 ? `
+        <tr>
+          <td>DISKON GLOBAL</td>
+          <td class="text-right">-Rp ${new Intl.NumberFormat('id-ID').format(info.globalDiscountAmount)}</td>
+        </tr>
+        <tr>
+          <td>GRAND TOTAL</td>
+          <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.grandTotal || info.cartTotal)}</td>
+        </tr>
+        ` : ''}
         <tr>
           <td>BAYAR (DP)</td>
           <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
@@ -155,7 +172,13 @@ export const downloadReceipt = async (
         <table class="mb-2" style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;">
           ${info.items.map((item: any) => {
       const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-      const subtotal = price * item.quantity;
+      const discountAmount = item.discount_amount || 0;
+      const subtotal = (price * item.quantity) - discountAmount;
+      const hasActiveDiscount = item.product.discount && (item.product.discount.is_active === true || item.product.discount.is_active === 1);
+      const discountType = hasActiveDiscount ? item.product.discount.type : null;
+      const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
+      const discountLabel = discountAmount > 0 ? `<div style="font-size: 10px; color: #555; margin-top: 2px;">Diskon ${discountType === 'percentage' ? '(' + parseFloat(discountValue) + '%)' : ''}: -Rp ${new Intl.NumberFormat('id-ID').format(discountAmount)}</div>` : '';
+      
       const maxStock = parseFloat(stocks.find(s => s.product_id === item.product.id && s.location_id === item.location_id)?.quantity || '0');
       const isCustom = Number((item.product as any).is_customizable);
       const indentQty = isCustom ? item.quantity : Math.max(0, item.quantity - maxStock);
@@ -165,6 +188,7 @@ export const downloadReceipt = async (
                 <td colspan="3" style="padding: 2px 0; vertical-align: top;">
                   ${item.product.name}
                   ${indentText}
+                  ${discountLabel}
                 </td>
               </tr>
               <tr>
@@ -180,9 +204,19 @@ export const downloadReceipt = async (
         
         <table class="mb-2 font-bold" style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; font-weight: 900;">
           <tr>
-            <td style="padding: 2px 0; vertical-align: top;">TOTAL</td>
+            <td style="padding: 2px 0; vertical-align: top;">SUBTOTAL</td>
             <td class="text-right" style="padding: 2px 0; vertical-align: top; text-align: right;">Rp ${new Intl.NumberFormat('id-ID').format(info.cartTotal)}</td>
           </tr>
+          ${info.globalDiscountAmount > 0 ? `
+          <tr>
+            <td style="padding: 2px 0; vertical-align: top;">DISKON GLOBAL</td>
+            <td class="text-right" style="padding: 2px 0; vertical-align: top; text-align: right;">-Rp ${new Intl.NumberFormat('id-ID').format(info.globalDiscountAmount)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 0; vertical-align: top;">GRAND TOTAL</td>
+            <td class="text-right" style="padding: 2px 0; vertical-align: top; text-align: right;">Rp ${new Intl.NumberFormat('id-ID').format(info.grandTotal || info.cartTotal)}</td>
+          </tr>
+          ` : ''}
           <tr>
             <td style="padding: 2px 0; vertical-align: top;">BAYAR (DP)</td>
             <td class="text-right" style="padding: 2px 0; vertical-align: top; text-align: right;">Rp ${new Intl.NumberFormat('id-ID').format(info.amountPaid)}</td>
@@ -333,7 +367,8 @@ export const printBluetoothReceipt = async (
 
     info.items.forEach((item: any) => {
       const price = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-      const subtotal = price * item.quantity;
+      const discountAmount = item.discount_amount || 0;
+      const subtotal = (price * item.quantity) - discountAmount;
       const maxStock = parseFloat(stocks.find((s: any) => s.product_id === item.product.id && s.location_id === item.location_id)?.quantity || '0');
       const isCustom = Number((item.product as any).is_customizable);
       const indentQty = isCustom ? item.quantity : Math.max(0, item.quantity - maxStock);
@@ -343,6 +378,15 @@ export const printBluetoothReceipt = async (
       
       if (indentQty > 0) {
         appendStr(`(Indent/PO: ${indentQty} ${item.product.unit?.name || (typeof item.product.unit === 'string' ? item.product.unit : 'Unit')})`);
+        appendBytes(lineFeed);
+      }
+      
+      if (discountAmount > 0) {
+        const hasActiveDiscount = item.product.discount && (item.product.discount.is_active === true || item.product.discount.is_active === 1);
+        const discountType = hasActiveDiscount ? item.product.discount.type : null;
+        const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
+        const discountLabel = discountType === 'percentage' ? `(${parseFloat(discountValue)}%)` : '';
+        appendStr(` Diskon ${discountLabel}: -Rp ${formatRupiahStr(discountAmount)}`);
         appendBytes(lineFeed);
       }
 
@@ -360,9 +404,19 @@ export const printBluetoothReceipt = async (
     appendBytes(lineFeed);
 
     appendBytes(boldOn);
-    const totalStr = `TOTAL              Rp ${formatRupiahStr(info.cartTotal).padStart(12)}`;
-    appendStr(totalStr.padStart(WIDTH));
+    const subtotalStr2 = `SUBTOTAL           Rp ${formatRupiahStr(info.cartTotal).padStart(12)}`;
+    appendStr(subtotalStr2.padStart(WIDTH));
     appendBytes(lineFeed);
+
+    if (info.globalDiscountAmount > 0) {
+      const globalDiscStr = `DISKON GLOBAL     -Rp ${formatRupiahStr(info.globalDiscountAmount).padStart(12)}`;
+      appendStr(globalDiscStr.padStart(WIDTH));
+      appendBytes(lineFeed);
+      
+      const grandTotalStr = `GRAND TOTAL        Rp ${formatRupiahStr(info.grandTotal || info.cartTotal).padStart(12)}`;
+      appendStr(grandTotalStr.padStart(WIDTH));
+      appendBytes(lineFeed);
+    }
 
     const bayarStr = `BAYAR (DP)         Rp ${formatRupiahStr(info.amountPaid).padStart(12)}`;
     appendStr(bayarStr.padStart(WIDTH));

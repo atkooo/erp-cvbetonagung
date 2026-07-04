@@ -38,12 +38,17 @@ export default function DiscountsView({
 
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "percentage" | "nominal">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "percentage" | "nominal"
+  >("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
 
   const fetchData = () => {
     setIsLoading(true);
-    discountsApi.getDiscounts()
+    discountsApi
+      .getDiscounts()
       .then((data) => {
         setDiscounts(data);
       })
@@ -92,10 +97,10 @@ export default function DiscountsView({
       confirmButtonText: "Ya, hapus!",
       cancelButtonText: "Batal",
       customClass: {
-        popup: 'rounded-xl',
-        confirmButton: 'px-4 py-2 text-sm rounded-lg font-medium',
-        cancelButton: 'px-4 py-2 text-sm rounded-lg font-medium'
-      }
+        popup: "rounded-xl",
+        confirmButton: "px-4 py-2 text-sm rounded-lg font-medium",
+        cancelButton: "px-4 py-2 text-sm rounded-lg font-medium",
+      },
     });
 
     if (!result.isConfirmed) return;
@@ -127,7 +132,10 @@ export default function DiscountsView({
       };
 
       if (editingDiscount) {
-        const updated = await discountsApi.updateDiscount(editingDiscount.id, payload);
+        const updated = await discountsApi.updateDiscount(
+          editingDiscount.id,
+          payload,
+        );
         setDiscounts((prev) =>
           prev.map((d) => (d.id === editingDiscount.id ? updated : d)),
         );
@@ -139,7 +147,9 @@ export default function DiscountsView({
       }
       setShowAddModal(false);
     } catch (err: any) {
-      onTriggerNotification(err.message || "Terjadi kesalahan saat menyimpan diskon");
+      onTriggerNotification(
+        err.message || "Terjadi kesalahan saat menyimpan diskon",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -148,12 +158,16 @@ export default function DiscountsView({
   // Card summary statistics
   const totalDiscounts = discounts.length;
   const activeDiscounts = discounts.filter((d) => d.is_active).length;
-  const percentageDiscounts = discounts.filter((d) => d.type === "percentage").length;
+  const percentageDiscounts = discounts.filter(
+    (d) => d.type === "percentage",
+  ).length;
   const nominalDiscounts = discounts.filter((d) => d.type === "nominal").length;
 
   // Filtered discounts
   const filteredDiscounts = discounts.filter((d) => {
-    const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = d.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || d.type === typeFilter;
     const matchesStatus =
       statusFilter === "all" ||
@@ -163,7 +177,6 @@ export default function DiscountsView({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm shadow-slate-100/50">
         <div>
@@ -171,7 +184,9 @@ export default function DiscountsView({
             <div className="p-2 bg-cyan-50 rounded-xl text-cyan-600">
               <Tag className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Master Diskon</h1>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+              Master Diskon
+            </h1>
           </div>
           <p className="text-xs text-slate-400 mt-1.5 ml-1">
             Kelola data dan pengaturan diskon harga produk
@@ -179,7 +194,7 @@ export default function DiscountsView({
         </div>
         <button
           onClick={handleOpenAddModal}
-          className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-cyan-500/20 hover:shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0 duration-200"
+          className="w-full sm:w-auto px-4 py-2.5 bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-cyan-500/20 hover:shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0 duration-200"
         >
           <Plus className="w-4 h-4" />
           <span>Tambah Diskon</span>
@@ -188,15 +203,18 @@ export default function DiscountsView({
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
         {/* Card 1: Total */}
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow duration-300">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
             <Tag className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Diskon</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">{totalDiscounts}</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Total Diskon
+            </p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">
+              {totalDiscounts}
+            </h3>
           </div>
         </div>
 
@@ -206,8 +224,12 @@ export default function DiscountsView({
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Diskon Aktif</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">{activeDiscounts}</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Diskon Aktif
+            </p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">
+              {activeDiscounts}
+            </h3>
           </div>
         </div>
 
@@ -217,8 +239,12 @@ export default function DiscountsView({
             <Percent className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tipe Persen</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">{percentageDiscounts}</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Tipe Persen
+            </p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">
+              {percentageDiscounts}
+            </h3>
           </div>
         </div>
 
@@ -228,16 +254,18 @@ export default function DiscountsView({
             <Coins className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tipe Nominal</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">{nominalDiscounts}</h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Tipe Nominal
+            </p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-0.5">
+              {nominalDiscounts}
+            </h3>
           </div>
         </div>
-
       </div>
 
       {/* Control Bar (Search & Filter) */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        
         {/* Search */}
         <div className="relative w-full md:max-w-xs">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
@@ -279,7 +307,6 @@ export default function DiscountsView({
             <option value="inactive">Nonaktif</option>
           </select>
         </div>
-
       </div>
 
       {/* Table Container */}
@@ -301,17 +328,27 @@ export default function DiscountsView({
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs text-slate-400 font-medium mt-1">Memuat data diskon...</span>
+                      <span className="text-xs text-slate-400 font-medium mt-1">
+                        Memuat data diskon...
+                      </span>
                     </div>
                   </td>
                 </tr>
               ) : filteredDiscounts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-slate-500">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-16 text-center text-slate-500"
+                  >
                     <div className="flex flex-col items-center justify-center">
                       <FolderTree className="w-12 h-12 text-slate-200 mb-3" />
-                      <p className="text-xs font-semibold text-slate-400">Tidak ada data diskon ditemukan</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Silakan tambahkan diskon baru atau sesuaikan filter pencarian Anda</p>
+                      <p className="text-xs font-semibold text-slate-400">
+                        Tidak ada data diskon ditemukan
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Silakan tambahkan diskon baru atau sesuaikan filter
+                        pencarian Anda
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -332,13 +369,15 @@ export default function DiscountsView({
                             : "bg-violet-50 text-violet-600"
                         }`}
                       >
-                        {discount.type === "percentage" ? "Persentase" : "Nominal"}
+                        {discount.type === "percentage"
+                          ? "Persentase"
+                          : "Nominal"}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-mono font-bold text-slate-700 text-xs">
-                      {discount.type === "percentage" 
-                        ? `${discount.value}%` 
-                        : `Rp ${discount.value.toLocaleString('id-ID')}`}
+                      {discount.type === "percentage"
+                        ? `${discount.value}%`
+                        : `Rp ${discount.value.toLocaleString("id-ID")}`}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -348,7 +387,9 @@ export default function DiscountsView({
                             : "bg-slate-50 text-slate-500 border-slate-100"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${discount.is_active ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${discount.is_active ? "bg-emerald-500" : "bg-slate-400"}`}
+                        ></span>
                         {discount.is_active ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
@@ -362,7 +403,9 @@ export default function DiscountsView({
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(discount.id, discount.name)}
+                          onClick={() =>
+                            handleDelete(discount.id, discount.name)
+                          }
                           className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                           title="Hapus"
                         >
@@ -382,7 +425,6 @@ export default function DiscountsView({
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2">
@@ -403,7 +445,6 @@ export default function DiscountsView({
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              
               {/* Field: Nama */}
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-slate-600 uppercase">
@@ -421,7 +462,6 @@ export default function DiscountsView({
 
               {/* Field: Tipe & Nilai (Side-by-side) */}
               <div className="grid grid-cols-2 gap-3.5">
-                
                 {/* Tipe */}
                 <div className="space-y-1">
                   <label className="block text-[11px] font-bold text-slate-600 uppercase">
@@ -429,7 +469,9 @@ export default function DiscountsView({
                   </label>
                   <select
                     value={type}
-                    onChange={(e) => setType(e.target.value as "percentage" | "nominal")}
+                    onChange={(e) =>
+                      setType(e.target.value as "percentage" | "nominal")
+                    }
                     className="w-full px-3 py-2 border border-slate-200 focus:border-cyan-500 rounded-xl text-xs focus:outline-none focus:ring-4 focus:ring-cyan-500/10 transition-all bg-slate-50/30 focus:bg-white"
                   >
                     <option value="percentage">Persentase (%)</option>
@@ -443,7 +485,6 @@ export default function DiscountsView({
                     Nilai Diskon <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    
                     {/* Prefix/Suffix helper */}
                     {type === "nominal" && (
                       <span className="absolute left-3 top-2 text-[10px] font-bold text-slate-400 select-none">
@@ -469,10 +510,8 @@ export default function DiscountsView({
                         %
                       </span>
                     )}
-
                   </div>
                 </div>
-
               </div>
 
               {/* Field: Status Aktif */}
@@ -481,9 +520,11 @@ export default function DiscountsView({
                   <label className="block text-[11px] font-bold text-slate-600 uppercase">
                     Status Aktif
                   </label>
-                  <span className="text-[10px] text-slate-400">Tentukan apakah diskon ini langsung aktif atau di-hold</span>
+                  <span className="text-[10px] text-slate-400">
+                    Tentukan apakah diskon ini langsung aktif atau di-hold
+                  </span>
                 </div>
-                
+
                 {/* Custom Toggle Switch */}
                 <button
                   type="button"
@@ -519,7 +560,6 @@ export default function DiscountsView({
                   <span>{isSubmitting ? "Menyimpan..." : "Simpan Diskon"}</span>
                 </button>
               </div>
-
             </form>
           </div>
         </div>

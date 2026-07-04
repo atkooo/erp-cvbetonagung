@@ -63,6 +63,18 @@ export default function PosProductGrid({
         <div className={`grid gap-4 ${isKioskMode ? 'grid-cols-4' : 'grid-cols-2 xl:grid-cols-3'}`}>
           {filteredProducts.map((product) => {
             const price = parseFloat(product.sellingPrice?.toString() || (product as any).selling_price?.toString() || '0');
+            const hasActiveDiscount = product.discount && (product.discount.is_active === true || product.discount.is_active === 1);
+            const discountType = hasActiveDiscount ? product.discount.type : null;
+            const discountValue = hasActiveDiscount ? product.discount.value : 0;
+            
+            let discountAmount = 0;
+            if (discountType === 'percentage') {
+              discountAmount = price * (parseFloat(discountValue) / 100);
+            } else if (discountType === 'nominal') {
+              discountAmount = parseFloat(discountValue);
+            }
+            const finalPrice = Math.max(0, price - discountAmount);
+            
             const inCart = cart.find(c => c.product.id === product.id);
             const rawImageUrl = (product as any).image_url || product.imageUrl || null;
             const imageUrl: string | null = getFileUrl(rawImageUrl);
@@ -87,6 +99,11 @@ export default function PosProductGrid({
 
                 {/* Gambar produk */}
                 <div className={`relative w-full bg-slate-100 shrink-0 h-40`}>
+                  {discountAmount > 0 && (
+                    <div className="absolute top-2 left-2 bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm z-10">
+                      {discountType === 'percentage' ? `Disc ${parseFloat(discountValue)}%` : `Disc ${formatRupiah(parseFloat(discountValue))}`}
+                    </div>
+                  )}
                   {imageUrl ? (
                     <>
                       <img
@@ -136,7 +153,14 @@ export default function PosProductGrid({
                   </div>
 
                   <div className="bg-emerald-50 px-2 py-1 rounded-lg self-start">
-                    <div className="text-emerald-700 font-black text-sm">{formatRupiah(price)}</div>
+                    {discountAmount > 0 ? (
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 text-[10px] line-through leading-none mb-1">{formatRupiah(price)}</span>
+                        <span className="text-emerald-700 font-black text-sm leading-none">{formatRupiah(finalPrice)}</span>
+                      </div>
+                    ) : (
+                      <div className="text-emerald-700 font-black text-sm">{formatRupiah(price)}</div>
+                    )}
                   </div>
                 </div>
               </div>

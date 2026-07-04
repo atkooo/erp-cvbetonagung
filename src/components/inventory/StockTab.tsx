@@ -67,7 +67,7 @@ export const StockTab: React.FC<StockTabProps> = ({
 
   return (
     <div className="pb-32 flex flex-col">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[380px]">
         <table className="w-full text-left font-sans text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
@@ -82,7 +82,9 @@ export const StockTab: React.FC<StockTabProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedProducts.map((p) => (
+            {paginatedProducts.map((p, index) => {
+              const isBottom = paginatedProducts.length > 5 && index >= paginatedProducts.length - 3;
+              return (
               <tr key={p.id} className="hover:bg-slate-50/40">
                 <td className="p-3.5 pl-5 font-mono font-bold text-slate-700">
                   {p.sku}
@@ -153,7 +155,7 @@ export const StockTab: React.FC<StockTabProps> = ({
                       </button>
 
                       {openStockActionId === p.id && (
-                        <div className="absolute right-0 mt-1 z-20 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                        <div className={`absolute right-0 z-20 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg ${isBottom ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                           <button
                             type="button"
                             onClick={() => {
@@ -193,7 +195,7 @@ export const StockTab: React.FC<StockTabProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>

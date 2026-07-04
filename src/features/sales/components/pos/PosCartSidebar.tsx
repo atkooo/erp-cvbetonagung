@@ -118,11 +118,20 @@ export default function PosCartSidebar({
                     <span className="text-slate-800 font-bold">{formatRupiah(itemSubtotal)}</span>
                   </div>
 
-                  {discountAmount > 0 && (
-                    <div className="text-rose-500 text-xs font-semibold mb-1 text-right">
-                      Diskon: -{formatRupiah(discountAmount)}
-                    </div>
-                  )}
+                  {(() => {
+                    if (discountAmount > 0) {
+                      const hasActiveDiscount = item.product.discount && (item.product.discount.is_active === true || item.product.discount.is_active === 1);
+                      const discountType = hasActiveDiscount ? item.product.discount.type : null;
+                      const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
+                      const discountLabel = discountType === 'percentage' ? `(${parseFloat(discountValue)}%)` : '';
+                      return (
+                        <div className="text-rose-500 text-xs font-semibold mb-1 text-right">
+                          Diskon {discountLabel}: -{formatRupiah(discountAmount)}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   <button
                     onClick={() => toggleItemFulfillment(item.id)}

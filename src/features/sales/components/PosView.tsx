@@ -25,6 +25,20 @@ interface CartItem {
   discount_amount?: number;
 }
 
+const calculateBaseDiscount = (product: any) => {
+  const hasActiveDiscount = product.discount && (product.discount.is_active === true || product.discount.is_active === 1);
+  const discountType = hasActiveDiscount ? product.discount.type : (product.discount_type || null);
+  const discountValue = hasActiveDiscount ? product.discount.value : (product.discount_value || 0);
+  
+  if (discountType === 'percentage') {
+    const defaultPrice = parseFloat(product.sellingPrice?.toString() || product.selling_price?.toString() || '0');
+    return defaultPrice * (parseFloat(discountValue) / 100);
+  } else if (discountType === 'nominal') {
+    return parseFloat(discountValue);
+  }
+  return 0;
+};
+
 export default function PosView({ onTriggerNotification }: PosViewProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -191,18 +205,12 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         }
       }
 
-      let baseDiscount = 0;
-      if (product.discount_type === 'percentage') {
-        const defaultPrice = parseFloat(product.sellingPrice?.toString() || product.selling_price?.toString() || '0');
-        baseDiscount = defaultPrice * (parseFloat(product.discount_value || 0) / 100);
-      } else if (product.discount_type === 'nominal') {
-        baseDiscount = parseFloat(product.discount_value || 0);
-      }
+      let baseDiscount = calculateBaseDiscount(product);
 
       const existing = prev.find(item => item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === itemFulfillment);
       if (existing) {
         return prev.map(item =>
-          item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === fulfillmentType
+          item.product.id === product.id && item.location_id === defaultLocationId && item.fulfillment_type === itemFulfillment
             ? { ...item, quantity: item.quantity + 1, discount_amount: baseDiscount * (item.quantity + 1) }
             : item
         );
@@ -239,13 +247,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       if (item.id === cartItemId) {
         const newQty = Math.max(1, item.quantity + delta);
 
-        let baseDiscount = 0;
-        if (item.product.discount_type === 'percentage') {
-          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-          baseDiscount = defaultPrice * (parseFloat(item.product.discount_value || 0) / 100);
-        } else if (item.product.discount_type === 'nominal') {
-          baseDiscount = parseFloat(item.product.discount_value || 0);
-        }
+        let baseDiscount = calculateBaseDiscount(item.product);
 
         return { ...item, quantity: newQty, discount_amount: baseDiscount * newQty };
       }
@@ -259,13 +261,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
     setCart(prev => prev.map(item => {
       if (item.id === cartItemId) {
-        let baseDiscount = 0;
-        if (item.product.discount_type === 'percentage') {
-          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || item.product.selling_price?.toString() || '0');
-          baseDiscount = defaultPrice * (parseFloat(item.product.discount_value || 0) / 100);
-        } else if (item.product.discount_type === 'nominal') {
-          baseDiscount = parseFloat(item.product.discount_value || 0);
-        }
+        let baseDiscount = calculateBaseDiscount(item.product);
 
         return { ...item, quantity: newQty, discount_amount: baseDiscount * newQty };
       }
@@ -384,7 +380,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       const txInfo = {
         orderNumber: salesOrder.orderNumber || (salesOrder as any).order_number,
-        change: paid - cartTotal,
+        change: paid - grandTotal,
         fulfillmentType,
         customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'Pelanggan',
         amountPaid: paid,
@@ -754,7 +750,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       {/* SUCCESS MODAL */}
       {checkoutSuccessInfo && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-8 text-center text-white relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
