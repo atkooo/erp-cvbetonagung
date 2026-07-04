@@ -33,7 +33,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   sellingPrice: Number(dto.selling_price),
   costPrice: Number(dto.cost_price),
   status: dto.stock_status === 'safe' ? 'Aman' : dto.stock_status === 'low' ? 'Menipis' : 'Habis',
-  qrValue: dto.qr_value || dto.sku,
+  qrValue: dto.qr_value || '',
   location: 'Gudang Utama',
   imageUrl: getFileUrl(dto.image_url),
   discountId: dto.discount_id || null,

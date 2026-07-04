@@ -723,7 +723,7 @@ export default function ProductsView({
                         type="text"
                         value={qrValue}
                         onChange={(e) => setQrValue(e.target.value)}
-                        placeholder="Scan barcode pabrik..."
+                        placeholder={sku ? `Default menggunakan SKU: ${sku}` : "Scan barcode pabrik..."}
                         className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                       />
                     </div>
