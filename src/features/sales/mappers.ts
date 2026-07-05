@@ -3,21 +3,19 @@ import { QuotationDto, SalesOrderDto, DeliveryOrderDto } from './types';
 
 const mapDeliveryOrderStatus = (status: string): DeliveryOrder['status'] => {
   const s = status.toLowerCase();
-  if (s === 'draft') return 'Draft';
-  if (s === 'ready_to_load' || s === 'siap muat' || s === 'siap_muat') return 'Siap Muat';
-  if (s === 'shipped' || s === 'dikirim') return 'Dikirim';
-  if (s === 'received' || s === 'diterima') return 'Diterima';
-  if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
-  return 'Draft';
+  if (s === 'ready_to_load' || s === 'siap muat' || s === 'siap_muat') return 'ready_to_load';
+  if (s === 'shipped' || s === 'dikirim') return 'shipped';
+  if (s === 'received' || s === 'diterima') return 'received';
+  if (s === 'cancelled' || s === 'dibatalkan') return 'cancelled';
+  return 'ready_to_load';
 };
 
 export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder => ({
   id: dto.id,
   deliveryNumber: dto.delivery_number,
   salesOrderId: dto.sales_order_id,
-  salesOrderNumber: dto.sales_order?.order_number || '',
   customerId: dto.customer_id,
-  customerName: dto.customer?.name || 'Unknown Customer',
+  customer: dto.customer ? { id: dto.customer_id, name: dto.customer.name } : undefined,
   deliveryDate: dto.delivery_date ? dto.delivery_date.split('T')[0] : '',
   receivedAt: dto.received_at ? dto.received_at.split('T')[0] : '',
   receiverName: dto.receiver_name || '',
@@ -25,20 +23,26 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
   notes: dto.notes || '',
   items: (dto.items || []).map(item => ({
     id: item.id,
+    deliveryOrderId: item.delivery_order_id || '',
+    salesOrderItemId: item.sales_order_item_id || null,
     productId: item.product_id,
-    productName: item.product?.name || 'Unknown Product',
-    productSku: item.product?.sku || '',
     quantity: Number(item.quantity),
-    length: item.sales_order_item?.length != null ? Number(item.sales_order_item.length) : undefined
+    product: item.product ? {
+      id: item.product.id || '',
+      sku: item.product.sku || '',
+      name: item.product.name || 'Unknown Product',
+      unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
+    } : undefined,
+    salesOrderItem: item.sales_order_item ? { length: item.sales_order_item.length != null ? Number(item.sales_order_item.length) : null } : undefined
   }))
 });
 
 export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   id: dto.id,
-  quoteNumber: dto.quotation_number,
+  quotationNumber: dto.quotation_number,
   customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
-  date: dto.quotation_date ? dto.quotation_date.split('T')[0] : '',
+  quotationDate: dto.quotation_date ? dto.quotation_date.split('T')[0] : '',
   validUntil: dto.valid_until ? dto.valid_until.split('T')[0] : '',
   total: Number(dto.total),
   status: mapQuotationStatus(dto.status),
@@ -48,25 +52,30 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     productId: item.product_id || item.product?.id || '',
-    productName: item.product?.name || item.description || 'Unknown Product',
+    description: item.description || undefined,
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
     specification: item.specification || undefined,
-    description: item.description || undefined,
     quantity: Number(item.quantity),
+    unitPrice: Number(item.unit_price),
     price: Number(item.unit_price),
     discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,
-    unit: item.product?.unit?.name
+    product: item.product ? {
+      id: item.product.id || '',
+      sku: item.product.sku || '',
+      name: item.product.name || 'Unknown Product',
+      unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
+    } : undefined
   }))
 });
 
 export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   id: dto.id,
   orderNumber: dto.order_number,
-  quotationNumber: dto.quotation?.quotation_number || undefined,
+  quotation: dto.quotation ? { id: dto.quotation.id, quotationNumber: dto.quotation.quotation_number } : undefined,
   customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
-  date: dto.order_date ? dto.order_date.split('T')[0] : '',
+  orderDate: dto.order_date ? dto.order_date.split('T')[0] : '',
   total: Number(dto.total),
   status: mapSalesOrderStatus(dto.status),
   source: dto.source,
@@ -77,15 +86,19 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   items: (dto.items || []).map(item => ({
     id: item.id,
     productId: item.product_id || item.product?.id || '',
-    productName: item.product?.name || item.description || 'Unknown Product',
+    description: item.description || undefined,
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
     specification: item.specification || undefined,
-    description: item.description || undefined,
     quantity: Number(item.quantity),
-    price: Number(item.unit_price),
+    unitPrice: Number(item.unit_price),
     discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,
-    unit: item.product?.unit?.name
+    product: item.product ? {
+      id: item.product.id || '',
+      sku: item.product.sku || '',
+      name: item.product.name || 'Unknown Product',
+      unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
+    } : undefined
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),
   hasInvoice: (dto.invoices || []).length > 0,

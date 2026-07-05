@@ -117,8 +117,9 @@ export default function DashboardView({
   const productSalesMap: Record<string, number> = {};
   currentMonthSO.forEach((so) => {
     so.items.forEach((item) => {
-      productSalesMap[item.productName] =
-        (productSalesMap[item.productName] || 0) + item.quantity;
+      const itemName = item.product?.name || item.description || 'Unknown';
+      productSalesMap[itemName] =
+        (productSalesMap[itemName] || 0) + item.quantity;
     });
   });
 
@@ -156,7 +157,7 @@ export default function DashboardView({
   ];
 
   salesOrders.forEach((so) => {
-    const d = new Date(so.date);
+    const d = new Date(so.orderDate);
     const monthIndex = d.getMonth(); // 0 for Jan, 1 for Feb, etc.
     if (monthIndex >= 0 && monthIndex <= 5) { // Jan to Jun
       let customTotal = 0;
@@ -166,10 +167,11 @@ export default function DashboardView({
         // Simple logic to distinguish "custom" projects and general sales.
         // Assuming Custom/Project items have "Custom" in name or something,
         // For now, if the SO is from a project/custom type, let's group by product type or name.
-        if (item.productName.toLowerCase().includes('custom') || item.productName.toLowerCase().includes('proyek')) {
-          customTotal += (item.price * item.quantity);
+        const itemName = item.product?.name || item.description || '';
+        if (itemName.toLowerCase().includes('custom') || itemName.toLowerCase().includes('proyek')) {
+          customTotal += (item.unitPrice * item.quantity);
         } else {
-          generalTotal += (item.price * item.quantity);
+          generalTotal += (item.unitPrice * item.quantity);
         }
       });
       

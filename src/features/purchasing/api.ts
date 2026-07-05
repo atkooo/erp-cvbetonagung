@@ -53,11 +53,14 @@ export const purchasingApi = {
   },
 
   async cancelPurchaseOrder(id: string, notes?: string): Promise<PurchaseOrder> {
-    const payload: any = { status: 'cancelled' };
-    if (notes) payload.notes = notes;
-    
-    const response = await apiClient.put<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}`, payload);
+    const payload: any = { reason: notes || 'Dibatalkan' };
+    const response = await apiClient.post<{ data: PurchaseOrderDto }>(`/purchasing/purchase-orders/${id}/cancel`, payload);
     return mapPurchaseOrderFromDto(response.data);
+  },
+
+  async cancelPurchaseRequest(id: string, reason: string): Promise<PurchaseRequest> {
+    const response = await apiClient.post<{ data: PurchaseRequestDto }>(`/purchasing/purchase-requests/${id}/cancel`, { reason });
+    return mapPurchaseRequestFromDto(response.data);
   },
 
   async updatePurchaseRequestStatus(id: string, status: string): Promise<PurchaseRequest> {
@@ -193,6 +196,12 @@ export const purchasingApi = {
     const response = await apiClient.put<{ data: any }>(`/purchasing/rfqs/${id}`, {
       status
     });
+    const { mapRfqFromDto } = await import('./mappers');
+    return mapRfqFromDto(response.data);
+  },
+
+  async cancelRfq(id: string, reason: string): Promise<any> {
+    const response = await apiClient.post<{ data: any }>(`/purchasing/rfqs/${id}/cancel`, { reason });
     const { mapRfqFromDto } = await import('./mappers');
     return mapRfqFromDto(response.data);
   }

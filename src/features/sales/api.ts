@@ -118,5 +118,9 @@ export const salesApi = {
 
   async cancelSalesOrder(id: string, reason: string): Promise<void> {
     await apiClient.post(`/sales/sales-orders/${id}/cancel`, { reason });
+  },
+
+  async cancelDeliveryOrder(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/sales/delivery-orders/${id}/cancel`, { reason });
   }
 };

@@ -20,6 +20,7 @@ import CurrencyInput from "./CurrencyInput";
 import { useReactToPrint } from "react-to-print";
 import { formatDate } from "../utils/date";
 import { getCompanyProfile, CompanyProfile, formatAddressForPrint } from "../utils/companyProfile";
+import Swal from 'sweetalert2';
 
 interface RfqViewProps {
   onTriggerNotification: (message: string) => void;
@@ -252,6 +253,42 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
     }
   };
 
+  const handleCancelRfq = async (id: string, rfqNumber: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan RFQ ${rfqNumber}?`,
+      text: "Apakah Anda yakin? Masukkan alasan pembatalan:",
+      input: 'text',
+      inputPlaceholder: 'Misal: Batal dari pihak supplier',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        setIsLoading(true);
+        await purchasingApi.cancelRfq(id, reason);
+        setRfqs(prev => prev.map(rfq => rfq.id === id ? { ...rfq, status: 'cancelled' } : rfq));
+        Swal.fire('Berhasil', `RFQ ${rfqNumber} berhasil dibatalkan.`, 'success');
+        onTriggerNotification(`RFQ ${rfqNumber} dibatalkan.`);
+      } catch (err: any) {
+        console.error("Failed to cancel RFQ", err);
+        const msg = err.response?.data?.message || err.message || "Gagal membatalkan RFQ";
+        Swal.fire('Gagal!', msg, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const filteredRfqs = rfqs.filter((r) => {
     const matchesSearch =
       r.rfqNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -401,9 +438,9 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                             </td>
                             <td className="p-3.5">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${rfq.status === "Diterima" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-300"}`}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${rfq.status === "Diterima" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : rfq.status === 'cancelled' || rfq.status === 'Dibatalkan' ? 'bg-rose-100 text-rose-800 border-rose-200' : "bg-amber-100 text-amber-700 border-amber-300"}`}
                               >
-                                {rfq.status}
+                                {rfq.status === 'cancelled' ? 'Dibatalkan' : rfq.status}
                               </span>
                             </td>
                             <td className="p-3.5 text-right pr-5 whitespace-nowrap">
@@ -492,6 +529,18 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                       >
                                         <span>Lanjut Buat Purchase Order (PO)</span>
                                         <ChevronRight size={14} />
+                                      </button>
+                                    </div>
+                                  )}
+                                  
+                                  {rfq.status !== 'cancelled' && rfq.status !== 'Dibatalkan' && (
+                                    <div className="pt-2">
+                                      <button
+                                        onClick={() => handleCancelRfq(rfq.id, rfq.rfqNumber)}
+                                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                      >
+                                        <X size={13} className="text-rose-500" />
+                                        <span>Batalkan Request For Quotation</span>
                                       </button>
                                     </div>
                                   )}

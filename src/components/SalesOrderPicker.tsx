@@ -208,7 +208,7 @@ export default function SalesOrderPicker({
                             Tanggal Order
                           </div>
                           <div className="text-xs font-bold text-slate-800">
-                            {formatDate(so.date)}
+                            {formatDate(so.orderDate)}
                           </div>
                         </div>
                         {(value === so.id || value === so.orderNumber) && (

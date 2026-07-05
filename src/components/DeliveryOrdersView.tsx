@@ -18,7 +18,9 @@ import {
   Send,
   Check,
   Printer,
+  XCircle,
 } from "@/src/components/icons";
+import Swal from 'sweetalert2';
 import { authStorage, apiClient } from "../services/api";
 import { salesApi } from "../features/sales/api";
 import { DeliveryOrder, SalesOrder } from "../types";
@@ -206,7 +208,7 @@ export default function DeliveryOrdersView({
         `Surat Jalan ${selectedDo.deliveryNumber} status diubah ke: Dikirim`,
       );
       setIsShipModalOpen(false);
-      
+
       // Auto-print after shipping
       handlePrintDo(updated);
     } catch (err) {
@@ -257,25 +259,58 @@ export default function DeliveryOrdersView({
     setTimeout(() => handlePrintAction(), 150);
   };
 
+  const handleCancelDo = async (doId: string, doNum: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan Surat Jalan ${doNum}?`,
+      text: "Apakah Anda yakin? Masukkan alasan pembatalan:",
+      input: 'text',
+      inputPlaceholder: 'Misal: Salah alamat',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        await salesApi.cancelDeliveryOrder(doId, reason);
+        onTriggerNotification(`Surat Jalan ${doNum} berhasil dibatalkan`);
+        setIsDetailModalOpen(false);
+        fetchData();
+      } catch (err: any) {
+        console.error("Failed to cancel Delivery Order", err);
+        const msg = err.response?.data?.message || err.message || "Gagal membatalkan Surat Jalan";
+        Swal.fire('Gagal!', msg, 'error');
+      }
+    }
+  };
+
   // Filters & Counts
   const totalDos = deliveryOrders.length;
   const countReady = deliveryOrders.filter(
-    (d) => d.status === "Siap Muat",
+    (d) => d.status === "ready_to_load",
   ).length;
   const countShipped = deliveryOrders.filter(
-    (d) => d.status === "Dikirim",
+    (d) => d.status === "shipped",
   ).length;
   const countReceived = deliveryOrders.filter(
-    (d) => d.status === "Diterima",
+    (d) => d.status === "received",
   ).length;
 
   const filteredOrders = deliveryOrders.filter(
     (d) =>
       d.deliveryNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (d.customerName &&
-        d.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (d.salesOrderNumber &&
-        d.salesOrderNumber.toLowerCase().includes(searchQuery.toLowerCase())),
+      (d.customer?.name &&
+        d.customer.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (d.salesOrder?.orderNumber &&
+        d.salesOrder.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   return (
@@ -420,10 +455,10 @@ export default function DeliveryOrdersView({
                         {doOrder.deliveryNumber}
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
-                        {doOrder.salesOrderNumber || "-"}
+                        {doOrder.salesOrder?.orderNumber || "-"}
                       </td>
                       <td className="p-3.5 font-bold text-slate-800">
-                        {doOrder.customerName}
+                        {doOrder.customer?.name}
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
                         {doOrder.deliveryDate}
@@ -446,17 +481,18 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            doOrder.status === "Siap Muat"
-                              ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                              : doOrder.status === "Dikirim"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : doOrder.status === "Diterima"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-rose-50 text-rose-700 border-rose-200"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${doOrder.status === "ready_to_load"
+                            ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                            : doOrder.status === "shipped"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : doOrder.status === "received"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-rose-50 text-rose-700 border-rose-200"
+                            }`}
                         >
-                          {doOrder.status}
+                          {doOrder.status === 'ready_to_load' ? 'Siap Muat' :
+                            doOrder.status === 'shipped' ? 'Dikirim' :
+                              doOrder.status === 'received' ? 'Diterima' : 'Dibatalkan'}
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
@@ -471,16 +507,7 @@ export default function DeliveryOrdersView({
                             <FileText size={10} />
                             <span>Detail</span>
                           </button>
-                          {doOrder.status === "Draft" && (
-                            <button
-                              onClick={() => handleSetReadyToLoad(doOrder)}
-                              className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700 transition-all flex items-center gap-1"
-                            >
-                              <CheckCircle2 size={10} />
-                              <span>Siapkan</span>
-                            </button>
-                          )}
-                          {doOrder.status === "Siap Muat" && (
+                          {doOrder.status === "ready_to_load" && (
                             <button
                               onClick={() => handleOpenShipModal(doOrder)}
                               className="px-2.5 py-1 bg-cyan-600 text-white text-[10px] font-bold rounded-lg hover:bg-cyan-700 transition-all flex items-center gap-1"
@@ -489,7 +516,7 @@ export default function DeliveryOrdersView({
                               <span>Kirim</span>
                             </button>
                           )}
-                          {doOrder.status === "Dikirim" && (
+                          {doOrder.status === "shipped" && (
                             <button
                               onClick={() => handleOpenReceiveModal(doOrder)}
                               className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-1"
@@ -498,7 +525,7 @@ export default function DeliveryOrdersView({
                               <span>Terima</span>
                             </button>
                           )}
-                          {doOrder.status !== "Siap Muat" && (
+                          {doOrder.status !== "ready_to_load" && doOrder.status !== 'cancelled' && (
                             <button
                               onClick={() => handlePrintDo(doOrder)}
                               className="px-2.5 py-1 border rounded bg-slate-50 hover:bg-white text-[10px] font-bold text-slate-600 transition-all flex items-center gap-1"
@@ -529,8 +556,8 @@ export default function DeliveryOrdersView({
       )}
 
       <div className="hidden">
-        <div 
-          ref={printRef} 
+        <div
+          ref={printRef}
           className="print:block bg-white text-black print-a4-container"
         >
           {printDo && (
@@ -559,7 +586,7 @@ export default function DeliveryOrdersView({
                   <div className="inline-block text-left bg-slate-50 p-3 border border-slate-200 rounded">
                     <p className="text-xs flex justify-between gap-4"><span className="font-bold text-slate-500">No. Surat Jalan:</span> <span className="font-mono font-bold text-sm">{printDo.deliveryNumber}</span></p>
                     <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Tgl. Kirim:</span> <span>{printDo.deliveryDate}</span></p>
-                    <p className="text-xs flex justify-between gap-4 mt-1 border-t border-slate-200 pt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span>{printDo.salesOrderNumber || "-"}</span></p>
+                    <p className="text-xs flex justify-between gap-4 border-t border-slate-200 pt-1 mt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span className="font-mono">{printDo.salesOrder?.orderNumber || "-"}</span></p>
                   </div>
                 </div>
               </div>
@@ -569,7 +596,7 @@ export default function DeliveryOrdersView({
                 <div className="flex-1">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dikirim Kepada / Tujuan:</p>
                   <div className="border-l-4 border-cyan-700 pl-3">
-                    <p className="font-bold text-base text-slate-900 uppercase">{printDo.customerName || "-"}</p>
+                    <p className="font-bold text-base text-slate-900 uppercase">{printDo.customer?.name || "-"}</p>
                     <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">Alamat pengiriman sesuai dengan kesepakatan Sales Order.</p>
                   </div>
                 </div>
@@ -596,13 +623,13 @@ export default function DeliveryOrdersView({
                   </thead>
                   <tbody className="divide-y divide-slate-200 border-b-2 border-slate-900">
                     {printDo.items?.map((item, idx) => (
-                      <tr key={item.id || `${item.productName}-${idx}`}>
+                      <tr key={item.id || `${item.product?.name}-${idx}`}>
                         <td className="py-3 px-3 text-center text-slate-500">{idx + 1}</td>
                         <td className="py-3 px-3">
-                          <p className="font-bold text-slate-900">{item.productName}</p>
-                          {item.length && <p className="text-[10px] text-slate-600 mt-0.5">Panjang: {item.length}m</p>}
+                          <p className="font-bold text-slate-900">{item.product?.name}</p>
+                          {item.salesOrderItem?.length && <p className="text-[10px] text-slate-600 mt-0.5">Panjang: {item.salesOrderItem.length}m</p>}
                         </td>
-                        <td className="py-3 px-3 text-center font-mono text-slate-600">{item.productSku || "-"}</td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-600">{item.product?.sku || "-"}</td>
                         <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 text-base">{item.quantity}</td>
                         <td className="py-3 px-3 text-slate-600 text-xs">Baik</td>
                       </tr>
@@ -642,12 +669,12 @@ export default function DeliveryOrdersView({
                 <div className="text-center text-sm">
                   <p className="text-slate-600 mb-20">Diterima Oleh,</p>
                   <p className="border-t border-slate-900 mx-6 pt-2 font-bold uppercase text-slate-800">
-                    {printDo.receiverName || printDo.customerName || "CUSTOMER"}
+                    {printDo.receiverName || printDo.customer?.name || "CUSTOMER"}
                   </p>
                   <p className="text-[10px] text-slate-500">Ttd & Stempel</p>
                 </div>
               </div>
-              
+
               {/* Footer */}
               <div className="mt-8 border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400 font-mono">
                 Surat Jalan generated by Sistem ERP {companyProfile.name} &copy; {new Date().getFullYear()}
@@ -673,16 +700,16 @@ export default function DeliveryOrdersView({
                 <X size={16} />
               </button>
             </div>
-            
+
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-[11px]">
                 <div>
                   <div className="text-slate-400 font-bold uppercase mb-1">Customer</div>
-                  <div className="font-bold text-slate-800 text-sm">{selectedDo.customerName}</div>
+                  <div className="font-bold text-slate-800 text-sm">{selectedDo.customer?.name}</div>
                 </div>
                 <div>
                   <div className="text-slate-400 font-bold uppercase mb-1">Sales Order</div>
-                  <div className="font-mono text-cyan-700 font-bold">{selectedDo.salesOrderNumber || "-"}</div>
+                  <div className="font-mono text-cyan-700 font-bold">{selectedDo.salesOrder?.orderNumber || "-"}</div>
                 </div>
               </div>
 
@@ -702,10 +729,10 @@ export default function DeliveryOrdersView({
                         selectedDo.items.map((item, idx) => (
                           <tr key={item.id || idx}>
                             <td className="p-2.5 font-bold text-slate-700">
-                              {item.productName}
-                              {item.length && <span className="ml-1 text-[10px] text-slate-400 font-normal">({item.length}m)</span>}
+                              {item.product?.name}
+                              {item.salesOrderItem?.length && <span className="ml-1 text-[10px] text-slate-400 font-normal">({item.salesOrderItem.length}m)</span>}
                             </td>
-                            <td className="p-2.5 text-center font-mono text-slate-500">{item.productSku || "-"}</td>
+                            <td className="p-2.5 text-center font-mono text-slate-500">{item.product?.sku || "-"}</td>
                             <td className="p-2.5 text-right font-mono font-bold text-slate-900">{item.quantity} pcs</td>
                           </tr>
                         ))
@@ -732,7 +759,7 @@ export default function DeliveryOrdersView({
             </div>
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
-              {selectedDo.status === 'Diterima' && onNavigate && (
+              {selectedDo.status === 'received' && onNavigate && (
                 <button
                   onClick={() => {
                     sessionStorage.setItem('action_create_invoice', selectedDo.salesOrderId);
@@ -752,6 +779,19 @@ export default function DeliveryOrdersView({
                 Tutup
               </button>
             </div>
+
+            {/* Cancel Action */}
+            {selectedDo.status !== 'cancelled' && (
+              <div className="p-4 border-t border-slate-100 bg-white">
+                <button
+                  onClick={() => handleCancelDo(selectedDo.id, selectedDo.deliveryNumber)}
+                  className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <XCircle size={13} className="text-rose-500" />
+                  <span>Batalkan Surat Jalan</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -783,15 +823,15 @@ export default function DeliveryOrdersView({
                   onChange={(val) => setSelectedSalesOrderId(val)}
                   options={salesOrders
                     .filter(
-                      (so) => so.status === "Disetujui" && so.hasPaidInvoice,
+                      (so) => so.status === "Disetujui" && so.hasInvoice,
                     )
                     .map((so) => ({
                       value: so.id,
-                      label: `${so.orderNumber} - ${so.customerName}`
+                      label: `${so.orderNumber} - ${so.customerName || so.customer?.name || '-'}`
                     }))}
                   placeholder="-- Cari atau Pilih Sales Order --"
                 />
-                {salesOrders.filter((so) => so.status === "Disetujui" && so.hasPaidInvoice).length === 0 && (
+                {salesOrders.filter((so) => so.status === "Disetujui" && so.hasInvoice).length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-1">Tidak ada Sales Order siap kirim (belum dibayar/approve).</p>
                 )}
               </div>
@@ -885,7 +925,7 @@ export default function DeliveryOrdersView({
                 </div>
                 <div>
                   Customer:{" "}
-                  <span className="font-bold">{selectedDo.customerName}</span>
+                  <span className="font-bold">{selectedDo.customer?.name}</span>
                 </div>
               </div>
 
@@ -893,7 +933,7 @@ export default function DeliveryOrdersView({
                 <label className="block font-bold text-slate-700">
                   Pilih Asal Gudang / Lokasi Stok *
                 </label>
-                
+
                 <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-60 overflow-y-auto">
                   {storageLocations.map((loc) => {
                     const doItems = selectedDo.items || [];
@@ -901,33 +941,33 @@ export default function DeliveryOrdersView({
                       const stockRecord = allStocks.find(s => s.location_id === loc.id && s.product_id === item.productId);
                       const available = stockRecord ? Number(stockRecord.quantity) : 0;
                       const required = Number(item.quantity);
-                      return { name: item.productName, required, available, length: item.length };
+                      return { name: item.product?.name, required, available, length: item.salesOrderItem?.length };
                     });
-                    
+
                     return (
-                      <label 
-                        key={loc.id} 
+                      <label
+                        key={loc.id}
                         className={`p-3 border-b border-slate-100 last:border-0 cursor-pointer transition-colors flex flex-col gap-2
                           ${selectedLocationId === loc.id ? 'bg-cyan-50' : 'hover:bg-slate-50'}
                         `}
                       >
                         <div className="flex items-start gap-2.5">
-                          <input 
-                            type="radio" 
-                            name="location" 
-                            value={loc.id} 
+                          <input
+                            type="radio"
+                            name="location"
+                            value={loc.id}
                             checked={selectedLocationId === loc.id}
                             onChange={() => setSelectedLocationId(loc.id)}
                             className="text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5 mt-0.5"
                           />
                           <div className="flex flex-col">
                             <span className="font-bold text-xs text-slate-800">
-                              {loc.warehouse?.name ? `${loc.warehouse.name} - ` : ''}{loc.name} 
+                              {loc.warehouse?.name ? `${loc.warehouse.name} - ` : ''}{loc.name}
                             </span>
                             <span className="text-slate-400 font-mono text-[10px] mt-0.5">Kode: {loc.code}</span>
                           </div>
                         </div>
-                        
+
                         <div className="pl-6 space-y-1.5">
                           {itemStockDetails.map((detail, idx) => (
                             <div key={idx} className="flex justify-between items-start text-[10px] bg-white p-2 rounded border border-slate-100 shadow-sm gap-2">

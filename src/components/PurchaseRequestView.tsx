@@ -147,6 +147,42 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
     }
   };
 
+  const handleCancelPr = async (id: string, prNumber: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan PR ${prNumber}?`,
+      text: "Apakah Anda yakin? Masukkan alasan pembatalan:",
+      input: 'text',
+      inputPlaceholder: 'Misal: Kesalahan input',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        setIsLoading(true);
+        await purchasingApi.cancelPurchaseRequest(id, reason);
+        setPurchaseRequests(prev => prev.map(pr => pr.id === id ? { ...pr, status: 'cancelled' } : pr));
+        Swal.fire('Berhasil', `PR ${prNumber} berhasil dibatalkan.`, 'success');
+        onTriggerNotification(`Purchase Request ${prNumber} dibatalkan.`);
+      } catch (err: any) {
+        console.error("Failed to cancel PR", err);
+        const msg = err.response?.data?.message || err.message || "Gagal membatalkan PR";
+        Swal.fire('Gagal!', msg, 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const filteredPRs = purchaseRequests.filter((pr) => {
     const matchesSearch = pr.prNumber.toLowerCase().includes(search.toLowerCase()) || pr.department.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All' || pr.status === statusFilter;
@@ -233,7 +269,9 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
                         <td className="p-3.5 font-bold">{pr.department}</td>
                         <td className="p-3.5 font-mono text-slate-500">{formatDate(pr.requiredDate)}</td>
                         <td className="p-3.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${pr.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>{pr.status}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${pr.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : pr.status === 'cancelled' || pr.status === 'Dibatalkan' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-slate-100 text-slate-600'}`}>
+                            {pr.status === 'cancelled' ? 'Dibatalkan' : pr.status}
+                          </span>
                         </td>
                         <td className="p-3.5 text-right pr-5">
                           {pr.status === 'Draft' && (
@@ -270,6 +308,18 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
                                   >
                                     <span>Lanjut Buat Request for Quotation (RFQ)</span>
                                     <ChevronRight size={14} />
+                                  </button>
+                                </div>
+                              )}
+                              
+                              {pr.status !== 'cancelled' && pr.status !== 'Dibatalkan' && (
+                                <div className="pt-2">
+                                  <button
+                                    onClick={() => handleCancelPr(pr.id, pr.prNumber)}
+                                    className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                  >
+                                    <X size={13} className="text-rose-500" />
+                                    <span>Batalkan Purchase Request</span>
                                   </button>
                                 </div>
                               )}

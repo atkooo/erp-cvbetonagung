@@ -878,7 +878,7 @@ export default function SalesView({
                     >
                       Tutup
                     </button>
-                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Terkirim') && (
+                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
                        <button
                          onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -896,7 +896,7 @@ export default function SalesView({
                     >
                       Tutup
                     </button>
-                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui' || selectedDoc.status === 'Terkirim') && (
+                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
                        <button
                          onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"

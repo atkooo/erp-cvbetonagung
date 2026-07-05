@@ -695,6 +695,18 @@ export default function PurchaseView({
                                       </button>
                                     </div>
                                   )}
+
+                                  {po.status !== 'cancelled' && po.status !== 'Dibatalkan' && (
+                                    <div className="pt-2">
+                                      <button
+                                        onClick={() => handleCancel(po.id, po.poNumber)}
+                                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                      >
+                                        <X size={13} className="text-rose-500" />
+                                        <span>Batalkan Purchase Order</span>
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -854,8 +866,8 @@ export default function PurchaseView({
                         
                         so.items.forEach((item) => {
                           if (so.source === 'pos') {
-                            // For POS, only items that are in a 'Draft' DeliveryOrder are PO items
-                            const poQty = so.deliveryOrders?.filter(d => d.status === 'Draft')
+                            // For POS, only items that are in a 'ready_to_load' DeliveryOrder are PO items
+                            const poQty = so.deliveryOrders?.filter(d => d.status === 'ready_to_load')
                               .flatMap(d => d.items || [])
                               .filter(di => di.productId === item.productId)
                               .reduce((sum, di) => sum + di.quantity, 0) || 0;
