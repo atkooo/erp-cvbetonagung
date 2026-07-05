@@ -269,6 +269,46 @@ export default function SalesView({
     }
   };
 
+  const getMonitoringStatus = (doc: any) => {
+    if (isQuotation) return doc.status;
+    
+    const baseStatus = doc.status;
+    if (['Draft', 'Dibatalkan', 'Ditolak', 'Selesai'].includes(baseStatus)) {
+      return baseStatus;
+    }
+
+    const dos = doc.deliveryOrders || [];
+    const invs = doc.invoices || [];
+
+    let paidAmount = 0;
+    invs.forEach((i: any) => { 
+      if (i.status !== 'cancelled' && i.status !== 'dibatalkan') {
+        paidAmount += Number(i.paidAmount || 0); 
+      }
+    });
+    const isFullyPaid = paidAmount >= doc.total && doc.total > 0;
+    const isPartiallyPaid = paidAmount > 0 && paidAmount < doc.total;
+
+    let totalDelivered = 0;
+    let totalItems = 0;
+    doc.items?.forEach((item: any) => { totalItems += Number(item.quantity || 0); });
+    dos.forEach((d: any) => {
+      if (d.status === 'shipped' || d.status === 'received') {
+        d.items?.forEach((di: any) => { totalDelivered += Number(di.quantity || 0); });
+      }
+    });
+
+    const isFullyDelivered = totalDelivered >= totalItems && totalItems > 0;
+    const isPartiallyDelivered = totalDelivered > 0 && totalDelivered < totalItems;
+
+    if (isFullyDelivered && isFullyPaid) return 'Selesai';
+    if (isFullyDelivered && !isFullyPaid) return 'Menunggu Pembayaran';
+    if (!isFullyDelivered && (dos.length > 0 || isPartiallyDelivered)) return 'Proses Pengiriman';
+    if (isPartiallyPaid && !isFullyDelivered) return 'Menunggu Pengiriman (Dibayar Sebagian)';
+    
+    return 'Menunggu Pengiriman';
+  };
+
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
     const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
@@ -276,7 +316,7 @@ export default function SalesView({
       docNum.toLowerCase().includes(search.toLowerCase()) ||
       doc.customerName.toLowerCase().includes(search.toLowerCase());
 
-    const matchesStatus = statusFilter === 'All' || doc.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || getMonitoringStatus(doc) === statusFilter || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -565,9 +605,11 @@ export default function SalesView({
             ) : (
               <>
                 <option value="Draft">Draft</option>
-                <option value="Diproses">Diproses</option>
-                <option value="Disetujui">Disetujui</option>
-                <option value="Pending Delivery">Pending Delivery</option>
+                <option value="Diproses">Diproses / Disetujui</option>
+                <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
+                <option value="Proses Pengiriman">Proses Pengiriman</option>
+                <option value="Menunggu Pembayaran">Menunggu Pembayaran</option>
+                <option value="Menunggu Pengiriman (Dibayar Sebagian)">Menunggu Pengiriman (DP)</option>
                 <option value="Selesai">Selesai</option>
                 <option value="Dibatalkan">Dibatalkan</option>
               </>
@@ -614,6 +656,10 @@ export default function SalesView({
                         Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                         Ditolak: 'bg-red-100 text-red-700',
                         Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                        'Menunggu Pengiriman': 'bg-orange-100 text-orange-800 border-orange-300',
+                        'Proses Pengiriman': 'bg-cyan-100 text-cyan-800 border-cyan-300',
+                        'Menunggu Pembayaran': 'bg-amber-100 text-amber-800 border-amber-300',
+                        'Menunggu Pengiriman (Dibayar Sebagian)': 'bg-blue-100 text-blue-800 border-blue-300',
                         pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
                         Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                         completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -636,12 +682,12 @@ export default function SalesView({
                             )}
                           </td>
                           <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{doc.date}</td>
+                          <td className="p-3.5 font-mono text-slate-500">{isQuotation ? doc.quotationDate : doc.orderDate}</td>
                           {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
                           <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
                           <td className="p-3.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || 'bg-slate-50'}`}>
-                              {doc.status}
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || statusColors[getMonitoringStatus(doc)] || 'bg-slate-50'}`}>
+                              {getMonitoringStatus(doc)}
                             </span>
                           </td>
                           <td className="p-3.5 pr-5 text-right">
@@ -718,7 +764,7 @@ export default function SalesView({
                 </div>
                 <div className="flex justify-between border-b border-slate-150 pb-2">
                   <span className="text-slate-400 font-medium">Tanggal Masuk:</span>
-                  <span className="font-mono">{selectedDoc.date}</span>
+                  <span className="font-mono">{isQuotation ? selectedDoc.quotationDate : selectedDoc.orderDate}</span>
                 </div>
                 {isQuotation ? (
                   <div className="flex justify-between border-b border-slate-150 pb-2">
@@ -777,7 +823,7 @@ export default function SalesView({
                             </div>
                           )}
                           <div>
-                            <strong className="text-slate-800 block mb-1 leading-snug">{item.productName}</strong>
+                            <strong className="text-slate-800 block mb-1 leading-snug">{item.product?.name || item.productName || 'Unknown Product'}</strong>
                             {item.description && (
                               <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
                             )}
@@ -973,7 +1019,7 @@ export default function SalesView({
                     {!isQuotation && selectedDoc.quotationNumber && (
                       <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber}</p>
                     )}
-                    <p className="text-sm">{docDateLabel}: {selectedDoc.date}</p>
+                    <p className="text-sm">{docDateLabel}: {isQuotation ? selectedDoc.quotationDate : selectedDoc.orderDate}</p>
                     {isQuotation && <p className="text-sm">Berlaku Hingga: {selectedDoc.validUntil}</p>}
                   </div>
                 </div>
@@ -995,10 +1041,10 @@ export default function SalesView({
                   </thead>
                   <tbody>
                     {selectedDoc.items?.map((item: any, idx: number) => (
-                      <tr key={`${item.productName}-${idx}`}>
+                      <tr key={`${item.product?.name || item.productName || 'item'}-${idx}`}>
                         <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
                         <td className="border border-black p-2 align-top">
-                          <span className="font-bold block">{item.productName}</span>
+                          <span className="font-bold block">{item.product?.name || item.productName || 'Unknown Product'}</span>
                           {item.pieceCount && item.length && (
                             <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
                           )}

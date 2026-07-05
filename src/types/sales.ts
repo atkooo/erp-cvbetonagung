@@ -47,7 +47,9 @@ export interface SalesOrder {
   };
   invoices?: {
     id: string;
-    paidAmount: string | number;
+    paidAmount: number;
+    total?: number;
+    status?: string;
   }[];
   deliveryOrders?: DeliveryOrder[];
 }

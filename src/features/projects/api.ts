@@ -25,6 +25,11 @@ export const projectsApi = {
     return mapProjectFromDto(response.data);
   },
 
+  async cancelProject(id: string, reason: string): Promise<Project> {
+    const response = await apiClient.post<{ data: ProjectDto }>(`/projects/projects/${id}/cancel`, { reason });
+    return mapProjectFromDto(response.data);
+  },
+
   async createProject(data: {
     project_name: string;
     customer_id: string;

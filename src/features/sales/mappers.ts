@@ -103,6 +103,12 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   })),
   hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0 && inv.status !== 'cancelled' && inv.status !== 'dibatalkan'),
   hasInvoice: (dto.invoices || []).some(inv => inv.status !== 'cancelled' && inv.status !== 'dibatalkan'),
+  invoices: (dto.invoices || []).map((inv: any) => ({
+    id: inv.id,
+    paidAmount: Number(inv.paid_amount || 0),
+    total: Number(inv.total || 0),
+    status: inv.status
+  })),
   deliveryOrders: (dto.deliveryOrders || (dto as any).delivery_orders || []).map(mapDeliveryOrderFromDto)
 });
 

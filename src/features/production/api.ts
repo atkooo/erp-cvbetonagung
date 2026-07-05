@@ -51,6 +51,14 @@ export const productionApi = {
     return mapWorkOrderFromDto(response.data);
   },
 
+  async cancelWorkOrder(id: string, reason: string): Promise<ProductionWorkOrder> {
+    const response = await apiClient.post<{ data: ProductionWorkOrderDto }>(
+      `/production/work-orders/${id}/cancel`,
+      { reason }
+    );
+    return mapWorkOrderFromDto(response.data);
+  },
+
   // Work Logs
   async createWorkLog(data: CreateWorkLogDto): Promise<ProductionWorkLog> {
     const response = await apiClient.post<{ data: ProductionWorkLogDto }>(

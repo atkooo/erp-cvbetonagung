@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 import {
   Compass,
   MapPin,
@@ -235,6 +236,34 @@ export default function ProjectsView({
     setShowEventAddModal(false);
   };
 
+  const handleCancelProject = async (id: string, name: string) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Batalkan Proyek?',
+      text: `Masukkan alasan pembatalan untuk proyek ${name}.`,
+      input: 'text',
+      inputPlaceholder: 'Batal kontrak, dll',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) return 'Alasan pembatalan wajib diisi!';
+        return null;
+      }
+    });
+
+    if (isConfirmed && reason) {
+      try {
+        await projectsApi.cancelProject(id, reason);
+        onTriggerNotification(`Berhasil membatalkan Proyek ${name}`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan Proyek');
+      }
+    }
+  };
+
   // 1. DETAIL VIEW OVERLAY DESIGN
   if (project) {
     return (
@@ -249,9 +278,19 @@ export default function ProjectsView({
             <span>Kembali ke Daftar Proyek</span>
           </button>
 
-          <span className="text-[10px] uppercase font-mono bg-slate-100 text-slate-500 border px-2 py-1 rounded">
-            Monitoring Workshop ID: {project.code}
-          </span>
+          <div className="flex items-center gap-2">
+            {project.status !== 'Dibatalkan' && (
+              <button
+                onClick={() => handleCancelProject(project.id, project.projectName)}
+                className="text-[10px] uppercase font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded transition-colors"
+              >
+                Batalkan Proyek
+              </button>
+            )}
+            <span className="text-[10px] uppercase font-mono bg-slate-100 text-slate-500 border px-2 py-1 rounded">
+              Monitoring Workshop ID: {project.code}
+            </span>
+          </div>
         </div>
 
         {/* Top summary card */}
@@ -317,7 +356,7 @@ export default function ProjectsView({
                   {project.tasks.map((task, index) => {
                     const isCompleted = task.status === 'Completed';
                     const isInProgress = task.status === 'In Progress';
-                    
+
                     return (
                       <div key={task.id} className={`p-3 rounded-lg border ${isCompleted ? 'bg-emerald-50 border-emerald-100' : isInProgress ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200'} flex items-center justify-between`}>
                         <div className="flex items-center gap-3">
@@ -345,7 +384,7 @@ export default function ProjectsView({
                                     status: newStatus,
                                     completed_date: newStatus === 'Completed' ? toApiDate() : undefined
                                   });
-                                  
+
                                   // Update the timeline too
                                   if (newStatus === 'Completed') {
                                     await projectsApi.createTimelineEvent({
@@ -359,7 +398,7 @@ export default function ProjectsView({
 
                                   onTriggerNotification(`Tahapan ${task.taskName} diperbarui menjadi ${newStatus}`);
                                   await loadData(); // Reload to get updated tasks, timeline, progress
-                                } catch(e) {
+                                } catch (e) {
                                   onTriggerNotification('Gagal mengupdate tahapan.');
                                 }
                               }}
@@ -454,11 +493,10 @@ export default function ProjectsView({
                           {formatIDR(term.amount)}
                         </p>
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${
-                            term.status === "Lunas"
+                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${term.status === "Lunas"
                               ? "bg-emerald-100 text-emerald-800 border"
                               : "bg-rose-100 text-rose-800"
-                          }`}
+                            }`}
                         >
                           {term.status}
                         </span>
@@ -543,15 +581,14 @@ export default function ProjectsView({
                             {wo.workOrderNumber}
                           </strong>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                              wo.stage === "QC"
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === "QC"
                                 ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                                 : wo.stage === "Finishing"
                                   ? "bg-indigo-50 text-indigo-700 border-indigo-100"
                                   : wo.stage === "Curing"
                                     ? "bg-amber-50 text-amber-700 border-amber-100"
                                     : "bg-cyan-50 text-cyan-700 border-cyan-100"
-                            }`}
+                              }`}
                           >
                             {wo.stage}
                           </span>
@@ -740,9 +777,8 @@ export default function ProjectsView({
                       {proj.code}
                     </span>
                     <span
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                        statusColors[proj.status] || "bg-slate-100"
-                      }`}
+                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${statusColors[proj.status] || "bg-slate-100"
+                        }`}
                     >
                       {proj.status}
                     </span>

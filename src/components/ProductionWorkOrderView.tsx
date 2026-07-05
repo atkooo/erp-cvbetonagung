@@ -121,7 +121,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
   const getItemOutstandingQty = React.useCallback((soId: string, item: any) => {
     if (!item.productId) return 0;
-    
+
     // Check if SO is from POS and find its PO quantity from draft delivery orders
     const so = salesOrders.find(s => s.id === soId);
     let requiredQty = item.pieceCount || item.quantity;
@@ -131,7 +131,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
         .flatMap(d => d.items || [])
         .filter(di => di.productId === item.productId)
         .reduce((sum, di) => sum + di.quantity, 0) || 0;
-      
+
       // If it's from POS and not in a Draft DO, it's not a PO item, so requiredQty is 0
       requiredQty = poQty;
     }
@@ -161,7 +161,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     setSelectedSalesOrderItemIndex(String(itemIndex));
     setSelectedProductId(item.productId);
     setTargetQty(outstanding);
-    
+
     let label = `SO: ${salesOrder.orderNumber}`;
     if (item.pieceCount && item.length) {
       label += ` [${item.pieceCount} Fisik @ ${item.length} M]`;
@@ -383,6 +383,34 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     }
   };
 
+  const handleCancelWorkOrder = async (id: string, num: string) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Batalkan Work Order?',
+      text: `Masukkan alasan pembatalan untuk Work Order ${num}. Stok yang terkait (jika ada) akan di-reverse secara otomatis.`,
+      input: 'text',
+      inputPlaceholder: 'Salah input, batal produksi, dll',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) return 'Alasan pembatalan wajib diisi!';
+        return null;
+      }
+    });
+
+    if (isConfirmed && reason) {
+      try {
+        const updated = await productionApi.cancelWorkOrder(id, reason);
+        setWorkOrders(prev => prev.map(w => w.id === id ? updated : w));
+        onTriggerNotification(`Berhasil membatalkan Work Order ${num}`);
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan Work Order');
+      }
+    }
+  };
+
   // Calculations & Filtering
   const selectedWo = workOrders.find(wo => wo.id === selectedWoId);
   const selectedCreateProduct = products.find(p => p.id === selectedProductId);
@@ -412,7 +440,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const getWoStatus = (wo: ProductionWorkOrder) => {
     // 1. Fulfilled target
     if (wo.completedQty >= wo.targetQty) return 'Closed';
-    
+
     if (wo.tasks && wo.tasks.length > 0) {
       // 2. All tasks officially completed
       if (wo.tasks.every(t => t.status === 'Completed')) return 'Closed';
@@ -434,9 +462,9 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
           }
         }
       }
-      
+
       if (isExhausted) return 'Closed';
-      
+
       // 4. If not closed, check if it has started
       const isStarted = wo.tasks.some(t => t.status !== 'Pending');
       return isStarted ? 'In Progress' : 'Open';
@@ -563,8 +591,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         <span className="font-mono font-bold text-cyan-600">{wo.workOrderNumber}</span>
                         {(() => {
                           const status = getWoStatus(wo);
-                          
-                          if (status === 'Closed') {
+
+                          if (wo.stage === 'cancelled') {
+                            return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-rose-50 text-rose-700 border-rose-200">Dibatalkan</span>;
+                          } else if (status === 'Closed') {
                             return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">Selesai (Closed)</span>;
                           } else if (status === 'In Progress') {
                             return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-cyan-50 text-cyan-700 border-cyan-100">In Progress</span>;
@@ -650,8 +680,10 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           </span>
                           {(() => {
                             const status = getWoStatus(selectedWo);
-                            
-                            if (status === 'Closed') {
+
+                            if (selectedWo.stage === 'cancelled') {
+                              return <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded text-[10px] font-bold">Dibatalkan</span>;
+                            } else if (status === 'Closed') {
                               return <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">Selesai (Closed)</span>;
                             } else if (status === 'In Progress') {
                               return <span className="px-2 py-0.5 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-[10px] font-bold">In Progress</span>;
@@ -710,7 +742,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           const readyQty = qcTask ? qcTask.completedQty : 0;
                           const unreceivedQty = readyQty - selectedWo.completedQty;
                           const isReadyForWarehouse = unreceivedQty > 0;
-                          
+
                           return (
                             <button
                               onClick={handleOpenReceiveModal}
@@ -722,6 +754,14 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                             </button>
                           );
                         })()}
+                        {selectedWo.stage !== 'cancelled' && (
+                          <button
+                            onClick={() => handleCancelWorkOrder(selectedWo.id, selectedWo.workOrderNumber)}
+                            className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-lg font-bold transition-all text-xs"
+                          >
+                            Batal
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -752,7 +792,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                             const isCompleted = task.status === 'Completed';
                             const isInProgress = task.status === 'In Progress';
                             const isPending = task.status === 'Pending';
-                            
+
                             return (
                               <div key={task.id} className={`p-3 rounded-lg border ${isCompleted ? 'bg-emerald-50 border-emerald-100' : isInProgress ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200'} flex items-center justify-between`}>
                                 <div className="flex items-center gap-3">
@@ -787,7 +827,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                                       setIsLogModalOpen(true);
                                     }}
                                     disabled={
-                                      (task.completedQty + task.rejectQty) >= task.targetQty || 
+                                      (task.completedQty + task.rejectQty) >= task.targetQty ||
                                       (index > 0 && selectedWo.tasks![index - 1].completedQty === 0) ||
                                       (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty)
                                     }
@@ -1024,9 +1064,9 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   onChange={(val) => setSelectedProductId(val)}
                   options={products
                     .filter(p => p.type !== 'raw_material' && p.type !== 'service')
-                    .map(p => ({ 
-                      value: p.id, 
-                      label: `${p.sku} - ${p.name}` 
+                    .map(p => ({
+                      value: p.id,
+                      label: `${p.sku} - ${p.name}`
                     }))}
                   placeholder="-- Ketik Nama atau SKU Produk Jadi --"
                   disabled={!!selectedSalesOrderId}
