@@ -21,7 +21,8 @@ import {
   Building2,
   Calendar,
   Truck,
-  Trash2
+  Trash2,
+  XCircle
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage } from '../services/api';
@@ -469,6 +470,41 @@ export default function SalesView({
     }
   };
 
+  const handleCancelDocument = async (docId: string, docNum: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan ${isQuotation ? 'Quotation' : 'Sales Order'} ${docNum}?`,
+      text: "Tindakan ini akan membatalkan dokumen terkait secara beruntun. Masukkan alasan:",
+      input: 'text',
+      inputPlaceholder: 'Alasan pembatalan...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#e2e8f0',
+      cancelButtonText: '<span style="color:#475569">Tutup</span>',
+      confirmButtonText: 'Batalkan Dokumen',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        if (isQuotation) {
+          await salesApi.cancelQuotation(docId, reason);
+        } else {
+          await salesApi.cancelSalesOrder(docId, reason);
+        }
+        onTriggerNotification(`Sukses membatalkan dokumen ${docNum}.`);
+        await loadData();
+        setSelectedDoc(null);
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan dokumen');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 relative">
       {/* 1. Header Banner */}
@@ -842,14 +878,34 @@ export default function SalesView({
                     >
                       Tutup
                     </button>
+                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Terkirim') && (
+                       <button
+                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
+                         className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                       >
+                         <XCircle size={13} className="text-rose-500" />
+                         <span>Batalkan</span>
+                       </button>
+                    )}
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setSelectedDoc(null)}
-                    className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
-                  >
-                    Tutup
-                  </button>
+                  <div className="flex flex-col gap-2 w-full col-span-2">
+                    <button
+                      onClick={() => setSelectedDoc(null)}
+                      className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui' || selectedDoc.status === 'Terkirim') && (
+                       <button
+                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
+                         className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                       >
+                         <XCircle size={13} className="text-rose-500" />
+                         <span>Batalkan</span>
+                       </button>
+                    )}
+                  </div>
                 )}
 
                 {isQuotation && selectedDoc.status === 'Disetujui' && (

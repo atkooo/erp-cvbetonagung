@@ -77,5 +77,9 @@ export const financeApi = {
   async createCashTransaction(data: CreateCashTransactionDto): Promise<CashTransactionDto> {
     const response = await apiClient.post<{ data: CashTransactionDto }>('/finance/cash-transactions', data);
     return response.data;
+  },
+
+  async cancelInvoice(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/finance/invoices/${id}/cancel`, { reason });
   }
 };

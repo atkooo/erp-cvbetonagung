@@ -110,5 +110,13 @@ export const salesApi = {
   }): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/pos', payload);
     return mapSalesOrderFromDto(response.data);
+  },
+
+  async cancelQuotation(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/sales/quotations/${id}/cancel`, { reason });
+  },
+
+  async cancelSalesOrder(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/sales/sales-orders/${id}/cancel`, { reason });
   }
 };

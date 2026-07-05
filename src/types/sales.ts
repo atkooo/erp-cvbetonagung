@@ -38,6 +38,8 @@ export interface SalesOrder {
     id: string;
     name: string;
   };
+  customerName?: string;
+  hasInvoice?: boolean;
   quotation?: {
     id: string;
     quotationNumber: string;
@@ -55,6 +57,8 @@ export interface Quotation {
   quoteNumber?: string;
   customerId: string;
   customerName?: string;
+  hasInvoice?: boolean;
+  invoices?: Invoice[];
   quotationDate: string;
   date?: string;
   validUntil: string;

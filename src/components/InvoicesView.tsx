@@ -4,8 +4,9 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
-import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign } from '@/src/components/icons';
+import { Receipt, Search, Filter, Printer, ExternalLink, Calendar, CheckCircle, AlertTriangle, X, DollarSign, XCircle } from '@/src/components/icons';
 import { Invoice, ViewType } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
@@ -95,7 +96,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
     const pendingSalesOrderId = sessionStorage.getItem('action_create_invoice');
     if (pendingSalesOrderId) {
       sessionStorage.removeItem('action_create_invoice');
-      
+
       // Load sales orders first, then set the ID
       loadSalesOrders().then(() => {
         setTimeout(() => {
@@ -129,7 +130,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
       setShowCreateModal(false);
       setSelectedSOId('');
       await loadData();
-      
+
       // Automatically show and print the new invoice
       setSelectedInvoice(newInvoice);
       setTimeout(() => {
@@ -140,6 +141,37 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
       onTriggerNotification(err instanceof Error ? err.message : 'Gagal menerbitkan invoice');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelInvoice = async (docId: string, docNum: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan Invoice ${docNum}?`,
+      text: "Tindakan ini akan membatalkan invoice. Jika invoice sudah lunas, transaksi tidak bisa dibatalkan.",
+      input: 'text',
+      inputPlaceholder: 'Alasan pembatalan...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#e2e8f0',
+      cancelButtonText: '<span style="color:#475569">Tutup</span>',
+      confirmButtonText: 'Batalkan Dokumen',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan pembatalan wajib diisi!';
+        }
+      }
+    });
+
+    if (reason) {
+      try {
+        await financeApi.cancelInvoice(docId, reason);
+        onTriggerNotification(`Sukses membatalkan Invoice ${docNum}.`);
+        await loadData();
+        setSelectedInvoice(null);
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
+      }
     }
   };
 
@@ -360,8 +392,8 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 <div className="text-right">
                   <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px] mb-1">Detail Dokumen Faktur</p>
                   <strong className="text-cyan-600 block text-xs">{selectedInvoice.invoiceNumber}</strong>
-                  {selectedInvoice.salesOrderNumber && (
-                    <span className="text-slate-500 block">Ref. SO: <strong className="text-slate-600">{selectedInvoice.salesOrderNumber}</strong></span>
+                  {selectedInvoice.salesOrder?.orderNumber && (
+                    <span className="text-slate-500 block">Ref. SO: <strong className="text-slate-600">{selectedInvoice.salesOrder.orderNumber}</strong></span>
                   )}
                   <span className="text-slate-500 block">Tanggal: <strong className="text-slate-600">{formatDate(selectedInvoice.date)}</strong></span>
                   <span className="text-rose-600 font-bold block">Jatuh Tempo: {formatDate(selectedInvoice.dueDate)}</span>
@@ -376,12 +408,12 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                     selectedInvoice.items.map((item, index) => (
                       <div key={item.id || index} className="p-3.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs">
                         <div>
-                          <h5 className="font-bold text-slate-800">{item.productName}</h5>
+                          <h5 className="font-bold text-slate-800">{item.product?.name || 'Produk'}</h5>
                           {item.pieceCount && item.length && (
-                            <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
+                            <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.product?.unit?.name || 'M'}</div>
                           )}
                           <p className="text-slate-400 text-[10px] mt-0.5">
-                            {item.quantity} {item.unit || ''} x {formatIDR(item.unitPrice)}
+                            {item.quantity} {item.product?.unit?.name || ''} x {formatIDR(item.unitPrice)}
                             {item.description ? ` - ${item.description}` : ''}
                           </p>
                         </div>
@@ -408,7 +440,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 </div>
 
                 <span className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider ${selectedInvoice.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                    selectedInvoice.status === 'Sebagian Dibayar' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800 animate-pulse'
+                  selectedInvoice.status === 'Sebagian Dibayar' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800 animate-pulse'
                   }`}>
                   {selectedInvoice.status}
                 </span>
@@ -460,17 +492,17 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               <button
                 onClick={() => {
                   const message = `Halo ${selectedInvoice.customerName},\n\nBerikut adalah ringkasan tagihan (Invoice) dari *${companyProfile.name}*:\n\n*No. Invoice:* ${selectedInvoice.invoiceNumber}\n*Total Tagihan:* ${formatIDR(selectedInvoice.total)}\n*Sisa Tagihan:* ${formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}\n*Jatuh Tempo:* ${formatDate(selectedInvoice.dueDate)}\n\nMohon segera melakukan pelunasan sebelum tanggal jatuh tempo. Terima kasih.`;
-                  
+
                   let waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                  if (selectedInvoice.customerPhone) {
-                    let phone = selectedInvoice.customerPhone.replace(/\D/g, '');
+                  if (selectedInvoice.customer?.phone) {
+                    let phone = selectedInvoice.customer.phone.replace(/\D/g, '');
                     // Jika dimulai dengan angka 0, ubah menjadi format internasional Indonesia (62)
                     if (phone.startsWith('0')) {
                       phone = '62' + phone.substring(1);
                     }
                     waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
                   }
-                  
+
                   window.open(waUrl, '_blank');
                   onTriggerNotification(`Membuka WhatsApp untuk mengirim tagihan ke ${selectedInvoice.customerName}`);
                 }}
@@ -518,10 +550,10 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   </h2>
                   <div className="inline-block text-left bg-slate-50 p-3 border border-slate-200 rounded">
                     <p className="text-xs flex justify-between gap-4"><span className="font-bold text-slate-500">No. Invoice:</span> <span className="font-mono font-bold text-sm">{selectedInvoice.invoiceNumber}</span></p>
-                    <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Tanggal:</span> <span>{formatDate(selectedInvoice.date)}</span></p>
+                    <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Tanggal:</span> <span>{formatDate(selectedInvoice.date || selectedInvoice.invoiceDate)}</span></p>
                     <p className="text-xs flex justify-between gap-4 mt-1"><span className="font-bold text-slate-500">Jatuh Tempo:</span> <span className="text-rose-600 font-bold">{formatDate(selectedInvoice.dueDate)}</span></p>
-                    {selectedInvoice.salesOrderNumber && (
-                      <p className="text-xs flex justify-between gap-4 mt-1 border-t border-slate-200 pt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span>{selectedInvoice.salesOrderNumber}</span></p>
+                    {selectedInvoice.salesOrder?.orderNumber && (
+                      <p className="text-xs flex justify-between gap-4 mt-1 border-t border-slate-200 pt-1"><span className="font-bold text-slate-500">Ref. SO:</span> <span>{selectedInvoice.salesOrder.orderNumber}</span></p>
                     )}
                   </div>
                 </div>
@@ -533,7 +565,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ditagihkan Kepada:</p>
                   <div className="border-l-4 border-cyan-700 pl-3">
                     <p className="font-bold text-base text-slate-900 uppercase">{selectedInvoice.customerName}</p>
-                    <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">{selectedInvoice.customerPhone || 'Alamat tidak tersedia. Harap hubungi tim representatif kami.'}</p>
+                    <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">{selectedInvoice.customer?.phone || 'Alamat tidak tersedia. Harap hubungi tim representatif kami.'}</p>
                   </div>
                 </div>
                 <div className="w-1/3">
@@ -572,13 +604,13 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                         <tr key={item.id || index}>
                           <td className="py-3 px-3 text-center text-slate-500">{index + 1}</td>
                           <td className="py-3 px-3">
-                            <p className="font-bold text-slate-900">{item.productName}</p>
+                            <p className="font-bold text-slate-900">{item.product?.name || 'Produk'}</p>
                             {item.pieceCount && item.length && (
-                              <p className="text-[10px] text-slate-600 mt-0.5">{item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</p>
+                              <p className="text-[10px] text-slate-600 mt-0.5">{item.pieceCount} Fisik x {item.length} {item.product?.unit?.name || 'M'}</p>
                             )}
                             {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
                           </td>
-                          <td className="py-3 px-3 text-center font-mono">{item.quantity} <span className="text-[10px] text-slate-500">{item.unit || ''}</span></td>
+                          <td className="py-3 px-3 text-center font-mono">{item.quantity} <span className="text-[10px] text-slate-500">{item.product?.unit?.name || ''}</span></td>
                           <td className="py-3 px-3 text-right font-mono">{formatIDR(item.unitPrice)}</td>
                           <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(item.subtotal)}</td>
                         </tr>
@@ -642,9 +674,19 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               {/* Footer */}
               <div className="mt-10 border-t border-slate-200 pt-4 text-center text-[10px] text-slate-400 font-mono">
                 <p>Terima kasih atas kepercayaan Anda bermitra dengan kami.</p>
-                <p className="mt-1">
+                <p className="mt-1 mb-4">
                   Invoice generated by Sistem ERP {companyProfile.name} &copy; {new Date().getFullYear()}
                 </p>
+
+                {selectedInvoice.status !== 'cancelled' && selectedInvoice.status !== 'paid' && (
+                  <button
+                    onClick={() => handleCancelInvoice(selectedInvoice.id, selectedInvoice.invoiceNumber)}
+                    className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <XCircle size={14} className="text-rose-500" />
+                    <span>Batalkan Invoice Ini</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -674,7 +716,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                     onChange={(val) => setSelectedSOId(val)}
                     options={salesOrders.map(so => ({
                       value: so.id,
-                      label: `${so.orderNumber} - ${so.customerName} - ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(so.total)}`
+                      label: `${so.orderNumber} - ${so.customerName || so.customer?.name || '-'} - ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(so.total)}`
                     }))}
                     placeholder="-- Cari atau Pilih Sales Order --"
                   />
