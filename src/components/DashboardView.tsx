@@ -162,7 +162,7 @@ export default function DashboardView({
     if (monthIndex >= 0 && monthIndex <= 5) { // Jan to Jun
       let customTotal = 0;
       let generalTotal = 0;
-      
+
       so.items.forEach(item => {
         // Simple logic to distinguish "custom" projects and general sales.
         // Assuming Custom/Project items have "Custom" in name or something,
@@ -174,12 +174,12 @@ export default function DashboardView({
           generalTotal += (item.unitPrice * item.quantity);
         }
       });
-      
+
       chartData[monthIndex].custom += customTotal;
       chartData[monthIndex].general += generalTotal;
     }
   });
-  
+
   const maxVal = Math.max(...chartData.map(d => d.custom + d.general), 1); // prevent division by zero
 
   return (
@@ -192,10 +192,10 @@ export default function DashboardView({
               SISTEM ERP INTERNAL 2026
             </span>
             <h1 className="font-sans font-bold tracking-tight text-xl md:text-2xl mt-3 text-slate-900 flex items-center gap-2">
-              Kembali Bekerja, Tim CV Beton Agung
+              Selamat Datang Kembali!
             </h1>
             <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
-              Platform ERP mengintegrasikan produksi workshop beton, manajemen
+              Platform ERP mengintegrasikan produksi workshop, manajemen
               proyek custom, logistik stok material, dan rekapitulasi pembayaran
               secara realtime.
             </p>
@@ -288,11 +288,10 @@ export default function DashboardView({
 
             {/* Metric 4: Low stock warnings */}
             <div
-              className={`p-4 rounded-xl border shadow-sm flex items-center justify-between transition-colors ${
-                lowStockCount > 0
-                  ? "bg-red-50/50 border-red-200 text-red-950"
-                  : "bg-white border-slate-200"
-              }`}
+              className={`p-4 rounded-xl border shadow-sm flex items-center justify-between transition-colors ${lowStockCount > 0
+                ? "bg-red-50/50 border-red-200 text-red-950"
+                : "bg-white border-slate-200"
+                }`}
             >
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">
@@ -446,10 +445,10 @@ export default function DashboardView({
                       const customPct = total > 0 ? (data.custom / total) * 100 : 0;
                       const generalPct = total > 0 ? (data.general / total) * 100 : 0;
                       const heightPct = (total / maxVal) * 100;
-                      
+
                       return (
                         <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end z-10 group">
-                          <div 
+                          <div
                             className="w-full max-w-10 rounded-t-sm flex flex-col-reverse overflow-hidden transition-all duration-500 ease-out group-hover:opacity-80"
                             style={{ height: `${Math.max(heightPct, 2)}%` }}
                           >
@@ -663,9 +662,8 @@ export default function DashboardView({
                               {proj.code}
                             </span>
                             <span
-                              className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
-                                statusColors[proj.status] || "bg-slate-100"
-                              }`}
+                              className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${statusColors[proj.status] || "bg-slate-100"
+                                }`}
                             >
                               {proj.status}
                             </span>
@@ -750,13 +748,12 @@ export default function DashboardView({
                             {formatIDR(so.total)}
                           </span>
                           <span
-                            className={`text-[9px] font-bold ${
-                              so.status === "Selesai"
-                                ? "text-emerald-600"
-                                : so.status === "Diproses"
-                                  ? "text-slate-600"
-                                  : "text-slate-505 text-slate-500"
-                            }`}
+                            className={`text-[9px] font-bold ${so.status === "Selesai"
+                              ? "text-emerald-600"
+                              : so.status === "Diproses"
+                                ? "text-slate-600"
+                                : "text-slate-505 text-slate-500"
+                              }`}
                           >
                             {so.status}
                           </span>
@@ -774,7 +771,7 @@ export default function DashboardView({
                 </h4>
                 <div className="space-y-2">
                   {invoices.filter((inv) => inv.status !== "Lunas").length ===
-                  0 ? (
+                    0 ? (
                     <div className="text-slate-400 text-xs py-4 text-center">
                       Semua Invoice lunas.
                     </div>
