@@ -217,12 +217,15 @@ export default function SalesView({
 
       const prod = products.find(p => p.id === updatedItem.productId);
       if (prod && (patch.productId !== undefined || patch.quantity !== undefined || patch.unitPrice !== undefined)) {
+        const hasActiveDiscount = Number(prod.discount?.is_active) === 1;
+        const discountType = hasActiveDiscount ? prod.discount.type : null;
+        const discountValue = hasActiveDiscount ? prod.discount.value : 0;
         let baseDiscount = 0;
-        if (prod.discountType === 'percentage') {
+        if (discountType === 'percentage') {
           const defaultPrice = parseFloat(prod.sellingPrice?.toString() || '0');
-          baseDiscount = defaultPrice * (parseFloat(prod.discountValue?.toString() || '0') / 100);
-        } else if (prod.discountType === 'nominal') {
-          baseDiscount = parseFloat(prod.discountValue?.toString() || '0');
+          baseDiscount = defaultPrice * (parseFloat(discountValue.toString()) / 100);
+        } else if (discountType === 'nominal') {
+          baseDiscount = parseFloat(discountValue.toString());
         }
         updatedItem.discountAmount = baseDiscount * (updatedItem.quantity || 1);
       }
@@ -242,12 +245,15 @@ export default function SalesView({
   const resetFormItems = () => {
     const defaultProduct = products.find(p => (isQuotation ? true : p.type === 'finished_good')) || products[0];
     if (defaultProduct) {
+      const hasActiveDiscount = Number(defaultProduct.discount?.is_active) === 1;
+      const discountType = hasActiveDiscount ? defaultProduct.discount.type : null;
+      const discountValue = hasActiveDiscount ? defaultProduct.discount.value : 0;
       let baseDiscount = 0;
-      if (defaultProduct.discountType === 'percentage') {
+      if (discountType === 'percentage') {
         const defaultPrice = parseFloat(defaultProduct.sellingPrice?.toString() || '0');
-        baseDiscount = defaultPrice * (parseFloat(defaultProduct.discountValue?.toString() || '0') / 100);
-      } else if (defaultProduct.discountType === 'nominal') {
-        baseDiscount = parseFloat(defaultProduct.discountValue?.toString() || '0');
+        baseDiscount = defaultPrice * (parseFloat(discountValue.toString()) / 100);
+      } else if (discountType === 'nominal') {
+        baseDiscount = parseFloat(discountValue.toString());
       }
       setFormItems([{
         productId: defaultProduct.id,
@@ -747,8 +753,15 @@ export default function SalesView({
                               ) : null}
                               {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
                             </span>
+                            {Number(item.discountAmount || 0) > 0 && (
+                              <span className="text-[10px] text-rose-500 font-mono block">
+                                - Diskon Item: {formatIDR(item.discountAmount)}
+                              </span>
+                            )}
                           </div>
-                          <span className="font-bold text-slate-900 font-mono text-[11px]">{formatIDR(item.quantity * item.price)}</span>
+                          <span className="font-bold text-slate-900 font-mono text-[11px]">
+                            {formatIDR((item.quantity * item.price) - Number(item.discountAmount || 0))}
+                          </span>
                         </div>
                       );
                     })}
@@ -759,9 +772,24 @@ export default function SalesView({
 
             {/* Actions Footer */}
             <div className="border-t border-slate-100 pt-5 space-y-2">
-              <div className="flex justify-between text-sm font-bold text-slate-800 mb-4 px-1">
-                <span>TOTAL GROSS :</span>
-                <span className="text-indigo-700 font-mono">{formatIDR(selectedDoc.total)}</span>
+              <div className="space-y-2 mb-4 px-1">
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Subtotal</span>
+                  <span className="font-mono">{formatIDR((selectedDoc.total || 0) + (selectedDoc.globalDiscountAmount || 0))}</span>
+                </div>
+                {selectedDoc.globalDiscountAmount > 0 && (
+                  <div className="flex justify-between text-xs text-rose-600">
+                    <span>
+                      Diskon Transaksi
+                      {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? ` (${selectedDoc.globalDiscountValue}%)` : ''}
+                    </span>
+                    <span className="font-mono">- {formatIDR(selectedDoc.globalDiscountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-bold text-slate-800 pt-2 border-t border-slate-200">
+                  <span>Total</span>
+                  <span className="text-indigo-700 font-mono">{formatIDR(selectedDoc.total)}</span>
+                </div>
               </div>
 
               <div className={(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) || (!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}>
@@ -945,7 +973,7 @@ export default function SalesView({
                         </tr>
                         <tr className="bg-rose-50 text-rose-700">
                           <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
-                            DISKON GLOBAL {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? `(${selectedDoc.globalDiscountValue}%)` : ''}
+                            DISKON TRANSAKSI {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? `(${selectedDoc.globalDiscountValue}%)` : ''}
                           </td>
                           <td className="border border-black p-2 text-right font-mono text-sm">- {formatIDR(selectedDoc.globalDiscountAmount)}</td>
                         </tr>
@@ -990,7 +1018,7 @@ export default function SalesView({
       {/* 5. Create Draft Modal Form */}
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Receipt size={18} className="text-cyan-400" />
@@ -1002,8 +1030,9 @@ export default function SalesView({
             </div>
 
             <form onSubmit={handleCreateDocument} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-5 space-y-4 overflow-y-auto flex-1">
-                {!isQuotation && (
+              <div className="flex flex-row flex-1 overflow-hidden">
+                <div className="w-1/3 p-5 space-y-4 border-r border-slate-200 overflow-y-auto">
+                  {!isQuotation && (
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
                     <SearchableSelect
@@ -1073,6 +1102,21 @@ export default function SalesView({
                   )}
                 </div>
 
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">
+                    Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
+                  </label>
+                  <textarea
+                    value={documentNotes}
+                    onChange={(e) => setDocumentNotes(e.target.value)}
+                    rows={4}
+                    placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="w-2/3 p-5 space-y-4 overflow-y-auto flex flex-col">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
@@ -1088,23 +1132,13 @@ export default function SalesView({
                   <div className="space-y-3 pr-1">
                     {formItems.map((item, index) => (
                       <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase text-slate-500">Baris {index + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeFormItem(index)}
-                            disabled={formItems.length === 1}
-                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white"
-                            title="Hapus baris"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-
-                        <ProductPicker
-                          value={item.productId}
-                          showCategoryFilter
-                          onChange={(product) => {
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Baris {index + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <ProductPicker
+                              value={item.productId}
+                              showCategoryFilter
+                              onChange={(product) => {
                             updateFormItem(index, {
                               productId: product.id,
                               unitPrice: product.sellingPrice || 0,
@@ -1118,8 +1152,19 @@ export default function SalesView({
                           typeFilter={isQuotation ? undefined : "finished_good"}
                           placeholder="Pilih Produk..."
                         />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFormItem(index)}
+                            disabled={formItems.length === 1}
+                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white shrink-0"
+                            title="Hapus baris"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
 
-                        <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3 mt-3">
+                        <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3">
                           {item.isCustomizable ? (
                             <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
                               <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -1181,7 +1226,7 @@ export default function SalesView({
                               </div>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-3 gap-3">
                               <div className="space-y-1">
                                 <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
                                 <input
@@ -1200,60 +1245,83 @@ export default function SalesView({
                                   </p>
                                 )}
                               </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">
+                                  Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                </label>
+                                <CurrencyInput
+                                  required
+                                  value={item.unitPrice || ''}
+                                  onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">
+                                  Diskon Item (Rp)
+                                </label>
+                                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                  <span>Rp</span>
+                                  <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                </div>
+                              </div>
                             </div>
                           )}
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600">
-                                Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                              </label>
-                              <CurrencyInput
-                                required
-                                value={item.unitPrice || ''}
-                                onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600">
-                                Total Diskon (Rp)
-                              </label>
-                              <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
-                                <span>Rp</span>
-                                <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                          {item.isCustomizable && (
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">
+                                  Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                </label>
+                                <CurrencyInput
+                                  required
+                                  value={item.unitPrice || ''}
+                                  onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">
+                                  Diskon Item (Rp)
+                                </label>
+                                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                  <span>Rp</span>
+                                  <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[11px] font-bold text-slate-600">Keterangan</label>
+                                <input
+                                  type="text"
+                                  value={item.description || ''}
+                                  onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                  placeholder="Opsional"
+                                />
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
 
-                        <div className="space-y-1 mt-3">
-                          <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
-                          <input
-                            type="text"
-                            value={item.description || ''}
-                            onChange={(e) => updateFormItem(index, { description: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                            placeholder="Opsional (catatan khusus...)"
-                          />
-                        </div>
+                        {!item.isCustomizable && (
+                          <div className="space-y-1 mt-2">
+                            <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
+                            <input
+                              type="text"
+                              value={item.description || ''}
+                              onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                              placeholder="Opsional (catatan khusus...)"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
-                  </label>
-                  <textarea
-                    value={documentNotes}
-                    onChange={(e) => setDocumentNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
+              </div>
               </div>
               <div className="p-4 border-t bg-slate-50 flex justify-between items-end shrink-0">
                 <div className="flex flex-col gap-2 w-1/2">
@@ -1262,7 +1330,7 @@ export default function SalesView({
                     <span className="text-xs font-mono font-bold text-slate-700">{formatIDR(formTotal)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Diskon Global</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Diskon Transaksi</span>
                     <div className="flex flex-1 items-center bg-white rounded-lg border border-slate-200 overflow-hidden h-8">
                       <select
                         value={globalDiscountType}

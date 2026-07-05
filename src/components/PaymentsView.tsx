@@ -25,7 +25,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'qris'>('transfer');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'qris'>('cash');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [isSavingPayment, setIsSavingPayment] = useState(false);
@@ -52,6 +52,12 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
       
       if (accountsData.length > 0 && !selectedAccountId) {
         setSelectedAccountId(accountsData[0].id);
+        // Set initial payment method based on default account type
+        const firstAcc = accountsData[0];
+        if (firstAcc.type === 'bank') setPaymentMethod('transfer');
+        else if (firstAcc.type === 'cash') setPaymentMethod('cash');
+        else if (firstAcc.type === 'ewallet') setPaymentMethod('qris');
+        else setPaymentMethod('cash');
       }
     } catch (err) {
       console.error('Failed to load payments', err);
@@ -83,7 +89,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
               if (invoice) {
                 setSelectedInvoiceId(pendingInvoiceId);
                 setPaymentAmount(invoice.total - invoice.paidAmount);
-                setPaymentMethod('transfer');
+                setPaymentMethod('cash'); // default; will be corrected by account onChange
                 setPaymentNotes(`Penerimaan pembayaran faktur ${invoice.invoiceNumber}`);
                 setShowReceiveModal(true);
               }
@@ -132,7 +138,16 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     const firstInvoice = unpaidInvoices[0] || null;
     setSelectedInvoiceId(firstInvoice?.id || '');
     setPaymentAmount(firstInvoice ? firstInvoice.total - firstInvoice.paidAmount : 0);
-    setPaymentMethod('transfer');
+    // Derive payment method from currently selected account type
+    const selectedAcc = accounts.find(a => a.id === selectedAccountId);
+    if (selectedAcc) {
+      if (selectedAcc.type === 'bank') setPaymentMethod('transfer');
+      else if (selectedAcc.type === 'cash') setPaymentMethod('cash');
+      else if (selectedAcc.type === 'ewallet') setPaymentMethod('qris');
+      else setPaymentMethod('cash');
+    } else {
+      setPaymentMethod('cash');
+    }
     setPaymentNotes(firstInvoice ? `Penerimaan pembayaran faktur ${firstInvoice.invoiceNumber}` : '');
     setShowReceiveModal(true);
   };
@@ -310,7 +325,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                       </td>
                       <td className="p-3.5 font-mono font-medium text-cyan-600">{pay.invoiceNumber}</td>
                       <td className="p-3.5 font-bold text-slate-700">{pay.customerName}</td>
-                      <td className="p-3.5 font-mono text-slate-500">{formatDate(pay.date)}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{formatDate(pay.paymentDate)}</td>
                       <td className="p-3.5">
                         <span className="px-2 py-0.5 bg-slate-150 rounded border text-[10px] font-semibold text-slate-600">
                           {pay.method}

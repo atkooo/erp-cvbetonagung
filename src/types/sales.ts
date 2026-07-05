@@ -52,8 +52,11 @@ export interface SalesOrder {
 export interface Quotation {
   id: string;
   quotationNumber: string;
+  quoteNumber?: string;
   customerId: string;
+  customerName?: string;
   quotationDate: string;
+  date?: string;
   validUntil: string;
   total: number;
   status: string; // Draft, Terkirim, Disetujui, Ditolak
@@ -61,14 +64,17 @@ export interface Quotation {
   items: {
     id?: string;
     productId: string;
+    productName?: string;
     description?: string | null;
     pieceCount?: number | null;
     length?: number | null;
     specification?: string | null;
     quantity: number;
     unitPrice: number;
+    price?: number;
     discountAmount?: number | string | null;
     subtotal?: number;
+    unit?: string;
     product?: {
       id: string;
       sku: string;
@@ -118,6 +124,8 @@ export interface Invoice {
     name: string;
     phone?: string;
   };
+  customerName?: string; // mapped from customer.name for display convenience
+  date?: string; // mapped from invoice_date for display convenience
   invoiceDate: string;
   dueDate: string;
   total: number;

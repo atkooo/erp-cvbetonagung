@@ -127,7 +127,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     let requiredQty = item.pieceCount || item.quantity;
 
     if (so && so.source === 'pos') {
-      const poQty = so.deliveryOrders?.filter(d => d.status === 'Draft')
+      const poQty = so.deliveryOrders?.filter(d => d.status === 'ready_to_load')
         .flatMap(d => d.items || [])
         .filter(di => di.productId === item.productId)
         .reduce((sum, di) => sum + di.quantity, 0) || 0;
@@ -574,11 +574,25 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         })()}
                       </div>
                       <h4 className="font-bold text-slate-800">{wo.productName}</h4>
-                      {wo.sourceLabel?.includes('[') ? (
-                        <p className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1 py-0.5 rounded w-fit mt-0.5">Ref: {wo.sourceLabel}</p>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">Order: {wo.sourceLabel || 'Stok'}</p>
-                      )}
+                      {/* Reference badges */}
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {wo.salesOrderNumber && (
+                          <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 rounded border border-amber-100">SO: {wo.salesOrderNumber}</span>
+                        )}
+                        {wo.projectName && (
+                          <span className="text-[9px] text-indigo-700 font-bold bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">Proyek: {wo.projectName}</span>
+                        )}
+                        {wo.sourceLabel && !wo.salesOrderNumber && !wo.projectName && (
+                          wo.sourceLabel.includes('[') ? (
+                            <span className="text-[9px] text-violet-700 font-bold bg-violet-50 px-1 py-0.5 rounded border border-violet-100">Ref: {wo.sourceLabel}</span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-medium">Order: {wo.sourceLabel}</span>
+                          )
+                        )}
+                        {!wo.sourceLabel && !wo.salesOrderNumber && !wo.projectName && (
+                          <span className="text-[10px] text-slate-500 font-medium">Stok Gudang</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-right shrink-0">
@@ -657,15 +671,35 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           )}
                         </div>
                         <h3 className="font-sans font-black text-slate-800 text-base mt-2">{selectedWo.productName}</h3>
-                        <div className="mt-1">
-                          {selectedWo.sourceLabel?.includes('[') ? (
-                            <span className="inline-block px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded font-bold text-[11px] mb-1">
-                              Ref: {selectedWo.sourceLabel}
-                            </span>
-                          ) : (
-                            <span className="font-semibold text-[10px] text-slate-700">Sumber: {selectedWo.sourceLabel || 'Stok Gudang'}</span>
+                        <div className="mt-1 space-y-1">
+                          {/* Reference Info */}
+                          {(selectedWo.salesOrderNumber || selectedWo.projectName) && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {selectedWo.salesOrderNumber && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded font-bold text-[11px]">
+                                  <FileText size={11} />
+                                  <span>SO Ref: {selectedWo.salesOrderNumber}</span>
+                                </span>
+                              )}
+                              {selectedWo.projectName && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded font-bold text-[11px]">
+                                  <CheckCircle2 size={11} />
+                                  <span>Proyek: {selectedWo.projectName}</span>
+                                </span>
+                              )}
+                            </div>
                           )}
-                          <span className="text-[10px] text-slate-400 ml-2">
+                          {/* Source Label */}
+                          {selectedWo.sourceLabel && (
+                            selectedWo.sourceLabel.includes('[') ? (
+                              <span className="inline-block px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded font-bold text-[11px]">
+                                Ref: {selectedWo.sourceLabel}
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-[10px] text-slate-700">Sumber: {selectedWo.sourceLabel}</span>
+                            )
+                          )}
+                          <span className="block text-[10px] text-slate-400">
                             {selectedWo.dueDate && `Target Selesai: ${selectedWo.dueDate}`}
                           </span>
                         </div>
@@ -913,7 +947,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     }}
                     options={activeSalesOrders.map(so => ({
                       value: so.id,
-                      label: `${so.orderNumber} (${so.customerName})`
+                      label: `${so.orderNumber} (${so.customer?.name || 'N/A'})`
                     }))}
                     placeholder="-- Cari Sales Order --"
                   />
@@ -958,8 +992,8 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         const outQty = getItemOutstandingQty(selectedSalesOrderId, item);
                         const disabled = outQty <= 0;
                         return (
-                          <option key={`${item.productId || item.productName}-${index}`} value={index} disabled={disabled}>
-                            {item.productName}
+                          <option key={`${item.productId || item.product?.name}-${index}`} value={index} disabled={disabled}>
+                            {item.product?.name || item.description || 'Item'}
                             {item.specification ? ` (${item.specification})` : ''}
                             {item.pieceCount && item.length ? ` [${item.pieceCount} Fisik @ ${item.length} M]` : (item.length ? ` - ukuran ${item.length}` : '')}
                             {' '} - {disabled ? 'Terpenuhi' : `Sisa Kebutuhan: ${outQty} dari ${item.pieceCount ? item.pieceCount : item.quantity}`}

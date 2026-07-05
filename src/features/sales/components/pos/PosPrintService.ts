@@ -42,7 +42,7 @@ export const printReceipt = (
       </style>
     </head>
     <body>
-      <div class="text-center mb-1"><img src="${companyProfile?.logo || (window.location.origin + '/logo.png')}" style="max-width: 60px; max-height: 60px; filter: grayscale(100%); object-fit: contain;" alt="Logo" /></div>
+      <div class="text-center mb-1"><img src="${companyProfile?.logoUrl || (window.location.origin + '/logo.png')}" style="max-width: 60px; max-height: 60px; filter: grayscale(100%); object-fit: contain;" alt="Logo" /></div>
       <div class="text-center mb-2 font-bold" style="font-size: 14px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
       <div class="text-center border-b mb-2" style="font-size: 10px;">
         ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
@@ -98,7 +98,7 @@ export const printReceipt = (
         </tr>
         ${info.globalDiscountAmount > 0 ? `
         <tr>
-          <td>DISKON GLOBAL</td>
+          <td>DISKON TRANSAKSI</td>
           <td class="text-right">-Rp ${new Intl.NumberFormat('id-ID').format(info.globalDiscountAmount)}</td>
         </tr>
         <tr>
@@ -153,7 +153,7 @@ export const downloadReceipt = async (
 
     const htmlContent = `
       <div style="font-family: 'Courier New', Courier, monospace; font-size: 12px; font-weight: 600; line-height: 1.2; padding: 2mm; color: #000; box-sizing: border-box; width: 69mm; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 5px;"><img src="${companyProfile?.logo || (window.location.origin + '/logo.png')}" style="max-width: 60px; max-height: 60px; filter: grayscale(100%); object-fit: contain;" alt="Logo" crossorigin="anonymous" /></div>
+        <div style="text-align: center; margin-bottom: 5px;"><img src="${companyProfile?.logoUrl || (window.location.origin + '/logo.png')}" style="max-width: 60px; max-height: 60px; filter: grayscale(100%); object-fit: contain;" alt="Logo" crossorigin="anonymous" /></div>
         <div class="text-center mb-2 font-bold" style="text-align: center; font-size: 14px; font-weight: 900; margin-bottom: 10px;">${companyProfile?.name ? companyProfile.name.toUpperCase() : 'CV BETON AGUNG'}</div>
         <div class="text-center border-b mb-2" style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 10px; font-size: 10px;">
           ${(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\n/g, '<br>')}
@@ -209,7 +209,7 @@ export const downloadReceipt = async (
           </tr>
           ${info.globalDiscountAmount > 0 ? `
           <tr>
-            <td style="padding: 2px 0; vertical-align: top;">DISKON GLOBAL</td>
+            <td style="padding: 2px 0; vertical-align: top;">DISKON TRANSAKSI</td>
             <td class="text-right" style="padding: 2px 0; vertical-align: top; text-align: right;">-Rp ${new Intl.NumberFormat('id-ID').format(info.globalDiscountAmount)}</td>
           </tr>
           <tr>
@@ -409,7 +409,7 @@ export const printBluetoothReceipt = async (
     appendBytes(lineFeed);
 
     if (info.globalDiscountAmount > 0) {
-      const globalDiscStr = `DISKON GLOBAL     -Rp ${formatRupiahStr(info.globalDiscountAmount).padStart(12)}`;
+      const globalDiscStr = `DISKON TRANSAKSI  -Rp ${formatRupiahStr(info.globalDiscountAmount).padStart(12)}`;
       appendStr(globalDiscStr.padStart(WIDTH));
       appendBytes(lineFeed);
       

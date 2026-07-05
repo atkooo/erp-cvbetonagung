@@ -1,5 +1,6 @@
 import { CategoryDto, CategoryFormData, ProductDto, ProductFormData, UnitDto } from './types';
 import { Category, Product } from '../../types';
+import { Discount } from '../../types/master';
 import { getFileUrl } from '../../services/api';
 
 export const mapCategoryFromDto = (dto: CategoryDto): Category => ({
@@ -37,6 +38,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   location: 'Gudang Utama',
   imageUrl: getFileUrl(dto.image_url),
   discountId: dto.discount_id || null,
+  discount: dto.discount || null,
 });
 
 

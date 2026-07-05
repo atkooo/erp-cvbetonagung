@@ -1,5 +1,7 @@
 /** Domain types: Product & Category */
 
+import type { Discount } from './master';
+
 export interface Product {
   id: string;
   businessUnit?: string;
@@ -22,6 +24,7 @@ export interface Product {
   qrValue?: string;
   imageUrl?: string | null;
   discountId?: string | null;
+  discount?: Discount | null;
 }
 
 export interface Category {

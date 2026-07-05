@@ -200,7 +200,7 @@ export default function PosCartSidebar({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase flex items-center justify-between">
-              <span>Diskon Global</span>
+              <span>Diskon Transaksi</span>
             </label>
             <div className="flex gap-2">
               <select

@@ -1,3 +1,5 @@
+import type { Discount } from '../../types/master';
+
 export interface CategoryDto {
   id: string;
   name: string;
@@ -46,6 +48,7 @@ export interface ProductDto {
   image_url?: string | null;
   status: 'active' | 'inactive';
   discount_id?: string | null;
+  discount?: Discount | null;
   category?: CategoryDto;
   unit?: UnitDto;
   created_at?: string;
