@@ -289,6 +289,14 @@ export default function ReturnsView({
   };
 
   // Filter & Search
+  const activeSalesOrders = React.useMemo(() => {
+    return salesOrders.filter(so => so.status === 'Disetujui' || so.status === 'Selesai');
+  }, [salesOrders]);
+
+  const activePurchaseOrders = React.useMemo(() => {
+    return purchaseOrders.filter(po => po.status === 'Dikirim' || po.status === 'Selesai' || po.status === 'Disetujui');
+  }, [purchaseOrders]);
+
   const filteredReturns = returns.filter((ret) => {
     const matchesSearch =
       ret.returnNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -769,8 +777,8 @@ export default function ReturnsView({
                     }}
                     placeholder={type === "customer" ? "-- Cari Nomor SO --" : "-- Cari Nomor PO --"}
                     options={type === "customer"
-                      ? salesOrders.map((so) => ({ value: so.id, label: `${so.orderNumber} - ${so.customerName}` }))
-                      : purchaseOrders.map((po) => ({ value: po.id, label: `${po.poNumber} - ${po.supplierName}` }))
+                      ? activeSalesOrders.map((so) => ({ value: so.id, label: `${so.orderNumber} - ${so.customerName}` }))
+                      : activePurchaseOrders.map((po) => ({ value: po.id, label: `${po.poNumber} - ${po.supplierName}` }))
                     }
                   />
                 </div>
