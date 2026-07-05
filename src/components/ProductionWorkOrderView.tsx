@@ -148,6 +148,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const activeSalesOrders = React.useMemo(() => {
     return salesOrders.filter(so => {
       if (!so.items || so.items.length === 0) return false;
+      if (so.status === 'Dibatalkan' || so.status === 'Selesai' || so.status === 'Draft') return false;
       return so.items.some(item => getItemOutstandingQty(so.id, item) > 0);
     });
   }, [salesOrders, getItemOutstandingQty]);
