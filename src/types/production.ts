@@ -38,6 +38,7 @@ export interface ProductionWorkOrder {
   productSku?: string;
   salesOrderId?: string;
   salesOrderNumber?: string;
+  customerName?: string;
   projectId?: string;
   projectName?: string;
   sourceLabel?: string;

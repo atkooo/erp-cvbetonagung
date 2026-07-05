@@ -40,6 +40,7 @@ export const mapWorkOrderFromDto = (dto: ProductionWorkOrderDto): ProductionWork
   productSku: dto.product?.sku || '',
   salesOrderId: dto.sales_order_id || undefined,
   salesOrderNumber: dto.sales_order?.order_number || undefined,
+  customerName: dto.sales_order?.customer?.name || undefined,
   projectId: dto.project_id || undefined,
   projectName: dto.project?.name || undefined,
   sourceLabel: dto.source_label || undefined,

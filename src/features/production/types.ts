@@ -69,6 +69,10 @@ export interface ProductionWorkOrderDto {
   sales_order?: {
     id: string;
     order_number: string;
+    customer?: {
+      id: string;
+      name: string;
+    };
   };
   project?: {
     id: string;
