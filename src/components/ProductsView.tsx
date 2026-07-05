@@ -541,7 +541,12 @@ export default function ProductsView({
                         )}
                       </td>
                       <td className="p-3.5 font-mono font-bold text-indigo-600">
-                        {p.sku}
+                        {p.qrValue || p.sku}
+                        {p.qrValue && (
+                          <div className="text-[9px] font-normal text-slate-400 mt-0.5 tracking-wide">
+                            SKU: {p.sku}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3.5 text-slate-600">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
