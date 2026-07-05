@@ -49,7 +49,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
       setPayments(paymentData);
       setInvoices(invoiceData);
       setAccounts(accountsData);
-      
+
       if (accountsData.length > 0 && !selectedAccountId) {
         setSelectedAccountId(accountsData[0].id);
         // Set initial payment method based on default account type
@@ -78,7 +78,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     const pendingInvoiceId = sessionStorage.getItem('action_pay_invoice');
     if (pendingInvoiceId) {
       sessionStorage.removeItem('action_pay_invoice');
-      
+
       // We need to wait for invoices to load
       const checkAndOpen = setInterval(() => {
         setInvoices((currentInvoices) => {
@@ -98,7 +98,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
           return currentInvoices;
         });
       }, 500);
-      
+
       // timeout clear interval after 10s
       setTimeout(() => clearInterval(checkAndOpen), 10000);
     }
@@ -222,6 +222,34 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     }
   };
 
+  const handleCancelPayment = async (payId: string, payNum: string) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Batalkan Pembayaran?',
+      text: `Masukkan alasan pembatalan untuk pembayaran ${payNum}. Saldo kas akan di-reverse secara otomatis.`,
+      input: 'text',
+      inputPlaceholder: 'Salah nominal, batal transaksi, dll',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali',
+      inputValidator: (value) => {
+        if (!value) return 'Alasan pembatalan wajib diisi!';
+        return null;
+      }
+    });
+
+    if (isConfirmed && reason) {
+      try {
+        await financeApi.cancelPayment(payId, reason);
+        onTriggerNotification(`Berhasil membatalkan pembayaran ${payNum}`);
+        await loadData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan pembayaran');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {isLoading ? (
@@ -333,28 +361,39 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                       </td>
                       <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(pay.amount)}</td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold ${
-                          pay.status === 'Verified' ? 'bg-emerald-100 text-emerald-800 border border-emerald-250' :
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-bold ${pay.status === 'Verified' ? 'bg-emerald-100 text-emerald-800 border border-emerald-250' :
                           pay.status === 'Pending' ? 'bg-amber-100 text-amber-800 border border-amber-250 animate-pulse font-semibold' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                            'bg-red-100 text-red-800'
+                          }`}>
                           {pay.status === 'Verified' && <ShieldCheck size={11} />}
                           {pay.status === 'Pending' && <HelpCircle size={11} />}
                           <span>{pay.status}</span>
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
-                        {pay.status === 'Pending' ? (
-                          <button
-                            onClick={() => handleVerify(pay.id, pay.paymentNumber, pay.customerName, pay.amount)}
-                            className="px-2.5 py-1 text-[10px] bg-slate-900 hover:bg-slate-800 text-white font-bold rounded flex items-center gap-1 ml-auto"
-                          >
-                            <Check size={11} />
-                            <span>Verifikasi</span>
-                          </button>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-mono italic">Audit Sukses</span>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {pay.status === 'Pending' && (
+                            <button
+                              onClick={() => handleVerify(pay.id, pay.paymentNumber, pay.customerName, pay.amount)}
+                              className="px-2.5 py-1 text-[10px] bg-slate-900 hover:bg-slate-800 text-white font-bold rounded flex items-center gap-1"
+                            >
+                              <Check size={11} />
+                              <span>Verifikasi</span>
+                            </button>
+                          )}
+                          {(pay.status === 'Pending' || pay.status === 'Verified') && (
+                            <button
+                              onClick={() => handleCancelPayment(pay.id, pay.paymentNumber)}
+                              className="px-2.5 py-1 text-[10px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded flex items-center gap-1"
+                            >
+                              <XCircle size={11} />
+                              <span>Batal</span>
+                            </button>
+                          )}
+                          {pay.status === 'Cancelled' && (
+                            <span className="text-[10px] text-slate-400 font-mono italic px-2">Dibatalkan</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -460,7 +499,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">Persentase (%)</label>
-                      <input 
+                      <input
                         type="number"
                         min={1}
                         max={100}

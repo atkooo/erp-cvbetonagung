@@ -81,5 +81,9 @@ export const financeApi = {
 
   async cancelInvoice(id: string, reason: string): Promise<void> {
     await apiClient.post(`/finance/invoices/${id}/cancel`, { reason });
+  },
+
+  async cancelPayment(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/finance/payments/${id}/cancel`, { reason });
   }
 };

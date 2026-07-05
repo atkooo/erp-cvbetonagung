@@ -92,6 +92,7 @@ export interface SalesOrderDto {
   invoices?: {
     id: string;
     paid_amount: string | number;
+    status: string;
   }[];
   deliveryOrders?: DeliveryOrderDto[];
 }

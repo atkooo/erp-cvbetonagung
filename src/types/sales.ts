@@ -147,7 +147,7 @@ export interface Payment {
   paymentDate: string;
   method: 'Cash' | 'Transfer' | 'QRIS';
   amount: number;
-  status: 'Verified' | 'Pending' | 'Gagal';
+  status: 'Verified' | 'Pending' | 'Gagal' | 'Cancelled';
 }
 
 export interface DeliveryOrderItem {

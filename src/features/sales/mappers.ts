@@ -92,6 +92,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     specification: item.specification || undefined,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unit_price),
+    price: Number(item.unit_price),
     discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,
     product: item.product ? {
       id: item.product.id || '',
@@ -100,8 +101,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
       unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
     } : undefined
   })),
-  hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0),
-  hasInvoice: (dto.invoices || []).length > 0,
+  hasPaidInvoice: (dto.invoices || []).some(inv => Number(inv.paid_amount) > 0 && inv.status !== 'cancelled' && inv.status !== 'dibatalkan'),
+  hasInvoice: (dto.invoices || []).some(inv => inv.status !== 'cancelled' && inv.status !== 'dibatalkan'),
   deliveryOrders: (dto.deliveryOrders || (dto as any).delivery_orders || []).map(mapDeliveryOrderFromDto)
 });
 
