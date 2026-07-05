@@ -987,7 +987,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     }}
                     options={activeSalesOrders.map(so => ({
                       value: so.id,
-                      label: `${so.orderNumber} (${so.customer?.name || 'N/A'})`
+                      label: `${so.orderNumber} (${so.customerName || 'N/A'})`
                     }))}
                     placeholder="-- Cari Sales Order --"
                   />
