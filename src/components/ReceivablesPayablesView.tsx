@@ -141,6 +141,35 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
     }
   };
 
+  const handleCancelInvoice = async (id: string, number: string) => {
+    const { value: reason, isConfirmed } = await Swal.fire({
+      title: 'Batalkan Invoice?',
+      text: `Masukkan alasan pembatalan untuk invoice ${number}.`,
+      input: 'text',
+      inputPlaceholder: 'Batal pesanan, salah input, dll',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Tutup',
+      inputValidator: (value) => {
+        if (!value) return 'Alasan pembatalan wajib diisi!';
+        return null;
+      }
+    });
+
+    if (isConfirmed && reason) {
+      try {
+        await financeApi.cancelInvoice(id, reason);
+        onTriggerNotification(`Berhasil membatalkan invoice ${number}`);
+        setShowInvoiceDetail(false);
+        await fetchData();
+      } catch (err) {
+        onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
+      }
+    }
+  };
+
   useEffect(() => {
     const pendingPoNumber = sessionStorage.getItem('action_pay_ap');
     if (pendingPoNumber) {
@@ -725,6 +754,22 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
                     </StatusPill>
                   </div>
                 </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowInvoiceDetail(false)}
+                  className="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-bold"
+                >
+                  Tutup
+                </button>
+                {selectedInvoiceDetail.status !== 'Dibatalkan' && (
+                  <button
+                    onClick={() => handleCancelInvoice(selectedInvoiceDetail.id, selectedInvoiceDetail.invoiceNumber)}
+                    className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-lg font-bold"
+                  >
+                    Batalkan Invoice
+                  </button>
+                )}
               </div>
             </div>
           </div>
