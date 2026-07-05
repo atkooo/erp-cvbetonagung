@@ -273,7 +273,7 @@ export default function SalesView({
     if (isQuotation) return doc.status;
     
     const baseStatus = doc.status;
-    if (['Draft', 'Dibatalkan', 'Ditolak', 'Selesai'].includes(baseStatus)) {
+    if (['Draft', 'Dibatalkan', 'Ditolak'].includes(baseStatus)) {
       return baseStatus;
     }
 
@@ -298,13 +298,25 @@ export default function SalesView({
       }
     });
 
-    const isFullyDelivered = totalDelivered >= totalItems && totalItems > 0;
+    const isFullyDelivered = (totalDelivered >= totalItems && totalItems > 0) || (baseStatus === 'Selesai' && doc.source === 'pos' && dos.length === 0);
     const isPartiallyDelivered = totalDelivered > 0 && totalDelivered < totalItems;
 
     if (isFullyDelivered && isFullyPaid) return 'Selesai';
-    if (isFullyDelivered && !isFullyPaid) return 'Menunggu Pembayaran';
-    if (!isFullyDelivered && (dos.length > 0 || isPartiallyDelivered)) return 'Proses Pengiriman';
-    if (isPartiallyPaid && !isFullyDelivered) return 'Menunggu Pengiriman (Dibayar Sebagian)';
+    
+    if (paidAmount === 0) {
+      if (isFullyDelivered) return 'Menunggu Pembayaran';
+      return 'Menunggu Pembayaran DP';
+    }
+
+    if (isPartiallyPaid) {
+      if (isFullyDelivered) return 'Menunggu Pelunasan';
+      if (isPartiallyDelivered || dos.length > 0) return 'Proses Pengiriman';
+      return 'Menunggu Pengiriman';
+    }
+
+    if (isFullyPaid) {
+      if (!isFullyDelivered) return (isPartiallyDelivered || dos.length > 0) ? 'Proses Pengiriman' : 'Menunggu Pengiriman';
+    }
     
     return 'Menunggu Pengiriman';
   };
@@ -606,10 +618,10 @@ export default function SalesView({
               <>
                 <option value="Draft">Draft</option>
                 <option value="Diproses">Diproses / Disetujui</option>
+                <option value="Menunggu Pembayaran DP">Menunggu Pembayaran DP</option>
+                <option value="Menunggu Pelunasan">Menunggu Pelunasan</option>
                 <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
                 <option value="Proses Pengiriman">Proses Pengiriman</option>
-                <option value="Menunggu Pembayaran">Menunggu Pembayaran</option>
-                <option value="Menunggu Pengiriman (Dibayar Sebagian)">Menunggu Pengiriman (DP)</option>
                 <option value="Selesai">Selesai</option>
                 <option value="Dibatalkan">Dibatalkan</option>
               </>
@@ -658,8 +670,9 @@ export default function SalesView({
                         Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
                         'Menunggu Pengiriman': 'bg-orange-100 text-orange-800 border-orange-300',
                         'Proses Pengiriman': 'bg-cyan-100 text-cyan-800 border-cyan-300',
+                        'Menunggu Pembayaran DP': 'bg-rose-100 text-rose-800 border-rose-300',
                         'Menunggu Pembayaran': 'bg-amber-100 text-amber-800 border-amber-300',
-                        'Menunggu Pengiriman (Dibayar Sebagian)': 'bg-blue-100 text-blue-800 border-blue-300',
+                        'Menunggu Pelunasan': 'bg-amber-100 text-amber-800 border-amber-300',
                         pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
                         Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
                         completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -968,18 +981,44 @@ export default function SalesView({
                   </button>
                 )}
 
-                {!isQuotation && selectedDoc.status === 'Disetujui' && (
-                  <button
-                    onClick={() => {
-                      sessionStorage.setItem('action_create_invoice', selectedDoc.id);
-                      setSelectedDoc(null);
-                      onNavigate('invoices');
-                    }}
-                    className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                  >
-                    <span>Lanjut Buat Tagihan (Invoice)</span>
-                    <ChevronRight size={14} />
-                  </button>
+                {!isQuotation && !['Draft', 'Dibatalkan', 'Selesai', 'cancelled'].includes(selectedDoc.status) && (
+                  <>
+                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' || 
+                      getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran' || 
+                      getMonitoringStatus(selectedDoc) === 'Menunggu Pelunasan') && (
+                      <button
+                        onClick={() => {
+                          sessionStorage.setItem('action_create_invoice', selectedDoc.id);
+                          setSelectedDoc(null);
+                          onNavigate('invoices');
+                        }}
+                        className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                      >
+                        <span>
+                          {getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' 
+                            ? 'Lanjut Buat Tagihan DP (Invoice)' 
+                            : 'Lanjut Buat Tagihan Pelunasan (Invoice)'}
+                        </span>
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
+
+                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman' || 
+                      getMonitoringStatus(selectedDoc) === 'Proses Pengiriman' ||
+                      getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman (Dibayar Sebagian)') && (
+                      <button
+                        onClick={() => {
+                          sessionStorage.setItem('action_create_do', selectedDoc.id);
+                          setSelectedDoc(null);
+                          onNavigate('delivery-orders');
+                        }}
+                        className="w-full col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                      >
+                        <span>Lanjut Buat Surat Jalan (DO)</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

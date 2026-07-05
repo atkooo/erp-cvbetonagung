@@ -14,6 +14,7 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
   id: dto.id,
   deliveryNumber: dto.delivery_number,
   salesOrderId: dto.sales_order_id,
+  salesOrder: dto.sales_order ? { id: dto.sales_order.id, orderNumber: dto.sales_order.order_number } : undefined,
   customerId: dto.customer_id,
   customer: dto.customer ? { id: dto.customer_id, name: dto.customer.name } : undefined,
   deliveryDate: dto.delivery_date ? dto.delivery_date.split('T')[0] : '',
