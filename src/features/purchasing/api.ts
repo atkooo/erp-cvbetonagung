@@ -124,35 +124,34 @@ export const purchasingApi = {
   },
 
   async getReturns(): Promise<Return[]> {
-    const response = await apiClient.get<{ data: ReturnDto[] }>('/purchasing/returns?include=customer,supplier,sales_order,purchase_order,items.product');
+    const response = await apiClient.get<{ data: ReturnDto[] }>('/returns?include=customer,supplier,sales_order.invoices,purchase_order,items.product');
     return response.data.map(mapReturnFromDto);
   },
 
   async createReturn(data: CreateReturnDto): Promise<Return> {
     const payload = { ...data, return_number: `RTN-${Date.now()}` };
-    const response = await apiClient.post<{ data: ReturnDto }>('/purchasing/returns', payload);
+    const response = await apiClient.post<{ data: ReturnDto }>('/returns', payload);
     const returnId = response.data.id;
 
-    if (data.items && data.items.length > 0) {
-      await Promise.all(data.items.map(item => 
-        apiClient.post('/purchasing/return-items', {
-          return_id: returnId,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          notes: item.notes || null,
-        })
-      ));
-    }
-
-    const finalRes = await apiClient.get<{ data: ReturnDto }>(`/purchasing/returns/${returnId}?include=customer,supplier,sales_order,purchase_order,items.product`);
+    const finalRes = await apiClient.get<{ data: ReturnDto }>(`/returns/${returnId}?include=customer,supplier,sales_order.invoices,purchase_order,items.product`);
     return mapReturnFromDto(finalRes.data);
   },
 
-  async updateReturnQcStatus(id: string, qc_status: string): Promise<Return> {
-    const response = await apiClient.put<{ data: ReturnDto }>(`/purchasing/returns/${id}`, {
-      qc_status
-    });
+  async updateReturnQcStatus(id: string, qcStatus: string, allowBackorder?: boolean): Promise<Return> {
+    const payload: any = { qc_status: qcStatus };
+    if (allowBackorder) {
+      payload.allow_backorder = true;
+    }
+    const response = await apiClient.put<{ data: ReturnDto }>(`/returns/${id}`, payload);
     return mapReturnFromDto(response.data);
+  },
+
+  async refundReturn(id: string, accountId: string): Promise<void> {
+    await apiClient.post(`/returns/${id}/refund`, { account_id: accountId });
+  },
+
+  async deleteReturn(id: string): Promise<void> {
+    await apiClient.delete(`/returns/${id}`);
   },
 
   async getRfqs(): Promise<Rfq[]> {

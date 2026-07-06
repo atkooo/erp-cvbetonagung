@@ -186,11 +186,16 @@ export interface ReturnDto {
   sales_order_id: string | null;
   purchase_order_id: string | null;
   reason: string;
+  action?: 'refund' | 'replace';
   qc_status: string;
   created_at: string;
   customer?: { id: string; name: string };
   supplier?: { id: string; name: string };
-  sales_order?: { id: string; order_number: string };
+  sales_order?: { 
+    id: string; 
+    order_number: string; 
+    invoices?: { total: number; paid_amount: number; status: string }[];
+  };
   purchase_order?: { id: string; purchase_number: string };
   items?: ReturnItemDto[];
 }
@@ -202,6 +207,7 @@ export interface CreateReturnDto {
   sales_order_id?: string | null;
   purchase_order_id?: string | null;
   reason: string;
+  action?: 'refund' | 'replace';
   qc_status: string;
   items: {
     product_id: string;
@@ -226,8 +232,10 @@ export interface Return {
   partnerName: string;
   referenceNumber: string;
   reason: string;
+  action?: 'refund' | 'replace';
   qcStatus: string;
   createdAt: string;
+  overpaymentAmount?: number;
   items: ReturnItem[];
 }
 

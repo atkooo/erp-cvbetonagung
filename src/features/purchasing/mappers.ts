@@ -89,17 +89,30 @@ export const mapReturnItemFromDto = (dto: ReturnItemDto): ReturnItem => ({
   notes: dto.notes || '-',
 });
 
-export const mapReturnFromDto = (dto: ReturnDto): Return => ({
-  id: dto.id,
-  returnNumber: dto.return_number,
-  type: dto.type as 'customer' | 'supplier',
-  partnerName: dto.type === 'customer' ? (dto.customer?.name || '-') : (dto.supplier?.name || '-'),
-  referenceNumber: dto.type === 'customer' ? (dto.sales_order?.order_number || '-') : (dto.purchase_order?.purchase_number || '-'),
-  reason: dto.reason,
-  qcStatus: dto.qc_status,
-  createdAt: dto.created_at ? dto.created_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '',
-  items: (dto.items || []).map(mapReturnItemFromDto),
-});
+export const mapReturnFromDto = (dto: ReturnDto): Return => {
+  let overpaymentAmount = 0;
+  if (dto.type === 'customer' && dto.sales_order?.invoices && dto.sales_order.invoices.length > 0) {
+    const inv = dto.sales_order.invoices[0];
+    const diff = Number(inv.paid_amount) - Number(inv.total);
+    if (diff > 0) {
+      overpaymentAmount = diff;
+    }
+  }
+
+  return {
+    id: dto.id,
+    returnNumber: dto.return_number,
+    type: dto.type as 'customer' | 'supplier',
+    partnerName: dto.type === 'customer' ? (dto.customer?.name || '-') : (dto.supplier?.name || '-'),
+    referenceNumber: dto.type === 'customer' ? (dto.sales_order?.order_number || '-') : (dto.purchase_order?.purchase_number || '-'),
+    reason: dto.reason,
+    action: dto.action,
+    qcStatus: dto.qc_status,
+    createdAt: dto.created_at ? dto.created_at.replace('T', ' ').replace('.000000Z', '').substring(0, 16) : '',
+    overpaymentAmount,
+    items: (dto.items || []).map(mapReturnItemFromDto),
+  };
+};
 
 export const mapRfqItemFromDto = (dto: any): any => ({
   id: dto.id,

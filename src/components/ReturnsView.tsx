@@ -30,7 +30,9 @@ import { Product } from "../types";
 import { customersApi } from "../features/customers/api";
 import { suppliersApi } from "../features/suppliers/api";
 import { salesApi } from "../features/sales/api";
+import { financeApi } from "../features/finance/api";
 import { Supplier, Customer, SalesOrder, PurchaseOrder } from "../types";
+import { AccountDto } from "../features/finance/types";
 
 interface ReturnsViewProps {
   onTriggerNotification: (message: string) => void;
@@ -116,6 +118,11 @@ export default function ReturnsView({
   // Modals
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+
+  const [accounts, setAccounts] = useState<AccountDto[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [isSubmittingRefund, setIsSubmittingRefund] = useState(false);
 
   // Form State
   const [type, setType] = useState<"customer" | "supplier">(defaultType || "customer");
@@ -129,6 +136,7 @@ export default function ReturnsView({
   const [selectedPartnerId, setSelectedPartnerId] = useState("");
   const [selectedRefId, setSelectedRefId] = useState("");
   const [reason, setReason] = useState("");
+  const [action, setAction] = useState<"refund" | "replace">("refund");
   const [items, setItems] = useState<
     { product_id: string; quantity: number; notes: string; max_qty?: number }[]
   >([]);
@@ -151,57 +159,96 @@ export default function ReturnsView({
     }
   };
 
+  const handleRefund = async () => {
+    if (!selectedReturn || !selectedAccountId) return;
+    setIsSubmittingRefund(true);
+    try {
+      await purchasingApi.refundReturn(selectedReturn.id, selectedAccountId);
+      onTriggerNotification("Refund berhasil diproses.");
+      setShowRefundModal(false);
+      setSelectedReturn(null);
+      fetchReturns();
+    } catch (error) {
+      console.error(error);
+      const message = (error as any).message || (error as any).response?.data?.message || "Terjadi kesalahan saat memproses refund.";
+      Swal.fire({
+        icon: "error",
+        title: "Gagal",
+        text: message,
+        customClass: { confirmButton: "bg-cyan-600 font-bold" },
+      });
+    } finally {
+      setIsSubmittingRefund(false);
+    }
+  };
+
   const loadMasterData = async () => {
     try {
-      const [prods, custsRes, supps, sos, pos] = await Promise.all([
+      const [prods, custsRes, supps, sos, pos, cashBankData] = await Promise.all([
         productsApi.getProducts(),
         customersApi.listCustomers(),
         suppliersApi.getSuppliers(),
         salesApi.getSalesOrders(),
         purchasingApi.getPurchaseOrders(),
+        financeApi.getCashBank(),
       ]);
       setProducts(prods);
       setCustomers(custsRes.customers);
       setSuppliers(supps);
       setSalesOrders(sos);
       setPurchaseOrders(pos);
+      setAccounts(cashBankData.accounts);
     } catch (error) {
       console.error("Error loading master data for returns:", error);
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: string) => {
+  const handleUpdateStatus = async (id: string, status: string, allowBackorder: boolean = false) => {
     const statusLabels: Record<string, string> = {
       approved: "Setujui & Restock",
       rejected: "Tolak",
       supplier_claim: "Klaim Supplier",
     };
 
-    const result = await Swal.fire({
-      title: "Ubah Status QC?",
-      text: `Apakah Anda yakin ingin mengubah status retur menjadi "${statusLabels[status]}"?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Ya, Ubah",
-      cancelButtonText: "Batal",
-    });
+    if (!allowBackorder) {
+      const result = await Swal.fire({
+        title: "Ubah Status QC?",
+        text: `Apakah Anda yakin ingin mengubah status retur menjadi "${statusLabels[status]}"?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, Ubah",
+        cancelButtonText: "Batal",
+      });
 
-    if (result.isConfirmed) {
-      try {
-        await purchasingApi.updateReturnQcStatus(id, status);
-        Swal.fire("Sukses", "Status QC berhasil diperbarui.", "success");
-        onTriggerNotification(
-          `Status retur diubah menjadi ${statusLabels[status]}.`,
-        );
-        setSelectedReturn(null);
-        fetchReturns();
-      } catch (error) {
-        console.error("Error updating return status:", error);
-        Swal.fire(
-          "Gagal",
-          "Terjadi kesalahan saat memproses status QC.",
-          "error",
-        );
+      if (!result.isConfirmed) return;
+    }
+
+    try {
+      await purchasingApi.updateReturnQcStatus(id, status, allowBackorder);
+      Swal.fire("Sukses", "Status QC berhasil diperbarui.", "success");
+      onTriggerNotification(
+        `Status retur diubah menjadi ${statusLabels[status]}.`,
+      );
+      setSelectedReturn(null);
+      fetchReturns();
+    } catch (error: any) {
+      const errorMessage = error.message || error.response?.data?.message || "";
+      if (errorMessage.includes("Stok tidak mencukupi untuk barang pengganti") && status === "approved") {
+        const backorderResult = await Swal.fire({
+          title: "Stok Tidak Mencukupi",
+          text: `${errorMessage}. Tetap setujui dan masukkan ke antrean tunggu (Backorder)?`,
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Ya, Tetap Setujui",
+          cancelButtonText: "Batal",
+        });
+
+        if (backorderResult.isConfirmed) {
+          handleUpdateStatus(id, status, true);
+        }
+      } else {
+        console.error("Error updating status:", error);
+        Swal.fire("Error", errorMessage || "Gagal mengubah status", "error");
       }
     }
   };
@@ -236,6 +283,7 @@ export default function ReturnsView({
       sales_order_id: type === "customer" ? selectedRefId : null,
       purchase_order_id: type === "supplier" ? selectedRefId : null,
       reason,
+      action: type === "customer" ? action : undefined,
       qc_status: "pending_qc",
       items: items.map((i) => ({
         product_id: i.product_id,
@@ -265,6 +313,7 @@ export default function ReturnsView({
     setSelectedPartnerId("");
     setSelectedRefId("");
     setReason("");
+    setAction("refund");
     setItems([]);
   };
 
@@ -396,11 +445,10 @@ export default function ReturnsView({
                 <button
                   key={t}
                   onClick={() => setFilterType(t as any)}
-                  className={`px-3 py-1.5 rounded-lg font-bold border transition ${
-                    filterType === t
-                      ? "bg-slate-900 text-white border-slate-950"
-                      : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg font-bold border transition ${filterType === t
+                    ? "bg-slate-900 text-white border-slate-950"
+                    : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
                 >
                   {label}
                 </button>
@@ -466,11 +514,10 @@ export default function ReturnsView({
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            ret.type === "customer"
-                              ? "bg-indigo-50 text-indigo-700"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${ret.type === "customer"
+                            ? "bg-indigo-50 text-indigo-700"
+                            : "bg-slate-100 text-slate-700"
+                            }`}
                         >
                           {ret.type === "customer" ? "Customer" : "Supplier"}
                         </span>
@@ -506,7 +553,7 @@ export default function ReturnsView({
                 </tbody>
               </table>
             </div>
-            
+
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-5 pt-2">
                 <div className="text-[10px] text-slate-400 font-mono">
@@ -593,10 +640,31 @@ export default function ReturnsView({
                     {selectedReturn.reason}
                   </span>
                 </div>
+                <div className="flex flex-col">
+                  <span className="text-sm text-slate-500 mb-1">
+                    Tindakan
+                  </span>
+                  <span className="font-medium text-slate-600">
+                    {selectedReturn.action === 'refund' ? 'Refund / Potong Tagihan' : 'Ganti Barang (Replacement)'}
+                  </span>
+                </div>
               </div>
 
               {/* Items list */}
               <div className="space-y-2">
+                {selectedReturn.overpaymentAmount && selectedReturn.overpaymentAmount > 0 && selectedReturn.qcStatus === 'approved' && selectedReturn.action !== 'replace' && (
+                  <div className="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-center justify-between">
+                    <div>
+                      Terdapat kelebihan bayar sebesar <strong>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(selectedReturn.overpaymentAmount)}</strong> pada tagihan ini.
+                    </div>
+                    <button
+                      onClick={() => setShowRefundModal(true)}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold transition"
+                    >
+                      Proses Refund
+                    </button>
+                  </div>
+                )}
                 <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">
                   Item Barang Retur
                 </h5>
@@ -611,7 +679,7 @@ export default function ReturnsView({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {selectedReturn.items &&
-                      selectedReturn.items.length > 0 ? (
+                        selectedReturn.items.length > 0 ? (
                         selectedReturn.items.map((item) => (
                           <tr key={item.id} className="text-slate-600">
                             <td className="p-2.5 pl-4">
@@ -697,6 +765,58 @@ export default function ReturnsView({
                   Tutup
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Refund Return */}
+      {showRefundModal && selectedReturn && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                Proses Uang Kembali
+              </h4>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-rose-700 text-xs">
+                Terdapat kelebihan bayar sebesar <strong>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(selectedReturn.overpaymentAmount || 0)}</strong>. Silakan pilih kas atau bank asal untuk melakukan pengembalian dana.
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block">Pilih Kas / Bank</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                >
+                  <option value="">-- Pilih Akun --</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} - {acc.code}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="px-4 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600"
+              >
+                Batal
+              </button>
+              <button
+                disabled={!selectedAccountId || isSubmittingRefund}
+                onClick={handleRefund}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+              >
+                {isSubmittingRefund ? "Memproses..." : "Refund Sekarang"}
+              </button>
             </div>
           </div>
         </div>
@@ -801,15 +921,15 @@ export default function ReturnsView({
                     <option value="">-- Partner --</option>
                     {type === "customer"
                       ? customers.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))
                       : suppliers.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -825,6 +945,20 @@ export default function ReturnsView({
                     onChange={(e) => setReason(e.target.value)}
                     required
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block">
+                    Tindakan Retur
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                    value={action}
+                    onChange={(e) => setAction(e.target.value as "refund" | "replace")}
+                  >
+                    <option value="refund">Refund / Potong Tagihan</option>
+                    <option value="replace">Ganti Barang (Replacement)</option>
+                  </select>
                 </div>
               </div>
 
