@@ -41,7 +41,7 @@ export default function ProductsView({
   const itemsPerPage = 10;
 
   // New product states
-  const [businessUnit, setBusinessUnit] = useState("CV Beton Agung");
+  const [businessUnit, setBusinessUnit] = useState("Head Office");
   const [sku, setSku] = useState("");
   const [qrValue, setQrValue] = useState("");
   const [name, setName] = useState("");
@@ -207,7 +207,7 @@ export default function ProductsView({
 
   const handleOpenEditModal = (product: Product) => {
     setEditingProduct(product);
-    setBusinessUnit(product.businessUnit || "CV Beton Agung");
+    setBusinessUnit(product.businessUnit || "Head Office");
     setSku(product.sku);
     setQrValue(product.qrValue || "");
     setName(product.name);
@@ -379,7 +379,7 @@ export default function ProductsView({
       }
       setShowAddModal(false);
       setEditingProduct(null);
-      setBusinessUnit("CV Beton Agung");
+      setBusinessUnit("Head Office");
       setSku("");
       resetForm();
     } catch (err) {
@@ -483,7 +483,7 @@ export default function ProductsView({
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Katalog Umum & Daftar Item Pabrik CV Beton Agung (
+              Katalog Umum & Daftar Item Pabrik (
               {filteredProducts.length} Item)
             </h3>
             <span className="text-[10px] text-slate-400 font-mono">
@@ -550,7 +550,7 @@ export default function ProductsView({
                       </td>
                       <td className="p-3.5 text-slate-600">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                          {p.businessUnit || "CV Beton Agung"}
+                          {p.businessUnit || "Head Office"}
                         </span>
                       </td>
                       <td className="p-3.5">
@@ -634,7 +634,7 @@ export default function ProductsView({
               </div>
             ) : (
               <span className="font-medium text-slate-400">
-                CV Beton Agung Admin Desk
+                Admin Desk
               </span>
             )}
           </div>
@@ -684,7 +684,7 @@ export default function ProductsView({
                         onChange={(e) => setBusinessUnit(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-500"
                       >
-                        <option value="CV Beton Agung">CV Beton Agung</option>
+                        <option value="Head Office">CV Beton Agung</option>
                         <option value="Griya Flora">Griya Flora</option>
                       </select>
                     </div>

@@ -37,7 +37,7 @@ export default function EmployeeMasterView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
-  const [businessUnit, setBusinessUnit] = useState("CV Beton Agung");
+  const [businessUnit, setBusinessUnit] = useState("Head Office");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [name, setName] = useState("");
   const [roleName, setRoleName] = useState("");
@@ -94,7 +94,7 @@ export default function EmployeeMasterView({
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
-    setBusinessUnit("CV Beton Agung");
+    setBusinessUnit("Head Office");
     setEmployeeNumber(`EMP-${Date.now().toString().slice(-6)}`);
     setName("");
     setRoleName("");
@@ -122,7 +122,7 @@ export default function EmployeeMasterView({
 
   const handleOpenEditModal = (emp: Employee) => {
     setEditingEmployee(emp);
-    setBusinessUnit(emp.businessUnit || "CV Beton Agung");
+    setBusinessUnit(emp.businessUnit || "Head Office");
     setEmployeeNumber(emp.employeeNumber);
     setName(emp.name);
     setRoleName(emp.roleName);
@@ -405,7 +405,7 @@ export default function EmployeeMasterView({
                   >
                     <td className="p-3.5 text-slate-600">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
-                        {emp.businessUnit || 'CV Beton Agung'}
+                        {emp.businessUnit || 'Head Office'}
                       </span>
                     </td>
                     <td className="p-3.5 pl-5 font-mono font-bold text-indigo-650 text-indigo-600">
@@ -575,7 +575,7 @@ export default function EmployeeMasterView({
                           onChange={(e) => setBusinessUnit(e.target.value)}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
                         >
-                          <option value="CV Beton Agung">CV Beton Agung</option>
+                          <option value="Head Office">CV Beton Agung</option>
                           <option value="Griya Flora">Griya Flora</option>
                         </select>
                       </div>

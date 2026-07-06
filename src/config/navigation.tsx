@@ -300,6 +300,30 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: UserCog,
         requiredModule: "employees",
       },
+      {
+        view: "attendance-dashboard",
+        label: "Absensi & Kehadiran",
+        icon: ClipboardCheck,
+        requiredModule: "employees",
+      },
+      {
+        view: "leave-management",
+        label: "Cuti Karyawan",
+        icon: FileSpreadsheet,
+        requiredModule: "employees",
+      },
+      {
+        view: "payroll-management",
+        label: "Penggajian (Payroll)",
+        icon: WalletCards,
+        requiredModule: "payroll",
+      },
+      {
+        view: "employee-loans",
+        label: "Kasbon & Pinjaman",
+        icon: CreditCard,
+        requiredModule: "employees",
+      }
     ],
   },
   {

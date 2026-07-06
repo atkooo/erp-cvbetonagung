@@ -170,7 +170,7 @@ export default function CategoriesView({
             Manajemen Partisi & Klasifikasi Produk
           </h2>
           <p className="text-xs text-slate-500 max-w-xl">
-            CV Beton Agung mengelompokkan katalog produk ke dalam lini utama
+            Sistem mengelompokkan katalog produk ke dalam lini utama
             produksi guna menstandardisasi proses precast cetakan beton,
             penentuan harga borongan, dan pemantauan material logistik.
           </p>

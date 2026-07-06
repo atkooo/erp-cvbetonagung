@@ -189,7 +189,7 @@ export default function InventoryReportView({ onTriggerNotification }: ReportsVi
                 </div>
 
                 <div className="p-3 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl text-[10px] leading-relaxed">
-                  *Tingkat kegagalan cetak seluruh produk Beton Agung dipelihara di bawah batas aman konstruksi sipil nasional (yaitu maksimal sebesar 5%).
+                  *Tingkat kegagalan cetak seluruh produk dipelihara di bawah batas aman konstruksi sipil nasional (yaitu maksimal sebesar 5%).
                 </div>
               </div>
             </div>

@@ -18,7 +18,7 @@ export default function Topbar() {
   const currentView = viewFromPath(location.pathname) || 'dashboard';
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const appName = import.meta.env.VITE_APP_NAME || 'CV. Beton Agung';
+  const appName = import.meta.env.VITE_APP_NAME || 'Lintara Digital';
 
   return (
     <div className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20 shrink-0">
@@ -83,7 +83,7 @@ export default function Topbar() {
           </div>
           <div className="hidden sm:block text-left text-xs">
             <p className="font-bold text-slate-800 leading-none">{userName || 'Internal Team'}</p>
-            <p className="text-[10px] text-slate-400 font-mono leading-none mt-1">{userEmail || 'CV Beton Agung'}</p>
+            <p className="text-[10px] text-slate-400 font-mono leading-none mt-1">{userEmail || 'Administrator'}</p>
           </div>
         </div>
       </div>

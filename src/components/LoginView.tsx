@@ -33,7 +33,7 @@ export default function LoginView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const appName = import.meta.env.VITE_APP_NAME || "CV. Beton Agung";
+  const appName = import.meta.env.VITE_APP_NAME;
 
   const handleLogoClick = () => {
     setLogoClicks((prev) => {
@@ -115,7 +115,7 @@ export default function LoginView({
               onClick={handleLogoClick}
             >
               <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center overflow-hidden p-2">
-                <img src="/logo.png" alt="CV Beton Agung Logo" className="w-full h-full object-contain" />
+                <img src="/logo.png" alt={`${appName} Logo`} className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-sm font-black text-white uppercase tracking-wider">
@@ -138,11 +138,7 @@ export default function LoginView({
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono border-t border-slate-800/60 pt-4">
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800/50 border border-slate-700/40 text-slate-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Sistem Aktif
-            </span>
-            <span>© 2026 {appName}</span>
+            <span>© {new Date().getFullYear()} {appName || 'Perusahaan'} - by Lintara Digital</span>
           </div>
         </section>
 
@@ -172,7 +168,7 @@ export default function LoginView({
                         required={!showOtpField}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="nama@betonagung.co.id"
+                        placeholder="nama@perusahaan.com"
                         autoComplete="email"
                         className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
                       />

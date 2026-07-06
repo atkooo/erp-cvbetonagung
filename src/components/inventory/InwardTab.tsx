@@ -312,12 +312,12 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                         <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
                       ) : (
                         <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
-                          {(companyProfile?.name || 'CV Beton Agung').substring(0, 2).toUpperCase()}
+                          {(companyProfile?.name || 'PR').substring(0, 2).toUpperCase()}
                         </div>
                       )}
                       <div>
                         <h1 className="text-3xl font-black tracking-tighter uppercase">
-                          {companyProfile?.name || 'CV Beton Agung'}
+                          {companyProfile?.name || 'Perusahaan'}
                         </h1>
                         <p className="text-sm font-medium mt-1">
                           General Contractor & Supplier Material Alam

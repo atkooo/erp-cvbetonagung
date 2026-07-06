@@ -308,7 +308,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
               <h4 className="text-base font-black text-cyan-705 font-mono mt-1.5 text-cyan-600">
                 {formatIDR(payments.filter(p => p.method === 'Transfer' && p.status === 'Verified').reduce((acc, p) => acc + p.amount, 0))}
               </h4>
-              <span className="text-[9px] text-slate-400 block mt-2">BCA Rekening Giro CV Beton Agung</span>
+              <span className="text-[9px] text-slate-400 block mt-2">BCA Rekening Giro Perusahaan</span>
             </div>
 
             {/* QRIS sum */}
@@ -327,7 +327,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
               <h3 className="font-sans font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 Log Inventaris Kas Masuk / Penerimaan Termin ({filteredPayments.length} Pembayaran)
               </h3>
-              <span className="text-[10px] text-slate-400 font-mono">CV Beton Agung Audited Cash</span>
+              <span className="text-[10px] text-slate-400 font-mono">Audited Cash</span>
             </div>
 
             <div className="overflow-x-auto">

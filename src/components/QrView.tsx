@@ -491,7 +491,7 @@ export default function QrView({
           <div className="space-y-1">
             <h3 className="font-sans font-bold text-slate-800 text-sm">Pemindaian Barcode Produk</h3>
             <p className="text-[10px] text-slate-450 text-slate-500 max-w-sm">
-              Gunakan perangkat kamera untuk memindai label Barcode di rak gudang atau di kemasan beton {companyProfile?.name || 'CV Beton Agung'}.
+              Gunakan perangkat kamera untuk memindai label Barcode di rak gudang atau di kemasan beton {companyProfile?.name || 'Perusahaan'}.
             </p>
           </div>
         </div>
@@ -529,7 +529,7 @@ export default function QrView({
               <div ref={stickerRef} className="bg-white p-5 rounded-xl border-2 border-black inline-flex flex-col items-center justify-center" style={{ width: '240px' }}>
                 
                 <h4 className="font-black text-black text-[12px] uppercase tracking-widest mb-3 mt-1">
-                  {companyProfile?.name || 'CV Beton Agung'}
+                  {companyProfile?.name || 'Perusahaan'}
                 </h4>
                 
                 <div className="bg-white p-1.5 rounded-lg border-2 border-black mb-3">
@@ -572,7 +572,7 @@ export default function QrView({
         <div ref={hiddenStickerRef} className="bg-white p-5 rounded-xl border-2 border-black inline-flex flex-col items-center justify-center" style={{ width: '240px' }}>
           
           <h4 className="font-black text-black text-[12px] uppercase tracking-widest mb-3 mt-1">
-            {companyProfile?.name || 'CV Beton Agung'}
+            {companyProfile?.name || 'Perusahaan'}
           </h4>
           
           <div className="bg-white p-1.5 rounded-lg border-2 border-black mb-3">

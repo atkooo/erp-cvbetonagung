@@ -75,7 +75,7 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
             <Settings size={20} />
           </div>
           <div>
-            <h3 className="font-sans font-bold text-sm text-slate-800">Konfigurasi & Pengaturan ERP CV Beton Agung</h3>
+            <h3 className="font-sans font-bold text-sm text-slate-800">Konfigurasi & Pengaturan Sistem ERP</h3>
             <p className="text-[10px] text-slate-400 mt-0.5">Atur detail kop surat komersial, tarif PPN nasional, serta simpan cadangan database lokal.</p>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
               <div>
                 <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b pb-2 mb-3">Backup SQL & Database State Maintenance</h4>
                 <p className="text-slate-500 leading-relaxed text-[11px]">
-                  Amankan riwayat penjualan, data proyek, dan catatan logistik. Anda dapat mendownload arsip mandiri SQL ter-enkripsi untuk cadangan server CV Beton Agung.
+                  Amankan riwayat penjualan, data proyek, dan catatan logistik. Anda dapat mendownload arsip mandiri SQL ter-enkripsi untuk cadangan server.
                 </p>
               </div>
 

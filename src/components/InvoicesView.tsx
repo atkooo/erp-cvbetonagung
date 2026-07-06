@@ -372,7 +372,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
             <div className="p-6 bg-slate-950 text-white flex justify-between items-center relative">
               <div className="space-y-1">
                 <span className="text-[10px] tracking-wider uppercase font-mono text-cyan-400 font-bold">FAKTUR KOMERSIAL</span>
-                <h3 className="font-bold text-base">CV BETON AGUNG SOLUSI</h3>
+                <h3 className="font-bold text-base">{companyProfile?.name?.toUpperCase() || "PERUSAHAAN"}</h3>
                 <p className="text-[10px] text-slate-400">Penyedia Kubah Masjid & Precast Beton Jawa Timur</p>
               </div>
               <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white p-1">
@@ -424,7 +424,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                     <div className="p-3.5 bg-slate-50 border rounded-xl flex items-center justify-between text-xs">
                       <div>
                         <h5 className="font-bold text-slate-800">Paket Konstruksi Terintegrasi</h5>
-                        <p className="text-slate-400 text-[10px] mt-0.5">Komponen Beton Pracetak standardisasi SNI CV Beton Agung Java</p>
+                        <p className="text-slate-400 text-[10px] mt-0.5">Komponen Beton Pracetak standardisasi SNI</p>
                       </div>
                       <strong className="text-slate-900 font-bold font-mono text-[13px]">{formatIDR(selectedInvoice.total)}</strong>
                     </div>

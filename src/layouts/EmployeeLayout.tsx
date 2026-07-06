@@ -32,7 +32,7 @@ export default function EmployeeLayout() {
             </button>
           )}
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-mono font-bold text-emerald-600 tracking-wider">CV Beton Agung</span>
+            <span className="text-[10px] uppercase font-mono font-bold text-emerald-600 tracking-wider">{import.meta.env.VITE_APP_NAME || 'Lintara Digital'}</span>
             <span className="text-xs font-bold text-slate-800">Portal Karyawan</span>
           </div>
         </div>

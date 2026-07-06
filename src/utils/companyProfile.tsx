@@ -8,7 +8,7 @@ export interface CompanyProfile {
 }
 
 const defaultProfile: CompanyProfile = {
-  name: 'CV Beton Agung',
+  name: import.meta.env.VITE_APP_NAME || 'Lintara Digital',
   address: 'Jl. Raya Sukomanunggal Jaya No. 12, Kel. Sukomanunggal,\nKec. Sukomanunggal, Surabaya, Jawa Timur 60188',
   phone: '(031) 7328999',
   email: 'finance@betonagung.co.id',

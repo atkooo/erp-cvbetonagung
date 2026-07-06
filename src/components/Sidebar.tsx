@@ -87,10 +87,10 @@ export default function Sidebar() {
         {isPinned ? (
           <div className="flex items-center gap-3">
             <div className="bg-slate-800 border border-slate-700/50 p-1.5 rounded-lg flex items-center justify-center">
-              <img src="/logo.png" alt="CV Beton Agung Logo" className="w-6 h-6 object-contain" />
+              <img src="/logo.png" alt={`${import.meta.env.VITE_APP_NAME || "Lintara Digital"} Logo`} className="w-6 h-6 object-contain" />
             </div>
             <div>
-              <h1 className="font-sans font-bold tracking-tight text-white text-sm whitespace-nowrap">CV Beton Agung</h1>
+              <h1 className="font-sans font-bold tracking-tight text-white text-sm whitespace-nowrap">{import.meta.env.VITE_APP_NAME || "Lintara Digital"}</h1>
               <span className="text-[9px] uppercase tracking-widest font-mono text-slate-400 font-bold whitespace-nowrap">Sistem Operasional</span>
             </div>
           </div>
@@ -191,7 +191,7 @@ export default function Sidebar() {
 
       {isPinned && (
         <div className="p-3 bg-slate-950 border-t border-slate-900 text-center text-[9px] text-slate-600 font-mono whitespace-nowrap">
-          CV Beton Agung ERP
+          Sistem ERP
         </div>
       )}
     </div>
