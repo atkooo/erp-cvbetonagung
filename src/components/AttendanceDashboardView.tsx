@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Calendar,
   Clock,
@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Search,
 } from "@/src/components/icons";
+import { hrdApi } from "../features/hrd/api";
+import { Attendance } from "../features/hrd/types";
 
 interface AttendanceDashboardViewProps {
   onTriggerNotification: (message: string) => void;
@@ -20,9 +22,26 @@ export default function AttendanceDashboardView({
   onTriggerNotification,
 }: AttendanceDashboardViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState(() => new Date().toISOString().split("T")[0]);
+  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Data will be fetched from API later
-  const attendances: any[] = [];
+  useEffect(() => {
+    setIsLoading(true);
+    hrdApi.getAttendances({ filter_date: dateFilter })
+      .then((data) => setAttendances(data))
+      .catch((err) => onTriggerNotification(err.message || "Failed to load attendances"))
+      .finally(() => setIsLoading(false));
+  }, [dateFilter]);
+
+  const filteredAttendances = useMemo(() => {
+    return attendances.filter(a => a.employeeName.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [attendances, searchQuery]);
+
+  const totalHadir = attendances.filter(a => a.status === 'present').length;
+  const totalTelat = attendances.filter(a => a.status === 'late').length;
+  const totalCuti = attendances.filter(a => a.status === 'leave').length;
+  const totalAlpa = attendances.filter(a => a.status === 'absent').length;
 
   return (
     <div className="space-y-6 font-sans text-xs">
@@ -51,7 +70,7 @@ export default function AttendanceDashboardView({
               Total Hadir
             </span>
             <h4 className="text-lg font-black text-emerald-600 mt-1">
-              45 Orang
+              {totalHadir} Orang
             </h4>
           </div>
           <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -63,7 +82,7 @@ export default function AttendanceDashboardView({
             <span className="text-[10px] uppercase font-mono font-bold text-slate-400">
               Terlambat
             </span>
-            <h4 className="text-lg font-black text-amber-600 mt-1">3 Orang</h4>
+            <h4 className="text-lg font-black text-amber-600 mt-1">{totalTelat} Orang</h4>
           </div>
           <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
             <Clock size={18} />
@@ -74,7 +93,7 @@ export default function AttendanceDashboardView({
             <span className="text-[10px] uppercase font-mono font-bold text-slate-400">
               Cuti / Izin
             </span>
-            <h4 className="text-lg font-black text-indigo-600 mt-1">2 Orang</h4>
+            <h4 className="text-lg font-black text-indigo-600 mt-1">{totalCuti} Orang</h4>
           </div>
           <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
             <Calendar size={18} />
@@ -85,7 +104,7 @@ export default function AttendanceDashboardView({
             <span className="text-[10px] uppercase font-mono font-bold text-slate-400">
               Tanpa Keterangan
             </span>
-            <h4 className="text-lg font-black text-rose-600 mt-1">1 Orang</h4>
+            <h4 className="text-lg font-black text-rose-600 mt-1">{totalAlpa} Orang</h4>
           </div>
           <div className="p-2.5 bg-rose-50 text-rose-600 rounded-lg">
             <AlertCircle size={18} />
@@ -110,8 +129,9 @@ export default function AttendanceDashboardView({
           </div>
           <input
             type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 focus:outline-none focus:border-indigo-400"
-            defaultValue="2026-06-06"
           />
         </div>
 
@@ -127,29 +147,35 @@ export default function AttendanceDashboardView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {attendances.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">
+                  Memuat data absensi...
+                </td>
+              </tr>
+            ) : filteredAttendances.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
                   className="p-8 text-center text-slate-400 text-xs"
                 >
-                  Belum ada data absensi.
+                  Belum ada data absensi untuk tanggal {dateFilter}.
                 </td>
               </tr>
             ) : (
-              attendances.map((item) => (
+              filteredAttendances.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/50">
                   <td className="p-3.5 pl-5 font-bold text-slate-800">
-                    {item.name}
+                    {item.employeeName}
                   </td>
                   <td className="p-3.5 font-mono text-slate-500">
                     {item.date}
                   </td>
                   <td className="p-3.5 font-mono text-slate-700">
-                    {item.clockIn}
+                    {item.clockIn || '-'}
                   </td>
                   <td className="p-3.5 font-mono text-slate-700">
-                    {item.clockOut}
+                    {item.clockOut || '-'}
                   </td>
                   <td className="p-3.5">
                     {item.lateMinutes > 0 ? (
@@ -163,14 +189,16 @@ export default function AttendanceDashboardView({
                   <td className="p-3.5">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        item.status === "Hadir"
+                        item.status === "present"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : item.status === "Terlambat"
+                          : item.status === "late"
                             ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : item.status === "leave"
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
                             : "bg-slate-100 text-slate-600 border-slate-200"
                       }`}
                     >
-                      {item.status}
+                      {item.status === 'present' ? 'Hadir' : item.status === 'late' ? 'Terlambat' : item.status === 'leave' ? 'Cuti/Izin' : 'Alpa'}
                     </span>
                   </td>
                 </tr>

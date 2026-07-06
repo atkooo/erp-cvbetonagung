@@ -111,6 +111,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "inventory-reports": "Mutasi & Turnover Stok",
   "attendance-dashboard": "Dashboard Absensi",
   "leave-management": "Pengajuan & Approval Cuti",
+  "leave-types": "Master Jenis Cuti",
   "attendance-scanner": "Scan Absensi (QR)",
   "payroll-management": "Sistem Penggajian Dasar",
   "employee-loans": "Kasbon & Pinjaman Karyawan",
@@ -307,9 +308,21 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "employees",
       },
       {
+        view: "attendance-scanner",
+        label: "Scan Absensi (QR)",
+        icon: Scan,
+        requiredModule: "employees",
+      },
+      {
         view: "leave-management",
         label: "Cuti Karyawan",
         icon: FileSpreadsheet,
+        requiredModule: "employees",
+      },
+      {
+        view: "leave-types",
+        label: "Master Jenis Cuti",
+        icon: Tag,
         requiredModule: "employees",
       },
       {

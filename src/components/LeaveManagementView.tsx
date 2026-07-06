@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, CheckCircle, X, Plus } from '@/src/components/icons';
+import { hrdApi } from '../features/hrd/api';
+import { employeesApi } from '../features/employees/api';
+import { Leave, LeaveType } from '../features/hrd/types';
+import { Employee } from '../types';
 
 interface LeaveManagementViewProps {
   onTriggerNotification: (message: string) => void;
@@ -12,15 +16,86 @@ interface LeaveManagementViewProps {
 
 export default function LeaveManagementView({ onTriggerNotification }: LeaveManagementViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const leaves = [
-    { id: 1, name: 'Siti Aminah', type: 'Cuti Tahunan', startDate: '2026-06-10', endDate: '2026-06-12', days: 3, status: 'Menunggu' },
-    { id: 2, name: 'Budi Santoso', type: 'Sakit', startDate: '2026-06-05', endDate: '2026-06-06', days: 2, status: 'Disetujui' },
-  ];
+  // Form State
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedLeaveTypeId, setSelectedLeaveTypeId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const [leavesData, typesData, employeesData] = await Promise.all([
+        hrdApi.getLeaves(),
+        hrdApi.getLeaveTypes(),
+        employeesApi.getEmployees(),
+      ]);
+      setLeaves(leavesData);
+      setLeaveTypes(typesData);
+      setEmployees(employeesData);
+      if (employeesData.length > 0) setSelectedEmployeeId(employeesData[0].id);
+      if (typesData.length > 0) setSelectedLeaveTypeId(typesData[0].id);
+    } catch (err: any) {
+      onTriggerNotification(err.message || 'Gagal memuat data cuti');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      const updated = await hrdApi.updateLeaveStatus(id, status);
+      setLeaves(prev => prev.map(l => l.id === id ? updated : l));
+      onTriggerNotification(`Cuti berhasil di-${status === 'approved' ? 'Setujui' : 'Tolak'}`);
+    } catch (err: any) {
+      onTriggerNotification(err.message || 'Gagal memperbarui status cuti');
+    }
+  };
+
+  const handleSubmitLeave = async () => {
+    if (!selectedEmployeeId || !selectedLeaveTypeId || !startDate || !endDate) {
+      onTriggerNotification('Harap lengkapi semua field!');
+      return;
+    }
+    try {
+      const created = await hrdApi.createLeave({
+        employeeId: selectedEmployeeId,
+        leaveTypeId: selectedLeaveTypeId,
+        startDate,
+        endDate,
+        reason,
+        status: 'pending',
+      });
+      setLeaves([created, ...leaves]);
+      onTriggerNotification('Pengajuan cuti berhasil dibuat.');
+      setIsModalOpen(false);
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+    } catch (err: any) {
+      onTriggerNotification(err.message || 'Gagal mengajukan cuti');
+    }
+  };
+
+  const calculateDays = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const diffTime = Math.abs(new Date(end).getTime() - new Date(start).getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
-  const totalPages = Math.ceil(leaves.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(leaves.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLeaves = leaves.slice(startIndex, startIndex + itemsPerPage);
 
@@ -59,32 +134,37 @@ export default function LeaveManagementView({ onTriggerNotification }: LeaveMana
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedLeaves.map((item) => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-slate-400">Memuat data cuti...</td>
+              </tr>
+            ) : paginatedLeaves.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50/50">
-                <td className="p-3.5 pl-5 font-bold text-slate-800">{item.name}</td>
-                <td className="p-3.5 text-slate-700 font-medium">{item.type}</td>
+                <td className="p-3.5 pl-5 font-bold text-slate-800">{item.employeeName}</td>
+                <td className="p-3.5 text-slate-700 font-medium">{item.leaveTypeName}</td>
                 <td className="p-3.5 font-mono text-slate-500">{item.startDate}</td>
                 <td className="p-3.5 font-mono text-slate-500">{item.endDate}</td>
-                <td className="p-3.5 font-bold">{item.days} Hari</td>
+                <td className="p-3.5 font-bold">{calculateDays(item.startDate, item.endDate)} Hari</td>
                 <td className="p-3.5">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                    item.status === 'Disetujui' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    item.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    item.status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                     'bg-amber-50 text-amber-700 border-amber-200'
                   }`}>
-                    {item.status}
+                    {item.status === 'approved' ? 'Disetujui' : item.status === 'rejected' ? 'Ditolak' : 'Menunggu'}
                   </span>
                 </td>
                 <td className="p-3.5 pr-5 text-right">
-                  {item.status === 'Menunggu' && (
+                  {item.status === 'pending' && (
                     <div className="flex justify-end gap-2">
-                      <button className="px-2 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded text-[10px] font-bold">Approve</button>
-                      <button className="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded text-[10px] font-bold">Reject</button>
+                      <button onClick={() => handleUpdateStatus(item.id, 'approved')} className="px-2 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded text-[10px] font-bold">Approve</button>
+                      <button onClick={() => handleUpdateStatus(item.id, 'rejected')} className="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded text-[10px] font-bold">Reject</button>
                     </div>
                   )}
                 </td>
               </tr>
             ))}
-            {paginatedLeaves.length === 0 && (
+            {!isLoading && paginatedLeaves.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-slate-400">
                   Tidak ada data cuti.
@@ -131,34 +211,35 @@ export default function LeaveManagementView({ onTriggerNotification }: LeaveMana
             <div className="space-y-3">
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Karyawan</label>
-                <select className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none">
-                  <option>Siti Aminah</option>
-                  <option>Budi Santoso</option>
+                <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none">
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Jenis Cuti</label>
-                <select className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none">
-                  <option>Cuti Tahunan</option>
-                  <option>Cuti Sakit</option>
-                  <option>Cuti Menikah</option>
+                <select value={selectedLeaveTypeId} onChange={e => setSelectedLeaveTypeId(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none">
+                  {leaveTypes.map(type => (
+                    <option key={type.id} value={type.id}>{type.name}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Mulai</label>
-                  <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none" />
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">Selesai</label>
-                  <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none" />
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Keterangan / Alasan</label>
-                <textarea rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none"></textarea>
+                <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:outline-none"></textarea>
               </div>
-              <button onClick={() => { onTriggerNotification('Pengajuan cuti berhasil dibuat.'); setIsModalOpen(false); }} className="w-full bg-slate-900 text-white font-bold py-2 rounded-lg mt-2">
+              <button onClick={handleSubmitLeave} className="w-full bg-slate-900 text-white font-bold py-2 rounded-lg mt-2">
                 Simpan & Ajukan
               </button>
             </div>

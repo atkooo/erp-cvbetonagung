@@ -62,6 +62,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   'attendance-dashboard':   '/hrd/attendance',
   'attendance-scanner':     '/hrd/attendance/scan',
   'leave-management':       '/hrd/leave',
+  'leave-types':            '/hrd/leave-types',
   'payroll-management':     '/hrd/payroll',
   'employee-loans':         '/hrd/loans',
 

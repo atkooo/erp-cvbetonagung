@@ -31,6 +31,7 @@ const SettingsView = React.lazy(() => import('./components/SettingsView'));
 const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
 const AttendanceDashboardView = React.lazy(() => import('./components/AttendanceDashboardView'));
 const LeaveManagementView = React.lazy(() => import('./components/LeaveManagementView'));
+const LeaveTypesMasterView = React.lazy(() => import('./components/LeaveTypesMasterView'));
 const PayrollManagementView = React.lazy(() => import('./components/PayrollManagementView'));
 const EmployeeLoanView = React.lazy(() => import('./components/EmployeeLoanView'));
 const AttendanceScannerView = React.lazy(() => import('./components/AttendanceScannerView'));
@@ -79,8 +80,8 @@ const ViewWrapper = ({ Component, componentProps }: { Component: React.Component
 
   return (
     <React.Suspense fallback={<LoadingFallback />}>
-      <Component 
-        {...componentProps} 
+      <Component
+        {...componentProps}
         onNavigate={handleNavigate}
         onNavigateToProject={handleNavigateToProject}
         onTriggerNotification={triggerNotification}
@@ -93,7 +94,7 @@ const QrViewWrapper = () => {
   const { triggerNotification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const currentSubView = location.pathname.includes('/inventory/scan/detail')
     ? 'detail'
     : location.pathname.includes('/inventory/scan')
@@ -194,6 +195,7 @@ const routes: RouteObject[] = [
       { path: 'hrd/attendance', element: lazyRoute(AttendanceDashboardView) },
       { path: 'hrd/attendance/scan', element: lazyRoute(AttendanceScannerView) },
       { path: 'hrd/leave', element: lazyRoute(LeaveManagementView) },
+      { path: 'hrd/leave-types', element: lazyRoute(LeaveTypesMasterView) },
       { path: 'hrd/payroll', element: lazyRoute(PayrollManagementView) },
       { path: 'hrd/loans', element: lazyRoute(EmployeeLoanView) },
 

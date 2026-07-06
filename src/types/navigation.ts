@@ -56,6 +56,7 @@ export type ViewType =
   // HRD
   | 'attendance-dashboard'
   | 'leave-management'
+  | 'leave-types'
   | 'payroll-management'
   | 'employee-loans'
   | 'attendance-scanner'

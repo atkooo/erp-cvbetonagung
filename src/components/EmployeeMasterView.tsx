@@ -16,7 +16,8 @@ import {
 } from "@/src/components/icons";
 import { authStorage } from "../services/api";
 import { employeesApi } from "../features/employees/api";
-import { Employee } from "../types";
+import { identityApi } from "../features/identity/api";
+import { Employee, AuthUser } from "../types";
 import { SkeletonCard, SkeletonTable, ErrorCard } from "./Skeleton";
 
 import Swal from "sweetalert2";
@@ -35,9 +36,11 @@ export default function EmployeeMasterView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [systemUsers, setSystemUsers] = useState<AuthUser[]>([]);
 
   // Form states
   const [businessUnit, setBusinessUnit] = useState("Head Office");
+  const [userId, setUserId] = useState<string>("");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [name, setName] = useState("");
   const [roleName, setRoleName] = useState("");
@@ -88,12 +91,23 @@ export default function EmployeeMasterView({
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const data = await identityApi.getUsers();
+      setSystemUsers(data);
+    } catch (err) {
+      console.error("Failed to load system users", err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployees();
+    fetchUsers();
   }, []);
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
+    setUserId("");
     setBusinessUnit("Head Office");
     setEmployeeNumber(`EMP-${Date.now().toString().slice(-6)}`);
     setName("");
@@ -122,6 +136,7 @@ export default function EmployeeMasterView({
 
   const handleOpenEditModal = (emp: Employee) => {
     setEditingEmployee(emp);
+    setUserId(emp.userId || "");
     setBusinessUnit(emp.businessUnit || "Head Office");
     setEmployeeNumber(emp.employeeNumber);
     setName(emp.name);
@@ -157,6 +172,7 @@ export default function EmployeeMasterView({
 
     const employeeData = {
       businessUnit,
+      userId: userId || null,
       employeeNumber,
       name,
       roleName,
@@ -566,7 +582,7 @@ export default function EmployeeMasterView({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="block font-bold text-slate-650 text-slate-700">
+                        <label className="block font-bold text-slate-700">
                           Unit Bisnis / Perusahaan *
                         </label>
                         <select
@@ -579,9 +595,27 @@ export default function EmployeeMasterView({
                           <option value="Griya Flora">Griya Flora</option>
                         </select>
                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700">
+                          Tautkan Akun Sistem (User ID)
+                        </label>
+                        <select
+                          value={userId}
+                          onChange={(e) => setUserId(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
+                        >
+                          <option value="">-- Tidak Ditautkan --</option>
+                          {systemUsers.map(user => (
+                            <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                          ))}
+                        </select>
+                      </div>
 
                       <div className="space-y-1">
-                        <label className="block font-bold text-slate-650 text-slate-700">
+                        <label className="block font-bold text-slate-700">
                           Nama Lengkap *
                         </label>
                         <input

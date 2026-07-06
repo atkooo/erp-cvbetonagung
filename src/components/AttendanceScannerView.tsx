@@ -6,13 +6,13 @@
 import React, { useState, useEffect } from "react";
 import {
   Scan,
-  Camera,
-  Compass,
   CheckCircle2,
   XCircle,
   MapPin,
+  QrCode,
 } from "@/src/components/icons";
-import { authStorage } from "../services/api";
+import { authStorage, apiClient } from "../services/api";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 interface AttendanceScannerViewProps {
   onTriggerNotification: (message: string) => void;
@@ -35,7 +35,79 @@ export default function AttendanceScannerView({
   const selectedEmployeeId = currentUser?.employee_id;
   const selectedEmployeeName = currentUser?.name;
 
-  // Draw mock QR code for Location
+  const [isScanning, setIsScanning] = useState(true);
+
+  // Initialize QR Scanner
+  useEffect(() => {
+    if (!isScanning) return;
+
+    // Small delay to ensure the div is in the DOM
+    const timer = setTimeout(() => {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        /* verbose= */ false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          // Success callback
+          scanner.clear();
+          setIsScanning(false);
+          handleScan(decodedText);
+        },
+        (error) => {
+          // Failure callback, ignore as it continuously fails when no QR code is found
+        }
+      );
+
+      // Cleanup
+      return () => {
+        scanner.clear().catch(e => console.error(e));
+      };
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isScanning]);
+
+  const handleScan = async (qrData: string) => {
+    if (!selectedEmployeeId) {
+      setScanResult({
+        status: "error",
+        message: "Gagal: Anda belum tertaut dengan data Karyawan.",
+      });
+      return;
+    }
+
+    try {
+      setScanResult(null);
+      const response = await apiClient.post<{ data: any }>("/hrd/attendances/scan", {
+        employee_id: selectedEmployeeId,
+        location_qr: qrData,
+      });
+
+      // Based on API response format:
+      // message, employee_name, time, type
+      setScanResult({
+        status: "success",
+        message: response.data?.message || "Absensi berhasil.",
+        name: response.data?.employee_name,
+        time: response.data?.time,
+        type: response.data?.type,
+      });
+      onTriggerNotification(`Berhasil: ${response.data?.message}`);
+    } catch (err: any) {
+      setScanResult({
+        status: "error",
+        message: err.response?.data?.message || err.message || "Gagal memindai QR Code.",
+      });
+    }
+  };
+
   const drawMockQrCode = () => (
     <svg
       width={40}
@@ -67,71 +139,12 @@ export default function AttendanceScannerView({
     </svg>
   );
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (scanTriggered) {
-      setScanProgress(0);
-      setScanResult(null);
-      interval = setInterval(() => {
-        setScanProgress((prev) => {
-          if (prev >= 100) {
-            if (!selectedEmployeeId) {
-              setScanResult({
-                status: "error",
-                message: "Gagal: Anda belum tertaut dengan data Karyawan.",
-              });
-              setScanTriggered(null);
-              return 100;
-            }
-
-            // Make real API call
-            import("../services/api").then(({ apiClient }) => {
-              apiClient
-                .post("/hrd/attendances/scan", {
-                  employee_id: selectedEmployeeId,
-                  location_qr: scanTriggered,
-                })
-                .then(() => {
-                  const isClockOut = Math.random() > 0.5; // API response currently doesn't return clock_in/out type, we simulate it for UI
-                  setScanResult({
-                    status: "success",
-                    message: isClockOut
-                      ? "Clock Out berhasil."
-                      : "Clock In berhasil.",
-                    name: selectedEmployeeName,
-                    time: new Date().toLocaleTimeString("id-ID", {
-                      hour12: false,
-                    }),
-                    type: isClockOut ? "clock_out" : "clock_in",
-                  });
-                  onTriggerNotification(`Berhasil memindai lokasi kantor`);
-                })
-                .catch((err) => {
-                  setScanResult({
-                    status: "error",
-                    message: err.message || "Gagal memindai QR Code.",
-                  });
-                })
-                .finally(() => {
-                  setScanTriggered(null);
-                });
-            });
-
-            return 100;
-          }
-          return prev + 20;
-        });
-      }, 150);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [
-    scanTriggered,
-    selectedEmployeeId,
-    selectedEmployeeName,
-    onTriggerNotification,
-  ]);
+  // Reset scanner
+  const handleResetScanner = () => {
+    setScanResult(null);
+    setScanTriggered(null);
+    setIsScanning(true);
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 font-sans text-xs">
@@ -167,35 +180,35 @@ export default function AttendanceScannerView({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-        {/* Camera Simulator Section */}
-        <div className="relative bg-slate-950 aspect-4/5 rounded-2xl border-4 border-slate-800 overflow-hidden shadow-2xl flex flex-col p-4">
-          {/* Scanner borders */}
-          <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
-          <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
-          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
-          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
-
-          {scanTriggered && (
-            <div className="absolute left-0 w-full h-1 bg-emerald-500/80 shadow-[0_0_15px_#10b981] z-10 animate-pulse top-1/2 -translate-y-1/2" />
-          )}
-
-          <div className="flex-1 flex items-center justify-center relative z-0">
-            <div
-              className={`w-48 h-48 border-2 border-dashed rounded-2xl flex items-center justify-center transition-all ${scanTriggered ? "border-emerald-400 bg-emerald-500/10" : "border-white/20"}`}
-            >
-              {scanTriggered ? (
-                <div className="text-center font-mono font-bold text-emerald-400 space-y-3">
-                  <Compass size={32} className="mx-auto animate-spin" />
-                  <p className="tracking-widest">MEMBACA {scanProgress}%</p>
-                </div>
-              ) : (
-                <Camera size={40} className="text-white/10" />
-              )}
-            </div>
+        {/* Camera Scanner Section */}
+        <div className="relative bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col items-center p-4">
+          <div className="w-full flex justify-between items-center mb-4">
+            <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+              <QrCode size={16} className="text-emerald-500" />
+              Kamera Pindai
+            </h3>
+            {!isScanning && (
+              <button
+                onClick={handleResetScanner}
+                className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold transition-colors"
+              >
+                Scan Ulang
+              </button>
+            )}
           </div>
 
-          <div className="relative z-10 flex justify-center text-[10px] text-slate-400 bg-slate-900/60 backdrop-blur rounded-lg px-4 py-2.5 mx-4 mb-2">
-            Arahkan ke QR Code Lokasi Kantor
+          {isScanning ? (
+            <div id="qr-reader" className="w-full max-w-[400px] overflow-hidden rounded-xl border-2 border-emerald-500/20"></div>
+          ) : (
+            <div className="w-full aspect-square bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+              <CheckCircle2 size={48} className="text-emerald-400 mb-4 opacity-50" />
+              <p>Kamera dimatikan.</p>
+              <p className="text-[10px] mt-1">Klik tombol "Scan Ulang" untuk menghidupkan kamera kembali.</p>
+            </div>
+          )}
+
+          <div className="relative z-10 flex justify-center text-xs text-emerald-700 bg-emerald-50 rounded-lg px-4 py-2.5 mx-4 mt-4 text-center w-full max-w-[400px]">
+            Arahkan ke QR Code Lokasi Kantor (Misal: QR-OFFICE-MAIN-1)
           </div>
         </div>
 
@@ -269,9 +282,8 @@ export default function AttendanceScannerView({
             </h3>
             <div className="space-y-2">
               <button
-                disabled={!!scanTriggered}
-                onClick={() => setScanTriggered("QR-OFFICE-MAIN-1")}
-                className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl disabled:opacity-50 transition-colors shadow-sm text-left"
+                onClick={() => { setIsScanning(false); handleScan("QR-OFFICE-MAIN-1"); }}
+                className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors shadow-sm text-left"
               >
                 <div>
                   <strong className="block text-slate-800 text-sm">
@@ -285,9 +297,8 @@ export default function AttendanceScannerView({
               </button>
 
               <button
-                disabled={!!scanTriggered}
-                onClick={() => setScanTriggered("INVALID-QR")}
-                className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl disabled:opacity-50 transition-colors shadow-sm text-left"
+                onClick={() => { setIsScanning(false); handleScan("INVALID-QR"); }}
+                className="w-full flex items-center justify-between p-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors shadow-sm text-left"
               >
                 <div>
                   <strong className="block text-slate-800 text-sm">
