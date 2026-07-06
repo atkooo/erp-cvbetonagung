@@ -747,8 +747,15 @@ export default function BomCostingView({
                         onChange={(product) => {
                           setTempProductId(product.id);
                           setTempUnitCost(
-                            Math.round((product.sellingPrice || 0) * 0.65),
+                            product.costPrice || 0
                           );
+                          if (product.unitId) {
+                            setTempUnitId(product.unitId);
+                          } else {
+                            // fallback if product unit is a string but unitId is missing, though unlikely
+                            const matchedUnit = units.find(u => u.code.toLowerCase() === (product.unit || '').toLowerCase());
+                            if (matchedUnit) setTempUnitId(matchedUnit.id);
+                          }
                         }}
                         typeFilter="raw_material"
                         placeholder="-- Pilih Material --"
@@ -791,7 +798,8 @@ export default function BomCostingView({
                     <select
                       value={tempUnitId}
                       onChange={(e) => setTempUnitId(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none"
+                      disabled={tempIsMaterial}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >
                       {units.map((u) => (
                         <option key={u.id} value={u.id}>

@@ -24,3 +24,4 @@ export type {
 } from './production';
 export type { AuthPermission, AuthRole, AuthUser, AuthSession } from './auth';
 export type { ViewType } from './navigation';
+export type { SystemNotification } from './system';

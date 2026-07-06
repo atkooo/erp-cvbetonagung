@@ -33,18 +33,18 @@ export default function Sidebar() {
   };
 
   const hasAccessToModule = (requiredModule?: string, itemView?: string) => {
-    if (userRoleCode === 'admin') return true; 
-    
+    if (userRoleCode === 'admin') return true;
+
     if (userRoleCode === 'employee') {
       if (itemView === 'dashboard') return false;
       if (!requiredModule) return true;
       return requiredModule === 'employees';
     }
 
-    if (!requiredModule) return true; 
-    
+    if (!requiredModule) return true;
+
     if (!userPermissions || userPermissions.length === 0) {
-      return false; 
+      return false;
     }
 
     return userPermissions.some(p => p.module === requiredModule || p.module === '*');
@@ -58,11 +58,11 @@ export default function Sidebar() {
     const Icon = item.icon;
     const active = isItemActive(item, currentView);
 
-    const activeClass = isPinned 
+    const activeClass = isPinned
       ? 'bg-slate-800/80 border-l-2 border-slate-400 pl-2.5 text-white font-bold transition-all'
       : 'bg-slate-800/80 text-white font-bold justify-center rounded-lg';
-      
-    const inactiveClass = isPinned 
+
+    const inactiveClass = isPinned
       ? 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors pl-3'
       : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors justify-center rounded-lg';
 
@@ -71,9 +71,8 @@ export default function Sidebar() {
         key={item.view}
         to={pathForView(item.view)}
         title={!isPinned ? item.label : undefined}
-        className={`w-full flex items-center py-2 text-xs transition-all ${
-          active ? activeClass : inactiveClass
-        } ${isPinned ? 'gap-2 text-left rounded' : ''}`}
+        className={`w-full flex items-center py-2 text-xs transition-all ${active ? activeClass : inactiveClass
+          } ${isPinned ? 'gap-2 text-left rounded' : ''}`}
       >
         <Icon size={isPinned ? 13 : 16} />
         {isPinned && <span>{item.label}</span>}
@@ -91,7 +90,7 @@ export default function Sidebar() {
             </div>
             <div>
               <h1 className="font-sans font-bold tracking-tight text-white text-sm whitespace-nowrap">{import.meta.env.VITE_APP_NAME || "Lintara Digital"}</h1>
-              <span className="text-[9px] uppercase tracking-widest font-mono text-slate-400 font-bold whitespace-nowrap">Sistem Operasional</span>
+              <span className="text-[9px] uppercase tracking-widest font-mono text-slate-400 font-bold whitespace-nowrap">by Lintara Digital</span>
             </div>
           </div>
         ) : (
@@ -99,7 +98,7 @@ export default function Sidebar() {
             <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
           </button>
         )}
-        
+
         {isPinned && (
           <button onClick={() => setIsPinned(false)} className="text-slate-500 hover:text-slate-300 p-1 rounded-md hover:bg-slate-800 transition-colors" title="Collapse Sidebar">
             <ChevronLeft size={16} />
@@ -146,11 +145,11 @@ export default function Sidebar() {
       <div className={`flex-1 space-y-1.5 pb-6 ${isPinned ? 'px-3' : 'px-2'}`}>
         {NAVIGATION_SECTIONS.map((section) => {
           const isExpanded = expandedSections[section.id];
-          
+
           const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule, item.view));
-          
+
           if (visibleItems.length === 0) {
-             return null;
+            return null;
           }
 
           if (!isPinned) {

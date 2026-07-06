@@ -1,4 +1,5 @@
 import type { AuthSession, AuthUser } from '../types/auth';
+import type { SystemNotification } from '../types/system';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const TOKEN_STORAGE_KEY = 'cvba_api_token';
@@ -238,5 +239,17 @@ export const systemApi = {
   async saveSettings(settings: Record<string, string>): Promise<Record<string, string>> {
     const res = await apiClient.post<{ data: Record<string, string> }>('/settings', settings);
     return res.data;
+  }
+};
+
+export const notificationApi = {
+  async getNotifications() {
+    return apiClient.get<{ data: SystemNotification[], unread_count: number }>('/notifications');
+  },
+  async markAsRead(id: string) {
+    return apiClient.post(`/notifications/${id}/read`);
+  },
+  async markAllAsRead() {
+    return apiClient.post('/notifications/read-all');
   }
 };
