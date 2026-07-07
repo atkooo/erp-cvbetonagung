@@ -13,11 +13,11 @@ import {
   X,
   Save,
   AlertCircle,
+  Key,
 } from "@/src/components/icons";
 import { authStorage } from "../services/api";
 import { employeesApi } from "../features/employees/api";
-import { identityApi } from "../features/identity/api";
-import { Employee, AuthUser } from "../types";
+import { Employee } from "../types";
 import { SkeletonCard, SkeletonTable, ErrorCard } from "./Skeleton";
 
 import Swal from "sweetalert2";
@@ -36,11 +36,9 @@ export default function EmployeeMasterView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [systemUsers, setSystemUsers] = useState<AuthUser[]>([]);
 
   // Form states
   const [businessUnit, setBusinessUnit] = useState("Head Office");
-  const [userId, setUserId] = useState<string>("");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [name, setName] = useState("");
   const [roleName, setRoleName] = useState("");
@@ -91,23 +89,12 @@ export default function EmployeeMasterView({
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const data = await identityApi.getUsers();
-      setSystemUsers(data);
-    } catch (err) {
-      console.error("Failed to load system users", err);
-    }
-  };
-
   useEffect(() => {
     fetchEmployees();
-    fetchUsers();
   }, []);
 
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
-    setUserId("");
     setBusinessUnit("Head Office");
     setEmployeeNumber(`EMP-${Date.now().toString().slice(-6)}`);
     setName("");
@@ -136,7 +123,6 @@ export default function EmployeeMasterView({
 
   const handleOpenEditModal = (emp: Employee) => {
     setEditingEmployee(emp);
-    setUserId(emp.userId || "");
     setBusinessUnit(emp.businessUnit || "Head Office");
     setEmployeeNumber(emp.employeeNumber);
     setName(emp.name);
@@ -172,7 +158,6 @@ export default function EmployeeMasterView({
 
     const employeeData = {
       businessUnit,
-      userId: userId || null,
       employeeNumber,
       name,
       roleName,
@@ -250,6 +235,47 @@ export default function EmployeeMasterView({
         icon: "error",
       });
       onTriggerNotification("Gagal menghapus data karyawan.");
+    }
+  };
+
+  const handleGenerateAccount = async (id: string, empName: string) => {
+    const result = await Swal.fire({
+      title: "Generate Akun?",
+      text: `Buat akun sistem otomatis untuk ${empName}?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, Buat!",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const data = await employeesApi.generateAccount(id);
+      
+      // Update local state to show it's linked
+      setEmployees((prev) => 
+        prev.map(emp => emp.id === id ? { ...emp, userId: data.user.id } : emp)
+      );
+
+      Swal.fire({
+        title: "Berhasil!",
+        html: `Akun untuk <b>${empName}</b> berhasil dibuat.<br/><br/>
+               <b>Email:</b> ${data.user.email}<br/>
+               <b>Password:</b> ${data.password}<br/><br/>
+               <small class="text-slate-500">Silakan catat dan berikan kepada karyawan.</small>`,
+        icon: "success",
+        confirmButtonText: "Tutup",
+      });
+    } catch (err: any) {
+      console.error("Failed to generate account", err);
+      Swal.fire({
+        title: "Gagal!",
+        text: err.message || "Gagal membuat akun.",
+        icon: "error",
+      });
     }
   };
 
@@ -480,6 +506,15 @@ export default function EmployeeMasterView({
                     </td>
                     <td className="p-3.5 pr-5 text-right">
                       <div className="flex justify-end gap-1.5">
+                        {!emp.userId && (
+                          <button
+                            onClick={() => handleGenerateAccount(emp.id, emp.name)}
+                            className="p-1 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 text-slate-400 hover:text-indigo-600 rounded transition-all"
+                            title="Generate Akun Sistem"
+                          >
+                            <Key size={13} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleOpenEditModal(emp)}
                           className="p-1 hover:bg-slate-100 border text-slate-500 hover:text-slate-800 rounded transition-all"
@@ -600,22 +635,6 @@ export default function EmployeeMasterView({
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="block font-bold text-slate-700">
-                          Tautkan Akun Sistem (User ID)
-                        </label>
-                        <select
-                          value={userId}
-                          onChange={(e) => setUserId(e.target.value)}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-indigo-400"
-                        >
-                          <option value="">-- Tidak Ditautkan --</option>
-                          {systemUsers.map(user => (
-                            <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="block font-bold text-slate-700">
                           Nama Lengkap *
                         </label>
                         <input
@@ -626,9 +645,7 @@ export default function EmployeeMasterView({
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
                         />
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="block font-bold text-slate-650 text-slate-700">
                           Jabatan Pekerjaan *

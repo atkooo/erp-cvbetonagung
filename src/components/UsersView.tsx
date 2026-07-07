@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, X, Edit, Trash2, Shield, Save, Key, Mail, UserCircle } from '@/src/components/icons';
 import { identityApi } from '../features/identity/api';
 import { IdentityUser, Role } from '../features/identity/types';
+import { employeesApi } from '../features/employees/api';
+import { Employee } from '../types';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import Swal from 'sweetalert2';
 
@@ -12,6 +14,7 @@ interface UsersViewProps {
 export default function UsersView({ onTriggerNotification }: UsersViewProps) {
   const [users, setUsers] = useState<IdentityUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,18 +30,21 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
 
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [fetchedUsers, fetchedRoles] = await Promise.all([
+      const [fetchedUsers, fetchedRoles, fetchedEmployees] = await Promise.all([
         identityApi.getUsers(),
         identityApi.getRoles(),
+        employeesApi.getEmployees(),
       ]);
       setUsers(fetchedUsers);
       setRoles(fetchedRoles);
+      setEmployees(fetchedEmployees);
     } catch (err: any) {
       const msg = err.message || 'Gagal mengambil data user.';
       setError(msg);
@@ -74,6 +80,7 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
     setEmail('');
     setPassword('');
     setRoleId(roles[0]?.id || '');
+    setEmployeeId('');
     setStatus('active');
     setShowModal(true);
   };
@@ -84,6 +91,7 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
     setEmail(user.email);
     setPassword(''); // Empty for edit, only filled if changing
     setRoleId(user.roleId);
+    setEmployeeId(user.employeeId || '');
     setStatus(user.status);
     setShowModal(true);
   };
@@ -126,6 +134,7 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
     try {
       const payload: any = { name, email, role_id: roleId, status };
       if (password) payload.password = password;
+      if (employeeId) payload.employee_id = employeeId;
 
       if (editingUser) {
         const updated = await identityApi.updateUser(editingUser.id, payload);
@@ -221,7 +230,11 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
                           </div>
                           <div>
                             <div className="font-bold text-slate-800">{user.name}</div>
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">ID: {user.id.substring(0,8)}...</div>
+                            {user.employeeName ? (
+                              <div className="text-[10px] text-slate-500 font-medium mt-0.5">Pegawai: {user.employeeName}</div>
+                            ) : (
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">ID: {user.id.substring(0,8)}...</div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -378,6 +391,20 @@ export default function UsersView({ onTriggerNotification }: UsersViewProps) {
                 </div>
 
                 <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase">Tautkan ke Karyawan</label>
+                  <select
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 outline-none cursor-pointer"
+                  >
+                    <option value="">-- Tidak Ditautkan --</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.name} ({emp.employeeNumber})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 col-span-2">
                   <label className="text-[11px] font-bold text-slate-600 uppercase">Status Akun</label>
                   <select
                     value={status}

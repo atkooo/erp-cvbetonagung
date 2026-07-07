@@ -29,5 +29,10 @@ export const employeesApi = {
 
   async deleteEmployee(id: string): Promise<void> {
     await apiClient.delete(`/identity/employees/${id}`);
+  },
+
+  async generateAccount(id: string): Promise<{ user: { id: string, name: string, email: string }, password: string }> {
+    const response = await apiClient.post<{ data: { user: any, password: string } }>(`/identity/employees/${id}/generate-account`, {});
+    return response.data;
   }
 };

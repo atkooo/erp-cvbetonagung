@@ -51,6 +51,10 @@ export interface UserDto {
   last_login_at: string | null;
   role_id: string;
   role?: RoleDto;
+  employee?: {
+    id: string;
+    name: string;
+  };
   created_at?: string;
   updated_at?: string;
 }
@@ -63,4 +67,6 @@ export interface IdentityUser {
   lastLoginAt: string | null;
   roleId: string;
   roleName: string;
+  employeeId?: string;
+  employeeName?: string;
 }

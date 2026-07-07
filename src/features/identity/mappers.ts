@@ -29,4 +29,6 @@ export const mapUserFromDto = (dto: any): any => ({
   lastLoginAt: dto.last_login_at,
   roleId: dto.role_id,
   roleName: dto.role?.name || '-',
+  employeeId: dto.employee?.id,
+  employeeName: dto.employee?.name,
 });
