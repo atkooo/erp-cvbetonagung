@@ -284,7 +284,7 @@ export const printBluetoothReceipt = async (
     }
 
     const device = await nav.bluetooth.requestDevice({
-      filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }],
+      acceptAllDevices: true,
       optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
     }).catch((err: any) => {
       throw new Error(err.message === 'User cancelled the requestDevice() chooser.'
