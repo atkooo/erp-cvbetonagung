@@ -1,6 +1,13 @@
 # Frontend ERP CV. Beton Agung
 
-Frontend untuk sistem ERP CV. Beton Agung. Aplikasi ini dibangun dengan Vite, React 19, TypeScript, Tailwind CSS, dan terhubung ke Laravel API backend melalui Bearer token.
+Aplikasi antarmuka pengguna (User Interface) untuk sistem Enterprise Resource Planning (ERP) **CV. Beton Agung**. Aplikasi ini dibangun sebagai Single Page Application (SPA) yang modern dan cepat menggunakan ekosistem Vite, React 19, TypeScript, dan di-styling dengan Tailwind CSS. Frontend ini berkomunikasi secara seamless dengan backend Laravel API menggunakan autentikasi Bearer token.
+
+## Tentang Sistem ERP
+
+Sistem ERP CV. Beton Agung ini merupakan platform terpusat yang digunakan oleh para karyawan dan manajemen untuk menjalankan operasional bisnis sehari-hari perusahaan. Aplikasi antarmuka ini dirancang untuk memberikan kenyamanan dan kecepatan dalam bekerja, dengan fokus pada:
+- **Kemudahan Penggunaan (User Experience):** Antarmuka yang bersih, intuitif, dan responsif agar pengguna dari berbagai departemen dapat menginput dan mencari data tanpa kendala.
+- **Manajemen Operasional Terpadu:** Memfasilitasi proses pembuatan pesanan penjualan (Sales Order), pengadaan bahan baku (Purchasing), manajemen stok di berbagai gudang (Multi Warehouse), hingga pemrosesan tagihan (Finance).
+- **Monitoring Real-time:** Menyediakan dashboard dan laporan ringkas untuk memantau performa perusahaan, persetujuan (approval) secara hierarkis, dan pelacakan audit secara transparan.
 
 ## Fitur Utama
 
