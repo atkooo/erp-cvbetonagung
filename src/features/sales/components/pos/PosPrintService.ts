@@ -283,9 +283,16 @@ export const printBluetoothReceipt = async (
       throw new Error("Web Bluetooth API tidak didukung di browser ini. Gunakan Chrome/Edge dan pastikan HTTPS/localhost.");
     }
 
+    const PRINTER_SERVICES = [
+      '000018f0-0000-1000-8000-00805f9b34fb',
+      '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+      'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+      '0000ff00-0000-1000-8000-00805f9b34fb'
+    ];
+
     const device = await nav.bluetooth.requestDevice({
       acceptAllDevices: true,
-      optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+      optionalServices: PRINTER_SERVICES
     }).catch((err: any) => {
       throw new Error(err.message === 'User cancelled the requestDevice() chooser.'
         ? 'Pencarian perangkat dibatalkan.'
@@ -297,8 +304,34 @@ export const printBluetoothReceipt = async (
     const server = await device.gatt?.connect();
     if (!server) throw new Error("Gagal terkoneksi ke GATT Server perangkat");
 
-    const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-    const printCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+    let service: any = null;
+    let printCharacteristic: any = null;
+
+    // Coba temukan service yang cocok dari daftar yang didukung printer
+    const services = await server.getPrimaryServices();
+    for (const s of services) {
+      if (PRINTER_SERVICES.includes(s.uuid)) {
+        service = s;
+        break;
+      }
+    }
+
+    if (!service) {
+      throw new Error(`Tidak ditemukan service printer yang kompatibel pada perangkat ini.`);
+    }
+
+    // Cari characteristic yang bisa di-write
+    const characteristics = await service.getCharacteristics();
+    for (const c of characteristics) {
+      if (c.properties.write || c.properties.writeWithoutResponse) {
+        printCharacteristic = c;
+        break;
+      }
+    }
+
+    if (!printCharacteristic) {
+      throw new Error("Tidak ditemukan characteristic untuk mengirim data cetak.");
+    }
 
     const encoder = new TextEncoder();
     let payload = new Uint8Array();
