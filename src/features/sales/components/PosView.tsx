@@ -29,7 +29,7 @@ const calculateBaseDiscount = (product: any) => {
   const hasActiveDiscount = product.discount && (product.discount.is_active === true || product.discount.is_active === 1);
   const discountType = hasActiveDiscount ? product.discount.type : (product.discount_type || null);
   const discountValue = hasActiveDiscount ? product.discount.value : (product.discount_value || 0);
-  
+
   if (discountType === 'percentage') {
     const defaultPrice = parseFloat(product.sellingPrice?.toString() || product.selling_price?.toString() || '0');
     return defaultPrice * (parseFloat(discountValue) / 100);
@@ -903,6 +903,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                           <button
                             onClick={() => {
                               const info = {
+                                isHistory: true,
                                 orderNumber: tx.order_number,
                                 change: 0,
                                 fulfillmentType: 'take_away',
@@ -912,6 +913,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                                 items: (tx.items || []).map((i: any) => ({
                                   product: i.product,
                                   quantity: i.quantity,
+                                  discount_amount: i.discount_amount,
                                 })),
                                 date: tx.order_date,
                               };
@@ -925,6 +927,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                           <button
                             onClick={() => {
                               const info = {
+                                isHistory: true,
                                 orderNumber: tx.order_number,
                                 change: 0,
                                 fulfillmentType: 'take_away',
@@ -934,6 +937,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                                 items: (tx.items || []).map((i: any) => ({
                                   product: i.product,
                                   quantity: i.quantity,
+                                  discount_amount: i.discount_amount,
                                 })),
                                 date: tx.order_date,
                               };
@@ -947,6 +951,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                           <button
                             onClick={() => {
                               const info = {
+                                isHistory: true,
                                 orderNumber: tx.order_number,
                                 change: 0,
                                 fulfillmentType: 'take_away',
@@ -956,6 +961,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                                 items: (tx.items || []).map((i: any) => ({
                                   product: i.product,
                                   quantity: i.quantity,
+                                  discount_amount: i.discount_amount,
                                 })),
                                 date: tx.order_date,
                               };
