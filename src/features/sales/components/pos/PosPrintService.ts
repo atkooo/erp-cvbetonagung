@@ -2,6 +2,7 @@ export interface PrintInfo {
   orderNumber: string;
   date: string;
   customerName: string;
+  cashierName?: string;
   cartTotal: number;
   globalDiscountAmount?: number;
   grandTotal?: number;
@@ -109,7 +110,7 @@ const buildReceiptHTML = (info: PrintInfo, companyProfile: CompanyProfile, norma
       <div class="mb-2" ${isPdf ? 'style="margin-bottom: 10px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
         <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>No:</span> <span>${escapeHtml(info.orderNumber)}</span></div>
         <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Tgl:</span> <span>${escapeHtml(info.date)}</span></div>
-        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Kasir:</span> <span>Admin</span></div>
+        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Kasir:</span> <span>${escapeHtml(info.cashierName || 'Admin')}</span></div>
         <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Plg:</span> <span>${escapeHtml(info.customerName)}</span></div>
       </div>
       
@@ -414,7 +415,7 @@ export const printBluetoothReceipt = async (
     appendBytes(lineFeed);
     appendStr(`Tgl  : ${info.date}`);
     appendBytes(lineFeed);
-    appendStr(`Kasir: Admin`);
+    appendStr(`Kasir: ${info.cashierName || 'Admin'}`);
     appendBytes(lineFeed);
     appendStr(`Plg  : ${info.customerName}`);
     appendBytes(lineFeed);

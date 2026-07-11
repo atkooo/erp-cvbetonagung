@@ -11,6 +11,7 @@ import SearchableSelect from '../../../components/SearchableSelect';
 import PosProductGrid from './pos/PosProductGrid';
 import PosCartSidebar from './pos/PosCartSidebar';
 import { printReceipt as psPrintReceipt, downloadReceipt as psDownloadReceipt, printBluetoothReceipt as psPrintBluetoothReceipt } from './pos/PosPrintService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface PosViewProps {
   onTriggerNotification: (message: string) => void;
@@ -40,6 +41,7 @@ const calculateBaseDiscount = (product: any) => {
 };
 
 export default function PosView({ onTriggerNotification }: PosViewProps) {
+  const { authUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
@@ -243,16 +245,24 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   }, [locationUrl.search, products, navigate, onTriggerNotification]);
 
   const updateQuantity = (cartItemId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === cartItemId) {
-        const newQty = Math.max(1, item.quantity + delta);
+    setCart(prev => {
+      const item = prev.find(i => i.id === cartItemId);
+      if (!item) return prev;
 
-        let baseDiscount = calculateBaseDiscount(item.product);
+      const newQty = item.quantity + delta;
 
-        return { ...item, quantity: newQty, discount_amount: baseDiscount * newQty };
+      // Hapus item jika qty turun ke 0 atau kurang
+      if (newQty <= 0) {
+        return prev.filter(i => i.id !== cartItemId);
       }
-      return item;
-    }));
+
+      const baseDiscount = calculateBaseDiscount(item.product);
+      return prev.map(i =>
+        i.id === cartItemId
+          ? { ...i, quantity: newQty, discount_amount: baseDiscount * newQty }
+          : i
+      );
+    });
   };
 
   const setQuantity = (cartItemId: string, qtyRaw: string | number) => {
@@ -382,6 +392,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         orderNumber: salesOrder.orderNumber || (salesOrder as any).order_number,
         change: paid - grandTotal,
         fulfillmentType,
+        cashierName: authUser?.name || 'Admin',
         customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'Pelanggan',
         amountPaid: paid,
         cartTotal: cartTotal,

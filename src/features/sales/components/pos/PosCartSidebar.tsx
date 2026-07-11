@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingCart, User, Plus, Minus, Trash2, CheckCircle2, Edit2, Car, Truck } from 'lucide-react';
 import SearchableSelect from '../../../../components/SearchableSelect';
+import Swal from 'sweetalert2';
 
 interface PosCartSidebarProps {
   cart: any[];
@@ -58,6 +59,36 @@ export default function PosCartSidebar({
   setShowCheckoutModal
 }: PosCartSidebarProps) {
 
+  const confirmRemoveItem = async (itemId: string, productName: string) => {
+    const result = await Swal.fire({
+      title: 'Hapus item?',
+      text: `"${productName}" akan dihapus dari keranjang.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl font-bold',
+        cancelButton: 'rounded-xl font-bold',
+      },
+    });
+    if (result.isConfirmed) {
+      removeFromCart(itemId);
+    }
+  };
+
+  const handleDecrease = (itemId: string, productName: string, currentQty: number) => {
+    if (currentQty <= 1) {
+      confirmRemoveItem(itemId, productName);
+    } else {
+      updateQuantity(itemId, -1);
+    }
+  };
+
   return (
     <div className="w-[400px] flex flex-col bg-white shrink-0 z-30 shadow-2xl border-l border-slate-200">
       <div className="p-5 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center gap-3">
@@ -104,13 +135,7 @@ export default function PosCartSidebar({
             const itemStocks = stocks.filter(s => s.product_id === item.product.id && parseFloat(s.quantity) > 0);
 
             return (
-              <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md transition-shadow relative group">
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={12} />
-                </button>
+              <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md transition-shadow relative">
                 <div className="flex-1">
                   <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
                   <div className="text-emerald-600 font-semibold text-sm mb-1 flex justify-between">
@@ -160,10 +185,11 @@ export default function PosCartSidebar({
                   </div>
                 </div>
                 <div className="flex flex-col items-end justify-between">
-                  <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+                  <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
                     <button
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-rose-600"
+                      onClick={() => handleDecrease(item.id, item.product.name, item.quantity)}
+                      className="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-rose-600 active:bg-rose-50 transition-colors"
+                      title={item.quantity === 1 ? 'Hapus item' : 'Kurangi'}
                     >
                       <Minus size={14} />
                     </button>
@@ -175,15 +201,23 @@ export default function PosCartSidebar({
                       onBlur={() => {
                         if (item.quantity === 0) setQuantity(item.id, 1);
                       }}
-                      className="w-12 text-center text-sm font-bold bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded hide-arrows"
+                      className="w-10 text-center text-sm font-bold bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded hide-arrows"
                     />
                     <button
                       onClick={() => updateQuantity(item.id, 1)}
-                      className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-600"
+                      className="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-600 active:bg-emerald-50"
                     >
                       <Plus size={14} />
                     </button>
                   </div>
+                  {/* Tombol hapus selalu visible — tidak pakai hover, aman di touch device */}
+                  <button
+                    onClick={() => confirmRemoveItem(item.id, item.product.name)}
+                    className="mt-2 w-7 h-7 flex items-center justify-center bg-rose-50 border border-rose-200 text-rose-500 hover:bg-rose-100 active:bg-rose-200 rounded-lg transition-colors"
+                    title="Hapus item"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
             );
