@@ -119,8 +119,10 @@ export default function QrView({
   const hiddenBulkRef = useRef<HTMLDivElement>(null);
   const stickerRef = useRef<HTMLDivElement>(null);
 
-  const handleDownloadPng = async () => {
-    const targetRef = isBulkPrint ? hiddenBulkRef.current : stickerRef.current;
+  const handleDownloadPdf = async () => {
+    const targetRef = isBulkPrint
+      ? hiddenBulkRef.current
+      : stickerRef.current || hiddenStickerRef.current;
     if (!targetRef) return;
 
     try {
@@ -128,28 +130,35 @@ export default function QrView({
         backgroundColor: "#ffffff",
         pixelRatio: 3,
       });
-      const link = document.createElement("a");
+      const { jsPDF } = await import("jspdf");
+      const pdf = new jsPDF({ unit: "px", format: "a4" });
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, imgWidth, imgHeight);
+
+      let heightLeft = imgHeight - pdfHeight;
+      let position = -pdfHeight;
+      while (heightLeft > 0) {
+        pdf.addPage();
+        pdf.addImage(dataUrl, "PNG", 0, position, imgWidth, imgHeight);
+        position -= pdfHeight;
+        heightLeft -= pdfHeight;
+      }
+
       const fileName = isBulkPrint
-        ? "Barcode-Bulk.png"
-        : `Barcode-${showQrModal?.sku || "produk"}.png`;
-      link.download = fileName;
-      link.href = dataUrl;
-      link.click();
-      onTriggerNotification(`Berhasil mendownload sticker asset ${fileName}`);
+        ? "Barcode-Bulk.pdf"
+        : `Barcode-${showQrModal?.sku || "produk"}.pdf`;
+      pdf.save(fileName);
+      onTriggerNotification(`Berhasil mendownload PDF ${fileName}`);
     } catch (e) {
       console.error(e);
-      onTriggerNotification(`Gagal mendownload sticker asset.`);
+      onTriggerNotification(`Gagal mendownload PDF.`);
     }
   };
-
-  const handlePrint = useReactToPrint({
-    contentRef: stickerRef,
-    documentTitle: showQrModal ? `Barcode-${showQrModal.sku}` : "Barcode",
-    onAfterPrint: () =>
-      onTriggerNotification(
-        `Berhasil mengirim stiker Barcode [${showQrModal?.sku}] ke printer.`,
-      ),
-  });
 
   const handleBulkPrint = useReactToPrint({
     contentRef: hiddenBulkRef,
@@ -165,11 +174,17 @@ export default function QrView({
     documentTitle: printProduct ? `Barcode-${printProduct.sku}` : "Barcode",
     onAfterPrint: () => {
       onTriggerNotification(
-        `Berhasil mengirim stiker Barcode [${printProduct?.sku}] ke printer harian.`,
+        `Berhasil mengirim stiker Barcode [${printProduct?.sku}] ke printer.`,
       );
       setPrintProduct(null);
     },
   });
+
+  const triggerSinglePrint = () => {
+    if (showQrModal) {
+      setPrintProduct(showQrModal);
+    }
+  };
 
   useEffect(() => {
     if (printProduct) {
@@ -404,44 +419,43 @@ export default function QrView({
     return getLayoutCardCount(printSettings.layout);
   };
 
-  const renderBarcodeLabel = (product: Product) => {
-    const cardCount = getLayoutCardCount(printSettings.layout);
+  const renderBarcodeLabel = (product: Product, copies = 1) => {
     const isCustom = printSettings.layout === "custom";
-    const columns = isCustom
-      ? Math.min(Math.max(printSettings.customColumns, 1), 6)
-      : printSettings.layout === "2x2"
-        ? 2
-        : printSettings.layout === "3x3"
-          ? 3
-          : printSettings.layout === "2x3"
+    const columns =
+      copies > 1
+        ? isCustom
+          ? Math.min(Math.max(printSettings.customColumns, 1), 6)
+          : printSettings.layout === "2x2"
             ? 2
-            : printSettings.layout === "3x2"
+            : printSettings.layout === "3x3"
               ? 3
-              : printSettings.layout === "4x4"
-                ? 4
-                : 1;
+              : printSettings.layout === "2x3"
+                ? 2
+                : printSettings.layout === "3x2"
+                  ? 3
+                  : printSettings.layout === "4x4"
+                    ? 4
+                    : 1
+        : 1;
 
     return (
       <div
         className={
-          printSettings.layout === "list"
-            ? "w-full space-y-2"
+          copies === 1 || printSettings.layout === "list"
+            ? "w-full"
             : "grid w-full gap-2"
         }
         style={
-          printSettings.layout === "list"
+          copies === 1 || printSettings.layout === "list"
             ? undefined
             : { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
         }
       >
-        {Array.from({ length: cardCount }).map((_, index) => (
+        {Array.from({ length: copies }).map((_, index) => (
           <div
             key={`${product.id}-${index}`}
             className="bg-white border-2 border-black rounded-xl p-3 text-center"
-            style={{
-              width: "100%",
-              minHeight: printSettings.paperSize === "58mm" ? "150px" : "180px",
-            }}
+            style={{ width: "100%" }}
           >
             {printSettings.showCompanyName && (
               <h4 className="font-black text-black text-[11px] uppercase tracking-widest mb-2">
@@ -528,7 +542,6 @@ export default function QrView({
             className="bg-white border-2 border-black rounded-xl p-3 text-center"
             style={{
               width: "100%",
-              minHeight: printSettings.paperSize === "58mm" ? "150px" : "180px",
               pageBreakInside: "avoid",
               breakInside: "avoid",
             }}
@@ -1131,11 +1144,7 @@ export default function QrView({
                 <div
                   ref={stickerRef}
                   className="bg-white p-4 rounded-xl w-full overflow-hidden mx-auto"
-                  style={{
-                    ...getStickerContainerStyle(),
-                    maxHeight: "60vh",
-                    overflowY: "auto",
-                  }}
+                  style={getStickerContainerStyle()}
                 >
                   {isBulkPrint && bulkPrintProducts.length > 0
                     ? renderBulkPrintPreview(
@@ -1145,7 +1154,7 @@ export default function QrView({
                         ),
                       )
                     : showQrModal
-                      ? renderBarcodeLabel(showQrModal)
+                      ? renderBarcodeLabel(showQrModal, 1)
                       : null}
                 </div>
 
@@ -1224,14 +1233,14 @@ export default function QrView({
 
             <div className="p-4 border-t border-slate-100 flex gap-2 justify-end bg-slate-50">
               <button
-                onClick={handleDownloadPng}
+                onClick={handleDownloadPdf}
                 className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
               >
                 <Download size={16} />
-                <span>Download</span>
+                <span>Download PDF</span>
               </button>
               <button
-                onClick={isBulkPrint ? handleBulkPrint : handlePrint}
+                onClick={isBulkPrint ? handleBulkPrint : triggerSinglePrint}
                 className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold transition-colors shadow-sm shadow-cyan-600/20"
               >
                 <Printer size={16} />
