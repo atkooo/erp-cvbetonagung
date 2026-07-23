@@ -32,9 +32,12 @@ export interface Bag {
   warehouse_id: string;
   location_id?: string;
   type: 'in' | 'out' | 'adjustment';
+  reason_code?: string;
   notes?: string;
   status: string;
   created_by?: string;
+  approved_by?: string;
+  approved_at?: string;
   items?: BagItem[];
   warehouse?: {
     id: string;
@@ -45,6 +48,10 @@ export interface Bag {
     name: string;
   };
   createdBy?: {
+    id: string;
+    name: string;
+  };
+  approvedBy?: {
     id: string;
     name: string;
   };

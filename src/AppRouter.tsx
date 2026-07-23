@@ -3,56 +3,85 @@ import { createBrowserRouter, RouteObject, useNavigate, useLocation, Navigate } 
 import { useAuth } from './contexts/AuthContext';
 import { pathForView } from './routes';
 import type { ViewType } from './types';
+import ErrorBoundaryClass, { RouteErrorFallback } from './components/ErrorBoundary';
+
+/**
+ * Robust lazy import wrapper with automatic retry on chunk load failure.
+ * Handles Vite dev server restarts, HMR cache invalidations, and network glitches.
+ */
+const lazyWithRetry = <T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T } | { [key: string]: T }>
+) =>
+  React.lazy(async () => {
+    const pageHasBeenRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page_has_been_refreshed') || 'false'
+    );
+    try {
+      const module = await componentImport();
+      window.sessionStorage.setItem('page_has_been_refreshed', 'false');
+      if ('default' in module) {
+        return { default: module.default };
+      }
+      return { default: Object.values(module)[0] as T };
+    } catch (error) {
+      if (!pageHasBeenRefreshed) {
+        window.sessionStorage.setItem('page_has_been_refreshed', 'true');
+        window.location.reload();
+        return new Promise(() => {}); // Pause until page reloads
+      }
+      throw error;
+    }
+  });
 
 // Lazy-loaded view modules
-const DashboardView = React.lazy(() => import('./components/DashboardView'));
-const EmployeeDashboardView = React.lazy(() => import('./components/EmployeeDashboardView'));
-const CustomersView = React.lazy(() => import('./components/CustomersView'));
-const SuppliersView = React.lazy(() => import('./components/SuppliersView'));
-const ProductsView = React.lazy(() => import('./components/ProductsView'));
-const CategoriesView = React.lazy(() => import('./components/CategoriesView'));
-const UnitsView = React.lazy(() => import('./components/UnitsView'));
-const WarehouseMasterView = React.lazy(() => import('./components/WarehouseMasterView'));
-const DiscountsView = React.lazy(() => import('./components/DiscountsView'));
-const InventoryView = React.lazy(() => import('./components/InventoryView'));
-const PosView = React.lazy(() => import('./features/sales/components/PosView'));
-const SalesView = React.lazy(() => import('./components/SalesView'));
-const InvoicesView = React.lazy(() => import('./components/InvoicesView'));
-const PaymentsView = React.lazy(() => import('./components/PaymentsView'));
-const PurchaseView = React.lazy(() => import('./components/PurchaseView'));
-const PurchaseRequestView = React.lazy(() => import('./components/PurchaseRequestView'));
-const RfqView = React.lazy(() => import('./components/RfqView'));
-const ProjectsView = React.lazy(() => import('./components/ProjectsView'));
-const QrView = React.lazy(() => import('./components/QrView'));
-const FinanceReportView = React.lazy(() => import('./components/FinanceReportView'));
-const InventoryReportView = React.lazy(() => import('./components/InventoryReportView'));
-const ReportCenterView = React.lazy(() => import('./features/reports/components/ReportCenterView'));
-const SettingsView = React.lazy(() => import('./components/SettingsView'));
-const EmployeeMasterView = React.lazy(() => import('./components/EmployeeMasterView'));
-const AttendanceDashboardView = React.lazy(() => import('./components/AttendanceDashboardView'));
-const LeaveManagementView = React.lazy(() => import('./components/LeaveManagementView'));
-const LeaveTypesMasterView = React.lazy(() => import('./components/LeaveTypesMasterView'));
-const PayrollManagementView = React.lazy(() => import('./components/PayrollManagementView'));
-const EmployeeLoanView = React.lazy(() => import('./components/EmployeeLoanView'));
-const AttendanceScannerView = React.lazy(() => import('./components/AttendanceScannerView'));
-const DeliveryOrdersView = React.lazy(() => import('./components/DeliveryOrdersView'));
-const ProductionWorkOrderView = React.lazy(() => import('./components/ProductionWorkOrderView'));
-const BomCostingView = React.lazy(() => import('./components/BomCostingView'));
-const BagView = React.lazy(() => import('./features/inventory/components/BagView'));
-const StockOpnameView = React.lazy(() => import('./components/StockOpnameView'));
-const ApprovalWorkflowView = React.lazy(() => import('./components/ApprovalWorkflowView'));
-const AuditLogView = React.lazy(() => import('./components/AuditLogView'));
-const RemindersView = React.lazy(() => import('./components/RemindersView'));
-const DocumentExportsView = React.lazy(() => import('./components/DocumentExportsView'));
-const ReturnsView = React.lazy(() => import('./components/ReturnsView'));
-const ProjectBudgetingView = React.lazy(() => import('./components/ProjectBudgetingView'));
-const MultiWarehouseView = React.lazy(() => import('./components/MultiWarehouseView'));
-const ReceivablesPayablesView = React.lazy(() => import('./components/ReceivablesPayablesView'));
-const CashExpenseView = React.lazy(() => import('./components/CashExpenseView'));
-const FinanceAccountsView = React.lazy(() => import('./features/finance/components/FinanceAccountsView').then(m => ({ default: m.FinanceAccountsView })));
-const RolePermissionView = React.lazy(() => import('./components/RolePermissionView'));
-const UsersView = React.lazy(() => import('./components/UsersView'));
-const ProfileView = React.lazy(() => import('./components/ProfileView'));
+const DashboardView = lazyWithRetry(() => import('./components/DashboardView'));
+const EmployeeDashboardView = lazyWithRetry(() => import('./components/EmployeeDashboardView'));
+const CustomersView = lazyWithRetry(() => import('./components/CustomersView'));
+const SuppliersView = lazyWithRetry(() => import('./components/SuppliersView'));
+const ProductsView = lazyWithRetry(() => import('./components/ProductsView'));
+const CategoriesView = lazyWithRetry(() => import('./components/CategoriesView'));
+const UnitsView = lazyWithRetry(() => import('./components/UnitsView'));
+const WarehouseMasterView = lazyWithRetry(() => import('./components/WarehouseMasterView'));
+const DiscountsView = lazyWithRetry(() => import('./components/DiscountsView'));
+const InventoryView = lazyWithRetry(() => import('./components/InventoryView'));
+const PosView = lazyWithRetry(() => import('./features/sales/components/PosView'));
+const SalesView = lazyWithRetry(() => import('./components/SalesView'));
+const InvoicesView = lazyWithRetry(() => import('./components/InvoicesView'));
+const PaymentsView = lazyWithRetry(() => import('./components/PaymentsView'));
+const PurchaseView = lazyWithRetry(() => import('./components/PurchaseView'));
+const PurchaseRequestView = lazyWithRetry(() => import('./components/PurchaseRequestView'));
+const RfqView = lazyWithRetry(() => import('./components/RfqView'));
+const ProjectsView = lazyWithRetry(() => import('./components/ProjectsView'));
+const QrView = lazyWithRetry(() => import('./components/QrView'));
+const FinanceReportView = lazyWithRetry(() => import('./components/FinanceReportView'));
+const InventoryReportView = lazyWithRetry(() => import('./components/InventoryReportView'));
+const ReportCenterView = lazyWithRetry(() => import('./features/reports/components/ReportCenterView'));
+const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
+const EmployeeMasterView = lazyWithRetry(() => import('./components/EmployeeMasterView'));
+const AttendanceDashboardView = lazyWithRetry(() => import('./components/AttendanceDashboardView'));
+const LeaveManagementView = lazyWithRetry(() => import('./components/LeaveManagementView'));
+const LeaveTypesMasterView = lazyWithRetry(() => import('./components/LeaveTypesMasterView'));
+const PayrollManagementView = lazyWithRetry(() => import('./components/PayrollManagementView'));
+const EmployeeLoanView = lazyWithRetry(() => import('./components/EmployeeLoanView'));
+const AttendanceScannerView = lazyWithRetry(() => import('./components/AttendanceScannerView'));
+const DeliveryOrdersView = lazyWithRetry(() => import('./components/DeliveryOrdersView'));
+const ProductionWorkOrderView = lazyWithRetry(() => import('./components/ProductionWorkOrderView'));
+const BomCostingView = lazyWithRetry(() => import('./components/BomCostingView'));
+const BagView = lazyWithRetry(() => import('./features/inventory/components/BagView'));
+const StockOpnameView = lazyWithRetry(() => import('./components/StockOpnameView'));
+const ApprovalWorkflowView = lazyWithRetry(() => import('./components/ApprovalWorkflowView'));
+const AuditLogView = lazyWithRetry(() => import('./components/AuditLogView'));
+const RemindersView = lazyWithRetry(() => import('./components/RemindersView'));
+const DocumentExportsView = lazyWithRetry(() => import('./components/DocumentExportsView'));
+const ReturnsView = lazyWithRetry(() => import('./components/ReturnsView'));
+const ProjectBudgetingView = lazyWithRetry(() => import('./components/ProjectBudgetingView'));
+const MultiWarehouseView = lazyWithRetry(() => import('./components/MultiWarehouseView'));
+const ReceivablesPayablesView = lazyWithRetry(() => import('./components/ReceivablesPayablesView'));
+const CashExpenseView = lazyWithRetry(() => import('./components/CashExpenseView'));
+const FinanceAccountsView = lazyWithRetry(() => import('./features/finance/components/FinanceAccountsView').then(m => ({ default: m.FinanceAccountsView })));
+const RolePermissionView = lazyWithRetry(() => import('./components/RolePermissionView'));
+const UsersView = lazyWithRetry(() => import('./components/UsersView'));
+const ProfileView = lazyWithRetry(() => import('./components/ProfileView'));
 
 import RootLayout from './layouts/RootLayout';
 
@@ -79,14 +108,16 @@ const ViewWrapper = ({ Component, componentProps }: { Component: React.Component
   };
 
   return (
-    <React.Suspense fallback={<LoadingFallback />}>
-      <Component
-        {...componentProps}
-        onNavigate={handleNavigate}
-        onNavigateToProject={handleNavigateToProject}
-        onTriggerNotification={triggerNotification}
-      />
-    </React.Suspense>
+    <ErrorBoundaryClass>
+      <React.Suspense fallback={<LoadingFallback />}>
+        <Component
+          {...componentProps}
+          onNavigate={handleNavigate}
+          onNavigateToProject={handleNavigateToProject}
+          onTriggerNotification={triggerNotification}
+        />
+      </React.Suspense>
+    </ErrorBoundaryClass>
   );
 };
 
@@ -111,14 +142,16 @@ const QrViewWrapper = () => {
   };
 
   return (
-    <React.Suspense fallback={<LoadingFallback />}>
-      <QrView
-        currentSubView={currentSubView}
-        scannedSku={scannedSku}
-        onNavigateSubView={handleNavigateSubView}
-        onTriggerNotification={triggerNotification}
-      />
-    </React.Suspense>
+    <ErrorBoundaryClass>
+      <React.Suspense fallback={<LoadingFallback />}>
+        <QrView
+          currentSubView={currentSubView}
+          scannedSku={scannedSku}
+          onNavigateSubView={handleNavigateSubView}
+          onTriggerNotification={triggerNotification}
+        />
+      </React.Suspense>
+    </ErrorBoundaryClass>
   );
 };
 
@@ -135,6 +168,7 @@ const routes: RouteObject[] = [
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouteErrorFallback />,
     children: [
       { index: true, element: <NavigateToHome /> },
       { path: 'dashboard', element: lazyRoute(DashboardView) },
