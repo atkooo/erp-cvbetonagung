@@ -16,6 +16,7 @@ import DailySalesPanel from '../panels/sales/DailySalesPanel';
 import GrossProfitPanel from '../panels/sales/GrossProfitPanel';
 import ArAgingPanel from '../panels/sales/ArAgingPanel';
 import TopProductsPanel from '../panels/sales/TopProductsPanel';
+import ProductMasterStockPanel from '../panels/inventory/ProductMasterStockPanel';
 import { ReportFilters } from '../api';
 
 interface ReportCategory {
@@ -42,6 +43,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Bahan & Inventori',
     icon: Package,
     reports: [
+      { id: 'inv_master_stock', name: 'Laporan Master Produk & Stok', implemented: true },
       { id: 'inv_mutation',   name: 'Laporan Mutasi Stok' },
       { id: 'inv_low_stock',  name: 'Laporan Barang Hampir Habis' },
       { id: 'inv_valuation',  name: 'Laporan Nilai Valuasi Gudang' },
@@ -123,6 +125,7 @@ export default function ReportCenterView() {
       case 'sales_profit':       return <GrossProfitPanel filters={filters} />;
       case 'sales_ar':           return <ArAgingPanel asOfDate={dateTo} />;
       case 'sales_top_products': return <TopProductsPanel filters={filters} />;
+      case 'inv_master_stock':   return <ProductMasterStockPanel />;
       default:                   return <PlaceholderPanel name={selectedReportName} />;
     }
   };
@@ -179,58 +182,64 @@ export default function ReportCenterView() {
         <div className="p-4 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between gap-4 z-10 shrink-0">
           <div className="min-w-0">
             <h1 className="text-sm font-bold text-slate-800 truncate">{selectedReportName}</h1>
-            <p className="text-[10px] text-slate-500">Konfigurasi parameter laporan sebelum mengekspor data.</p>
+            <p className="text-[10px] text-slate-500">
+              {selectedReportId === 'inv_master_stock'
+                ? 'Laporan komprehensif master stok produk, HPP (COGS), harga jual, margin, dan valuasi gudang.'
+                : 'Konfigurasi parameter laporan sebelum mengekspor data.'}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Period toggle */}
-            <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
-              {(['daily', 'monthly', 'yearly'] as const).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${period === p ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  {p === 'daily' ? 'Harian' : p === 'monthly' ? 'Bulanan' : 'Tahunan'}
-                </button>
-              ))}
+          {selectedReportId !== 'inv_master_stock' && (
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Period toggle */}
+              <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+                {(['daily', 'monthly', 'yearly'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${period === p ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    {p === 'daily' ? 'Harian' : p === 'monthly' ? 'Bulanan' : 'Tahunan'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Date From */}
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <Calendar size={13} className="text-slate-400 shrink-0" />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="text-xs text-slate-700 bg-transparent outline-none w-28"
+                />
+              </div>
+
+              <span className="text-xs text-slate-400">—</span>
+
+              {/* Date To */}
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <Calendar size={13} className="text-slate-400 shrink-0" />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="text-xs text-slate-700 bg-transparent outline-none w-28"
+                />
+              </div>
+
+              <div className="h-6 w-px bg-slate-200" />
+
+              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-xs font-bold transition-colors">
+                <FileSpreadsheet size={13} className="text-green-600" />
+                Excel
+              </button>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-bold shadow-sm transition-colors">
+                <Download size={13} />
+                PDF
+              </button>
             </div>
-
-            {/* Date From */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-              <Calendar size={13} className="text-slate-400 shrink-0" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="text-xs text-slate-700 bg-transparent outline-none w-28"
-              />
-            </div>
-
-            <span className="text-xs text-slate-400">—</span>
-
-            {/* Date To */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-              <Calendar size={13} className="text-slate-400 shrink-0" />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="text-xs text-slate-700 bg-transparent outline-none w-28"
-              />
-            </div>
-
-            <div className="h-6 w-px bg-slate-200" />
-
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-xs font-bold transition-colors">
-              <FileSpreadsheet size={13} className="text-green-600" />
-              Excel
-            </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-bold shadow-sm transition-colors">
-              <Download size={13} />
-              PDF
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Panel Content */}

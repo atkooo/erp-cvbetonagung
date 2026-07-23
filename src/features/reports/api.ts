@@ -95,6 +95,55 @@ export interface TopProductsData {
   rows: TopProductRow[];
 }
 
+// ── Product Master Stock ────────────────────────────────────
+export interface ProductMasterStockItem {
+  id: string;
+  sku: string;
+  name: string;
+  type: string;
+  category_id?: string | null;
+  category_name: string;
+  unit_id?: string | null;
+  unit_name: string;
+  unit_code: string;
+  cost_price: number;
+  selling_price: number;
+  margin_amount: number;
+  margin_percentage: number;
+  min_stock: number;
+  total_stock: number;
+  stock_value_cogs: number;
+  stock_value_selling: number;
+  potential_profit: number;
+  stock_status: 'aman' | 'menipis' | 'habis';
+  stock_status_label: string;
+  qr_value?: string | null;
+  image_url?: string | null;
+  status: string;
+}
+
+export interface ProductMasterStockSummary {
+  total_products: number;
+  total_stock_qty: number;
+  total_cogs_value: number;
+  total_selling_value: number;
+  total_potential_profit: number;
+  low_stock_count: number;
+  out_of_stock_count: number;
+}
+
+export interface ProductMasterStockData {
+  summary: ProductMasterStockSummary;
+  rows: ProductMasterStockItem[];
+}
+
+export interface ProductMasterStockFilters {
+  category_id?: string;
+  stock_status?: string;
+  search?: string;
+  type?: string;
+}
+
 // ── Helpers ────────────────────────────────────────────────
 function buildUrl(path: string, params: Record<string, string | number | undefined>): string {
   const qs = new URLSearchParams();
@@ -128,6 +177,12 @@ export const reportsApi = {
   async getTopProducts(filters: ReportFilters & { limit?: number } = {}): Promise<TopProductsData> {
     const url = buildUrl('/reports/exec/top-products', filters as Record<string, string | number>);
     const res = await apiClient.get<{ data: TopProductsData }>(url);
+    return res.data;
+  },
+
+  async getProductMasterStock(filters: ProductMasterStockFilters = {}): Promise<ProductMasterStockData> {
+    const url = buildUrl('/reports/product-master-stock', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: ProductMasterStockData }>(url);
     return res.data;
   },
 };

@@ -2,20 +2,21 @@
 
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 10mm;
+    size: A4 landscape;
+    margin: 8mm;
   }
   
-  body {
+  html, body {
+    background-color: white !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    background-color: white !important;
+    overflow: visible !important;
+    height: auto !important;
   }
   
   /* Ensure print content expands fully */
   .print-a4-container {
-    width: 190mm; /* A4 width minus 10mm margin on each side */
-    min-height: 277mm; /* A4 height minus 10mm margin on each side */
+    width: 100%;
     margin: 0 auto;
     background: white;
   }
