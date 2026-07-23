@@ -78,7 +78,7 @@ export default function GrossProfitPanel({ filters }: Props) {
       </div>
 
       {/* By Category Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Laba Kotor per Kategori Produk</h3>
           <button onClick={load} className="text-slate-400 hover:text-slate-600"><RefreshCw size={14} /></button>

@@ -13,7 +13,12 @@ import {
   Coins,
   DollarSign,
   ArrowUpRight,
-  Layers
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  X
 } from 'lucide-react';
 import {
   reportsApi,
@@ -32,15 +37,28 @@ export default function ProductMasterStockPanel() {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [stockStatus, setStockStatus] = useState<string>('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+
+  // Debounce search input for instant real-time filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadReport = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const filters: ProductMasterStockFilters = {};
-      if (search.trim()) filters.search = search.trim();
+      if (debouncedSearch.trim()) filters.search = debouncedSearch.trim();
       if (selectedCategory) filters.category_id = selectedCategory;
       if (stockStatus) filters.stock_status = stockStatus;
 
@@ -55,8 +73,9 @@ export default function ProductMasterStockPanel() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     loadReport();
-  }, [selectedCategory, stockStatus]);
+  }, [selectedCategory, stockStatus, debouncedSearch]);
 
   useEffect(() => {
     productsApi.getCategories().then(setCategories).catch(() => { });
@@ -64,7 +83,8 @@ export default function ProductMasterStockPanel() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loadReport();
+    setDebouncedSearch(search);
+    setCurrentPage(1);
   };
 
   const formatIDR = (num: number) => {
@@ -363,6 +383,12 @@ export default function ProductMasterStockPanel() {
   const summary = data?.summary;
   const rows = data?.rows || [];
 
+  const totalItems = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
+  const paginatedRows = rows.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div id="printable-report-area" className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 font-sans text-xs bg-slate-50/50">
       <style>{`
@@ -415,8 +441,18 @@ export default function ProductMasterStockPanel() {
               placeholder="Cari SKU atau Nama Produk..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                title="Hapus Pencarian"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -489,81 +525,83 @@ export default function ProductMasterStockPanel() {
 
       {/* KPI SUMMARY CARDS */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          {/* Total Product Count */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Total Jenis Produk</span>
-              <Package size={15} className="text-blue-500 print-hide" />
-            </div>
-            <div className="mt-1">
-              <h3 className="text-lg font-black text-slate-900 font-mono">{summary.total_products}</h3>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Item Terdaftar</span>
-            </div>
-          </div>
-
-          {/* Total Stock Quantity */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Total Fisik Stok</span>
-              <Layers size={15} className="text-indigo-500 print-hide" />
-            </div>
-            <div className="mt-1">
-              <h3 className="text-lg font-black text-indigo-600 font-mono">{summary.total_stock_qty.toLocaleString('id-ID')}</h3>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Akumulasi Seluruh Lokasi</span>
-            </div>
-          </div>
-
-          {/* Valuasi COGS (HPP / Beli) */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Valuasi Stok (COGS)</span>
-              <Coins size={15} className="text-amber-500 print-hide" />
-            </div>
-            <div className="mt-1">
-              <h3 className="text-sm md:text-base font-black text-slate-900 font-mono truncate">{formatIDR(summary.total_cogs_value)}</h3>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Total Modal HPP</span>
-            </div>
-          </div>
-
-          {/* Valuasi Selling Price (Jual) */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Valuasi Stok (Jual)</span>
-              <DollarSign size={15} className="text-emerald-500 print-hide" />
-            </div>
-            <div className="mt-1">
-              <h3 className="text-sm md:text-base font-black text-emerald-600 font-mono truncate">{formatIDR(summary.total_selling_value)}</h3>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Total Harga Jual Pasar</span>
-            </div>
-          </div>
-
-          {/* Potensi Margin Laba */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Potensi Margin Laba</span>
-              <TrendingUp size={15} className="text-blue-600 print-hide" />
-            </div>
-            <div className="mt-1">
-              <h3 className="text-sm md:text-base font-black text-blue-600 font-mono truncate">{formatIDR(summary.total_potential_profit)}</h3>
-              <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-0.5">
-                <ArrowUpRight size={11} className="print-hide" /> Proyeksi keuntungan
-              </span>
-            </div>
-          </div>
-
-          {/* Alert Status Menipis / Habis */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] uppercase font-mono font-bold">Alert Stok Alert</span>
-              <AlertTriangle size={15} className="text-rose-500 print-hide" />
-            </div>
-            <div className="mt-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs font-bold text-amber-600">Menipis: {summary.low_stock_count}</span>
-                <span className="text-xs font-bold text-rose-600">Habis: {summary.out_of_stock_count}</span>
+        <div className="overflow-x-auto pb-1">
+          <div className="grid grid-cols-6 gap-3.5 min-w-[1050px] lg:min-w-0">
+            {/* Total Product Count */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Total Jenis Produk</span>
+                <Package size={15} className="text-blue-500 print-hide" />
               </div>
-              <span className="text-[9px] text-slate-400 block mt-0.5">Memerlukan Restock Segera</span>
+              <div className="mt-1">
+                <h3 className="text-lg font-black text-slate-900 font-mono">{summary.total_products}</h3>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Item Terdaftar</span>
+              </div>
+            </div>
+
+            {/* Total Stock Quantity */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Total Fisik Stok</span>
+                <Layers size={15} className="text-indigo-500 print-hide" />
+              </div>
+              <div className="mt-1">
+                <h3 className="text-lg font-black text-indigo-600 font-mono">{summary.total_stock_qty.toLocaleString('id-ID')}</h3>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Akumulasi Seluruh Lokasi</span>
+              </div>
+            </div>
+
+            {/* Valuasi COGS (HPP / Beli) */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Valuasi Stok (COGS)</span>
+                <Coins size={15} className="text-amber-500 print-hide" />
+              </div>
+              <div className="mt-1">
+                <h3 className="text-sm md:text-base font-black text-slate-900 font-mono truncate">{formatIDR(summary.total_cogs_value)}</h3>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Total Modal HPP</span>
+              </div>
+            </div>
+
+            {/* Valuasi Selling Price (Jual) */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Valuasi Stok (Jual)</span>
+                <DollarSign size={15} className="text-emerald-500 print-hide" />
+              </div>
+              <div className="mt-1">
+                <h3 className="text-sm md:text-base font-black text-emerald-600 font-mono truncate">{formatIDR(summary.total_selling_value)}</h3>
+                <span className="text-[10px] text-slate-400 block mt-0.5">Total Harga Jual Pasar</span>
+              </div>
+            </div>
+
+            {/* Potensi Margin Laba */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Potensi Margin Laba</span>
+                <TrendingUp size={15} className="text-blue-600 print-hide" />
+              </div>
+              <div className="mt-1">
+                <h3 className="text-sm md:text-base font-black text-blue-600 font-mono truncate">{formatIDR(summary.total_potential_profit)}</h3>
+                <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-0.5">
+                  <ArrowUpRight size={11} className="print-hide" /> Proyeksi keuntungan
+                </span>
+              </div>
+            </div>
+
+            {/* Alert Status Menipis / Habis */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-1">
+                <span className="text-[10px] uppercase font-mono font-bold">Alert Stok Alert</span>
+                <AlertTriangle size={15} className="text-rose-500 print-hide" />
+              </div>
+              <div className="mt-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-bold text-amber-600">Menipis: {summary.low_stock_count}</span>
+                  <span className="text-xs font-bold text-rose-600">Habis: {summary.out_of_stock_count}</span>
+                </div>
+                <span className="text-[9px] text-slate-400 block mt-0.5">Memerlukan Restock Segera</span>
+              </div>
             </div>
           </div>
         </div>
@@ -578,7 +616,7 @@ export default function ProductMasterStockPanel() {
       )}
 
       {/* MAIN DATA TABLE */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 space-y-3">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -592,86 +630,103 @@ export default function ProductMasterStockPanel() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse font-sans text-xs">
+            <table className="w-full text-left border-collapse font-sans text-xs min-w-[1300px]">
               <thead>
-                <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] uppercase font-mono font-bold text-slate-600 tracking-wider">
-                  <th className="py-3 px-3.5">SKU & Type</th>
-                  <th className="py-3 px-3.5">Nama Produk & Kategori</th>
-                  <th className="py-3 px-3.5 text-center">Stok Total</th>
-                  <th className="py-3 px-3.5 text-right">Harga Beli (COGS)</th>
-                  <th className="py-3 px-3.5 text-right">Harga Jual</th>
-                  <th className="py-3 px-3.5 text-right">Margin / Unit</th>
-                  <th className="py-3 px-3.5 text-right">Valuasi COGS</th>
-                  <th className="py-3 px-3.5 text-right">Valuasi Jual</th>
-                  <th className="py-3 px-3.5 text-center">Status Stok</th>
+                <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] uppercase font-mono font-bold text-slate-600 tracking-wider whitespace-nowrap">
+                  <th className="py-3 px-3">Kode SKU</th>
+                  <th className="py-3 px-3">Nama Produk</th>
+                  <th className="py-3 px-3">Kategori</th>
+                  <th className="py-3 px-3 text-center">Tipe</th>
+                  <th className="py-3 px-3 text-center">Satuan</th>
+                  <th className="py-3 px-3 text-center">Stok Total</th>
+                  <th className="py-3 px-3 text-center">Min. Stok</th>
+                  <th className="py-3 px-3 text-right">Harga Beli (COGS)</th>
+                  <th className="py-3 px-3 text-right">Harga Jual</th>
+                  <th className="py-3 px-3 text-right">Margin / Unit</th>
+                  <th className="py-3 px-3 text-right">Valuasi COGS</th>
+                  <th className="py-3 px-3 text-right">Valuasi Jual</th>
+                  <th className="py-3 px-3 text-center">Status Stok</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150 text-slate-700">
-                {rows.map((product) => {
+                {paginatedRows.map((product) => {
                   const isAman = product.stock_status === 'aman';
                   const isMenipis = product.stock_status === 'menipis';
                   const isHabis = product.stock_status === 'habis';
 
                   return (
                     <tr key={product.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* SKU & Type */}
-                      <td className="py-3 px-3.5 font-mono">
-                        <div className="font-bold text-slate-900">{product.sku}</div>
-                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-sans inline-block mt-0.5">
+                      {/* Kode SKU */}
+                      <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                        {product.sku}
+                      </td>
+
+                      {/* Nama Produk */}
+                      <td className="py-3 px-3 font-bold text-slate-800">
+                        {product.name}
+                      </td>
+
+                      {/* Kategori */}
+                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                        {product.category_name || '-'}
+                      </td>
+
+                      {/* Tipe */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono inline-block">
                           {product.type.replace('_', ' ')}
                         </span>
                       </td>
 
-                      {/* Name & Category */}
-                      <td className="py-3 px-3.5">
-                        <div className="font-bold text-slate-800">{product.name}</div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                          <span>{product.category_name}</span>
-                          <span>•</span>
-                          <span>Satuan: {product.unit_name} ({product.unit_code})</span>
-                        </div>
+                      {/* Satuan */}
+                      <td className="py-3 px-3 text-center font-mono text-slate-700 whitespace-nowrap">
+                        {product.unit_name || product.unit_code ? `${product.unit_name || '-'} (${product.unit_code || '-'})` : '-'}
                       </td>
 
-                      {/* Total Stock */}
-                      <td className="py-3 px-3.5 text-center font-mono">
-                        <div className="font-black text-sm text-slate-900">
+                      {/* Stok Total */}
+                      <td className="py-3 px-3 text-center font-mono">
+                        <span className="font-black text-sm text-slate-900">
                           {product.total_stock.toLocaleString('id-ID')}
-                        </div>
-                        <div className="text-[9px] text-slate-400">Min: {product.min_stock}</div>
+                        </span>
+                      </td>
+
+                      {/* Min. Stok */}
+                      <td className="py-3 px-3 text-center font-mono text-slate-500">
+                        {product.min_stock}
                       </td>
 
                       {/* Cost Price / COGS */}
-                      <td className="py-3 px-3.5 text-right font-mono font-medium text-slate-800">
+                      <td className="py-3 px-3 text-right font-mono font-medium text-slate-800 whitespace-nowrap">
                         {formatIDR(product.cost_price)}
                       </td>
 
                       {/* Selling Price */}
-                      <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900">
+                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                         {formatIDR(product.selling_price)}
                       </td>
 
                       {/* Margin per Unit */}
-                      <td className="py-3 px-3.5 text-right font-mono">
+                      <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
                         <div className={`font-bold ${product.margin_amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {formatIDR(product.margin_amount)}
                         </div>
-                        <span className={`text-[9px] px-1 rounded font-sans font-semibold ${product.margin_percentage >= 20 ? 'bg-emerald-50 text-emerald-700' : product.margin_percentage >= 0 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
+                        <span className={`text-[9px] px-1 rounded font-sans font-semibold inline-block ${product.margin_percentage >= 20 ? 'bg-emerald-50 text-emerald-700' : product.margin_percentage >= 0 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
                           {product.margin_percentage}%
                         </span>
                       </td>
 
                       {/* Valuasi COGS */}
-                      <td className="py-3 px-3.5 text-right font-mono text-slate-700 font-medium">
+                      <td className="py-3 px-3 text-right font-mono text-slate-700 font-medium whitespace-nowrap">
                         {formatIDR(product.stock_value_cogs)}
                       </td>
 
                       {/* Valuasi Selling */}
-                      <td className="py-3 px-3.5 text-right font-mono text-emerald-700 font-bold">
+                      <td className="py-3 px-3 text-right font-mono text-emerald-700 font-bold whitespace-nowrap">
                         {formatIDR(product.stock_value_selling)}
                       </td>
 
                       {/* Stock Status Badge */}
-                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isAman
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -692,29 +747,96 @@ export default function ProductMasterStockPanel() {
               </tbody>
 
               {/* TABLE FOOTER TOTALS */}
-              <tfoot className="bg-slate-100/90 font-mono font-bold text-slate-900 border-t-2 border-slate-300">
+              <tfoot className="bg-slate-100/90 font-mono font-bold text-slate-900 border-t-2 border-slate-300 whitespace-nowrap">
                 <tr>
-                  <td colSpan={2} className="py-3 px-3.5 uppercase text-[10px] tracking-wider">
+                  <td colSpan={5} className="py-3 px-3 uppercase text-[10px] tracking-wider">
                     TOTAL KESELURUHAN LAPORAN ({rows.length} Produk)
                   </td>
-                  <td className="py-3 px-3.5 text-center text-sm text-indigo-700">
+                  <td className="py-3 px-3 text-center text-sm text-indigo-700">
                     {summary?.total_stock_qty.toLocaleString('id-ID')}
                   </td>
-                  <td className="py-3 px-3.5 text-right text-slate-500">—</td>
-                  <td className="py-3 px-3.5 text-right text-slate-500">—</td>
-                  <td className="py-3 px-3.5 text-right text-slate-500">—</td>
-                  <td className="py-3 px-3.5 text-right text-slate-900">
+                  <td className="py-3 px-3 text-center text-slate-400">—</td>
+                  <td className="py-3 px-3 text-right text-slate-400">—</td>
+                  <td className="py-3 px-3 text-right text-slate-400">—</td>
+                  <td className="py-3 px-3 text-right text-slate-400">—</td>
+                  <td className="py-3 px-3 text-right text-slate-900">
                     {formatIDR(summary?.total_cogs_value || 0)}
                   </td>
-                  <td className="py-3 px-3.5 text-right text-emerald-700 text-sm">
+                  <td className="py-3 px-3 text-right text-emerald-700 text-sm">
                     {formatIDR(summary?.total_selling_value || 0)}
                   </td>
-                  <td className="py-3 px-3.5 text-center text-blue-700 text-xs">
+                  <td className="py-3 px-3 text-center text-blue-700 text-xs">
                     Potensi Margin: {formatIDR(summary?.total_potential_profit || 0)}
                   </td>
                 </tr>
               </tfoot>
             </table>
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        {!isLoading && totalItems > 0 && (
+          <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs print-hide">
+            <div className="flex items-center gap-2 text-slate-500 font-medium">
+              <span>Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value={10}>10 per halaman</option>
+                <option value={25}>25 per halaman</option>
+                <option value={50}>50 per halaman</option>
+                <option value={100}>100 per halaman</option>
+              </select>
+              <span className="text-slate-300">|</span>
+              <span>
+                Menampilkan <strong className="text-slate-800">{startIndex + 1}</strong> - <strong className="text-slate-800">{Math.min(startIndex + itemsPerPage, totalItems)}</strong> dari <strong className="text-slate-800">{totalItems}</strong> produk
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={safePage <= 1}
+                className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors"
+                title="Halaman Pertama"
+              >
+                <ChevronsLeft size={14} />
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px]"
+              >
+                <ChevronLeft size={14} />
+                <span>Sebelumnya</span>
+              </button>
+
+              <div className="px-3 py-1 font-mono font-bold text-slate-700 text-xs">
+                {safePage} / {totalPages}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px]"
+              >
+                <span>Selanjutnya</span>
+                <ChevronRight size={14} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safePage >= totalPages}
+                className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors"
+                title="Halaman Terakhir"
+              >
+                <ChevronsRight size={14} />
+              </button>
+            </div>
           </div>
         )}
       </div>

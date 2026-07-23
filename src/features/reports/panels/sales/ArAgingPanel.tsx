@@ -88,7 +88,7 @@ export default function ArAgingPanel({ asOfDate }: Props) {
       </div>
 
       {/* Invoice Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Daftar Invoice Belum Lunas

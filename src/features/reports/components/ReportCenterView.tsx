@@ -17,6 +17,10 @@ import GrossProfitPanel from '../panels/sales/GrossProfitPanel';
 import ArAgingPanel from '../panels/sales/ArAgingPanel';
 import TopProductsPanel from '../panels/sales/TopProductsPanel';
 import ProductMasterStockPanel from '../panels/inventory/ProductMasterStockPanel';
+import StockMutationPanel from '../panels/inventory/StockMutationPanel';
+import LowStockPanel from '../panels/inventory/LowStockPanel';
+import InventoryValuationPanel from '../panels/inventory/InventoryValuationPanel';
+import DeadStockPanel from '../panels/inventory/DeadStockPanel';
 import { ReportFilters } from '../api';
 
 interface ReportCategory {
@@ -44,10 +48,10 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     icon: Package,
     reports: [
       { id: 'inv_master_stock', name: 'Laporan Master Produk & Stok', implemented: true },
-      { id: 'inv_mutation',   name: 'Laporan Mutasi Stok' },
-      { id: 'inv_low_stock',  name: 'Laporan Barang Hampir Habis' },
-      { id: 'inv_valuation',  name: 'Laporan Nilai Valuasi Gudang' },
-      { id: 'inv_dead_stock', name: 'Analisis Dead Stock' },
+      { id: 'inv_mutation',   name: 'Laporan Mutasi Stok',           implemented: true },
+      { id: 'inv_low_stock',  name: 'Laporan Barang Hampir Habis',   implemented: true },
+      { id: 'inv_valuation',  name: 'Laporan Nilai Valuasi Gudang',  implemented: true },
+      { id: 'inv_dead_stock', name: 'Analisis Dead Stock',            implemented: true },
     ],
   },
   {
@@ -126,6 +130,10 @@ export default function ReportCenterView() {
       case 'sales_ar':           return <ArAgingPanel asOfDate={dateTo} />;
       case 'sales_top_products': return <TopProductsPanel filters={filters} />;
       case 'inv_master_stock':   return <ProductMasterStockPanel />;
+      case 'inv_mutation':       return <StockMutationPanel filters={filters} />;
+      case 'inv_low_stock':      return <LowStockPanel />;
+      case 'inv_valuation':      return <InventoryValuationPanel />;
+      case 'inv_dead_stock':      return <DeadStockPanel />;
       default:                   return <PlaceholderPanel name={selectedReportName} />;
     }
   };

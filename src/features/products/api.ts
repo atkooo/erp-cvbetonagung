@@ -1,6 +1,7 @@
 import { apiClient, getFileUrl } from '../../services/api';
 import { CategoryDto, CategoryFormData, ProductDto, ProductFormData, UnitDto, UnitFormData } from './types';
 import { Category, Product } from '../../types';
+export type { Category, Product };
 import { mapCategoryFromDto, mapCategoryToDto, mapProductFromDto, mapProductToDto } from './mappers';
 
 export const DEFAULT_UNITS: UnitDto[] = [
