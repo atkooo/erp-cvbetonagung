@@ -21,6 +21,12 @@ import StockMutationPanel from '../panels/inventory/StockMutationPanel';
 import LowStockPanel from '../panels/inventory/LowStockPanel';
 import InventoryValuationPanel from '../panels/inventory/InventoryValuationPanel';
 import DeadStockPanel from '../panels/inventory/DeadStockPanel';
+import SupplierPurchasesPanel from '../panels/purchasing/SupplierPurchasesPanel';
+import ApAgingPanel from '../panels/purchasing/ApAgingPanel';
+import PurchasePriceAnalysisPanel from '../panels/purchasing/PurchasePriceAnalysisPanel';
+import CashflowPanel from '../panels/finance/CashflowPanel';
+import ExpensesPanel from '../panels/finance/ExpensesPanel';
+import ProfitLossPanel from '../panels/finance/ProfitLossPanel';
 import { ReportFilters } from '../api';
 
 interface ReportCategory {
@@ -69,9 +75,9 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Pembelian & Hutang',
     icon: ShoppingCart,
     reports: [
-      { id: 'pur_supplier',       name: 'Laporan Pembelian per Supplier' },
-      { id: 'pur_ap',             name: 'Laporan Hutang Jatuh Tempo (AP)' },
-      { id: 'pur_price_analysis', name: 'Analisis Harga Beli (RFQ)' },
+      { id: 'pur_supplier',       name: 'Laporan Pembelian per Supplier',  implemented: true },
+      { id: 'pur_ap',             name: 'Laporan Hutang Jatuh Tempo (AP)', implemented: true },
+      { id: 'pur_price_analysis', name: 'Analisis Harga Beli (RFQ)',       implemented: true },
     ],
   },
   {
@@ -89,9 +95,9 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     title: 'Keuangan & Kas',
     icon: WalletCards,
     reports: [
-      { id: 'fin_cashflow',    name: 'Buku Besar & Arus Kas' },
-      { id: 'fin_expenses',    name: 'Laporan Pengeluaran Operasional' },
-      { id: 'fin_profit_loss', name: 'Laba Rugi Sederhana' },
+      { id: 'fin_cashflow',    name: 'Buku Besar & Arus Kas',            implemented: true },
+      { id: 'fin_expenses',    name: 'Laporan Pengeluaran Operasional', implemented: true },
+      { id: 'fin_profit_loss', name: 'Laba Rugi Sederhana',             implemented: true },
     ],
   },
 ];
@@ -134,6 +140,12 @@ export default function ReportCenterView() {
       case 'inv_low_stock':      return <LowStockPanel />;
       case 'inv_valuation':      return <InventoryValuationPanel />;
       case 'inv_dead_stock':      return <DeadStockPanel />;
+      case 'pur_supplier':       return <SupplierPurchasesPanel filters={filters} />;
+      case 'pur_ap':             return <ApAgingPanel asOfDate={dateTo} />;
+      case 'pur_price_analysis': return <PurchasePriceAnalysisPanel filters={filters} />;
+      case 'fin_cashflow':       return <CashflowPanel filters={filters} />;
+      case 'fin_expenses':       return <ExpensesPanel filters={filters} />;
+      case 'fin_profit_loss':    return <ProfitLossPanel filters={filters} />;
       default:                   return <PlaceholderPanel name={selectedReportName} />;
     }
   };

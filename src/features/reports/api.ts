@@ -303,6 +303,234 @@ export interface DeadStockFilters {
   search?: string;
 }
 
+// ── Supplier Purchases ──────────────────────────────────────
+export interface SupplierPurchaseRow {
+  supplier_id: string;
+  supplier_code: string;
+  supplier_name: string;
+  contact_name: string;
+  phone: string;
+  city: string;
+  po_count: number;
+  total_purchase_amount: number;
+  total_paid_amount: number;
+  total_outstanding_ap: number;
+  avg_transaction_value: number;
+}
+
+export interface SupplierPurchasesSummary {
+  total_suppliers: number;
+  total_po_count: number;
+  total_purchase_amount: number;
+  total_paid_amount: number;
+  total_outstanding_ap: number;
+}
+
+export interface SupplierPurchasesData {
+  summary: SupplierPurchasesSummary;
+  rows: SupplierPurchaseRow[];
+}
+
+export interface SupplierPurchasesFilters {
+  date_from?: string;
+  date_to?: string;
+  supplier_id?: string;
+  search?: string;
+}
+
+// ── AP Aging ───────────────────────────────────────────────
+export interface ApBuckets {
+  current: number;
+  '1_30': number;
+  '31_60': number;
+  '61_90': number;
+  over_90: number;
+}
+
+export interface ApPayableRow {
+  id: string;
+  payable_number: string;
+  po_number: string;
+  supplier_id: string;
+  supplier_name: string;
+  supplier_code: string;
+  created_at: string;
+  due_date: string;
+  amount: number;
+  paid_amount: number;
+  outstanding: number;
+  days_overdue: number;
+  bucket_key: string;
+  bucket_label: string;
+  status: string;
+}
+
+export interface ApAgingSummary {
+  total_open_payables: number;
+  total_ap_amount: number;
+  total_paid_amount: number;
+  total_outstanding_ap: number;
+}
+
+export interface ApAgingData {
+  as_of_date: string;
+  buckets: ApBuckets;
+  summary: ApAgingSummary;
+  payables: ApPayableRow[];
+}
+
+export interface ApAgingFilters {
+  as_of_date?: string;
+  supplier_id?: string;
+  search?: string;
+}
+
+// ── Purchase Price Analysis ────────────────────────────────
+export interface PriceAnalysisRow {
+  id: string;
+  sku: string;
+  name: string;
+  category_name: string;
+  unit_name: string;
+  unit_code: string;
+  master_cost_price: number;
+  po_count: number;
+  latest_purchase_price: number;
+  min_purchase_price: number;
+  max_purchase_price: number;
+  avg_purchase_price: number;
+  latest_supplier_name: string;
+  price_variance_pct: number;
+  price_trend: string;
+}
+
+export interface PriceAnalysisSummary {
+  total_analyzed_products: number;
+  total_po_items: number;
+}
+
+export interface PriceAnalysisData {
+  summary: PriceAnalysisSummary;
+  rows: PriceAnalysisRow[];
+}
+
+export interface PriceAnalysisFilters {
+  date_from?: string;
+  date_to?: string;
+  product_id?: string;
+  search?: string;
+}
+
+// ── Cashflow ───────────────────────────────────────────────
+export interface CashflowRow {
+  id: string;
+  transaction_number: string;
+  transaction_date: string;
+  account_name: string;
+  type: string;
+  type_label: string;
+  category: string;
+  description: string;
+  debit: number;
+  credit: number;
+  running_balance: number;
+  recorded_by: string;
+}
+
+export interface CashflowSummary {
+  opening_balance: number;
+  total_cash_in: number;
+  total_cash_out: number;
+  net_cash_flow: number;
+  ending_balance: number;
+}
+
+export interface CashflowData {
+  summary: CashflowSummary;
+  rows: CashflowRow[];
+}
+
+export interface CashflowFilters {
+  date_from?: string;
+  date_to?: string;
+  account_id?: string;
+  type?: string;
+  search?: string;
+}
+
+// ── Expenses ───────────────────────────────────────────────
+export interface ExpenseCategorySummary {
+  category: string;
+  transaction_count: number;
+  total_amount: number;
+  percentage: number;
+}
+
+export interface ExpenseRow {
+  id: string;
+  transaction_number: string;
+  transaction_date: string;
+  account_name: string;
+  category: string;
+  description: string;
+  amount: number;
+  recorded_by: string;
+}
+
+export interface ExpensesSummary {
+  total_expense_transactions: number;
+  total_expenses_amount: number;
+  top_expense_category: string;
+}
+
+export interface ExpensesData {
+  summary: ExpensesSummary;
+  by_category: ExpenseCategorySummary[];
+  rows: ExpenseRow[];
+}
+
+export interface ExpensesFilters {
+  date_from?: string;
+  date_to?: string;
+  category?: string;
+  search?: string;
+}
+
+// ── Profit & Loss ──────────────────────────────────────────
+export interface ProfitLossSummary {
+  total_revenue: number;
+  total_cogs: number;
+  gross_profit: number;
+  gross_margin_pct: number;
+  total_operating_expenses: number;
+  net_profit: number;
+  net_margin_pct: number;
+}
+
+export interface ProfitLossBreakdownItem {
+  description: string;
+  amount: number;
+}
+
+export interface ProfitLossExpenseCategory {
+  category: string;
+  amount: number;
+  count: number;
+}
+
+export interface ProfitLossData {
+  period: {
+    date_from?: string | null;
+    date_to?: string | null;
+  };
+  summary: ProfitLossSummary;
+  breakdown: {
+    revenue_items: ProfitLossBreakdownItem[];
+    cogs_items: ProfitLossBreakdownItem[];
+    expense_categories: ProfitLossExpenseCategory[];
+  };
+}
+
 // ── Helpers ────────────────────────────────────────────────
 function buildUrl(path: string, params: Record<string, string | number | undefined>): string {
   const qs = new URLSearchParams();
@@ -366,6 +594,42 @@ export const reportsApi = {
   async getDeadStock(filters: DeadStockFilters = {}): Promise<DeadStockData> {
     const url = buildUrl('/reports/inventory/dead-stock', filters as Record<string, string | number>);
     const res = await apiClient.get<{ data: DeadStockData }>(url);
+    return res.data;
+  },
+
+  async getSupplierPurchases(filters: SupplierPurchasesFilters = {}): Promise<SupplierPurchasesData> {
+    const url = buildUrl('/reports/purchasing/supplier', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: SupplierPurchasesData }>(url);
+    return res.data;
+  },
+
+  async getApAgingReport(filters: ApAgingFilters = {}): Promise<ApAgingData> {
+    const url = buildUrl('/reports/purchasing/ap-aging', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: ApAgingData }>(url);
+    return res.data;
+  },
+
+  async getPurchasePriceAnalysis(filters: PriceAnalysisFilters = {}): Promise<PriceAnalysisData> {
+    const url = buildUrl('/reports/purchasing/price-analysis', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: PriceAnalysisData }>(url);
+    return res.data;
+  },
+
+  async getCashflow(filters: CashflowFilters = {}): Promise<CashflowData> {
+    const url = buildUrl('/reports/finance/cashflow', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: CashflowData }>(url);
+    return res.data;
+  },
+
+  async getExpenses(filters: ExpensesFilters = {}): Promise<ExpensesData> {
+    const url = buildUrl('/reports/finance/expenses', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: ExpensesData }>(url);
+    return res.data;
+  },
+
+  async getProfitLoss(filters: ReportFilters = {}): Promise<ProfitLossData> {
+    const url = buildUrl('/reports/finance/profit-loss', filters as Record<string, string>);
+    const res = await apiClient.get<{ data: ProfitLossData }>(url);
     return res.data;
   },
 };
