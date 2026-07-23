@@ -471,7 +471,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
   });
 
   return (
-    <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-[100] m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] rounded-2xl border border-slate-200 shadow-sm'}`}>
+    <div className={`flex bg-slate-100 overflow-hidden transition-all duration-300 ${isKioskMode ? 'fixed inset-0 z-100 m-0 rounded-none h-screen' : 'h-[calc(100vh-120px)] rounded-2xl border border-slate-200 shadow-sm'}`}>
 
       {/* LEFT PANEL: PRODUCT CATALOG */}
       <div className="flex-1 flex flex-col bg-slate-50/50 border-r border-slate-200 relative">
@@ -595,7 +595,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       {/* CHECKOUT MODAL */}
       {showCheckoutModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-100 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 text-center border-b border-slate-100">
               <h3 className="text-2xl font-black text-slate-900">Pembayaran</h3>
@@ -674,7 +674,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <button
                 onClick={handleCheckout}
                 disabled={isProcessing || !amountPaid || !selectedAccountId}
-                className="flex-[2] px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-2 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -692,7 +692,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       {/* ADD CUSTOMER MODAL */}
       {showAddCustomerModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-110 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-xl font-black text-slate-900">Tambah Pelanggan Baru</h3>
@@ -760,9 +760,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       {/* SUCCESS MODAL */}
       {checkoutSuccessInfo && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-120 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 p-8 text-center text-white relative overflow-hidden">
+            <div className="bg-linear-to-br from-emerald-500 to-emerald-700 p-8 text-center text-white relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
               <div className="relative z-10">
@@ -841,7 +841,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
       {/* History Modal */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-3 bg-slate-50">
               <div className="flex justify-between items-center">

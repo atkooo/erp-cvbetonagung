@@ -90,8 +90,8 @@ export default function PosCartSidebar({
   };
 
   return (
-    <div className="w-[400px] flex flex-col bg-white shrink-0 z-30 shadow-2xl border-l border-slate-200">
-      <div className="p-5 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center gap-3">
+    <div className="w-100 flex flex-col bg-white shrink-0 z-30 shadow-2xl border-l border-slate-200">
+      <div className="p-5 bg-linear-to-r from-slate-900 to-emerald-950 text-white flex items-center gap-3">
         <ShoppingCart size={20} />
         <h2 className="font-bold tracking-wide">Struk Belanja</h2>
       </div>
@@ -300,7 +300,7 @@ export default function PosCartSidebar({
             setShowCheckoutModal(true);
           }}
           disabled={cart.length === 0}
-          className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          className="w-full py-4 bg-linear-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
         >
           <CheckCircle2 size={24} className="drop-shadow-sm" />
           BAYAR SEKARANG

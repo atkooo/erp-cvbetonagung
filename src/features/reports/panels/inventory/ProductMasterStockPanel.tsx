@@ -546,7 +546,7 @@ export default function ProductMasterStockPanel() {
             </div>
             <div className="mt-1">
               <h3 className="text-sm md:text-base font-black text-blue-600 font-mono truncate">{formatIDR(summary.total_potential_profit)}</h3>
-              <span className="text-[10px] text-emerald-600 font-semibold block mt-0.5 flex items-center gap-0.5">
+              <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-0.5">
                 <ArrowUpRight size={11} className="print-hide" /> Proyeksi keuntungan
               </span>
             </div>
