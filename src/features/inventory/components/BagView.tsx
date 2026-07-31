@@ -268,7 +268,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     <div className="space-y-6 text-xs font-sans">
       <Header
         icon={<FileCheck size={20} />}
-        title="Berita Acara Gudang (BAG) — Enterprise Edition"
+        title="Berita Acara Gudang (BAG)"
         desc="Mencatat penerimaan, pengeluaran, atau penyesuaian stok secara resmi dengan skema Otorisasi & Dual Control (Approval Manager)."
       />
 
