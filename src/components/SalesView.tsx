@@ -323,12 +323,15 @@ export default function SalesView({
 
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
-    const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
-    const matchesSearch =
-      docNum.toLowerCase().includes(search.toLowerCase()) ||
-      doc.customerName.toLowerCase().includes(search.toLowerCase());
+    const docNum = (isQuotation ? doc?.quoteNumber : doc?.orderNumber) || '';
+    const customerName = doc?.customerName || doc?.customer?.name || '';
+    const searchLower = (search || '').toLowerCase();
 
-    const matchesStatus = statusFilter === 'All' || getMonitoringStatus(doc) === statusFilter || doc.status === statusFilter;
+    const matchesSearch =
+      String(docNum).toLowerCase().includes(searchLower) ||
+      String(customerName).toLowerCase().includes(searchLower);
+
+    const matchesStatus = statusFilter === 'All' || getMonitoringStatus(doc) === statusFilter || doc?.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -810,7 +813,10 @@ export default function SalesView({
                       let isPo = false;
 
                       if (!isQuotation && selectedDoc.source === 'pos') {
-                        const poQty = selectedDoc.deliveryOrders?.filter((d: any) => d.status === 'Draft')
+                        const poQty = selectedDoc.deliveryOrders?.filter((d: any) => {
+                          const status = (d.status || '').toLowerCase();
+                          return status === 'draft' || status === 'ready_to_load' || status === 'shipped';
+                        })
                           .flatMap((d: any) => d.items || [])
                           .filter((di: any) => di.productId === item.productId)
                           .reduce((sum: number, di: any) => sum + di.quantity, 0) || 0;
@@ -827,6 +833,9 @@ export default function SalesView({
                           itemLabel = "Sudah Diambil / Selesai";
                         }
                       }
+
+                      const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
+                      const itemSubtotal = (item.quantity * itemUnitPrice) - Number(item.discountAmount || 0);
 
                       return (
                         <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs relative mt-3">
@@ -846,7 +855,7 @@ export default function SalesView({
                                   [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
                                 </span>
                               ) : null}
-                              {item.quantity} {item.unit || 'Unit'} x {formatIDR(item.price)}
+                              {item.quantity} {item.unit || 'Unit'} x {formatIDR(itemUnitPrice)}
                             </span>
                             {Number(item.discountAmount || 0) > 0 && (
                               <span className="text-[10px] text-rose-500 font-mono block">
@@ -855,7 +864,7 @@ export default function SalesView({
                             )}
                           </div>
                           <span className="font-bold text-slate-900 font-mono text-[11px]">
-                            {formatIDR((item.quantity * item.price) - Number(item.discountAmount || 0))}
+                            {formatIDR(itemSubtotal)}
                           </span>
                         </div>
                       );
@@ -1079,28 +1088,33 @@ export default function SalesView({
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedDoc.items?.map((item: any, idx: number) => (
-                      <tr key={`${item.product?.name || item.productName || 'item'}-${idx}`}>
-                        <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
-                        <td className="border border-black p-2 align-top">
-                          <span className="font-bold block">{item.product?.name || item.productName || 'Unknown Product'}</span>
-                          {item.pieceCount && item.length && (
-                            <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
-                          )}
-                          {item.description && (
-                            <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
-                          )}
-                        </td>
-                        <td className="border border-black p-2 text-right font-mono align-top">
-                          {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
-                        </td>
-                        <td className="border border-black p-2 text-right font-mono align-top">
-                          {formatIDR(item.price)}
-                          {item.discountAmount ? <div className="text-[9px] text-rose-600 mt-1">- Diskon: {formatIDR(item.discountAmount)}</div> : null}
-                        </td>
-                        <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR((item.quantity * item.price) - (item.discountAmount || 0))}</td>
-                      </tr>
-                    ))}
+                    {selectedDoc.items?.map((item: any, idx: number) => {
+                      const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
+                      const itemSubtotal = (item.quantity * itemUnitPrice) - (item.discountAmount || 0);
+
+                      return (
+                        <tr key={`${item.product?.name || item.productName || 'item'}-${idx}`}>
+                          <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
+                          <td className="border border-black p-2 align-top">
+                            <span className="font-bold block">{item.product?.name || item.productName || 'Unknown Product'}</span>
+                            {item.pieceCount && item.length && (
+                              <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
+                            )}
+                            {item.description && (
+                              <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
+                            )}
+                          </td>
+                          <td className="border border-black p-2 text-right font-mono align-top">
+                            {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
+                          </td>
+                          <td className="border border-black p-2 text-right font-mono align-top">
+                            {formatIDR(itemUnitPrice)}
+                            {item.discountAmount ? <div className="text-[9px] text-rose-600 mt-1">- Diskon: {formatIDR(item.discountAmount)}</div> : null}
+                          </td>
+                          <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(itemSubtotal)}</td>
+                        </tr>
+                      );
+                    })}
                     {!selectedDoc.items?.length && (
                       <tr>
                         <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>Tidak ada item.</td>
@@ -1190,7 +1204,7 @@ export default function SalesView({
                                 return {
                                   productId: product?.id || item.productId || '',
                                   quantity: item.quantity,
-                                  unitPrice: item.price,
+                                  unitPrice: item.price ?? item.unitPrice ?? (item as any).unit_price ?? product?.sellingPrice ?? 0,
                                   unit: product?.unit,
                                   stock: product?.stock,
                                   description: item.description,

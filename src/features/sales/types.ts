@@ -163,7 +163,7 @@ export interface DeliveryOrderDto {
   delivery_date: string | null;
   received_at: string | null;
   receiver_name: string | null;
-  status: 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+  status: 'draft' | 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
   notes: string | null;
   created_at: string;
   updated_at: string;

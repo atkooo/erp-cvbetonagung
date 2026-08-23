@@ -481,18 +481,21 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${doOrder.status === "ready_to_load"
-                            ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                            : doOrder.status === "shipped"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : doOrder.status === "received"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-rose-50 text-rose-700 border-rose-200"
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${doOrder.status === "draft"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : doOrder.status === "ready_to_load"
+                              ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                              : doOrder.status === "shipped"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : doOrder.status === "received"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
                             }`}
                         >
-                          {doOrder.status === 'ready_to_load' ? 'Siap Muat' :
-                            doOrder.status === 'shipped' ? 'Dikirim' :
-                              doOrder.status === 'received' ? 'Diterima' : 'Dibatalkan'}
+                          {doOrder.status === 'draft' ? 'Draft (PO)' :
+                            doOrder.status === 'ready_to_load' ? 'Siap Muat' :
+                              doOrder.status === 'shipped' ? 'Dikirim' :
+                                doOrder.status === 'received' ? 'Diterima' : 'Dibatalkan'}
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
@@ -507,6 +510,15 @@ export default function DeliveryOrdersView({
                             <FileText size={10} />
                             <span>Detail</span>
                           </button>
+                          {doOrder.status === "draft" && (
+                            <button
+                              onClick={() => handleSetReadyToLoad(doOrder)}
+                              className="px-2.5 py-1 bg-purple-600 text-white text-[10px] font-bold rounded-lg hover:bg-purple-700 transition-all flex items-center gap-1"
+                            >
+                              <Check size={10} />
+                              <span>Siap Muat</span>
+                            </button>
+                          )}
                           {doOrder.status === "ready_to_load" && (
                             <button
                               onClick={() => handleOpenShipModal(doOrder)}

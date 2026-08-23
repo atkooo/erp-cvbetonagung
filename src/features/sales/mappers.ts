@@ -3,11 +3,12 @@ import { QuotationDto, SalesOrderDto, DeliveryOrderDto } from './types';
 
 const mapDeliveryOrderStatus = (status: string): DeliveryOrder['status'] => {
   const s = status.toLowerCase();
+  if (s === 'draft') return 'draft';
   if (s === 'ready_to_load' || s === 'siap muat' || s === 'siap_muat') return 'ready_to_load';
   if (s === 'shipped' || s === 'dikirim') return 'shipped';
   if (s === 'received' || s === 'diterima') return 'received';
   if (s === 'cancelled' || s === 'dibatalkan') return 'cancelled';
-  return 'ready_to_load';
+  return 'draft';
 };
 
 export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder => ({

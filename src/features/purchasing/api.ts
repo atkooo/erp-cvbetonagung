@@ -119,7 +119,7 @@ export const purchasingApi = {
   },
 
   async createGoodsReceiptNote(data: CreateGoodsReceiptNoteDto): Promise<GoodsReceiptNote> {
-    const response = await apiClient.post<{ data: GoodsReceiptNoteDto }>('/purchasing/goods-receipts', data);
+    const response = await apiClient.post<{ data: GoodsReceiptNoteDto }>('/purchasing/goods-receipt-notes', data);
     return mapGoodsReceiptNoteFromDto(response.data);
   },
 

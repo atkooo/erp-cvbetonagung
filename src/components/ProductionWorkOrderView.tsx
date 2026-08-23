@@ -127,7 +127,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     let requiredQty = item.pieceCount || item.quantity;
 
     if (so && so.source === 'pos') {
-      const poQty = so.deliveryOrders?.filter(d => d.status === 'ready_to_load')
+      const poQty = so.deliveryOrders?.filter(d => d.status === 'draft' || d.status === 'ready_to_load')
         .flatMap(d => d.items || [])
         .filter(di => di.productId === item.productId)
         .reduce((sum, di) => sum + di.quantity, 0) || 0;

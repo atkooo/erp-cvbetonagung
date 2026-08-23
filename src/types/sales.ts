@@ -180,7 +180,7 @@ export interface DeliveryOrder {
   deliveryDate: string | null;
   receivedAt: string | null;
   receiverName: string | null;
-  status: 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+  status: 'draft' | 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
   notes: string | null;
   salesOrder?: {
     id: string;

@@ -372,7 +372,13 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         amount_paid: Number(amountPaid.replace(/\D/g, '')),
         notes: notes || undefined,
         items: cart.map(item => {
-          const defaultPrice = parseFloat(item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0');
+          const defaultPrice = parseFloat(
+            (item as any).price?.toString() ||
+            item.product.sellingPrice?.toString() ||
+            (item.product as any).selling_price?.toString() ||
+            (item.product as any).price?.toString() ||
+            '0'
+          );
           return {
             product_id: item.product.id,
             location_id: item.location_id,

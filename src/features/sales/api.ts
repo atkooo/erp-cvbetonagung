@@ -77,7 +77,7 @@ export const salesApi = {
   async updateDeliveryOrderStatus(
     id: string,
     payload: {
-      status?: 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+      status?: 'draft' | 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
       receiver_name?: string | null;
       received_at?: string | null;
       notes?: string | null;

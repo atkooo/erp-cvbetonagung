@@ -866,8 +866,8 @@ export default function PurchaseView({
                         
                         so.items.forEach((item) => {
                           if (so.source === 'pos') {
-                            // For POS, only items that are in a 'ready_to_load' DeliveryOrder are PO items
-                            const poQty = so.deliveryOrders?.filter(d => d.status === 'ready_to_load')
+                            // For POS, items in a draft or ready_to_load DeliveryOrder are PO items
+                            const poQty = so.deliveryOrders?.filter(d => d.status === 'draft' || d.status === 'ready_to_load')
                               .flatMap(d => d.items || [])
                               .filter(di => di.productId === item.productId)
                               .reduce((sum, di) => sum + di.quantity, 0) || 0;
@@ -882,13 +882,21 @@ export default function PurchaseView({
                         });
 
                         setFormItems(
-                          pendingItems.map((item, index) => ({
-                            id: `form-item-${Date.now()}-${index}`,
-                            productId: item.productId || "",
-                            quantity: item.quantity,
-                            price: products.find((p) => p.id === item.productId)?.costPrice || 0,
-                            unit: item.unit,
-                          }))
+                          pendingItems.map((item, index) => {
+                            const prod = products.find((p) => p.id === item.productId);
+                            const itemSellingPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? prod?.sellingPrice ?? (prod as any)?.price ?? 0);
+                            const itemCostPrice = (prod?.costPrice && Number(prod.costPrice) > 0)
+                              ? Number(prod.costPrice)
+                              : itemSellingPrice;
+
+                            return {
+                              id: `form-item-${Date.now()}-${index}`,
+                              productId: item.productId || "",
+                              quantity: item.quantity,
+                              price: itemCostPrice,
+                              unit: item.unit || prod?.unit || "Unit",
+                            };
+                          })
                         );
                       }
                     }}
@@ -944,7 +952,7 @@ export default function PurchaseView({
                                 handleItemChange(
                                   item.id,
                                   "price",
-                                  prod.costPrice || 0,
+                                  (prod.costPrice && Number(prod.costPrice) > 0) ? Number(prod.costPrice) : (Number(prod.sellingPrice || (prod as any).price) || 0),
                                 );
                               }}
                             />
