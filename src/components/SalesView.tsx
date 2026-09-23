@@ -22,10 +22,11 @@ import {
   Calendar,
   Truck,
   Trash2,
-  XCircle
+  XCircle,
+  Factory
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
-import { authStorage } from '../services/api';
+import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
 import { financeApi } from '../features/finance/api';
 import { customersApi } from '../features/customers/api';
@@ -937,6 +938,26 @@ export default function SalesView({
                         <span>Approve</span>
                       </button>
                     ) : null}
+
+                    {!isQuotation && selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
+                            onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
+                            if (onNavigate) {
+                              onNavigate('production-work-orders');
+                            }
+                          } catch (err) {
+                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
+                          }
+                        }}
+                        className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Factory size={13} className="text-indigo-600" />
+                        <span>Kirim ke Antrian Produksi (WO)</span>
+                      </button>
+                    )}
 
 
 

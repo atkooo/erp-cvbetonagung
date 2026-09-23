@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   PackageCheck,
+  Package,
   FileText,
   Trash2,
 } from "@/src/components/icons";
@@ -29,6 +30,7 @@ import RfqPicker from "./RfqPicker";
 import SalesOrderPicker from "./SalesOrderPicker";
 import ProductPicker from "./ProductPicker";
 import CurrencyInput from "./CurrencyInput";
+import RestockModal from "./RestockModal";
 import { useReactToPrint } from "react-to-print";
 import { formatDate } from "../utils/date";
 import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
@@ -55,6 +57,8 @@ export default function PurchaseView({
     return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
   }, []);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockItemCount, setRestockItemCount] = useState(0);
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [printPoId, setPrintPoId] = useState<string | null>(null);
 
@@ -109,6 +113,11 @@ export default function PurchaseView({
       setSuppliers(sups);
       setProducts(prods);
       setSalesOrders(sos);
+
+      // Ambil jumlah barang yang membutuhkan restok
+      purchasingApi.getRestockSuggestions().then(res => {
+        setRestockItemCount(res.summary.total_items);
+      }).catch(e => console.error("Error loading restock count", e));
 
       if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
     } catch (err) {
@@ -419,13 +428,27 @@ export default function PurchaseView({
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-800 flex items-center gap-1.5 shrink-0"
-        >
-          <Plus size={16} />
-          <span>Terbitkan PO Restock</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRestockModal(true)}
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5 shrink-0 transition-all cursor-pointer relative"
+          >
+            <Package size={15} />
+            <span>Restok Barang Kosong</span>
+            {restockItemCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.2 bg-white text-amber-700 text-[10px] font-black rounded-full shadow-xs">
+                {restockItemCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Buat PO Manual</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1285,6 +1308,15 @@ export default function PurchaseView({
           </div>
         </div>
       )}
+
+      {/* Modal Restok Barang Kosong */}
+      <RestockModal
+        isOpen={showRestockModal}
+        onClose={() => setShowRestockModal(false)}
+        suppliers={suppliers}
+        onTriggerNotification={onTriggerNotification}
+        onPoCreated={() => loadData()}
+      />
     </div>
   );
 }

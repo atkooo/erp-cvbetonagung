@@ -3,7 +3,8 @@ import { GoodsReceiptNote, PurchaseOrder, PurchaseRequest, Rfq } from '../../typ
 import { 
   PurchaseOrderDto, CreatePurchaseOrderDto,
   ReturnDto, CreateReturnDto, Return, PurchaseRequestDto, CreatePurchaseRequestDto,
-  GoodsReceiptNoteDto, CreateGoodsReceiptNoteDto
+  GoodsReceiptNoteDto, CreateGoodsReceiptNoteDto,
+  RestockSuggestionsResponse, GenerateRestockPoPayload
 } from './types';
 import { mapGoodsReceiptNoteFromDto, mapPurchaseOrderFromDto, mapReturnFromDto, mapPurchaseRequestFromDto, mapRfqFromDto } from './mappers';
 
@@ -203,5 +204,25 @@ export const purchasingApi = {
     const response = await apiClient.post<{ data: any }>(`/purchasing/rfqs/${id}/cancel`, { reason });
     const { mapRfqFromDto } = await import('./mappers');
     return mapRfqFromDto(response.data);
+  },
+
+  async getRestockSuggestions(filters?: Record<string, any>): Promise<RestockSuggestionsResponse> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+          params.append(k, String(v));
+        }
+      });
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await apiClient.get<{ data: RestockSuggestionsResponse }>(`/purchasing/restock-suggestions${query}`);
+    return res.data;
+  },
+
+  async generateRestockPo(payload: GenerateRestockPoPayload): Promise<PurchaseOrder> {
+    const res = await apiClient.post<{ data: PurchaseOrderDto }>('/purchasing/restock-generate-po', payload);
+    return mapPurchaseOrderFromDto(res.data);
   }
 };
+

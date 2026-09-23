@@ -285,3 +285,48 @@ export interface CreateRfqDto {
     subtotal: number;
   }[];
 }
+
+export interface RestockSuggestionItem {
+  product_id: string;
+  sku: string;
+  name: string;
+  type: string;
+  category_id?: string;
+  category_name: string;
+  unit_id?: string;
+  unit_name: string;
+  unit_code: string;
+  current_stock: number;
+  min_stock: number;
+  deficit_qty: number;
+  suggested_order_qty: number;
+  cost_price: number;
+  estimated_subtotal: number;
+  stock_status: 'empty' | 'low';
+  stock_status_label: string;
+  last_supplier_id?: string | null;
+  last_supplier_name?: string | null;
+}
+
+export interface RestockSuggestionsResponse {
+  summary: {
+    total_items: number;
+    out_of_stock_count: number;
+    low_stock_count: number;
+    total_estimated_cost: number;
+  };
+  rows: RestockSuggestionItem[];
+}
+
+export interface GenerateRestockPoPayload {
+  supplier_id: string;
+  po_date?: string;
+  notes?: string;
+  items: {
+    product_id: string;
+    quantity: number;
+    unit_price: number;
+    description?: string;
+  }[];
+}
+

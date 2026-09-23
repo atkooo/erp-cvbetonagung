@@ -59,13 +59,27 @@ export class ApiRequestError extends Error {
 
 const readErrorMessage = async (response: Response) => {
   try {
-    const body = (await response.json()) as ApiErrorBody;
-    const firstFieldError = body.errors ? Object.values(body.errors)[0]?.[0] : undefined;
+    const text = await response.text();
+    try {
+      const body = JSON.parse(text) as ApiErrorBody;
+      const firstFieldError = body.errors ? Object.values(body.errors)[0]?.[0] : undefined;
 
-    return {
-      message: firstFieldError || body.message || 'Permintaan API gagal.',
-      errors: body.errors,
-    };
+      return {
+        message: firstFieldError || body.message || 'Permintaan API gagal.',
+        errors: body.errors,
+      };
+    } catch {
+      if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+        return {
+          message: `Endpoint API mengembalikan halaman HTML (Status ${response.status}). Periksa koneksi backend, reverse proxy web server, atau konfigurasi IP/URL API.`,
+          errors: undefined,
+        };
+      }
+      return {
+        message: text.slice(0, 150) || `Permintaan API gagal (Status ${response.status}).`,
+        errors: undefined,
+      };
+    }
   } catch {
     return {
       message: 'Permintaan API gagal.',
@@ -140,7 +154,22 @@ export const apiClient = {
       return undefined as T;
     }
 
-    return (await response.json()) as T;
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+        throw new ApiRequestError(
+          `Endpoint API mengembalikan halaman HTML alih-alih JSON. Periksa konfigurasi IP/URL API backend dan reverse proxy server.`,
+          response.status
+        );
+      }
+      throw new ApiRequestError('Respons server tidak valid (bukan format JSON).', response.status);
+    }
   },
   async get<T>(path: string, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'GET' });

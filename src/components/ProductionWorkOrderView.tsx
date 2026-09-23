@@ -346,6 +346,17 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     }
   };
 
+  const handleStartProduction = async (wo: ProductionWorkOrder) => {
+    try {
+      const updated = await productionApi.updateWorkOrder(wo.id, { stage: 'Cetak & Curing' });
+      setWorkOrders(prev => prev.map(w => w.id === updated.id ? updated : w));
+      onTriggerNotification(`WO ${wo.workOrderNumber} berhasil dimulai (Tahap: Cetak & Curing)`);
+    } catch (err) {
+      console.error('Failed to start production', err);
+      onTriggerNotification('Gagal memulai proses produksi.');
+    }
+  };
+
   const handleDeleteWo = async (id: string, num: string) => {
     const result = await Swal.fire({
       title: 'Apakah Anda yakin?',
@@ -595,6 +606,8 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
                           if (wo.stage === 'cancelled') {
                             return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-rose-50 text-rose-700 border-rose-200">Dibatalkan</span>;
+                          } else if (wo.stage === 'Draft') {
+                            return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-purple-50 text-purple-700 border-purple-200">Antrian (Draft)</span>;
                           } else if (status === 'Closed') {
                             return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-100">Selesai (Closed)</span>;
                           } else if (status === 'In Progress') {
@@ -607,7 +620,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                       <h4 className="font-bold text-slate-800">{wo.productName}</h4>
                       {/* Reference badges */}
                       <div className="flex flex-wrap gap-1 mt-0.5">
-                        {wo.salesOrderNumber && (
+                        {wo.sourceLabel?.startsWith('SO:') && (
+                          <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Auto WO dari SO
+                          </span>
+                        )}
+                        {wo.salesOrderNumber && !wo.sourceLabel?.startsWith('SO:') && (
                           <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 rounded border border-amber-100">SO: {wo.salesOrderNumber}</span>
                         )}
                         {wo.projectName && (
@@ -738,6 +756,15 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        {selectedWo.stage === 'Draft' && (
+                          <button
+                            onClick={() => handleStartProduction(selectedWo)}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <Factory size={13} />
+                            <span>Mulai Produksi</span>
+                          </button>
+                        )}
                         {(() => {
                           const qcTask = selectedWo.tasks?.find(t => t.taskName === 'QC');
                           const readyQty = qcTask ? qcTask.completedQty : 0;
