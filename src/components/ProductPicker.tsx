@@ -68,13 +68,13 @@ export default function ProductPicker({
       // Apply filters if provided
       let filtered = productsWithStock;
       if (locationIdFilter) {
-        filtered = filtered.filter(p => p.stock > 0);
+        filtered = filtered.filter(p => p.stock > 0 || p.id === value);
       }
       if (categoryFilter) {
-        filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
+        filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase() || p.id === value);
       }
       if (typeFilter) {
-        filtered = filtered.filter(p => p.type === typeFilter);
+        filtered = filtered.filter(p => p.type === typeFilter || p.id === value);
       }
       setProducts(filtered);
     } catch (error) {

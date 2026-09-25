@@ -90,7 +90,7 @@ export default function SalesView({
   const isQuotation = type === 'quotation';
   const dataList = isQuotation ? quotations : salesOrders;
   const printTitle = selectedDoc
-    ? `${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`
+    ? `${isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}`
     : 'sales-document';
   const handlePrintAction = useReactToPrint({
     contentRef: printRef,
@@ -179,16 +179,58 @@ export default function SalesView({
     };
   }, [showAddForm, isQuotation, quotations.length, onTriggerNotification]);
 
+  const applyQuotationToForm = (qId: string, availableQuotations?: Quotation[]) => {
+    setQuotationId(qId);
+    if (!qId) {
+      resetFormItems();
+      setCustId('');
+      return;
+    }
+    const qList = availableQuotations && availableQuotations.length > 0 ? availableQuotations : quotations;
+    const selectedQuo = qList.find(q => q.id === qId);
+    if (selectedQuo) {
+      if (selectedQuo.customerId) setCustId(selectedQuo.customerId);
+      if (selectedQuo.notes) setDocumentNotes(selectedQuo.notes);
+      if (selectedQuo.globalDiscountType) {
+        setGlobalDiscountType(selectedQuo.globalDiscountType);
+        setGlobalDiscountValue(String(selectedQuo.globalDiscountValue ?? ''));
+      }
+      if (selectedQuo.items && selectedQuo.items.length > 0) {
+        setFormItems(selectedQuo.items.map(item => {
+          const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName) || item.product;
+          return {
+            productId: product?.id || item.productId || '',
+            quantity: item.quantity,
+            unitPrice: item.price ?? item.unitPrice ?? (item as any).unit_price ?? (product as any)?.sellingPrice ?? 0,
+            unit: (product as any)?.unit?.code || (product as any)?.unit?.name || (product as any)?.unit || item.unit || '',
+            stock: (product as any)?.stock,
+            description: item.description,
+            isCustomizable: (product as any)?.isCustomizable,
+            pricingMethod: (product as any)?.pricingMethod,
+            pieceCount: item.pieceCount,
+            length: item.length,
+            discountAmount: item.discountAmount ? Number(item.discountAmount) : 0,
+          };
+        }));
+      }
+    }
+  };
+
   // Workflow shortcut effect
   useEffect(() => {
     if (!isQuotation) {
       const pendingQuotationId = sessionStorage.getItem('action_create_so');
       if (pendingQuotationId) {
         sessionStorage.removeItem('action_create_so');
-        setTimeout(() => {
+        salesApi.getQuotations().then((qs) => {
+          setQuotations(qs);
+          setShowAddForm(true);
+          applyQuotationToForm(pendingQuotationId, qs);
+        }).catch((err) => {
+          console.error(err);
           setShowAddForm(true);
           setQuotationId(pendingQuotationId);
-        }, 500);
+        });
       }
     }
   }, [isQuotation]);
@@ -324,7 +366,7 @@ export default function SalesView({
 
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
-    const docNum = (isQuotation ? doc?.quoteNumber : doc?.orderNumber) || '';
+    const docNum = (isQuotation ? (doc?.quoteNumber || doc?.quotationNumber) : doc?.orderNumber) || '';
     const customerName = doc?.customerName || doc?.customer?.name || '';
     const searchLower = (search || '').toLowerCase();
 
@@ -665,7 +707,7 @@ export default function SalesView({
                     </tr>
                   ) : (
                     paginatedDocs.map((doc: any, idx) => {
-                      const docNum = isQuotation ? doc.quoteNumber : doc.orderNumber;
+                      const docNum = isQuotation ? (doc.quoteNumber || doc.quotationNumber) : doc.orderNumber;
                       const statusColors: Record<string, string> = {
                         Draft: 'bg-slate-100 text-slate-600',
                         Terkirim: 'bg-blue-100 text-blue-700',
@@ -765,7 +807,7 @@ export default function SalesView({
                 <div className="flex items-center gap-2">
                   <Receipt size={18} className="text-cyan-500" />
                   <h4 className="font-sans font-bold text-slate-800 text-sm">
-                    Rincian Document {isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}
+                    Rincian Document {isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}
                   </h4>
                 </div>
                 <button onClick={() => setSelectedDoc(null)} className="text-slate-400 hover:text-slate-600">
@@ -788,10 +830,10 @@ export default function SalesView({
                     <span className="text-slate-400 font-medium">Berlaku Hingga:</span>
                     <span className="font-mono text-amber-600">{selectedDoc.validUntil}</span>
                   </div>
-                ) : selectedDoc.quotationNumber ? (
+                ) : (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) ? (
                   <div className="flex justify-between border-b border-slate-150 pb-2">
                     <span className="text-slate-400 font-medium">Ref. Quotation:</span>
-                    <strong className="text-slate-800">{selectedDoc.quotationNumber}</strong>
+                    <strong className="text-slate-800">{selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</strong>
                   </div>
                 ) : null}
                 <div className="flex justify-between border-b border-slate-150 pb-2">
@@ -901,7 +943,7 @@ export default function SalesView({
                 {!(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && !(!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) && (
                   <button
                     onClick={() => {
-                      onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber}`);
+                      onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}`);
                       setTimeout(() => handlePrintAction(), 150);
                     }}
                     className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5"
@@ -914,7 +956,7 @@ export default function SalesView({
                 {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
                   <>
                     <button
-                      onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber)}
+                      onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
                       className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <FileCheck size={13} className="text-white" />
@@ -969,7 +1011,7 @@ export default function SalesView({
                     </button>
                     {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
                        <button
-                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
+                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                        >
                          <XCircle size={13} className="text-rose-500" />
@@ -987,7 +1029,7 @@ export default function SalesView({
                     </button>
                     {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
                        <button
-                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber)}
+                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                        >
                          <XCircle size={13} className="text-rose-500" />
@@ -1059,7 +1101,7 @@ export default function SalesView({
       <div className="hidden print:block">
         <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
           {selectedDoc && (() => {
-            const docNumber = isQuotation ? selectedDoc.quoteNumber : selectedDoc.orderNumber;
+            const docNumber = isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber;
             const docTitle = isQuotation ? 'QUOTATION' : 'SALES ORDER';
             const docDateLabel = isQuotation ? 'Tanggal Penawaran' : 'Tanggal Sales Order';
             const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
@@ -1069,7 +1111,7 @@ export default function SalesView({
                 <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
                   <div className="flex items-center gap-4">
                     {companyProfile.logoUrl ? (
-                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-cover" />
                     ) : (
                       <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
                         {companyProfile.name.substring(0, 2).toUpperCase()}
@@ -1085,8 +1127,8 @@ export default function SalesView({
                   <div className="text-right">
                     <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
                     <p className="font-mono font-bold mt-2 text-lg">{docNumber}</p>
-                    {!isQuotation && selectedDoc.quotationNumber && (
-                      <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber}</p>
+                    {!isQuotation && (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) && (
+                      <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</p>
                     )}
                     <p className="text-sm">{docDateLabel}: {isQuotation ? selectedDoc.quotationDate : selectedDoc.orderDate}</p>
                     {isQuotation && <p className="text-sm">Berlaku Hingga: {selectedDoc.validUntil}</p>}
@@ -1213,40 +1255,19 @@ export default function SalesView({
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
                     <SearchableSelect
                       value={quotationId}
-                      onChange={(qId) => {
-                        setQuotationId(qId);
-                        if (qId) {
-                          const selectedQuo = quotations.find(q => q.id === qId);
-                          if (selectedQuo) {
-                            if (selectedQuo.customerId) setCustId(selectedQuo.customerId);
-                            if (selectedQuo.items && selectedQuo.items.length > 0) {
-                              setFormItems(selectedQuo.items.map(item => {
-                                const product = products.find(p => p.id === item.productId) || products.find(p => p.name === item.productName);
-                                return {
-                                  productId: product?.id || item.productId || '',
-                                  quantity: item.quantity,
-                                  unitPrice: item.price ?? item.unitPrice ?? (item as any).unit_price ?? product?.sellingPrice ?? 0,
-                                  unit: product?.unit,
-                                  stock: product?.stock,
-                                  description: item.description,
-                                  isCustomizable: product?.isCustomizable,
-                                  pricingMethod: product?.pricingMethod,
-                                  pieceCount: item.pieceCount,
-                                  length: item.length,
-                                };
-                              }));
-                            }
-                          }
-                        } else {
-                          resetFormItems();
-                          setCustId('');
-                        }
-                      }}
+                      onChange={(qId) => applyQuotationToForm(qId)}
                       options={[
                         { value: "", label: "-- Tanpa Referensi Quotation --" },
                         ...quotations
-                          .filter(q => q.status === 'Disetujui')
-                          .map(q => ({ value: q.id, label: `${q.quoteNumber} - ${q.customerName} - ${formatIDR(q.total)}` }))
+                          .filter(q => q.status !== 'Dibatalkan' && q.status !== 'cancelled' && q.status !== 'Ditolak')
+                          .map(q => {
+                            const qNum = q.quoteNumber || q.quotationNumber || 'Tanpa No';
+                            const statusSuffix = q.status !== 'Disetujui' ? ` [${q.status}]` : '';
+                            return {
+                              value: q.id,
+                              label: `${qNum} - ${q.customerName} - ${formatIDR(q.total)}${statusSuffix}`
+                            };
+                          })
                       ]}
                       placeholder="Pilih Referensi Quotation..."
                     />
@@ -1315,19 +1336,18 @@ export default function SalesView({
                               value={item.productId}
                               showCategoryFilter
                               onChange={(product) => {
-                            updateFormItem(index, {
-                              productId: product.id,
-                              unitPrice: product.sellingPrice || 0,
-                              quantity: item.quantity > 0 ? item.quantity : 1,
-                              unit: product.unit,
-                              stock: product.stock,
-                              isCustomizable: product.isCustomizable,
-                              pricingMethod: product.pricingMethod,
-                            });
-                          }}
-                          typeFilter={isQuotation ? undefined : "finished_good"}
-                          placeholder="Pilih Produk..."
-                        />
+                                updateFormItem(index, {
+                                  productId: product.id,
+                                  unitPrice: product.sellingPrice || 0,
+                                  quantity: item.quantity > 0 ? item.quantity : 1,
+                                  unit: product.unit,
+                                  stock: product.stock,
+                                  isCustomizable: product.isCustomizable,
+                                  pricingMethod: product.pricingMethod,
+                                });
+                              }}
+                              placeholder="Pilih Produk..."
+                            />
                           </div>
                           <button
                             type="button"

@@ -41,6 +41,7 @@ export interface SalesOrder {
   customerName?: string;
   hasInvoice?: boolean;
   hasPaidInvoice?: boolean;
+  quotationNumber?: string;
   quotation?: {
     id: string;
     quotationNumber: string;

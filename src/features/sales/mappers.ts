@@ -42,6 +42,7 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
 export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   id: dto.id,
   quotationNumber: dto.quotation_number,
+  quoteNumber: dto.quotation_number,
   customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
   quotationDate: dto.quotation_date ? dto.quotation_date.split('T')[0] : '',
@@ -53,7 +54,10 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   globalDiscountAmount: dto.global_discount_amount != null ? Number(dto.global_discount_amount) : undefined,
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
+    id: item.id,
     productId: item.product_id || item.product?.id || '',
+    productName: item.product?.name || '',
+    unit: item.product?.unit?.code || item.product?.unit?.name || '',
     description: item.description || undefined,
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
@@ -74,6 +78,8 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
 export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   id: dto.id,
   orderNumber: dto.order_number,
+  quotationId: dto.quotation_id,
+  quotationNumber: dto.quotation?.quotation_number || undefined,
   quotation: dto.quotation ? { id: dto.quotation.id, quotationNumber: dto.quotation.quotation_number } : undefined,
   customerId: dto.customer_id,
   customerName: dto.customer?.name || 'Unknown Customer',
@@ -88,6 +94,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   items: (dto.items || []).map(item => ({
     id: item.id,
     productId: item.product_id || item.product?.id || '',
+    productName: item.product?.name || '',
+    unit: item.product?.unit?.code || item.product?.unit?.name || '',
     description: item.description || undefined,
     pieceCount: item.piece_count != null ? Number(item.piece_count) : undefined,
     length: item.length != null ? Number(item.length) : undefined,
