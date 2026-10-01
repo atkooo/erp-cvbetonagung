@@ -53,6 +53,7 @@ export interface ProductionWorkOrderDto {
   product_id: string;
   sales_order_id: string | null;
   project_id: string | null;
+  stock_production_request_id?: string | null;
   source_label: string | null;
   stage: string;
   target_qty: number;
@@ -78,9 +79,62 @@ export interface ProductionWorkOrderDto {
     id: string;
     name: string;
   };
+  stock_production_request?: {
+    id: string;
+    request_number: string;
+    status: string;
+  };
   items?: ProductionWorkOrderItemDto[];
   logs?: ProductionWorkLogDto[];
   tasks?: ProductionWorkOrderTaskDto[];
+}
+
+export interface StockProductionRequestItemDto {
+  id: string;
+  stock_production_request_id: string;
+  product_id: string;
+  target_qty: number;
+  completed_qty: number;
+  notes?: string | null;
+  product?: {
+    id: string;
+    sku: string;
+    name: string;
+  };
+}
+
+export interface StockProductionRequestDto {
+  id: string;
+  request_number: string;
+  storage_location_id?: string | null;
+  requested_by?: string | null;
+  approved_by?: string | null;
+  request_date: string;
+  due_date?: string | null;
+  status: 'draft' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  notes?: string | null;
+  items?: StockProductionRequestItemDto[];
+  storage_location?: {
+    id: string;
+    name: string;
+  };
+  requested_by_user?: {
+    id: string;
+    name: string;
+  };
+  work_orders?: ProductionWorkOrderDto[];
+}
+
+export interface CreateStockProductionRequestDto {
+  storage_location_id?: string;
+  request_date?: string;
+  due_date?: string;
+  notes?: string;
+  items: Array<{
+    product_id: string;
+    target_qty: number;
+    notes?: string;
+  }>;
 }
 
 export interface BomItemDto {

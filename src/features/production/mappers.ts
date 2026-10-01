@@ -43,6 +43,8 @@ export const mapWorkOrderFromDto = (dto: ProductionWorkOrderDto): ProductionWork
   customerName: dto.sales_order?.customer?.name || undefined,
   projectId: dto.project_id || undefined,
   projectName: dto.project?.name || undefined,
+  stockProductionRequestId: dto.stock_production_request_id || undefined,
+  stockProductionRequestNumber: dto.stock_production_request?.request_number || undefined,
   sourceLabel: dto.source_label || undefined,
   stage: dto.stage,
   targetQty: Number(dto.target_qty),
@@ -51,6 +53,31 @@ export const mapWorkOrderFromDto = (dto: ProductionWorkOrderDto): ProductionWork
   dueDate: dto.due_date ? dto.due_date.split('T')[0] : undefined,
   logs: (dto.logs || []).map(mapWorkLogFromDto),
   tasks: (dto.tasks || []).map(mapWorkOrderTaskFromDto),
+});
+
+export const mapStockProductionRequestFromDto = (dto: any): any => ({
+  id: dto.id,
+  requestNumber: dto.request_number,
+  storageLocationId: dto.storage_location_id || undefined,
+  storageLocationName: dto.storage_location?.name || undefined,
+  requestedBy: dto.requested_by || undefined,
+  requestedByName: dto.requested_by_user?.name || undefined,
+  approvedBy: dto.approved_by || undefined,
+  requestDate: dto.request_date ? dto.request_date.split('T')[0] : '',
+  dueDate: dto.due_date ? dto.due_date.split('T')[0] : undefined,
+  status: dto.status,
+  notes: dto.notes || undefined,
+  items: (dto.items || []).map((i: any) => ({
+    id: i.id,
+    stockProductionRequestId: i.stock_production_request_id,
+    productId: i.product_id,
+    productName: i.product?.name || 'Item',
+    productSku: i.product?.sku || '',
+    targetQty: Number(i.target_qty),
+    completedQty: Number(i.completed_qty || 0),
+    notes: i.notes || undefined,
+  })),
+  workOrders: (dto.work_orders || []).map(mapWorkOrderFromDto),
 });
 
 export const mapBomItemFromDto = (dto: BomItemDto): BomItem => ({

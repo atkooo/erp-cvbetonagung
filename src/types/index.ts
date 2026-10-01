@@ -20,7 +20,7 @@ export type { Project } from './project';
 export type { Employee } from './employee';
 export type {
   ProductionWorkOrder, ProductionWorkOrderTask, ProductionWorkLog,
-  Bom, BomItem,
+  Bom, BomItem, StockProductionRequest, StockProductionRequestItem,
 } from './production';
 export type { AuthPermission, AuthRole, AuthUser, AuthSession } from './auth';
 export type { ViewType } from './navigation';

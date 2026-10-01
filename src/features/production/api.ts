@@ -11,7 +11,8 @@ import {
 import { 
   mapWorkOrderFromDto, 
   mapWorkLogFromDto, 
-  mapBomFromDto 
+  mapBomFromDto,
+  mapStockProductionRequestFromDto
 } from './mappers';
 
 export const productionApi = {
@@ -98,5 +99,38 @@ export const productionApi = {
 
   async deleteBom(id: string): Promise<void> {
     await apiClient.delete(`/production/boms/${id}`);
-  }
+  },
+
+  // Stock Production Requests (SPR)
+  async getStockProductionRequests(): Promise<any[]> {
+    const response = await apiClient.get<any>('/production/stock-production-requests');
+    const items = response.data || [];
+    return items.map(mapStockProductionRequestFromDto);
+  },
+
+  async createStockProductionRequest(data: any): Promise<any> {
+    const response = await apiClient.post<{ message: string; data: any }>(
+      '/production/stock-production-requests',
+      data
+    );
+    return mapStockProductionRequestFromDto(response.data);
+  },
+
+  async approveStockProductionRequest(id: string): Promise<any> {
+    const response = await apiClient.post<{ message: string; data: any; work_orders: any[] }>(
+      `/production/stock-production-requests/${id}/approve`
+    );
+    return {
+      request: mapStockProductionRequestFromDto(response.data),
+      workOrders: (response.work_orders || []).map(mapWorkOrderFromDto),
+    };
+  },
+
+  async cancelStockProductionRequest(id: string, reason: string): Promise<any> {
+    const response = await apiClient.post<{ message: string; data: any }>(
+      `/production/stock-production-requests/${id}/cancel`,
+      { reason }
+    );
+    return mapStockProductionRequestFromDto(response.data);
+  },
 };

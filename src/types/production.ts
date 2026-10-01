@@ -41,6 +41,8 @@ export interface ProductionWorkOrder {
   customerName?: string;
   projectId?: string;
   projectName?: string;
+  stockProductionRequestId?: string;
+  stockProductionRequestNumber?: string;
   sourceLabel?: string;
   stage: string;
   targetQty: number;
@@ -49,6 +51,33 @@ export interface ProductionWorkOrder {
   dueDate?: string;
   logs?: ProductionWorkLog[];
   tasks?: ProductionWorkOrderTask[];
+}
+
+export interface StockProductionRequestItem {
+  id: string;
+  stockProductionRequestId: string;
+  productId: string;
+  productName?: string;
+  productSku?: string;
+  targetQty: number;
+  completedQty: number;
+  notes?: string;
+}
+
+export interface StockProductionRequest {
+  id: string;
+  requestNumber: string;
+  storageLocationId?: string;
+  storageLocationName?: string;
+  requestedBy?: string;
+  requestedByName?: string;
+  approvedBy?: string;
+  requestDate: string;
+  dueDate?: string;
+  status: 'draft' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  notes?: string;
+  items?: StockProductionRequestItem[];
+  workOrders?: ProductionWorkOrder[];
 }
 
 export interface BomItem {
