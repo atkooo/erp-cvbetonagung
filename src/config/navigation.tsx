@@ -180,6 +180,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "finance",
       },
       {
+        view: "cash-expense",
+        label: "Kas & Biaya Operasional",
+        icon: History,
+        requiredModule: "finance",
+      },
+      {
         view: "invoices",
         label: "Billing (Invoice)",
         icon: Receipt,
@@ -201,6 +207,12 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "accounts-payable",
         label: "Outstanding Payable (AP)",
         icon: WalletCards,
+        requiredModule: "finance",
+      },
+      {
+        view: "finance-reports",
+        label: "Laporan Keuangan & Omset",
+        icon: BarChart3,
         requiredModule: "finance",
       },
     ],
@@ -226,6 +238,13 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "purchase-orders",
         label: "Purchase Order (PO)",
         icon: ShoppingCart,
+        requiredModule: "purchasing",
+      },
+      {
+        view: "goods-receipts",
+        label: "Penerimaan Barang (GRN)",
+        icon: Download,
+        activeViews: ["incoming-goods"],
         requiredModule: "purchasing",
       },
       {
@@ -354,6 +373,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "incoming-goods",
         label: "Penerimaan (GRN)",
         icon: Download,
+        activeViews: ["goods-receipts"],
         requiredModule: "inventory",
       },
       {

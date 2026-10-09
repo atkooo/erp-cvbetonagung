@@ -116,6 +116,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
   const selectedOutstanding = selectedInvoice ? selectedInvoice.total - selectedInvoice.paidAmount : 0;
 
   const filteredPayments = payments.filter((pay) => {
+    if (pay.status === 'Cancelled' || (pay.status as string) === 'cancelled' || (pay.status as string) === 'Dibatalkan') return false;
     const matchesSearch =
       pay.paymentNumber.toLowerCase().includes(search.toLowerCase()) ||
       pay.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -242,6 +243,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
     if (isConfirmed && reason) {
       try {
         await financeApi.cancelPayment(payId, reason);
+        setPayments(prev => prev.filter(p => p.id !== payId));
         onTriggerNotification(`Berhasil membatalkan pembayaran ${payNum}`);
         await loadData();
       } catch (err) {
@@ -390,9 +392,6 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                               <span>Batal</span>
                             </button>
                           )}
-                          {pay.status === 'Cancelled' && (
-                            <span className="text-[10px] text-slate-400 font-mono italic px-2">Dibatalkan</span>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -436,9 +435,9 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
           </div>
 
           {showReceiveModal && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-              <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-                <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 font-sans text-xs overflow-y-auto">
+              <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 my-auto">
+                <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
                     <DollarSign size={18} className="text-cyan-400" />
                     <h3 className="font-bold text-sm">Kasir: Terima Pembayaran</h3>
@@ -448,7 +447,8 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                   </button>
                 </div>
 
-                <form onSubmit={handleRecordPayment} className="p-5 space-y-4">
+                <form onSubmit={handleRecordPayment} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="p-5 space-y-4 overflow-y-auto flex-1">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-slate-600 uppercase">Invoice / Outstanding Receivable Pelanggan</label>
                     <SearchableSelect
@@ -535,17 +535,18 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                       className="w-full px-3 py-2 border border-slate-200 focus:outline-none h-16 resize-none rounded"
                     />
                   </div>
+                </div>
 
-                  <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                    <button type="button" onClick={() => setShowReceiveModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
-                    <button type="submit" disabled={isSavingPayment || !selectedInvoice} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50">
-                      {isSavingPayment ? 'Menyimpan...' : 'Simpan Penerimaan'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold shrink-0">
+                  <button type="button" onClick={() => setShowReceiveModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
+                  <button type="submit" disabled={isSavingPayment || !selectedInvoice} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50">
+                    {isSavingPayment ? 'Menyimpan...' : 'Simpan Penerimaan'}
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
+          </div>
+        )}
         </>
       )}
     </div>

@@ -35,5 +35,42 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            const normalizedId = id.replace(/\\/g, '/');
+            if (normalizedId.includes('node_modules')) {
+              if (
+                normalizedId.includes('/react/') ||
+                normalizedId.includes('/react-dom/') ||
+                normalizedId.includes('/react-router/') ||
+                normalizedId.includes('/react-router-dom/')
+              ) {
+                return 'vendor-react';
+              }
+              if (normalizedId.includes('lucide-react')) {
+                return 'vendor-lucide';
+              }
+              if (normalizedId.includes('sweetalert2')) {
+                return 'vendor-sweetalert2';
+              }
+              if (normalizedId.includes('laravel-echo') || normalizedId.includes('pusher-js')) {
+                return 'vendor-echo';
+              }
+              if (
+                normalizedId.includes('jspdf') ||
+                normalizedId.includes('html2canvas') ||
+                normalizedId.includes('html-to-image')
+              ) {
+                return 'vendor-pdf';
+              }
+            }
+          },
+        },
+      },
+    },
   };
 });

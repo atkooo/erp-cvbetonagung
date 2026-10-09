@@ -125,11 +125,11 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   }).sort((a, b) => {
     const aNeedsApproval = a.differenceQty !== 0 && !a.approvalRequestId ? 1 : 0;
     const bNeedsApproval = b.differenceQty !== 0 && !b.approvalRequestId ? 1 : 0;
-    
+
     if (aNeedsApproval !== bNeedsApproval) {
       return bNeedsApproval - aNeedsApproval;
     }
-    
+
     return 0;
   });
   const itemTotalPages = Math.max(1, Math.ceil(filteredSessionItems.length / itemRowsPerPage));
@@ -166,10 +166,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     setIsLoading(true);
     try {
       const data = await inventoryApi.getStockOpnameSessions();
-      setSessions(data);
+      const activeSessions = data.filter(
+        s => s.status !== 'cancelled' && s.status !== 'dibatalkan'
+      );
+      setSessions(activeSessions);
       if (selectedSession) {
-        const updated = data.find(s => s.id === selectedSession.id);
-        if (updated) setSelectedSession(updated);
+        const updated = activeSessions.find(s => s.id === selectedSession.id);
+        setSelectedSession(updated || null);
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
@@ -329,21 +332,31 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
       }
     }
 
-    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'closed' ? 'Tutup Sesi' : 'Batalkan Sesi';
+    const actionText = status === 'in_progress' ? 'Mulai Audit' : status === 'closed' ? 'Tutup Sesi' : 'Batalkan Sesi Opname';
     const result = await Swal.fire({
       title: `${actionText}?`,
-      text: `Status sesi akan diubah menjadi ${status}.`,
+      text: status === 'cancelled'
+        ? `Apakah Anda yakin ingin membatalkan sesi opname ${selectedSession.opnameNumber}? Sesi yang dibatalkan tidak akan dilanjutkan.`
+        : `Status sesi akan diubah menjadi ${status}.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Ya, Ubah',
-      cancelButtonText: 'Batal'
+      confirmButtonText: status === 'cancelled' ? 'Ya, Batalkan' : 'Ya, Ubah',
+      cancelButtonText: 'Kembali',
+      confirmButtonColor: status === 'cancelled' ? '#ef4444' : undefined,
     });
 
     if (result.isConfirmed) {
       try {
         await inventoryApi.updateStockOpnameSessionStatus(selectedSession.id, status);
-        Swal.fire('Sukses', `Sesi opname berhasil diubah menjadi ${status}.`, 'success');
-        fetchSessions();
+        if (status === 'cancelled') {
+          Swal.fire('Dibatalkan', `Sesi opname ${selectedSession.opnameNumber} berhasil dibatalkan.`, 'success');
+          setSessions(prev => prev.filter(s => s.id !== selectedSession.id));
+          setSelectedSession(null);
+          onTriggerNotification(`Sesi opname ${selectedSession.opnameNumber} berhasil dibatalkan.`);
+        } else {
+          Swal.fire('Sukses', `Sesi opname berhasil diubah menjadi ${status}.`, 'success');
+        }
+        await fetchSessions();
       } catch (error) {
         console.error('Error changing status:', error);
         Swal.fire('Gagal', 'Gagal mengubah status sesi.', 'error');
@@ -557,8 +570,8 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     key={session.id}
                     onClick={() => setSelectedSession(session)}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedSession?.id === session.id
-                        ? 'border-cyan-500 bg-cyan-50/30'
-                        : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
+                      ? 'border-cyan-500 bg-cyan-50/30'
+                      : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
@@ -605,15 +618,21 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                           setNewItemLocationId('');
                           setShowAddItemModal(true);
                         }}
-                        className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition"
+                        className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition cursor-pointer"
                       >
                         Tambah Item
                       </button>
                       <button
                         onClick={() => handleStatusChange('in_progress')}
-                        className="px-3 py-1.5 border bg-white text-cyan-600 hover:bg-cyan-50/50 border-cyan-200 rounded-lg font-bold transition"
+                        className="px-3 py-1.5 border bg-white text-cyan-600 hover:bg-cyan-50/50 border-cyan-200 rounded-lg font-bold transition cursor-pointer"
                       >
                         Mulai Audit
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange('cancelled')}
+                        className="px-3 py-1.5 border bg-white text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold transition cursor-pointer"
+                      >
+                        Batalkan Sesi
                       </button>
                     </>
                   )}
@@ -693,7 +712,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     {(() => {
                       const selectedApprovable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && !i.approvalRequestId);
                       const selectedAdjustable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'approved' && !i.isAdjusted);
-                      
+
                       return (selectedApprovable.length > 0 || selectedAdjustable.length > 0) && selectedSession?.status === 'in_progress' ? (
                         <div className="flex gap-2">
                           {selectedApprovable.length > 0 && (
@@ -830,10 +849,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                   )}
                                 </td>
                                 <td className={`p-3.5 text-center font-mono font-black ${item.differenceQty === 0
-                                    ? 'text-emerald-600'
-                                    : item.differenceQty > 0
-                                      ? 'text-blue-600'
-                                      : 'text-rose-600'
+                                  ? 'text-emerald-600'
+                                  : item.differenceQty > 0
+                                    ? 'text-blue-600'
+                                    : 'text-rose-600'
                                   }`}>
                                   {item.differenceQty > 0 ? `+${item.differenceQty}` : item.differenceQty}
                                 </td>

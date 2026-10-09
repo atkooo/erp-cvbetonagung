@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Wallet, RefreshCcw, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Wallet, RefreshCcw, Search, History, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { financeApi } from '../api';
 import { AccountDto } from '../types';
 
 export const FinanceAccountsView: React.FC = () => {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AccountDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,11 +119,29 @@ export const FinanceAccountsView: React.FC = () => {
   return (
     <div className="space-y-6 text-xs font-sans">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg"><Wallet size={20} /></div>
-          <div>
-            <h3 className="font-sans font-bold text-sm text-slate-800">Buku Kas & Bank</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Kelola daftar rekening bank, kas kecil, dan dompet digital untuk pencatatan transaksi pembayaran.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg"><Wallet size={20} /></div>
+            <div>
+              <h3 className="font-sans font-bold text-sm text-slate-800">Buku Kas & Bank</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Kelola daftar rekening bank, kas kecil, dan dompet digital untuk pencatatan transaksi pembayaran.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/finance/cash-bank')}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition text-xs shadow-xs"
+            >
+              <History size={14} className="text-slate-500" />
+              <span>Kas & Biaya Operasional</span>
+            </button>
+            <button
+              onClick={() => navigate('/reports')}
+              className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition text-xs shadow-xs"
+            >
+              <TrendingUp size={14} />
+              <span>Laporan Arus Kas & Saldo Berjalan</span>
+            </button>
           </div>
         </div>
       </div>
@@ -204,6 +224,13 @@ export const FinanceAccountsView: React.FC = () => {
                     </td>
                     <td className="p-3.5 pr-5 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => navigate('/finance/cash-bank')}
+                          className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                          title="Lihat Mutasi Kas & Biaya"
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleOpenModal(account)}
                           className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"

@@ -4,16 +4,25 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck } from '@/src/components/icons';
+import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck, Clock, Globe } from '@/src/components/icons';
 import { systemApi } from '../services/api';
 import { getCompanyProfile, saveCompanyProfile } from '../utils/companyProfile';
+import {
+  INDONESIAN_TIMEZONES,
+  getTimezonePreference,
+  setTimezonePreference,
+  formatDateTime,
+  formatDate,
+  toApiDate,
+  getTimezoneAbbr
+} from '../utils/date';
 
 interface SettingsViewProps {
   onTriggerNotification: (message: string) => void;
 }
 
 export default function SettingsView({ onTriggerNotification }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'tax' | 'backup'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'tax' | 'timezone' | 'backup'>('profile');
 
   // Company Form states
   const [compName, setCompName] = useState('');
@@ -22,8 +31,17 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
   const [compEmail, setCompEmail] = useState('');
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [taxRate, setTaxRate] = useState(11); // PPN 11%
+  const [timezone, setTimezone] = useState<string>('Asia/Jakarta');
+  const [currentTimePreview, setCurrentTimePreview] = useState<Date>(new Date());
 
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTimePreview(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     // Initial load from local memory (synced by App.tsx)
@@ -34,6 +52,7 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
     setCompEmail(profile.email);
     setLogoUrl(profile.logoUrl);
     setTaxRate(profile.taxRate);
+    setTimezone(profile.timezone || getTimezonePreference());
 
     // Listen to updates from server sync
     const handleProfileUpdate = () => {
@@ -44,6 +63,7 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
       setCompEmail(updatedProfile.email);
       setLogoUrl(updatedProfile.logoUrl);
       setTaxRate(updatedProfile.taxRate);
+      setTimezone(updatedProfile.timezone || getTimezonePreference());
     };
 
     window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
@@ -64,6 +84,15 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
     await saveCompanyProfile({ taxRate });
     setIsSaving(false);
     onTriggerNotification(`Menerapkan parameter pajak PPN sebesar ${taxRate}% ke seluruh sistem dan disimpan ke server.`);
+  };
+
+  const handleSaveTimezone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    await saveCompanyProfile({ timezone });
+    setTimezonePreference(timezone);
+    setIsSaving(false);
+    onTriggerNotification(`Zona waktu sistem berhasil diperbarui ke ${timezone}!`);
   };
 
   return (
@@ -101,6 +130,15 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
           >
             <Percent size={14} />
             <span>Pajak & Kop Faktur</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('timezone')}
+            className={`w-full text-left px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'timezone' ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <Clock size={14} />
+            <span>Zona Waktu & Jam</span>
           </button>
           <button
             onClick={() => setActiveTab('backup')}
@@ -234,6 +272,101 @@ export default function SettingsView({ onTriggerNotification }: SettingsViewProp
                   className="px-4 py-2 bg-slate-900 border text-white font-bold rounded-lg transition-all hover:bg-slate-800 disabled:bg-slate-400"
                 >
                   {isSaving ? 'Menyimpan ke Database...' : 'Terapkan Parameter Pajak'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 'timezone' && (
+            <form onSubmit={handleSaveTimezone} className="space-y-5">
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b pb-2 mb-2">Format Tanggal & Zona Waktu Sistem</h4>
+                <p className="text-slate-500 leading-relaxed text-[11px]">
+                  Pilih zona waktu operasional bisnis. Pengaturan ini akan diterapkan ke seluruh modul (Invoice, Surat Jalan, Penerimaan Barang, Absensi, Mutasi Kas, dll).
+                </p>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl shadow-sm space-y-2">
+                <div className="flex items-center justify-between text-slate-300 text-[10px] font-mono uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={12} className="text-cyan-400" />
+                    Preview Waktu Sistem Real-time
+                  </span>
+                  <span className="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-bold">
+                    {getTimezoneAbbr(currentTimePreview, timezone === 'auto' ? undefined : timezone)}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-3">
+                  <div className="text-2xl font-black font-mono tracking-tight text-white">
+                    {formatDateTime(currentTimePreview.toISOString(), true)}
+                  </div>
+                </div>
+                <div className="text-[10px] text-slate-400 flex items-center gap-4 pt-1 border-t border-slate-700/60 font-mono">
+                  <span>Format Tanggal: <strong>{formatDate(currentTimePreview.toISOString())}</strong></span>
+                  <span>Standar Input: <strong>{toApiDate(currentTimePreview)}</strong></span>
+                </div>
+              </div>
+
+              {/* Timezone Options */}
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-bold text-slate-700 block">Pilih Zona Waktu Operasional:</label>
+                <div className="grid grid-cols-1 gap-2.5">
+                  {INDONESIAN_TIMEZONES.map((tz) => {
+                    const isSelected = timezone === tz.id;
+                    return (
+                      <div
+                        key={tz.id}
+                        onClick={() => setTimezone(tz.id)}
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                          isSelected
+                            ? 'border-cyan-500 bg-cyan-50/40 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="timezone"
+                            value={tz.id}
+                            checked={isSelected}
+                            onChange={() => setTimezone(tz.id)}
+                            className="mt-0.5 text-cyan-600 focus:ring-cyan-500"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800 text-xs">{tz.label}</span>
+                              <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold ${
+                                isSelected ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {tz.offset || 'Browser'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">{tz.regions}</p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span className="text-cyan-600 font-bold text-[10px] flex items-center gap-1 shrink-0">
+                            <Check size={14} /> Terpilih
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-[11px] leading-relaxed text-blue-800">
+                💡 <strong>Catatan:</strong> Jika Anda memilih <em>Otomatis</em>, sistem akan menyesuaikan waktu berdasarkan lokasi browser masing-masing staf. Jika memilih <em>WIB/WITA/WIT</em>, semua tampilan di sistem akan diseragamkan ke zona waktu tersebut.
+              </div>
+
+              <div className="pt-3 border-t flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-slate-900 border text-white font-bold rounded-lg transition-all hover:bg-slate-800 disabled:bg-slate-400"
+                >
+                  {isSaving ? 'Menyimpan...' : 'Terapkan Pengaturan Waktu'}
                 </button>
               </div>
             </form>

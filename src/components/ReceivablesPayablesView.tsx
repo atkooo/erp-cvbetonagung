@@ -163,6 +163,7 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
         await financeApi.cancelInvoice(id, reason);
         onTriggerNotification(`Berhasil membatalkan invoice ${number}`);
         setShowInvoiceDetail(false);
+        setInvoices(prev => prev.filter(inv => inv.id !== id));
         await fetchData();
       } catch (err) {
         onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
@@ -244,7 +245,10 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
   // Calculations
   const today = toApiDate();
 
-  const outstandingInvoices = invoices.filter(inv => inv.status !== 'Lunas');
+  const isInvoiceActive = (inv: Invoice) => inv.status !== 'cancelled' && inv.status !== 'Dibatalkan';
+  const isPayableActive = (p: SupplierPayable) => p.status !== 'Dibatalkan';
+
+  const outstandingInvoices = invoices.filter(inv => isInvoiceActive(inv) && inv.status !== 'Lunas');
   
   const overdueReceivables = outstandingInvoices
     .filter(inv => dateOnly(inv.dueDate) < today)
@@ -255,15 +259,15 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
     .reduce((sum, inv) => sum + (inv.total - inv.paidAmount), 0);
 
   const totalPayables = payables
-    .filter(p => p.status !== 'Lunas')
+    .filter(p => isPayableActive(p) && p.status !== 'Lunas')
     .reduce((sum, p) => sum + (p.amount - p.paidAmount), 0);
 
   const overduePayables = payables
-    .filter(p => p.status !== 'Lunas' && !!p.dueDate && dateOnly(p.dueDate) < today)
+    .filter(p => isPayableActive(p) && p.status !== 'Lunas' && !!p.dueDate && dateOnly(p.dueDate) < today)
     .reduce((sum, p) => sum + (p.amount - p.paidAmount), 0);
 
   const activePayables = payables
-    .filter(p => p.status !== 'Lunas' && (!p.dueDate || dateOnly(p.dueDate) >= today))
+    .filter(p => isPayableActive(p) && p.status !== 'Lunas' && (!p.dueDate || dateOnly(p.dueDate) >= today))
     .reduce((sum, p) => sum + (p.amount - p.paidAmount), 0);
 
   const netCashExposure = (activeReceivables + overdueReceivables) - totalPayables;
@@ -280,6 +284,7 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
 
   // AR Filter & Pagination
   const filteredAr = invoices.filter(inv => {
+    if (!isInvoiceActive(inv)) return false;
     const isTabMatch = receivablesTab === 'outstanding' ? inv.status !== 'Lunas' : inv.status === 'Lunas';
     const isSearchMatch = inv.invoiceNumber.toLowerCase().includes(arSearch.toLowerCase()) || 
                           inv.customerName.toLowerCase().includes(arSearch.toLowerCase());
@@ -290,6 +295,7 @@ export default function ReceivablesPayablesView({ initialMode, onTriggerNotifica
 
   // AP Filter & Pagination
   const filteredAp = payables.filter(p => {
+    if (!isPayableActive(p)) return false;
     const isTabMatch = payablesTab === 'outstanding' ? p.status !== 'Lunas' : p.status === 'Lunas';
     const isSearchMatch = p.payableNumber.toLowerCase().includes(apSearch.toLowerCase()) || 
                           p.supplierName.toLowerCase().includes(apSearch.toLowerCase());

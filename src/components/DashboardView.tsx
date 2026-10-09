@@ -391,9 +391,9 @@ export default function DashboardView({
           </div>
 
           {/* 3. Visual Charts & Bestseller Bento Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" style={{ isolation: "isolate" }}>
             {/* LEFT CARD: Chart Penjualan Bulanan (Custom SVG Area + Bar combo) */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-8 flex flex-col">
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-8 flex flex-col" style={{ isolation: "isolate" }}>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                 <div>
                   <h3 className="font-sans font-bold text-sm text-slate-800">
@@ -409,7 +409,10 @@ export default function DashboardView({
               </div>
 
               {/* Simple Custom Fully Responsive SVG Area Chart to avoid any Recharts crash */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/80 flex-1 flex flex-col justify-between min-h-55">
+              <div
+                className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex-1 flex flex-col justify-between min-h-[220px]"
+                style={{ isolation: "isolate" }}
+              >
                 <div className="flex justify-between items-center text-slate-400 text-[10px] font-mono border-b border-slate-200/50 pb-1 mb-2">
                   <span>Rp Juta</span>
                   <div className="flex gap-4">
@@ -424,23 +427,22 @@ export default function DashboardView({
                   </div>
                 </div>
 
-                {/* Custom visual chart drawing using simple highly scalable vectors and layout */}
-                <div className="flex-1 flex gap-3.5 items-end justify-between px-2 pt-2 relative">
-                  {/* Horizontal Help lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40">
-                    <div className="w-full border-t border-dashed border-slate-300" />
-                    <div className="w-full border-t border-dashed border-slate-300" />
-                    <div className="w-full border-t border-dashed border-slate-300" />
-                    <div className="w-full border-t border-dashed border-slate-200" />
+                {salesOrders.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center min-h-[150px] text-slate-400 text-xs py-8">
+                    <span className="font-mono text-[11px]">Belum ada data penjualan.</span>
                   </div>
-
-                  {/* Dynamically grouped sales data could be mapped here. Currently empty without dummy data. */}
-                  {salesOrders.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400 font-mono">
-                      Belum ada data penjualan.
+                ) : (
+                  /* Custom visual chart drawing using simple highly scalable vectors and layout */
+                  <div className="flex-1 flex gap-3.5 items-end justify-between px-2 pt-2 relative min-h-[150px]">
+                    {/* Horizontal Guide lines - menggunakan garis solid tipis tanpa opacity layer untuk mencegah bug GPU rasterization di tablet/Android */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                      <div className="w-full border-t border-slate-200/50" />
+                      <div className="w-full border-t border-slate-200/50" />
+                      <div className="w-full border-t border-slate-200/50" />
+                      <div className="w-full border-t border-slate-200/50" />
                     </div>
-                  ) : (
-                    chartData.map((data, idx) => {
+
+                    {chartData.map((data, idx) => {
                       const total = data.custom + data.general;
                       const customPct = total > 0 ? (data.custom / total) * 100 : 0;
                       const generalPct = total > 0 ? (data.general / total) * 100 : 0;
@@ -460,14 +462,14 @@ export default function DashboardView({
                           </span>
                         </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* RIGHT CARD: Produk Terlaris (Performance indicators list) */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-4 flex flex-col justify-between">
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-4 flex flex-col justify-between" style={{ isolation: "isolate" }}>
               <div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                   <h3 className="font-sans font-bold text-sm text-slate-800">

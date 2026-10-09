@@ -175,8 +175,10 @@ export default function ProjectsView({
     }
   };
 
-  // Find selected project
-  const project = projects.find((p) => p.id === selectedProjectId);
+  // Find selected project (excluding cancelled)
+  const project = projects.find(
+    (p) => p.id === selectedProjectId && p.status !== 'Dibatalkan'
+  );
   const projectWorkOrders = workOrders.filter(
     (wo) => wo.projectId === selectedProjectId,
   );
@@ -257,6 +259,8 @@ export default function ProjectsView({
       try {
         await projectsApi.cancelProject(id, reason);
         onTriggerNotification(`Berhasil membatalkan Proyek ${name}`);
+        setProjects(prev => prev.filter(p => p.id !== id));
+        onSelectProjectId(null);
         await loadData();
       } catch (err) {
         onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan Proyek');
@@ -494,8 +498,8 @@ export default function ProjectsView({
                         </p>
                         <span
                           className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black leading-none ${term.status === "Lunas"
-                              ? "bg-emerald-100 text-emerald-800 border"
-                              : "bg-rose-100 text-rose-800"
+                            ? "bg-emerald-100 text-emerald-800 border"
+                            : "bg-rose-100 text-rose-800"
                             }`}
                         >
                           {term.status}
@@ -582,12 +586,12 @@ export default function ProjectsView({
                           </strong>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${wo.stage === "QC"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : wo.stage === "Finishing"
-                                  ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                                  : wo.stage === "Curing"
-                                    ? "bg-amber-50 text-amber-700 border-amber-100"
-                                    : "bg-cyan-50 text-cyan-700 border-cyan-100"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                              : wo.stage === "Finishing"
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                                : wo.stage === "Curing"
+                                  ? "bg-amber-50 text-amber-700 border-amber-100"
+                                  : "bg-cyan-50 text-cyan-700 border-cyan-100"
                               }`}
                           >
                             {wo.stage}
@@ -705,6 +709,10 @@ export default function ProjectsView({
   }
 
   // 2. LIST VIEW DESIGN
+  const activeProjects = projects.filter(
+    (p) => p.status !== 'Dibatalkan'
+  );
+
   return (
     <div className="space-y-6">
       {/* Visual Top block */}
@@ -735,7 +743,7 @@ export default function ProjectsView({
         <div className="text-center py-12 text-slate-400 text-xs">
           Memuat daftar proyek...
         </div>
-      ) : projects.length === 0 ? (
+      ) : activeProjects.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center py-16">
           <AlertTriangle
             size={32}
@@ -751,7 +759,7 @@ export default function ProjectsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {projects.map((proj) => {
+          {activeProjects.map((proj) => {
             // Compute status colors
             const statusColors: any = {
               Survey: "bg-indigo-100 text-indigo-700 border-indigo-200",

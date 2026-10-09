@@ -62,6 +62,7 @@ const mapSupplierPayableStatus = (status: string): SupplierPayable['status'] => 
   const s = status.toLowerCase();
   if (s === 'paid' || s === 'lunas') return 'Lunas';
   if (s === 'partial' || s === 'partially_paid' || s === 'sebagian dibayar') return 'Sebagian Dibayar';
+  if (s === 'cancelled' || s === 'dibatalkan') return 'Dibatalkan';
   return 'Open';
 };
 

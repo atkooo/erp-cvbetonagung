@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Bell, User, AlertTriangle, ShieldCheck, Settings, LogOut, Check } from '@/src/components/icons';
+import { Bell, User, AlertTriangle, ShieldCheck, Settings, LogOut, Check, Clock } from '@/src/components/icons';
 import { VIEW_TITLES } from '../config/navigation';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { viewFromPath, pathForView } from '../routes';
 import { NotificationBell } from './NotificationBell';
+import { getTimezoneAbbr } from '../utils/date';
 
 export default function Topbar() {
   const { userRoleName, authUser, userEmail, handleLogout } = useAuth();
@@ -18,6 +19,19 @@ export default function Topbar() {
   const navigate = useNavigate();
   const currentView = viewFromPath(location.pathname) || 'dashboard';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [activeTz, setActiveTz] = useState<string>(() => getTimezoneAbbr());
+
+  useEffect(() => {
+    const handleTzUpdate = () => {
+      setActiveTz(getTimezoneAbbr());
+    };
+    window.addEventListener('erp_timezone_changed', handleTzUpdate);
+    window.addEventListener('erp_company_profile_updated', handleTzUpdate);
+    return () => {
+      window.removeEventListener('erp_timezone_changed', handleTzUpdate);
+      window.removeEventListener('erp_company_profile_updated', handleTzUpdate);
+    };
+  }, []);
 
   const appName = import.meta.env.VITE_APP_NAME || 'Lintara Digital';
 
@@ -32,6 +46,16 @@ export default function Topbar() {
 
       {/* Utilities */}
       <div className="flex items-center gap-4">
+        {/* Timezone display */}
+        <div 
+          onClick={() => navigate(pathForView('settings'))}
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-cyan-50 text-slate-700 hover:text-cyan-800 rounded-lg border border-slate-200 cursor-pointer transition select-none text-xs font-mono font-bold shadow-2xs"
+          title={`Zona Waktu: ${activeTz} (Klik untuk membuka Pengaturan)`}
+        >
+          <Clock size={13} className="text-cyan-600" />
+          <span>{activeTz}</span>
+        </div>
+
         {/* Role display */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg border border-slate-200">
           <ShieldCheck size={14} className="text-slate-500" />

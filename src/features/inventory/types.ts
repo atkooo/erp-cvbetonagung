@@ -48,7 +48,7 @@ export interface StockOpnameSessionDto {
   opname_number: string;
   warehouse_id: string;
   started_by: string | null;
-  status: 'draft' | 'in_progress' | 'completed' | 'canceled' | 'closed';
+  status: 'draft' | 'in_progress' | 'completed' | 'cancelled' | 'closed' | 'dibatalkan';
   started_at: string;
   closed_at: string | null;
   notes: string | null;
@@ -100,7 +100,7 @@ export interface StockOpnameSession {
   warehouseName: string;
   warehouseCode: string;
   startedBy: string;
-  status: 'draft' | 'in_progress' | 'completed' | 'canceled' | 'closed';
+  status: 'draft' | 'in_progress' | 'completed' | 'cancelled' | 'closed' | 'dibatalkan';
   startedAt: string;
   closedAt: string | null;
   notes: string;

@@ -55,7 +55,7 @@ export default function SalesOrderPicker({
       const data = await salesApi.getSalesOrders();
 
       // Only show open transactions (exclude completed and cancelled)
-      let filtered = data.filter((so) => so.status !== 'Selesai' && so.status !== 'Dibatalkan');
+      let filtered = data.filter((so) => so.status !== 'Selesai' && so.status !== 'Dibatalkan' && so.status !== 'cancelled');
 
       if (statusFilter) {
         filtered = filtered.filter((so) => so.status === statusFilter);

@@ -519,8 +519,11 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
     if (isConfirmed && reason) {
       try {
-        const updated = await productionApi.cancelWorkOrder(id, reason);
-        setWorkOrders(prev => prev.map(w => w.id === id ? updated : w));
+        await productionApi.cancelWorkOrder(id, reason);
+        setWorkOrders(prev => prev.filter(w => w.id !== id));
+        if (selectedWoId === id) {
+          setSelectedWoId(null);
+        }
         onTriggerNotification(`Berhasil membatalkan Work Order ${num}`);
       } catch (err) {
         onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan Work Order');
@@ -529,7 +532,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   };
 
   // Calculations & Filtering
-  const selectedWo = workOrders.find(wo => wo.id === selectedWoId);
+  const selectedWo = workOrders.find(wo => wo.id === selectedWoId && wo.stage !== 'cancelled' && wo.stage !== 'dibatalkan');
   const selectedCreateProduct = products.find(p => p.id === selectedProductId);
   const selectedCreateSalesOrder = salesOrders.find(so => so.id === selectedSalesOrderId);
   const selectedCreateSalesOrderItem = selectedSalesOrderItemIndex !== ''
@@ -537,16 +540,20 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     : undefined;
   const targetUnit = selectedCreateProduct?.unit || 'pcs';
 
-  const filteredWos = workOrders.filter(w =>
-    w.workOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (w.productName && w.productName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (w.sourceLabel && w.sourceLabel.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredWos = workOrders.filter(w => {
+    if (w.stage === 'cancelled' || w.stage === 'dibatalkan') return false;
+    return (
+      w.workOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (w.productName && w.productName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (w.sourceLabel && w.sourceLabel.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
 
-  // Perhitungan jumlah WO berdasarkan dokumen referensi
-  const countSoWos = workOrders.filter(w => w.salesOrderId || w.salesOrderNumber || w.sourceLabel?.startsWith('SO:')).length;
-  const countPrjWos = workOrders.filter(w => w.projectId || w.projectName).length;
-  const countSprWos = workOrders.filter(w => w.stockProductionRequestId || w.stockProductionRequestNumber || w.sourceLabel?.startsWith('SPR:')).length;
+  // Perhitungan jumlah WO berdasarkan dokumen referensi (tidak termasuk yang dibatalkan)
+  const activeWos = workOrders.filter(w => w.stage !== 'cancelled' && w.stage !== 'dibatalkan');
+  const countSoWos = activeWos.filter(w => w.salesOrderId || w.salesOrderNumber || w.sourceLabel?.startsWith('SO:')).length;
+  const countPrjWos = activeWos.filter(w => w.projectId || w.projectName).length;
+  const countSprWos = activeWos.filter(w => w.stockProductionRequestId || w.stockProductionRequestNumber || w.sourceLabel?.startsWith('SPR:')).length;
 
   // Mengelompokkan Work Order berdasarkan Dokumen Referensi Induk
   const groupedReferences = React.useMemo(() => {
@@ -917,32 +924,6 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   </div>
                 )}
               </div>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredWos.length)} dari {filteredWos.length} data
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-mono">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
-                    >
-                      Prev
-                    </button>
-                    <span className="text-slate-500 px-2">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Right: Detailed Monitor Card */}

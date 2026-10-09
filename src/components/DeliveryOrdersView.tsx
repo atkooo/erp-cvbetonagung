@@ -283,6 +283,7 @@ export default function DeliveryOrdersView({
         await salesApi.cancelDeliveryOrder(doId, reason);
         onTriggerNotification(`Surat Jalan ${doNum} berhasil dibatalkan`);
         setIsDetailModalOpen(false);
+        setDeliveryOrders((prev) => prev.filter((item) => item.id !== doId));
         fetchData();
       } catch (err: any) {
         console.error("Failed to cancel Delivery Order", err);
@@ -293,18 +294,21 @@ export default function DeliveryOrdersView({
   };
 
   // Filters & Counts
-  const totalDos = deliveryOrders.length;
-  const countReady = deliveryOrders.filter(
+  const activeDeliveryOrders = deliveryOrders.filter(
+    (d) => d.status !== 'cancelled' && (d.status as string) !== 'Dibatalkan'
+  );
+  const totalDos = activeDeliveryOrders.length;
+  const countReady = activeDeliveryOrders.filter(
     (d) => d.status === "ready_to_load",
   ).length;
-  const countShipped = deliveryOrders.filter(
+  const countShipped = activeDeliveryOrders.filter(
     (d) => d.status === "shipped",
   ).length;
-  const countReceived = deliveryOrders.filter(
+  const countReceived = activeDeliveryOrders.filter(
     (d) => d.status === "received",
   ).length;
 
-  const filteredOrders = deliveryOrders.filter(
+  const filteredOrders = activeDeliveryOrders.filter(
     (d) =>
       d.deliveryNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (d.customer?.name &&

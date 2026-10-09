@@ -5,6 +5,7 @@ export interface CompanyProfile {
   email: string;
   taxRate: number;
   logoUrl?: string;
+  timezone?: string;
 }
 
 const defaultProfile: CompanyProfile = {
@@ -13,6 +14,7 @@ const defaultProfile: CompanyProfile = {
   phone: '(031) 7328999',
   email: 'finance@betonagung.co.id',
   taxRate: 11,
+  timezone: 'Asia/Jakarta',
 };
 
 import { systemApi } from '../services/api';
@@ -39,7 +41,8 @@ export async function fetchCompanyProfileFromServer() {
         phone: settings['company.phone'],
         email: settings['company.email'],
         taxRate: settings['company.taxRate'] ? parseFloat(settings['company.taxRate']) : undefined,
-        logoUrl: settings['company.logoUrl']
+        logoUrl: settings['company.logoUrl'],
+        timezone: settings['company.timezone'] || undefined,
       };
       
       // Clean up undefined values
@@ -48,7 +51,11 @@ export async function fetchCompanyProfileFromServer() {
       const current = getCompanyProfile();
       const updated = { ...current, ...profile };
       localStorage.setItem('erp_company_profile', JSON.stringify(updated));
+      if (updated.timezone) {
+        localStorage.setItem('app_timezone', updated.timezone);
+      }
       window.dispatchEvent(new CustomEvent('erp_company_profile_updated'));
+      window.dispatchEvent(new CustomEvent('erp_timezone_changed', { detail: { timezone: updated.timezone } }));
     }
   } catch (err) {
     console.error('Failed to fetch company profile from server', err);
@@ -61,7 +68,11 @@ export async function saveCompanyProfile(profile: Partial<CompanyProfile>) {
   
   // Save to local storage first for immediate UI update
   localStorage.setItem('erp_company_profile', JSON.stringify(updated));
+  if (updated.timezone) {
+    localStorage.setItem('app_timezone', updated.timezone);
+  }
   window.dispatchEvent(new CustomEvent('erp_company_profile_updated'));
+  window.dispatchEvent(new CustomEvent('erp_timezone_changed', { detail: { timezone: updated.timezone } }));
   
   // Sync to server
   try {
@@ -71,7 +82,8 @@ export async function saveCompanyProfile(profile: Partial<CompanyProfile>) {
       'company.phone': updated.phone,
       'company.email': updated.email,
       'company.taxRate': updated.taxRate.toString(),
-      'company.logoUrl': updated.logoUrl || ''
+      'company.logoUrl': updated.logoUrl || '',
+      'company.timezone': updated.timezone || 'Asia/Jakarta'
     });
   } catch (err) {
     console.error('Failed to save company profile to server', err);

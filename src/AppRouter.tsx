@@ -203,6 +203,7 @@ const routes: RouteObject[] = [
       { path: 'purchasing/requests', element: lazyRoute(PurchaseRequestView) },
       { path: 'purchasing/rfq', element: lazyRoute(RfqView) },
       { path: 'purchasing/po', element: lazyRoute(PurchaseView) },
+      { path: 'purchasing/receiving', element: lazyRoute(InventoryView, { initialTab: 'masuk' }) },
       { path: 'purchasing/returns', element: lazyRoute(ReturnsView, { defaultType: 'supplier' }) },
 
       // Inventory

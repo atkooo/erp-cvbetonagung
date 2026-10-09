@@ -167,8 +167,9 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
       try {
         await financeApi.cancelInvoice(docId, reason);
         onTriggerNotification(`Sukses membatalkan Invoice ${docNum}.`);
-        await loadData();
+        setInvoices(prev => prev.filter(inv => inv.id !== docId));
         setSelectedInvoice(null);
+        await loadData();
       } catch (err) {
         onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan invoice');
       }
@@ -191,6 +192,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
   };
 
   const filteredInvoices = invoices.filter((inv) => {
+    if (inv.status === 'cancelled' || inv.status === 'Dibatalkan') return false;
     const matchesSearch =
       inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
       inv.customerName.toLowerCase().includes(search.toLowerCase());
@@ -366,22 +368,22 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
       {/* Visual Invoice Slate (Simulated Letterhead Receipt) */}
       {selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 font-sans text-xs overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-xl w-full flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 my-auto">
             {/* Stamp / Letter Header bg-slate-900 */}
-            <div className="p-6 bg-slate-950 text-white flex justify-between items-center relative">
-              <div className="space-y-1">
+            <div className="p-4 sm:p-5 bg-slate-950 text-white flex justify-between items-center relative shrink-0">
+              <div className="space-y-0.5">
                 <span className="text-[10px] tracking-wider uppercase font-mono text-cyan-400 font-bold">FAKTUR KOMERSIAL</span>
-                <h3 className="font-bold text-base">{companyProfile?.name?.toUpperCase() || "PERUSAHAAN"}</h3>
+                <h3 className="font-bold text-sm sm:text-base">{companyProfile?.name?.toUpperCase() || "PERUSAHAAN"}</h3>
                 <p className="text-[10px] text-slate-400">Penyedia Kubah Masjid & Precast Beton Jawa Timur</p>
               </div>
-              <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white p-1">
+              <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
                 <X size={20} />
               </button>
             </div>
 
             {/* Slip content */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto">
               {/* Header metadata row */}
               <div className="grid grid-cols-2 gap-4 text-[11px] leading-relaxed pb-4 border-b border-slate-100">
                 <div>
@@ -448,7 +450,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
             </div>
 
             {/* Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-end gap-2 text-xs font-bold">
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-end gap-2 text-xs font-bold shrink-0 sticky bottom-0 z-10 shadow-xs">
               {(selectedInvoice.status === 'Sebagian Dibayar' || selectedInvoice.status === 'Lunas') && (
                 <button
                   onClick={() => {

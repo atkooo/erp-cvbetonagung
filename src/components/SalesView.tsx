@@ -36,8 +36,8 @@ import { inventoryApi } from '../features/inventory/api';
 import { SkeletonTable, ErrorCard } from './Skeleton';
 import SearchableSelect from './SearchableSelect';
 import ProductPicker from './ProductPicker';
+import { toApiDate, formatDate } from '../utils/date';
 import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
-import { toApiDate } from '../utils/date';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -366,6 +366,7 @@ export default function SalesView({
 
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
+    if (doc?.status === 'cancelled' || doc?.status === 'Dibatalkan') return false;
     const docNum = (isQuotation ? (doc?.quoteNumber || doc?.quotationNumber) : doc?.orderNumber) || '';
     const customerName = doc?.customerName || doc?.customer?.name || '';
     const searchLower = (search || '').toLowerCase();
@@ -591,12 +592,14 @@ export default function SalesView({
       try {
         if (isQuotation) {
           await salesApi.cancelQuotation(docId, reason);
+          setQuotations(prev => prev.filter(q => q.id !== docId));
         } else {
           await salesApi.cancelSalesOrder(docId, reason);
+          setSalesOrders(prev => prev.filter(so => so.id !== docId));
         }
         onTriggerNotification(`Sukses membatalkan dokumen ${docNum}.`);
-        await loadData();
         setSelectedDoc(null);
+        await loadData();
       } catch (err) {
         onTriggerNotification(err instanceof Error ? err.message : 'Gagal membatalkan dokumen');
       }
@@ -669,7 +672,6 @@ export default function SalesView({
                 <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
                 <option value="Proses Pengiriman">Proses Pengiriman</option>
                 <option value="Selesai">Selesai</option>
-                <option value="Dibatalkan">Dibatalkan</option>
               </>
             )}
           </select>
@@ -741,8 +743,8 @@ export default function SalesView({
                             )}
                           </td>
                           <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{isQuotation ? doc.quotationDate : doc.orderDate}</td>
-                          {isQuotation && <td className="p-3.5 font-mono text-slate-450">{doc.validUntil}</td>}
+                          <td className="p-3.5 font-mono text-slate-500">{isQuotation ? formatDate(doc.quotationDate) : formatDate(doc.orderDate)}</td>
+                          {isQuotation && <td className="p-3.5 font-mono text-slate-450">{formatDate(doc.validUntil)}</td>}
                           <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
                           <td className="p-3.5">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || statusColors[getMonitoringStatus(doc)] || 'bg-slate-50'}`}>
@@ -823,12 +825,12 @@ export default function SalesView({
                 </div>
                 <div className="flex justify-between border-b border-slate-150 pb-2">
                   <span className="text-slate-400 font-medium">Tanggal Masuk:</span>
-                  <span className="font-mono">{isQuotation ? selectedDoc.quotationDate : selectedDoc.orderDate}</span>
+                  <span className="font-mono">{isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</span>
                 </div>
                 {isQuotation ? (
                   <div className="flex justify-between border-b border-slate-150 pb-2">
                     <span className="text-slate-400 font-medium">Berlaku Hingga:</span>
-                    <span className="font-mono text-amber-600">{selectedDoc.validUntil}</span>
+                    <span className="font-mono text-amber-600">{formatDate(selectedDoc.validUntil)}</span>
                   </div>
                 ) : (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) ? (
                   <div className="flex justify-between border-b border-slate-150 pb-2">
@@ -1130,8 +1132,8 @@ export default function SalesView({
                     {!isQuotation && (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) && (
                       <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</p>
                     )}
-                    <p className="text-sm">{docDateLabel}: {isQuotation ? selectedDoc.quotationDate : selectedDoc.orderDate}</p>
-                    {isQuotation && <p className="text-sm">Berlaku Hingga: {selectedDoc.validUntil}</p>}
+                    <p className="text-sm">{docDateLabel}: {isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</p>
+                    {isQuotation && <p className="text-sm">Berlaku Hingga: {formatDate(selectedDoc.validUntil)}</p>}
                   </div>
                 </div>
 

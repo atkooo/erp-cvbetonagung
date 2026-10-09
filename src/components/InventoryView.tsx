@@ -246,7 +246,9 @@ export default function InventoryView({
           if (currentPos.length > 0) {
             clearInterval(checkAndOpen);
             setTimeout(() => {
-              const po = currentPos.find((p) => p.id === pendingPoId);
+              const po = currentPos.find(
+                (p) => String(p.id) === String(pendingPoId) || p.poNumber === pendingPoId
+              );
               if (po) {
                 setInDoc(po.poNumber);
                 setShowInwardModal(true);

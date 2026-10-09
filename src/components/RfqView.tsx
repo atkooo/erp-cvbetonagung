@@ -276,7 +276,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
       try {
         setIsLoading(true);
         await purchasingApi.cancelRfq(id, reason);
-        setRfqs(prev => prev.map(rfq => rfq.id === id ? { ...rfq, status: 'cancelled' } : rfq));
+        setRfqs(prev => prev.filter(rfq => rfq.id !== id));
         Swal.fire('Berhasil', `RFQ ${rfqNumber} berhasil dibatalkan.`, 'success');
         onTriggerNotification(`RFQ ${rfqNumber} dibatalkan.`);
       } catch (err: any) {
@@ -290,6 +290,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
   };
 
   const filteredRfqs = rfqs.filter((r) => {
+    if (r.status === 'cancelled' || r.status === 'Dibatalkan') return false;
     const matchesSearch =
       r.rfqNumber.toLowerCase().includes(search.toLowerCase()) ||
       r.supplierName.toLowerCase().includes(search.toLowerCase());

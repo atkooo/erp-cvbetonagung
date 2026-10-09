@@ -170,7 +170,7 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
       try {
         setIsLoading(true);
         await purchasingApi.cancelPurchaseRequest(id, reason);
-        setPurchaseRequests(prev => prev.map(pr => pr.id === id ? { ...pr, status: 'cancelled' } : pr));
+        setPurchaseRequests(prev => prev.filter(pr => pr.id !== id));
         Swal.fire('Berhasil', `PR ${prNumber} berhasil dibatalkan.`, 'success');
         onTriggerNotification(`Purchase Request ${prNumber} dibatalkan.`);
       } catch (err: any) {
@@ -184,6 +184,7 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
   };
 
   const filteredPRs = purchaseRequests.filter((pr) => {
+    if (pr.status === 'cancelled' || pr.status === 'Dibatalkan') return false;
     const matchesSearch = pr.prNumber.toLowerCase().includes(search.toLowerCase()) || pr.department.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All' || pr.status === statusFilter;
     return matchesSearch && matchesStatus;

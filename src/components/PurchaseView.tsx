@@ -182,13 +182,12 @@ export default function PurchaseView({
   };
 
   const filteredPOs = purchaseOrders.filter((po) => {
+    if (po.status === 'Dibatalkan' || po.status === 'cancelled') return false;
     const matchesSearch =
       po.poNumber.toLowerCase().includes(search.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(search.toLowerCase());
     const matchesStatus =
-      statusFilter === "All"
-        ? po.status !== "Dibatalkan"
-        : po.status === statusFilter;
+      statusFilter === "All" || po.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -525,7 +524,6 @@ export default function PurchaseView({
             <option value="Dipesan">Dipesan (Ordered)</option>
             <option value="Diterima Sebagian">Diterima Sebagian</option>
             <option value="Diterima Penuh">Diterima Penuh</option>
-            <option value="Dibatalkan">Dibatalkan</option>
           </select>
         </div>
       </div>
