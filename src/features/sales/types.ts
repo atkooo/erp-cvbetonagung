@@ -164,6 +164,11 @@ export interface DeliveryOrderDto {
   received_at: string | null;
   receiver_name: string | null;
   status: 'draft' | 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+  shipping_type?: 'free' | 'paid';
+  shipping_cost?: string | number;
+  shipping_payment_type?: 'company' | 'customer_invoice' | 'cod';
+  driver_name?: string | null;
+  vehicle_number?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

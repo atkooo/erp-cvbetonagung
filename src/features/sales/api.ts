@@ -60,7 +60,17 @@ export const salesApi = {
 
   async createDeliveryOrder(
     salesOrderId: string,
-    payload: { delivery_number: string; delivery_date?: string; receiver_name?: string; notes?: string }
+    payload: {
+      delivery_number: string;
+      delivery_date?: string;
+      receiver_name?: string;
+      shipping_type?: 'free' | 'paid';
+      shipping_cost?: number;
+      shipping_payment_type?: 'company' | 'customer_invoice' | 'cod';
+      driver_name?: string;
+      vehicle_number?: string;
+      notes?: string;
+    }
   ): Promise<DeliveryOrder> {
     const response = await apiClient.post<{ data: DeliveryOrderDto }>(`/sales/sales-orders/${salesOrderId}/deliver`, payload);
     return mapDeliveryOrderFromDto(response.data);

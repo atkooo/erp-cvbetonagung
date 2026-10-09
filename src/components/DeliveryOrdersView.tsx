@@ -42,6 +42,14 @@ interface StorageLocationOption {
   };
 }
 
+const formatIDR = (val: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(val || 0);
+};
+
 export default function DeliveryOrdersView({
   onTriggerNotification,
   onNavigate,
@@ -82,6 +90,11 @@ export default function DeliveryOrdersView({
     new Date().toISOString().split("T")[0],
   );
   const [notes, setNotes] = useState("");
+  const [shippingType, setShippingType] = useState<'free' | 'paid'>('free');
+  const [shippingCost, setShippingCost] = useState<number>(0);
+  const [shippingPaymentType, setShippingPaymentType] = useState<'company' | 'customer_invoice' | 'cod'>('customer_invoice');
+  const [driverName, setDriverName] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
 
   // Ship DO form states
   const [selectedLocationId, setSelectedLocationId] = useState("");
@@ -145,6 +158,11 @@ export default function DeliveryOrdersView({
     setSelectedSalesOrderId("");
     setDeliveryDate(new Date().toISOString().split("T")[0]);
     setNotes("");
+    setShippingType('free');
+    setShippingCost(0);
+    setShippingPaymentType('customer_invoice');
+    setDriverName("");
+    setVehicleNumber("");
     setIsCreateModalOpen(true);
   };
 
@@ -159,6 +177,11 @@ export default function DeliveryOrdersView({
       const created = await salesApi.createDeliveryOrder(selectedSalesOrderId, {
         delivery_number: deliveryNumber,
         delivery_date: deliveryDate,
+        shipping_type: shippingType,
+        shipping_cost: shippingType === 'paid' ? Number(shippingCost) : 0,
+        shipping_payment_type: shippingType === 'paid' ? shippingPaymentType : 'company',
+        driver_name: driverName.trim() || undefined,
+        vehicle_number: vehicleNumber.trim() || undefined,
         notes,
       });
       setDeliveryOrders((prev) => [created, ...prev]);
@@ -444,6 +467,7 @@ export default function DeliveryOrdersView({
                     <th className="p-3.5">Sales Order</th>
                     <th className="p-3.5">Customer / Relasi</th>
                     <th className="p-3.5">Tanggal Muat</th>
+                    <th className="p-3.5">Ongkir & Armada</th>
                     <th className="p-3.5">Nama Penerima</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 pr-5 text-right">Aksi</th>
@@ -466,6 +490,29 @@ export default function DeliveryOrdersView({
                       </td>
                       <td className="p-3.5 font-mono text-slate-500">
                         {doOrder.deliveryDate}
+                      </td>
+                      <td className="p-3.5">
+                        <div className="space-y-0.5">
+                          {doOrder.shippingType === 'paid' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <span className="font-mono">{formatIDR(doOrder.shippingCost || 0)}</span>
+                              <span className="text-[9px] font-normal opacity-85">
+                                ({doOrder.shippingPaymentType === 'customer_invoice' ? 'Invoice' : doOrder.shippingPaymentType === 'cod' ? 'COD' : 'Perusahaan'})
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 size={10} />
+                              <span>Gratis Ongkir</span>
+                            </span>
+                          )}
+                          {(doOrder.driverName || doOrder.vehicleNumber) && (
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                              <Truck size={10} className="text-slate-400 shrink-0" />
+                              <span className="truncate max-w-[140px]">{doOrder.driverName || '-'}{doOrder.vehicleNumber ? ` (${doOrder.vehicleNumber})` : ''}</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3.5 font-mono text-slate-650 text-slate-700">
                         {doOrder.receiverName ? (
@@ -617,10 +664,34 @@ export default function DeliveryOrdersView({
                   </div>
                 </div>
                 <div className="w-1/3 border border-slate-200 rounded p-3 bg-slate-50">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Informasi Penerimaan:</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Informasi Pengiriman & Penerimaan:</p>
                   <div className="text-xs text-slate-800 space-y-1">
-                    <p className="flex justify-between"><span className="font-bold">Status:</span> <span className="uppercase font-bold text-slate-900">{printDo.status}</span></p>
+                    <p className="flex justify-between"><span className="font-bold">Status DO:</span> <span className="uppercase font-bold text-slate-900">{printDo.status}</span></p>
                     <p className="flex justify-between"><span className="font-bold">Penerima:</span> <span>{printDo.receiverName || "-"}</span></p>
+                    <p className="flex justify-between border-t border-slate-200 pt-1 mt-1">
+                      <span className="font-bold">Biaya Ongkir:</span>
+                      <span className="font-bold font-mono text-slate-900">
+                        {printDo.shippingType === 'paid' ? formatIDR(printDo.shippingCost || 0) : 'GRATIS ONGKIR'}
+                      </span>
+                    </p>
+                    {printDo.shippingType === 'paid' && (
+                      <p className="flex justify-between text-[10px] text-slate-600">
+                        <span>Penanggung:</span>
+                        <span>
+                          {printDo.shippingPaymentType === 'customer_invoice'
+                            ? 'Masuk Tagihan Invoice'
+                            : printDo.shippingPaymentType === 'cod'
+                            ? 'Bayar di Tempat (COD)'
+                            : 'Ditanggung Perusahaan'}
+                        </span>
+                      </p>
+                    )}
+                    {(printDo.driverName || printDo.vehicleNumber) && (
+                      <p className="flex justify-between border-t border-slate-200 pt-1 mt-1 text-[10px]">
+                        <span className="font-bold">Armada / Driver:</span>
+                        <span>{printDo.driverName || '-'}{printDo.vehicleNumber ? ` (${printDo.vehicleNumber})` : ''}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -677,10 +748,12 @@ export default function DeliveryOrdersView({
                 </div>
                 <div className="text-center text-sm">
                   <p className="text-slate-600 mb-20">Dikirim Oleh (Supir),</p>
-                  <p className="border-t border-slate-900 mx-6 pt-2 font-bold text-slate-800">
-                    &nbsp;
+                  <p className="border-t border-slate-900 mx-6 pt-2 font-bold text-slate-800 uppercase">
+                    {printDo.driverName || "SUPIR / PENGIRIM"}
                   </p>
-                  <p className="text-[10px] text-slate-500">Nama Terang & No. Kendaraan</p>
+                  <p className="text-[10px] text-slate-500">
+                    {printDo.vehicleNumber ? `No. Plat: ${printDo.vehicleNumber}` : 'Nama Terang & No. Kendaraan'}
+                  </p>
                 </div>
                 <div className="text-center text-sm">
                   <p className="text-slate-600 mb-20">Diterima Oleh,</p>
@@ -726,6 +799,50 @@ export default function DeliveryOrdersView({
                 <div>
                   <div className="text-slate-400 font-bold uppercase mb-1">Sales Order</div>
                   <div className="font-mono text-cyan-700 font-bold">{selectedDo.salesOrder?.orderNumber || "-"}</div>
+                </div>
+              </div>
+
+              {/* Info Pengiriman & Ongkos Kirim */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2">
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <Truck size={12} className="text-cyan-600" />
+                  <span>Informasi Pengiriman & Biaya Ongkir</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                  <div>
+                    <span className="text-slate-500 block">Status Ongkir:</span>
+                    <div className="font-bold mt-0.5">
+                      {selectedDo.shippingType === 'paid' ? (
+                        <span className="text-amber-700 font-mono font-bold bg-amber-100/60 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
+                          {formatIDR(selectedDo.shippingCost || 0)} (Berbayar)
+                        </span>
+                      ) : (
+                        <span className="text-emerald-700 font-bold bg-emerald-100/60 px-1.5 py-0.5 rounded border border-emerald-200 inline-block">
+                          Gratis Ongkir (Rp 0)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Metode Beban Ongkir:</span>
+                    <div className="font-bold text-slate-800 mt-0.5">
+                      {selectedDo.shippingType === 'paid'
+                        ? (selectedDo.shippingPaymentType === 'customer_invoice'
+                          ? 'Ditagih ke Tagihan Invoice'
+                          : selectedDo.shippingPaymentType === 'cod'
+                          ? 'Bayar di Tempat (COD)'
+                          : 'Ditanggung Perusahaan')
+                        : 'Ditanggung Perusahaan'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Supir / Driver:</span>
+                    <div className="font-bold text-slate-800 mt-0.5">{selectedDo.driverName || '-'}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">No. Plat Kendaraan:</span>
+                    <div className="font-mono font-bold text-slate-800 uppercase mt-0.5">{selectedDo.vehicleNumber || '-'}</div>
+                  </div>
                 </div>
               </div>
 
@@ -815,8 +932,8 @@ export default function DeliveryOrdersView({
       {/* Modal: Buat Surat Jalan */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Truck size={16} className="text-cyan-400" />
                 <h3 className="font-bold text-sm">Buat Surat Jalan</h3>
@@ -829,7 +946,7 @@ export default function DeliveryOrdersView({
               </button>
             </div>
 
-            <form onSubmit={handleCreateDo} className="p-5 space-y-4">
+            <form onSubmit={handleCreateDo} className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">
                   Pilih Sales Order *
@@ -880,6 +997,121 @@ export default function DeliveryOrdersView({
                 </div>
               </div>
 
+              {/* Pengaturan Ongkos Kirim & Ekspedisi */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Truck size={14} className="text-cyan-600" />
+                    <span>Ongkos Kirim (Biaya Pengiriman)</span>
+                  </label>
+                  <div className="flex bg-slate-200/80 p-0.5 rounded-lg text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShippingType('free');
+                        setShippingCost(0);
+                      }}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        shippingType === 'free'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Gratis Ongkir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShippingType('paid');
+                        if (shippingCost === 0) setShippingCost(150000);
+                      }}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        shippingType === 'paid'
+                          ? 'bg-cyan-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Berbayar (Ongkir)
+                    </button>
+                  </div>
+                </div>
+
+                {shippingType === 'paid' ? (
+                  <div className="space-y-3 pt-1 border-t border-slate-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700">
+                          Nominal Ongkir (Rp) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          required={shippingType === 'paid'}
+                          value={shippingCost}
+                          onChange={(e) => setShippingCost(Math.max(0, Number(e.target.value)))}
+                          placeholder="Contoh: 150000"
+                          className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-cyan-500 font-mono text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-700">
+                          Penanggung / Beban Ongkir *
+                        </label>
+                        <select
+                          value={shippingPaymentType}
+                          onChange={(e) => setShippingPaymentType(e.target.value as any)}
+                          className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-cyan-500 text-xs font-bold text-slate-700"
+                        >
+                          <option value="customer_invoice">Ditagih ke Tagihan Invoice</option>
+                          <option value="cod">Bayar di Tempat (COD / Tunai ke Driver)</option>
+                          <option value="company">Ditanggung Perusahaan (Subsidi)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic">
+                      {shippingPaymentType === 'customer_invoice'
+                        ? '* Biaya ongkir otomatis ditambahkan ke total invoice Sales Order pelanggan.'
+                        : shippingPaymentType === 'cod'
+                        ? '* Pelanggan membayar ongkir tunai saat armada tiba di lokasi serah terima (COD).'
+                        : '* Biaya ongkir disubsidi penuh oleh perusahaan.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 p-2 rounded-lg flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Pengiriman bebas biaya (Rp 0 / Ditanggung Perusahaan).</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Nama Supir / Driver
+                    </label>
+                    <input
+                      type="text"
+                      value={driverName}
+                      onChange={(e) => setDriverName(e.target.value)}
+                      placeholder="Misal: Pak Budi"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-cyan-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      No. Plat Kendaraan (Nopol)
+                    </label>
+                    <input
+                      type="text"
+                      value={vehicleNumber}
+                      onChange={(e) => setVehicleNumber(e.target.value)}
+                      placeholder="Misal: B 1234 CD"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-cyan-500 text-xs font-mono uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700">
                   Catatan Muatan / Pengiriman
@@ -893,7 +1125,7 @@ export default function DeliveryOrdersView({
                 />
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}

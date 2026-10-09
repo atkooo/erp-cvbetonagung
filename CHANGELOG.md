@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Dukungan Ongkos Kirim (Gratis & Berbayar) pada Surat Jalan (Delivery Order)**:
+  - Antarmuka pembuatan Surat Jalan (`DeliveryOrdersView.tsx`) dilengkapi toggle pilihan jenis pengiriman: **Gratis Ongkir** (Rp 0) dan **Berbayar (Ongkir)**.
+  - Untuk pengiriman berbayar, disediakan input nominal Rupiah dan pilihan metode beban:
+    - *Ditagih ke Tagihan Invoice* (otomatis mengakumulasikan biaya ongkir ke invoice Sales Order pelanggan),
+    - *Bayar di Tempat (COD / Tunai ke Supir)*,
+    - *Ditanggung Perusahaan (Subsidi)*.
+  - Input informasi armada & logistik: Nama Supir / Driver dan Nomor Plat Kendaraan (Nopol).
+  - Kolom **Ongkir & Armada** pada tabel daftar Surat Jalan dengan badge visual status ongkir dan nama supir/nopol.
+  - Kartu ringkasan informasi ongkos kirim dan supir/nopol pada modal detail Surat Jalan.
+  - Pembaruan layout cetak Surat Jalan (A4) yang mencantumkan status biaya ongkir, metode penanggung, serta nama supir dan nomor plat kendaraan pada kolom tanda tangan supir.
+  - Pembaruan tampilan detail dan cetak Invoice (`InvoicesView.tsx`) untuk menampilkan rincian baris biaya ongkos kirim pengiriman DO bila ada.
 - **Pengaturan Zona Waktu Dinamis Indonesia (`WIB`, `WITA`, `WIT`, `Auto`)**:
   - Sentralisasi formatting tanggal dan jam di `src/utils/date.ts` dengan konversi otomatis dari UTC database ke zona waktu lokal pengguna.
   - Penambahan tab **Zona Waktu & Jam** di `SettingsView.tsx` dengan pilihan WIB, WITA, WIT, atau Otomatis (Browser) serta live preview jam berdetak real-time.

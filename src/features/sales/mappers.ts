@@ -22,6 +22,11 @@ export const mapDeliveryOrderFromDto = (dto: DeliveryOrderDto): DeliveryOrder =>
   receivedAt: dto.received_at ? dto.received_at.split('T')[0] : '',
   receiverName: dto.receiver_name || '',
   status: mapDeliveryOrderStatus(dto.status),
+  shippingType: dto.shipping_type || 'free',
+  shippingCost: dto.shipping_cost != null ? Number(dto.shipping_cost) : 0,
+  shippingPaymentType: dto.shipping_payment_type || 'company',
+  driverName: dto.driver_name || null,
+  vehicleNumber: dto.vehicle_number || null,
   notes: dto.notes || '',
   items: (dto.items || []).map(item => ({
     id: item.id,

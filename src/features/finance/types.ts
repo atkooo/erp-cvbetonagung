@@ -8,6 +8,9 @@ export interface InvoiceDto {
   due_date: string;
   status: string; // Belum Lunas, Sebagian Dibayar, Lunas, Overdue
   notes: string | null;
+  subtotal?: number | string;
+  tax_amount?: number | string;
+  shipping_cost?: number | string;
   total: number;
   paid_amount: number;
   created_at: string;

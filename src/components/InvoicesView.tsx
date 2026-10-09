@@ -431,6 +431,19 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                 </div>
               </div>
 
+              {/* Shipping info if any */}
+              {selectedInvoice.shippingCost != null && selectedInvoice.shippingCost > 0 && (
+                <div className="flex justify-between items-center bg-cyan-50/70 p-3 border border-cyan-150 rounded-xl text-xs">
+                  <span className="font-bold text-cyan-900 flex items-center gap-1.5">
+                    <Truck size={13} className="text-cyan-600" />
+                    <span>Biaya Ongkos Kirim (Delivery Order)</span>
+                  </span>
+                  <span className="font-mono font-bold text-cyan-950">
+                    + {formatIDR(selectedInvoice.shippingCost)}
+                  </span>
+                </div>
+              )}
+
               {/* Receipt status stamp */}
               <div className="flex justify-between items-center bg-slate-50 p-4 border border-slate-100 rounded-xl">
                 <div>
@@ -639,21 +652,29 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={3} rowSpan={3} className="py-4 px-3 text-xs align-top border-r border-slate-200">
+                      <td colSpan={3} rowSpan={selectedInvoice.shippingCost && selectedInvoice.shippingCost > 0 ? 4 : 3} className="py-4 px-3 text-xs align-top border-r border-slate-200">
                         <div className="bg-amber-50 border border-amber-200 p-3 rounded text-amber-800 inline-block w-full max-w-sm">
                           <p className="font-bold mb-1">Status: {selectedInvoice.status.toUpperCase()}</p>
                           <p className="text-[10px]">Harap sertakan Nomor Invoice pada berita transfer pembayaran Anda.</p>
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase">Subtotal</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(selectedInvoice.total)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                        {formatIDR(selectedInvoice.subtotal ?? (selectedInvoice.total - (selectedInvoice.shippingCost || 0)))}
+                      </td>
                     </tr>
+                    {selectedInvoice.shippingCost != null && selectedInvoice.shippingCost > 0 && (
+                      <tr>
+                        <td className="py-2 px-3 text-right text-xs font-bold text-slate-600 uppercase">Ongkos Kirim (DO)</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-cyan-800">+ {formatIDR(selectedInvoice.shippingCost)}</td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase border-b border-slate-200">Telah Dibayar</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 border-b border-slate-200">- {formatIDR(selectedInvoice.paidAmount)}</td>
                     </tr>
                     <tr className="bg-slate-50">
-                      <td className="py-3 px-3 text-right text-xs font-black text-slate-900 uppercase">Total Tagihan</td>
+                      <td className="py-3 px-3 text-right text-xs font-black text-slate-900 uppercase">Sisa Tagihan</td>
                       <td className="py-3 px-3 text-right font-mono font-black text-slate-900 text-lg border-b-4 border-slate-900">
                         {formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}
                       </td>

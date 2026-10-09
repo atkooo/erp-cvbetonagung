@@ -136,6 +136,9 @@ export interface Invoice {
   date?: string; // mapped from invoice_date for display convenience
   invoiceDate: string;
   dueDate: string;
+  subtotal?: number;
+  taxAmount?: number;
+  shippingCost?: number;
   total: number;
   paidAmount: number;
   status: string; // Belum Lunas, Sebagian Dibayar, Lunas, Overdue
@@ -182,6 +185,11 @@ export interface DeliveryOrder {
   receivedAt: string | null;
   receiverName: string | null;
   status: 'draft' | 'ready_to_load' | 'shipped' | 'received' | 'cancelled';
+  shippingType?: 'free' | 'paid';
+  shippingCost?: number;
+  shippingPaymentType?: 'company' | 'customer_invoice' | 'cod';
+  driverName?: string | null;
+  vehicleNumber?: string | null;
   notes: string | null;
   salesOrder?: {
     id: string;
