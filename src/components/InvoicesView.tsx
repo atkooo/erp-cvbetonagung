@@ -321,10 +321,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                         </td>
                         <td className="p-3.5 pr-5 text-right font-bold">
                           <button
-                            onClick={() => {
-                              setSelectedInvoice(inv);
-                              onTriggerNotification(`Membuka Visual Invoice Slip ${inv.invoiceNumber}`);
-                            }}
+                            onClick={() => setSelectedInvoice(inv)}
                             className="px-2.5 py-1 text-[10px] bg-slate-50 hover:bg-slate-100 border rounded cursor-pointer transition-colors"
                           >
                             Lihat Slip

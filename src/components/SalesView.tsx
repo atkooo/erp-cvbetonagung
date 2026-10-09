@@ -23,7 +23,8 @@ import {
   Truck,
   Trash2,
   XCircle,
-  Factory
+  Factory,
+  Edit2
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage, apiClient } from '../services/api';
@@ -98,6 +99,9 @@ export default function SalesView({
   });
 
   // Form states to create a quick document
+  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
+  const [docDate, setDocDate] = useState('');
+  const [docValidUntil, setDocValidUntil] = useState('');
   const [custId, setCustId] = useState('');
   const [quotationId, setQuotationId] = useState('');
   const [documentNotes, setDocumentNotes] = useState('');
@@ -282,6 +286,59 @@ export default function SalesView({
     setFormItems(prev => [...prev, { productId: '', quantity: 1, unitPrice: 0 }]);
   };
 
+  const handleOpenAddForm = () => {
+    setEditingQuotation(null);
+    setQuotationId('');
+    setDocumentNotes('');
+    const d = new Date();
+    setDocDate(toApiDate(d));
+    const vu = new Date(d);
+    vu.setDate(d.getDate() + 14);
+    setDocValidUntil(toApiDate(vu));
+    setGlobalDiscountType('nominal');
+    setGlobalDiscountValue('');
+    resetFormItems();
+    setShowAddForm(true);
+  };
+
+  const handleOpenEditQuotation = (doc: Quotation) => {
+    setEditingQuotation(doc);
+    setCustId(doc.customerId || '');
+    setDocDate(doc.quotationDate ? doc.quotationDate.split('T')[0] : toApiDate(new Date()));
+    setDocValidUntil(doc.validUntil ? doc.validUntil.split('T')[0] : '');
+    setDocumentNotes(doc.notes || '');
+    setGlobalDiscountType(doc.globalDiscountType || 'nominal');
+    setGlobalDiscountValue(doc.globalDiscountValue ? String(doc.globalDiscountValue) : '');
+
+    if (doc.items && doc.items.length > 0) {
+      setFormItems(doc.items.map(item => {
+        const product = products.find(p => p.id === item.productId) || (item as any).product;
+        const unitPrice = item.price ?? item.unitPrice ?? (item as any).unit_price ?? product?.sellingPrice ?? 0;
+        return {
+          productId: item.productId || product?.id || '',
+          quantity: item.quantity,
+          unitPrice: Number(unitPrice),
+          unit: (product as any)?.unit?.code || (product as any)?.unit?.name || (product as any)?.unit || item.unit || '',
+          stock: (product as any)?.stock,
+          description: item.description,
+          isCustomizable: (product as any)?.isCustomizable,
+          pricingMethod: (product as any)?.pricingMethod,
+          pieceCount: item.pieceCount,
+          length: item.length,
+          discountAmount: item.discountAmount ? Number(item.discountAmount) : 0,
+        };
+      }));
+    } else {
+      resetFormItems();
+    }
+    setShowAddForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowAddForm(false);
+    setEditingQuotation(null);
+  };
+
   const removeFormItem = (index: number) => {
     setFormItems(prev => prev.length === 1 ? prev : prev.filter((_, itemIndex) => itemIndex !== index));
   };
@@ -389,7 +446,7 @@ export default function SalesView({
     setCurrentPage(1);
   }, [search, statusFilter]);
 
-  // Handle create document
+  // Handle create/update document
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     const validItems = formItems.filter(item => item.productId);
@@ -421,36 +478,62 @@ export default function SalesView({
 
     try {
       const d = new Date();
-      const todayStr = toApiDate(d);
-      const validUntil = new Date(d);
-      validUntil.setDate(d.getDate() + 14); // 14 days valid
+      const defaultDate = toApiDate(d);
+      const validUntilDefault = new Date(d);
+      validUntilDefault.setDate(d.getDate() + 14); // 14 days valid
+
+      const quotationDateStr = docDate || defaultDate;
+      const validUntilStr = docValidUntil || toApiDate(validUntilDefault);
 
       let successMsg = "";
       if (isQuotation) {
-        await salesApi.createQuotation({
-          customer_id: custId,
-          quotation_date: todayStr,
-          valid_until: toApiDate(validUntil),
-          notes: documentNotes.trim() || undefined,
-          items: validItems.map(item => ({
-            product_id: item.productId,
-            piece_count: item.pieceCount,
-            length: item.length,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            discount_amount: item.discountAmount,
-            description: item.description
-          })),
-          global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
-          global_discount_value: parseFloat(globalDiscountValue || '0'),
-          global_discount_amount: globalDiscountAmountComputed,
-        });
-        successMsg = `Sukses menerbitkan Quotation.`;
+        if (editingQuotation) {
+          await salesApi.updateQuotation(editingQuotation.id, {
+            customer_id: custId,
+            quotation_date: quotationDateStr,
+            valid_until: validUntilStr,
+            notes: documentNotes.trim() || undefined,
+            items: validItems.map(item => ({
+              product_id: item.productId,
+              piece_count: item.pieceCount,
+              length: item.length,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              discount_amount: item.discountAmount,
+              description: item.description
+            })),
+            global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
+            global_discount_value: parseFloat(globalDiscountValue || '0'),
+            global_discount_amount: globalDiscountAmountComputed,
+          });
+          const docNum = editingQuotation.quoteNumber || editingQuotation.quotationNumber;
+          successMsg = `Sukses memperbarui Penawaran ${docNum}.`;
+        } else {
+          await salesApi.createQuotation({
+            customer_id: custId,
+            quotation_date: quotationDateStr,
+            valid_until: validUntilStr,
+            notes: documentNotes.trim() || undefined,
+            items: validItems.map(item => ({
+              product_id: item.productId,
+              piece_count: item.pieceCount,
+              length: item.length,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              discount_amount: item.discountAmount,
+              description: item.description
+            })),
+            global_discount_type: globalDiscountAmountComputed > 0 ? globalDiscountType : null,
+            global_discount_value: parseFloat(globalDiscountValue || '0'),
+            global_discount_amount: globalDiscountAmountComputed,
+          });
+          successMsg = `Sukses menerbitkan Penawaran.`;
+        }
       } else {
         await salesApi.createSalesOrder({
           customer_id: custId,
           quotation_id: quotationId ? quotationId : undefined,
-          order_date: todayStr,
+          order_date: defaultDate,
           notes: documentNotes.trim() || undefined,
           items: validItems.map(item => ({
             product_id: item.productId,
@@ -474,9 +557,10 @@ export default function SalesView({
       onTriggerNotification(successMsg);
       await loadData();
     } catch (err) {
-      onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat dokumen');
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal menyimpan dokumen');
     }
 
+    setEditingQuotation(null);
     setQuotationId('');
     setDocumentNotes('');
     resetFormItems();
@@ -625,8 +709,8 @@ export default function SalesView({
         </div>
 
         <button
-          onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow hover:bg-slate-800 flex items-center gap-2 shrink-0"
+          onClick={handleOpenAddForm}
+          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow hover:bg-slate-800 flex items-center gap-2 shrink-0 cursor-pointer"
         >
           <Plus size={16} />
           <span>{isQuotation ? 'Buat Penawaran' : 'Rilis SO Baru'}</span>
@@ -753,11 +837,8 @@ export default function SalesView({
                           </td>
                           <td className="p-3.5 pr-5 text-right">
                             <button
-                              onClick={() => {
-                                setSelectedDoc(doc);
-                                onTriggerNotification(`Membuka rincian item dokumen ${docNum}`);
-                              }}
-                              className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2"
+                              onClick={() => setSelectedDoc(doc)}
+                              className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2 cursor-pointer"
                             >
                               Rincian Item
                             </button>
@@ -944,11 +1025,8 @@ export default function SalesView({
               <div className={(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) || (!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}>
                 {!(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && !(!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) && (
                   <button
-                    onClick={() => {
-                      onTriggerNotification(`Mencetak Print Preview dokumen ${isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}`);
-                      setTimeout(() => handlePrintAction(), 150);
-                    }}
-                    className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5"
+                    onClick={() => handlePrintAction()}
+                    className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Printer size={13} />
                     <span>Cetak PDF</span>
@@ -964,12 +1042,34 @@ export default function SalesView({
                       <FileCheck size={13} className="text-white" />
                       <span>Approve</span>
                     </button>
+                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'draft') && (
+                      <button
+                        onClick={() => {
+                          const doc = selectedDoc;
+                          setSelectedDoc(null);
+                          handleOpenEditQuotation(doc);
+                        }}
+                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Edit2 size={13} />
+                        <span>Edit Penawaran</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => setSelectedDoc(null)}
                       className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
                     >
                       Tutup
                     </button>
+                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
+                      <button
+                        onClick={() => handleCancelDocument(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
+                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <XCircle size={13} className="text-rose-500" />
+                        <span>Batalkan</span>
+                      </button>
+                    )}
                   </>
                 ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                   <div className="flex flex-col gap-2 w-full">
@@ -1242,9 +1342,15 @@ export default function SalesView({
             <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Receipt size={18} className="text-cyan-400" />
-                <h3 className="font-bold text-sm">Entri Memo {isQuotation ? 'Quotation Baru' : 'Sales Order Baru'}</h3>
+                <h3 className="font-bold text-sm">
+                  {editingQuotation
+                    ? `Edit Penawaran (${editingQuotation.quoteNumber || editingQuotation.quotationNumber})`
+                    : isQuotation
+                    ? 'Entri Penawaran Baru'
+                    : 'Entri Sales Order Baru'}
+                </h3>
               </div>
-              <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-white">
+              <button onClick={handleCloseForm} className="text-slate-400 hover:text-white cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1300,6 +1406,29 @@ export default function SalesView({
                     />
                   )}
                 </div>
+
+                {isQuotation && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Tgl Penawaran</label>
+                      <input
+                        type="date"
+                        value={docDate}
+                        onChange={(e) => setDocDate(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Berlaku Hingga</label>
+                      <input
+                        type="date"
+                        value={docValidUntil}
+                        onChange={(e) => setDocValidUntil(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-600 uppercase">
@@ -1561,8 +1690,10 @@ export default function SalesView({
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs font-bold mb-1">
-                  <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-100">Batal</button>
-                  <button type="submit" className="px-5 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-800">Penerbitan Draft</button>
+                  <button type="button" onClick={handleCloseForm} className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer">Batal</button>
+                  <button type="submit" className="px-5 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-800 cursor-pointer">
+                    {editingQuotation ? 'Simpan Perubahan' : 'Penerbitan Draft'}
+                  </button>
                 </div>
               </div>
             </form>
