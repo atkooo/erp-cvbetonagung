@@ -7,8 +7,8 @@ import {
 import { mapProjectFromDto, mapProjectBudgetItemFromDto } from './mappers';
 
 export const projectsApi = {
-  async getProjects(): Promise<Project[]> {
-    const response = await apiClient.get<{ data: ProjectDto[] }>('/projects/projects?include=customer,timelines,documents,termins,tasks');
+  async getProjects(perPage: number = 250): Promise<Project[]> {
+    const response = await apiClient.get<{ data: ProjectDto[] }>(`/projects/projects?include=customer,timelines,documents,termins,tasks&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapProjectFromDto);
   },
 

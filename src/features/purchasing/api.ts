@@ -9,8 +9,8 @@ import {
 import { mapGoodsReceiptNoteFromDto, mapPurchaseOrderFromDto, mapReturnFromDto, mapPurchaseRequestFromDto, mapRfqFromDto } from './mappers';
 
 export const purchasingApi = {
-  async getPurchaseRequests(): Promise<PurchaseRequest[]> {
-    const response = await apiClient.get<{ data: PurchaseRequestDto[] }>('/purchasing/purchase-requests?include=requester,items.product.unit');
+  async getPurchaseRequests(perPage: number = 250): Promise<PurchaseRequest[]> {
+    const response = await apiClient.get<{ data: PurchaseRequestDto[] }>(`/purchasing/purchase-requests?include=requester,items.product.unit&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapPurchaseRequestFromDto);
   },
 
@@ -71,8 +71,8 @@ export const purchasingApi = {
     return mapPurchaseRequestFromDto(response.data);
   },
 
-  async getPurchaseOrders(): Promise<PurchaseOrder[]> {
-    const response = await apiClient.get<{ data: PurchaseOrderDto[] }>('/purchasing/purchase-orders?include=supplier,items.product,salesOrder');
+  async getPurchaseOrders(perPage: number = 250): Promise<PurchaseOrder[]> {
+    const response = await apiClient.get<{ data: PurchaseOrderDto[] }>(`/purchasing/purchase-orders?include=supplier,items.product,salesOrder&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapPurchaseOrderFromDto);
   },
 
@@ -114,8 +114,8 @@ export const purchasingApi = {
     return mapPurchaseOrderFromDto(finalRes.data);
   },
 
-  async getGoodsReceiptNotes(): Promise<GoodsReceiptNote[]> {
-    const response = await apiClient.get<{ data: GoodsReceiptNoteDto[] }>('/purchasing/receivings');
+  async getGoodsReceiptNotes(perPage: number = 250): Promise<GoodsReceiptNote[]> {
+    const response = await apiClient.get<{ data: GoodsReceiptNoteDto[] }>(`/purchasing/receivings?sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapGoodsReceiptNoteFromDto);
   },
 
@@ -124,8 +124,8 @@ export const purchasingApi = {
     return mapGoodsReceiptNoteFromDto(response.data);
   },
 
-  async getReturns(): Promise<Return[]> {
-    const response = await apiClient.get<{ data: ReturnDto[] }>('/returns?include=customer,supplier,sales_order.invoices,purchase_order,items.product');
+  async getReturns(perPage: number = 250): Promise<Return[]> {
+    const response = await apiClient.get<{ data: ReturnDto[] }>(`/returns?include=customer,supplier,sales_order.invoices,purchase_order,items.product&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapReturnFromDto);
   },
 
@@ -155,8 +155,8 @@ export const purchasingApi = {
     await apiClient.delete(`/returns/${id}`);
   },
 
-  async getRfqs(): Promise<Rfq[]> {
-    const response = await apiClient.get<{ data: any[] }>('/purchasing/rfqs?include=supplier,items.product.unit,purchaseRequest');
+  async getRfqs(perPage: number = 250): Promise<Rfq[]> {
+    const response = await apiClient.get<{ data: any[] }>(`/purchasing/rfqs?include=supplier,items.product.unit,purchaseRequest&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapRfqFromDto);
   },
 

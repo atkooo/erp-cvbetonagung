@@ -10,7 +10,10 @@ import {
   Plus,
   Search,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   X,
   Clock,
   HelpCircle,
@@ -340,6 +343,19 @@ export default function DeliveryOrdersView({
         d.salesOrder.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+
+  const totalFilteredOrders = filteredOrders.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, itemsPerPage]);
+
   return (
     <div className="space-y-6 font-sans text-xs">
       {/* Banner */}
@@ -474,7 +490,7 @@ export default function DeliveryOrdersView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredOrders.map((doOrder) => (
+                  {paginatedOrders.map((doOrder) => (
                     <tr
                       key={doOrder.id}
                       className="hover:bg-slate-50/50 transition-colors"
@@ -614,6 +630,72 @@ export default function DeliveryOrdersView({
                 </tbody>
               </table>
             </div>
+
+            {!isLoading && totalFilteredOrders > 0 && (
+              <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value={10}>10 per halaman</option>
+                    <option value={15}>15 per halaman</option>
+                    <option value={25}>25 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={100}>100 per halaman</option>
+                  </select>
+                  <span className="text-slate-300">|</span>
+                  <span>
+                    Menampilkan <strong className="text-slate-800">{startIndex + 1}</strong> - <strong className="text-slate-800">{Math.min(startIndex + itemsPerPage, totalFilteredOrders)}</strong> dari <strong className="text-slate-800">{totalFilteredOrders}</strong> surat jalan
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 font-mono text-xs">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safePage <= 1}
+                    className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                    title="Halaman Pertama"
+                  >
+                    <ChevronsLeft size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Sebelumnya</span>
+                  </button>
+
+                  <div className="px-3 py-1 font-bold text-slate-700 text-xs">
+                    {safePage} / {totalPages}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  >
+                    <span>Selanjutnya</span>
+                    <ChevronRight size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safePage >= totalPages}
+                    className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                    title="Halaman Terakhir"
+                  >
+                    <ChevronsRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

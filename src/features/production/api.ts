@@ -17,9 +17,9 @@ import {
 
 export const productionApi = {
   // Work Orders
-  async getWorkOrders(): Promise<ProductionWorkOrder[]> {
+  async getWorkOrders(perPage: number = 250): Promise<ProductionWorkOrder[]> {
     const response = await apiClient.get<{ data: ProductionWorkOrderDto[] }>(
-      '/production/work-orders?include=product,salesOrder,project,logs.employee'
+      `/production/work-orders?include=product,salesOrder,project,logs.employee&sort=-created_at&per_page=${perPage}`
     );
     return response.data.map(mapWorkOrderFromDto);
   },
@@ -74,9 +74,9 @@ export const productionApi = {
   },
 
   // Bill of Materials (BOM)
-  async getBoms(): Promise<Bom[]> {
+  async getBoms(perPage: number = 250): Promise<Bom[]> {
     const response = await apiClient.get<{ data: BomDto[] }>(
-      '/production/boms?include=product,items.componentProduct,items.unit'
+      `/production/boms?include=product,items.componentProduct,items.unit&sort=-created_at&per_page=${perPage}`
     );
     return response.data.map(mapBomFromDto);
   },
@@ -102,8 +102,8 @@ export const productionApi = {
   },
 
   // Stock Production Requests (SPR)
-  async getStockProductionRequests(): Promise<any[]> {
-    const response = await apiClient.get<any>('/production/stock-production-requests');
+  async getStockProductionRequests(perPage: number = 250): Promise<any[]> {
+    const response = await apiClient.get<any>(`/production/stock-production-requests?sort=-created_at&per_page=${perPage}`);
     const items = response.data || [];
     return items.map(mapStockProductionRequestFromDto);
   },

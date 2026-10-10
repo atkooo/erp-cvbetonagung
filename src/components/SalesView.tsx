@@ -14,7 +14,10 @@ import {
   Plus,
   Receipt,
   Printer,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   TrendingUp,
   X,
   CreditCard,
@@ -437,14 +440,16 @@ export default function SalesView({
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15;
-  const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const totalDocs = filteredDocs.length;
+  const totalPages = Math.max(1, Math.ceil(totalDocs / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
   const paginatedDocs = filteredDocs.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, itemsPerPage]);
 
   // Handle create/update document
   const handleCreateDocument = async (e: React.FormEvent) => {
@@ -639,7 +644,7 @@ export default function SalesView({
 
     if (result.isConfirmed) {
       try {
-        await salesApi.updateSalesOrder(docId, { status: 'approved' });
+        await salesApi.approveSalesOrder(docId);
         onTriggerNotification(`Sukses menyetujui Sales Order ${docNum}.`);
         await loadData();
 
@@ -852,28 +857,67 @@ export default function SalesView({
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2 px-2">
-              <div className="text-[10px] text-slate-400 font-mono">
-                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredDocs.length)} dari {filteredDocs.length} data
-              </div>
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+          {!isLoading && totalDocs > 0 && (
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
+                <span>Tampilkan:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
                 >
-                  Prev
-                </button>
-                <span className="text-slate-500 px-2">
-                  Page {currentPage} of {totalPages}
+                  <option value={10}>10 per halaman</option>
+                  <option value={15}>15 per halaman</option>
+                  <option value={25}>25 per halaman</option>
+                  <option value={50}>50 per halaman</option>
+                  <option value={100}>100 per halaman</option>
+                </select>
+                <span className="text-slate-300">|</span>
+                <span>
+                  Menampilkan <strong className="text-slate-800">{startIndex + 1}</strong> - <strong className="text-slate-800">{Math.min(startIndex + itemsPerPage, totalDocs)}</strong> dari <strong className="text-slate-800">{totalDocs}</strong> {isQuotation ? 'penawaran' : 'sales order'}
                 </span>
+              </div>
+
+              <div className="flex items-center gap-1 font-mono text-xs">
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage <= 1}
+                  className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                  title="Halaman Pertama"
                 >
-                  Next
+                  <ChevronsLeft size={14} />
+                </button>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Sebelumnya</span>
+                </button>
+
+                <div className="px-3 py-1 font-bold text-slate-700 text-xs">
+                  {safePage} / {totalPages}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                >
+                  <span>Selanjutnya</span>
+                  <ChevronRight size={14} />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage >= totalPages}
+                  className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                  title="Halaman Terakhir"
+                >
+                  <ChevronsRight size={14} />
                 </button>
               </div>
             </div>
@@ -1108,23 +1152,30 @@ export default function SalesView({
                         if (prod.procurementType === 'purchase' || prod.procurement_type === 'purchase') return false;
                         return prod.procurementType === 'manufacture' || prod.procurement_type === 'manufacture' || prod.type === 'finished_good';
                       }) ? (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
-                              onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
-                              if (res?.data && res.data.length > 0 && onNavigate) {
-                                onNavigate('production-work-orders');
+                        selectedDoc.status === 'Draft' || selectedDoc.status === 'draft' ? (
+                          <div className="w-full py-2 px-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-[11px] font-medium flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            <span>Sales Order masih Draft. Setujui (Approve) terlebih dahulu sebelum mengirim ke Antrian Produksi (WO).</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
+                                onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
+                                if (res?.data && res.data.length > 0 && onNavigate) {
+                                  onNavigate('production-work-orders');
+                                }
+                              } catch (err) {
+                                onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
                               }
-                            } catch (err) {
-                              onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
-                            }
-                          }}
-                          className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Factory size={13} className="text-indigo-600" />
-                          <span>Kirim ke Antrian Produksi (WO)</span>
-                        </button>
+                            }}
+                            className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Factory size={13} className="text-indigo-600" />
+                            <span>Kirim ke Antrian Produksi (WO)</span>
+                          </button>
+                        )
                       ) : (
                         <div className="w-full py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-[11px] font-medium flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />

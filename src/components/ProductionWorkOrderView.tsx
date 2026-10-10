@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Factory, Plus, Search, CheckCircle2, X, Clock, HelpCircle,
   FileText, Send, Check, UserCheck, Calendar, Clipboard, AlertCircle, Trash2,
-  Package, Building2, Warehouse, ChevronRight, ChevronDown, Layers
+  Package, Building2, Warehouse, ChevronLeft, ChevronRight, ChevronDown, Layers
 } from '@/src/components/icons';
 import SearchableSelect from './SearchableSelect';
 import { authStorage, apiClient } from '../services/api';
@@ -659,6 +659,17 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
     return groups;
   }, [filteredWos, referenceFilter]);
 
+  const [sidebarPage, setSidebarPage] = useState(1);
+  const [sidebarItemsPerPage, setSidebarItemsPerPage] = useState(10);
+  const totalGroups = groupedReferences.length;
+  const totalSidebarPages = Math.max(1, Math.ceil(totalGroups / sidebarItemsPerPage));
+  const safeSidebarPage = Math.min(sidebarPage, totalSidebarPages);
+  const paginatedGroups = groupedReferences.slice((safeSidebarPage - 1) * sidebarItemsPerPage, safeSidebarPage * sidebarItemsPerPage);
+
+  useEffect(() => {
+    setSidebarPage(1);
+  }, [searchQuery, referenceFilter, sidebarItemsPerPage]);
+
   // Group counts
   const getWoStatus = (wo: ProductionWorkOrder) => {
     // 1. Fulfilled target
@@ -851,7 +862,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
               </div>
 
               <div className="overflow-y-auto flex-1 p-3 space-y-3 bg-slate-50/40">
-                {groupedReferences.map((group) => {
+                {paginatedGroups.map((group) => {
                   const Icon = group.badgeIcon;
                   return (
                     <div key={group.key} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
@@ -924,6 +935,48 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   </div>
                 )}
               </div>
+
+              {!isLoading && totalGroups > 0 && (
+                <div className="p-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <span>Tampilkan:</span>
+                    <select
+                      value={sidebarItemsPerPage}
+                      onChange={(e) => {
+                        setSidebarItemsPerPage(Number(e.target.value));
+                        setSidebarPage(1);
+                      }}
+                      className="bg-white border border-slate-200 rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 cursor-pointer"
+                    >
+                      <option value={5}>5 grup</option>
+                      <option value={10}>10 grup</option>
+                      <option value={20}>20 grup</option>
+                      <option value={50}>50 grup</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setSidebarPage((p) => Math.max(1, p - 1))}
+                      disabled={safeSidebarPage <= 1}
+                      className="p-1 px-1.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft size={12} />
+                    </button>
+                    <span className="px-1 text-slate-700 font-bold">
+                      {safeSidebarPage}/{totalSidebarPages}
+                    </span>
+                    <button
+                      onClick={() => setSidebarPage((p) => Math.min(totalSidebarPages, p + 1))}
+                      disabled={safeSidebarPage >= totalSidebarPages}
+                      className="p-1 px-1.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                      title="Halaman Selanjutnya"
+                    >
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Detailed Monitor Card */}

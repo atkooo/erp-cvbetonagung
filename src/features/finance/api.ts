@@ -4,8 +4,8 @@ import { InvoiceDto, PaymentDto, SupplierPayableDto, SupplierPayable, AccountDto
 import { mapInvoiceFromDto, mapPaymentFromDto, mapSupplierPayableFromDto } from './mappers';
 
 export const financeApi = {
-  async getInvoices(): Promise<Invoice[]> {
-    const response = await apiClient.get<{ data: InvoiceDto[] }>('/finance/billing');
+  async getInvoices(perPage: number = 250): Promise<Invoice[]> {
+    const response = await apiClient.get<{ data: InvoiceDto[] }>(`/finance/billing?sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapInvoiceFromDto);
   },
 
@@ -19,8 +19,8 @@ export const financeApi = {
     return mapPaymentFromDto(response.data);
   },
 
-  async getPayments(): Promise<Payment[]> {
-    const response = await apiClient.get<{ data: PaymentDto[] }>('/finance/cashier');
+  async getPayments(perPage: number = 250): Promise<Payment[]> {
+    const response = await apiClient.get<{ data: PaymentDto[] }>(`/finance/cashier?sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapPaymentFromDto);
   },
 
@@ -32,8 +32,8 @@ export const financeApi = {
     return mapPaymentFromDto(response.data);
   },
 
-  async getSupplierPayables(): Promise<SupplierPayable[]> {
-    const response = await apiClient.get<{ data: SupplierPayableDto[] }>('/finance/account-payable');
+  async getSupplierPayables(perPage: number = 250): Promise<SupplierPayable[]> {
+    const response = await apiClient.get<{ data: SupplierPayableDto[] }>(`/finance/account-payable?sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapSupplierPayableFromDto);
   },
 
@@ -42,8 +42,8 @@ export const financeApi = {
     return mapSupplierPayableFromDto(response.data);
   },
 
-  async getAccounts(): Promise<AccountDto[]> {
-    const response = await apiClient.get<{ data: AccountDto[] }>('/finance/accounts');
+  async getAccounts(perPage: number = 250): Promise<AccountDto[]> {
+    const response = await apiClient.get<{ data: AccountDto[] }>(`/finance/accounts?sort=-created_at&per_page=${perPage}`);
     return response.data;
   },
 

@@ -5,8 +5,8 @@ import { QuotationDto, SalesOrderDto, DeliveryOrderDto, CreateQuotationDto, Crea
 import { mapQuotationFromDto, mapSalesOrderFromDto, mapDeliveryOrderFromDto } from './mappers';
 
 export const salesApi = {
-  async getQuotations(): Promise<Quotation[]> {
-    const response = await apiClient.get<{ data: QuotationDto[] }>('/sales/quotations?include=customer,items.product.unit');
+  async getQuotations(perPage: number = 250): Promise<Quotation[]> {
+    const response = await apiClient.get<{ data: QuotationDto[] }>(`/sales/quotations?include=customer,items.product.unit&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapQuotationFromDto);
   },
 
@@ -34,8 +34,8 @@ export const salesApi = {
     return mapSalesOrderFromDto(response.data);
   },
 
-  async getSalesOrders(source?: 'pos' | 'erp'): Promise<SalesOrder[]> {
-    let url = '/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items&sort=-created_at';
+  async getSalesOrders(source?: 'pos' | 'erp', perPage: number = 250): Promise<SalesOrder[]> {
+    let url = `/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items&sort=-created_at&per_page=${perPage}`;
     if (source) {
       url += `&source=${source}`;
     }
@@ -53,8 +53,8 @@ export const salesApi = {
     return mapSalesOrderFromDto(response.data);
   },
 
-  async getDeliveryOrders(): Promise<DeliveryOrder[]> {
-    const response = await apiClient.get<{ data: DeliveryOrderDto[] }>('/sales/delivery-orders?include=salesOrder,customer,items.product.unit');
+  async getDeliveryOrders(perPage: number = 250): Promise<DeliveryOrder[]> {
+    const response = await apiClient.get<{ data: DeliveryOrderDto[] }>(`/sales/delivery-orders?include=salesOrder,customer,items.product.unit&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapDeliveryOrderFromDto);
   },
 

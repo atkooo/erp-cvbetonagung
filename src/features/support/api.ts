@@ -43,14 +43,14 @@ export const mapDocumentExportFromDto = (dto: DocumentExportDto): DocumentExport
 
 export const supportApi = {
   // Audit Logs
-  async getAuditLogs(): Promise<AuditLog[]> {
-    const response = await apiClient.get<{ data: AuditLogDto[] }>('/support/audit-logs?include=user,role&sort=-created_at');
+  async getAuditLogs(perPage: number = 250): Promise<AuditLog[]> {
+    const response = await apiClient.get<{ data: AuditLogDto[] }>(`/support/audit-logs?include=user,role&sort=-created_at&per_page=${perPage}`);
     return response.data.map(mapAuditLogFromDto);
   },
 
   // Reminders
-  async getReminders(): Promise<Reminder[]> {
-    const response = await apiClient.get<{ data: ReminderDto[] }>('/support/reminders?include=assignedTo&sort=-schedule_at');
+  async getReminders(perPage: number = 250): Promise<Reminder[]> {
+    const response = await apiClient.get<{ data: ReminderDto[] }>(`/support/reminders?include=assignedTo&sort=-schedule_at&per_page=${perPage}`);
     return response.data.map(mapReminderFromDto);
   },
 
@@ -62,8 +62,8 @@ export const supportApi = {
   },
 
   // Document Exports
-  async getDocumentExports(): Promise<DocumentExport[]> {
-    const response = await apiClient.get<{ data: DocumentExportDto[] }>('/support/document-exports?include=exportedBy&sort=-exported_at');
+  async getDocumentExports(perPage: number = 250): Promise<DocumentExport[]> {
+    const response = await apiClient.get<{ data: DocumentExportDto[] }>(`/support/document-exports?include=exportedBy&sort=-exported_at&per_page=${perPage}`);
     return response.data.map(mapDocumentExportFromDto);
   },
 
