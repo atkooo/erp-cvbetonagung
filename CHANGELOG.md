@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Pembeda Metode Pengadaan Produk (Sourcing Type: Produksi Pabrik vs Beli Jadi Supplier)**:
+  - Penambahan input **Metode Pengadaan (Sourcing)** pada modal Tambah / Edit Produk (`ProductsView.tsx`):
+    - *Produksi Pabrik Sendiri (Work Order)* (`manufacture`): Diteruskan ke Work Order (SPK Pabrik) saat Sales Order diapprove.
+    - *Beli Jadi dari Pemasok / Trading (Purchase Order)* (`purchase`): Pengadaan dari supplier, tidak membuat Work Order.
+  - Tampilan visual badge pengadaan pada tabel master produk: `Produksi Pabrik (WO)`, `Beli Jadi (PO)`, dan `Bahan Baku (PO)`.
+  - Tampilan visual badge pengadaan pada setiap rincian item Sales Order di detail modal (`SalesView.tsx`) agar pengguna dapat langsung mengidentifikasi item fabrikasi pabrik vs item beli jadi/supplier.
+  - Pembaruan types (`Product`, `ProductDto`, `ProductFormData`, `SalesOrder.items.product`, `Quotation.items.product`) dan mappers produk serta penjualan.
 - **Dukungan Ongkos Kirim (Gratis & Berbayar) pada Surat Jalan (Delivery Order)**:
   - Antarmuka pembuatan Surat Jalan (`DeliveryOrdersView.tsx`) dilengkapi toggle pilihan jenis pengiriman: **Gratis Ongkir** (Rp 0) dan **Berbayar (Ongkir)**.
   - Untuk pengiriman berbayar, disediakan input nominal Rupiah dan pilihan metode beban:

@@ -49,6 +49,7 @@ export interface ProductDto {
   status: 'active' | 'inactive';
   discount_id?: string | null;
   discount?: Discount | null;
+  procurement_type?: 'manufacture' | 'purchase';
   category?: CategoryDto;
   unit?: UnitDto;
   created_at?: string;
@@ -70,4 +71,5 @@ export interface ProductFormData {
   min_stock: number;
   status?: 'active' | 'inactive';
   discount_id?: string | null;
+  procurement_type?: 'manufacture' | 'purchase';
 }

@@ -75,6 +75,8 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
       id: item.product.id || '',
       sku: item.product.sku || '',
       name: item.product.name || 'Unknown Product',
+      type: (item.product as any).type,
+      procurementType: (item.product as any).procurement_type || ((item.product as any).type === 'raw_material' ? 'purchase' : 'manufacture'),
       unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
     } : undefined
   }))
@@ -113,6 +115,8 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
       id: item.product.id || '',
       sku: item.product.sku || '',
       name: item.product.name || 'Unknown Product',
+      type: item.product.type,
+      procurementType: item.product.procurement_type || (item.product.type === 'raw_material' ? 'purchase' : 'manufacture'),
       unit: item.product.unit ? { code: item.product.unit.code || '', name: item.product.unit.name || '' } : undefined
     } : undefined
   })),

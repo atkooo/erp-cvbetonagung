@@ -48,6 +48,7 @@ export default function ProductsView({
   const [type, setType] = useState<
     "raw_material" | "finished_good" | "service"
   >("finished_good");
+  const [procurementType, setProcurementType] = useState<"manufacture" | "purchase">("manufacture");
   const [isCustomizable, setIsCustomizable] = useState(false);
   const [pricingMethod, setPricingMethod] = useState<
     "per_item" | "per_dimension"
@@ -183,6 +184,7 @@ export default function ProductsView({
     setIsCustomizable(false);
     setPricingMethod("per_item");
     setType("finished_good");
+    setProcurementType("manufacture");
     setCategory(categories[0]?.id || "");
     setCostPrice(0);
     setSellingPrice(0);
@@ -214,6 +216,7 @@ export default function ProductsView({
     setIsCustomizable(product.isCustomizable || false);
     setPricingMethod(product.pricingMethod || "per_item");
     setType(product.type || "finished_good");
+    setProcurementType(product.procurementType || (product.type === "raw_material" ? "purchase" : "manufacture"));
 
     const selectedCategory = categories.find(
       (cat) => cat.name === product.category,
@@ -290,6 +293,7 @@ export default function ProductsView({
         is_customizable: isCustomizable,
         pricing_method: pricingMethod,
         type,
+        procurement_type: type === "raw_material" ? "purchase" : procurementType,
         category_id: category, // The category select holds the ID
         unit_id: unit,
         cost_price: costPrice,
@@ -555,6 +559,21 @@ export default function ProductsView({
                       </td>
                       <td className="p-3.5">
                         <div className="font-bold text-slate-800">{p.name}</div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {p.type === 'raw_material' ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                              Bahan Baku (PO)
+                            </span>
+                          ) : p.procurementType === 'purchase' ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                              Beli Jadi (PO)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                              Produksi Pabrik (WO)
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3.5">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-semibold border border-slate-200/50">
@@ -744,6 +763,9 @@ export default function ProductsView({
                         onChange={(e) => {
                           const newType = e.target.value as any;
                           setType(newType);
+                          if (newType === "raw_material") {
+                            setProcurementType("purchase");
+                          }
                           const newFilteredUnits = visibleUnits.filter(
                             (u) =>
                               !u.type || u.type === "both" || u.type === newType,
@@ -766,17 +788,47 @@ export default function ProductsView({
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-600 uppercase">
-                        Deskripsi / Nama Varian Item
+                        Metode Pengadaan (Sourcing)
                       </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Contoh: Kubah GRC / Tiang Serut"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
-                      />
+                      <select
+                        value={type === "raw_material" ? "purchase" : procurementType}
+                        disabled={type === "raw_material"}
+                        onChange={(e) => setProcurementType(e.target.value as any)}
+                        className={`w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-medium ${
+                          type === "raw_material"
+                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            : "bg-slate-50 focus:bg-white text-slate-800"
+                        }`}
+                      >
+                        <option value="manufacture">
+                          Produksi Pabrik Sendiri (Work Order)
+                        </option>
+                        <option value="purchase">
+                          Beli Jadi dari Pemasok / Trading (Purchase Order)
+                        </option>
+                      </select>
+                      <p className="text-[9px] text-slate-400 leading-tight">
+                        {type === "raw_material"
+                          ? "Bahan baku selalu diadakan melalui pembelian pemasok (PO)."
+                          : procurementType === "purchase"
+                            ? "SO tidak membuat Work Order. Stok diadakan lewat PO ke pemasok."
+                            : "SO otomatis menerbitkan Work Order (SPK) untuk diproduksi pabrik."}
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Deskripsi / Nama Varian Item
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Kubah GRC / Tiang Serut"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3.5">

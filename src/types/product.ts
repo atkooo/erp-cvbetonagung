@@ -25,6 +25,7 @@ export interface Product {
   imageUrl?: string | null;
   discountId?: string | null;
   discount?: Discount | null;
+  procurementType?: 'manufacture' | 'purchase';
 }
 
 export interface Category {

@@ -971,7 +971,24 @@ export default function SalesView({
                             </div>
                           )}
                           <div>
-                            <strong className="text-slate-800 block mb-1 leading-snug">{item.product?.name || item.productName || 'Unknown Product'}</strong>
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                              <strong className="text-slate-800 leading-snug">
+                                {item.product?.name || item.productName || 'Unknown Product'}
+                              </strong>
+                              {item.product?.type === 'raw_material' ? (
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                                  Bahan Baku (PO)
+                                </span>
+                              ) : item.product?.procurementType === 'purchase' ? (
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                                  Beli Jadi (PO)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                                  Produksi Pabrik (WO)
+                                </span>
+                              )}
+                            </div>
                             {item.description && (
                               <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
                             )}
@@ -1084,23 +1101,36 @@ export default function SalesView({
                     ) : null}
 
                     {!isQuotation && selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
-                            onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
-                            if (onNavigate) {
-                              onNavigate('production-work-orders');
+                      (selectedDoc.items || []).some((item: any) => {
+                        const prod = item.product;
+                        if (!prod) return false;
+                        if (prod.type === 'raw_material' || prod.type === 'service') return false;
+                        if (prod.procurementType === 'purchase' || prod.procurement_type === 'purchase') return false;
+                        return prod.procurementType === 'manufacture' || prod.procurement_type === 'manufacture' || prod.type === 'finished_good';
+                      }) ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
+                              onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
+                              if (res?.data && res.data.length > 0 && onNavigate) {
+                                onNavigate('production-work-orders');
+                              }
+                            } catch (err) {
+                              onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
                             }
-                          } catch (err) {
-                            onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
-                          }
-                        }}
-                        className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Factory size={13} className="text-indigo-600" />
-                        <span>Kirim ke Antrian Produksi (WO)</span>
-                      </button>
+                          }}
+                          className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Factory size={13} className="text-indigo-600" />
+                          <span>Kirim ke Antrian Produksi (WO)</span>
+                        </button>
+                      ) : (
+                        <div className="w-full py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-[11px] font-medium flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                          <span>Barang Beli Jadi (PO) — tidak masuk antrian SPK pabrik.</span>
+                        </div>
+                      )
                     )}
 
 

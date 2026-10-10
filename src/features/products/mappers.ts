@@ -39,6 +39,7 @@ export const mapProductFromDto = (dto: ProductDto, units: UnitDto[] = []): Produ
   imageUrl: getFileUrl(dto.image_url),
   discountId: dto.discount_id || null,
   discount: dto.discount || null,
+  procurementType: dto.procurement_type || (dto.type === 'raw_material' ? 'purchase' : 'manufacture'),
 });
 
 
@@ -47,6 +48,7 @@ export const mapProductToDto = (formData: ProductFormData): Partial<ProductDto> 
   sku: formData.sku,
   qr_value: formData.qr_value || null,
   type: formData.type || 'finished_good',
+  procurement_type: formData.procurement_type || (formData.type === 'raw_material' ? 'purchase' : 'manufacture'),
   name: formData.name,
   is_customizable: formData.is_customizable,
   pricing_method: formData.pricing_method,

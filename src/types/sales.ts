@@ -25,6 +25,8 @@ export interface SalesOrder {
       id: string;
       sku: string;
       name: string;
+      type?: string;
+      procurementType?: 'manufacture' | 'purchase';
       unit?: {
         code: string;
         name: string;
@@ -87,6 +89,8 @@ export interface Quotation {
       id: string;
       sku: string;
       name: string;
+      type?: string;
+      procurementType?: 'manufacture' | 'purchase';
       unit?: {
         code: string;
         name: string;

@@ -58,6 +58,8 @@ export interface SalesOrderItemDto {
     id: string;
     sku: string;
     name: string;
+    type?: string;
+    procurement_type?: 'manufacture' | 'purchase';
     unit?: {
       code: string;
       name: string;
