@@ -48,29 +48,33 @@ export const NotificationBell: React.FC = () => {
 
     fetchNotifications();
 
-    // Listen to real-time events
-    echo.private(`App.Models.User.${authUser.id}`)
-      .notification((notification: any) => {
-        // Notification is broadcasted via Reverb
-        const newNotif: NotificationItem = {
-          id: notification.id,
-          type: notification.type,
-          data: {
-            title: notification.title,
-            message: notification.message,
+    // Listen to real-time events if WebSocket/Echo is configured
+    if (echo) {
+      echo.private(`App.Models.User.${authUser.id}`)
+        .notification((notification: any) => {
+          // Notification is broadcasted via Reverb
+          const newNotif: NotificationItem = {
+            id: notification.id,
             type: notification.type,
-            link: notification.link,
-          },
-          created_at: new Date().toISOString(),
-          read_at: null
-        };
-        
-        setNotifications(prev => [newNotif, ...prev]);
-        setUnreadCount(prev => prev + 1);
-      });
+            data: {
+              title: notification.title,
+              message: notification.message,
+              type: notification.type,
+              link: notification.link,
+            },
+            created_at: new Date().toISOString(),
+            read_at: null
+          };
+          
+          setNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        });
+    }
 
     return () => {
-      echo.leave(`App.Models.User.${authUser.id}`);
+      if (echo) {
+        echo.leave(`App.Models.User.${authUser.id}`);
+      }
     };
   }, [authUser]);
 

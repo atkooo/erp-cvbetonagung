@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Konfigurasi Setup Production cPanel Shared Hosting (`app.cvbetonagung.com`)**:
+  - `frontend/.env.production`: Mengatur `VITE_API_BASE_URL="https://api.cvbetonagung.com/api"` dan `APP_URL="https://app.cvbetonagung.com"`.
+  - Build output terverifikasi siap deploy (`dist/`) lengkap dengan `.htaccess` URL rewrite untuk SPA routing di Apache cPanel.
 - **Penyembunyian Menu Sidebar Secara Dinamis Sesuai Izin Akses View (RBAC)**:
   - Menu sidebar kini otomatis disembunyikan jika role pengguna tidak memiliki izin akses (aksi `view` dengan `access_level` aktif), mencegah kemunculan pesan error *"Gagal Memuat Data - Akses ditolak untuk role akun ini"*.
   - Helper fungsi `hasViewAccess` di [`permissions.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/utils/permissions.ts) untuk memverifikasi hak akses `module`, `action: 'view'`, serta level hak akses (`read`, `edit`, `full`).
@@ -53,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Menambahkan relasi `productionWorkOrders` dan pemetaan `hasActiveWorkOrder` pada `types/sales.ts`, `features/sales/types.ts`, `features/sales/api.ts`, dan `features/sales/mappers.ts`.
 
 ### Fixed
+- **Perbaikan WebSocket Reverb Connection Failed di Lingkungan Hosting**:
+  - Mengubah konfigurasi [echo.ts](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/echo.ts) agar tidak lagi menggunakan hardcode `localhost:8080`, melainkan membaca konfigurasi `VITE_REVERB_*` secara dinamis.
+  - Menjadikan inisialisasi Laravel Echo bersifat opsional (null-safe): koneksi WebSocket hanya akan dijalankan jika kredensial `VITE_REVERB_APP_KEY` dan `VITE_REVERB_HOST` didefinisikan di environment, mencegah error `WebSocket connection to wss://localhost:8080 failed` di browser klien saat hosting production.
+  - Memperbarui [NotificationBell.tsx](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/NotificationBell.tsx) dengan pengecekan aman agar tetap berjalan mulus menggunakan REST API notifikasi jika WebSocket tidak aktif.
 - **Pembersihan Catatan Alert Box di Modal Sales Order (`SalesView.tsx`)**:
   - Menghapus kotak notifikasi/catatan draft (`Sales Order masih Draft...`) dan catatan beli jadi pada tombol aksi modal detail Sales Order untuk menjaga antarmuka tetap bersih dan ringkas. Tombol "Kirim ke Antrian Produksi (WO)" kini hanya muncul saat Sales Order sudah bukan draft dan memiliki item produksi pabrik.
 - **Modal Faktur & Pembayaran Scrollable (`InvoicesView.tsx` & `PaymentsView.tsx`)**:
