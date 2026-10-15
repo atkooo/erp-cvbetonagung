@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Penyembunyian Menu Sidebar Secara Dinamis Sesuai Izin Akses View (RBAC)**:
+  - Menu sidebar kini otomatis disembunyikan jika role pengguna tidak memiliki izin akses (aksi `view` dengan `access_level` aktif), mencegah kemunculan pesan error *"Gagal Memuat Data - Akses ditolak untuk role akun ini"*.
+  - Helper fungsi `hasViewAccess` di [`permissions.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/utils/permissions.ts) untuk memverifikasi hak akses `module`, `action: 'view'`, serta level hak akses (`read`, `edit`, `full`).
+  - Pembaruan mapping `requiredModule` pada [`navigation.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/config/navigation.tsx) untuk seluruh item menu ERP (termasuk `dashboard`, `report-center`, `reminders`, `audit-logs`, dan `users`).
+  - Penyesuaian `NavigateToHome` pada [`AppRouter.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/AppRouter.tsx) yang secara cerdas mengarahkan pengguna ke menu modul pertama yang diizinkan apabila role tidak memiliki hak akses ke Dashboard Utama.
 - **Pembeda Metode Pengadaan Produk (Sourcing Type: Produksi Pabrik vs Beli Jadi Supplier)**:
   - Penambahan input **Metode Pengadaan (Sourcing)** pada modal Tambah / Edit Produk (`ProductsView.tsx`):
     - *Produksi Pabrik Sendiri (Work Order)* (`manufacture`): Diteruskan ke Work Order (SPK Pabrik) saat Sales Order diapprove.
@@ -41,9 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Integrasi Antrian Produksi & Auto WO dari Sales Order**:
   - Tampilan visual label "Auto WO dari SO" dan status "Antrian (Draft)" pada daftar Work Order di `ProductionWorkOrderView.tsx`.
   - Tombol aksi cepat "Mulai Produksi" untuk memajukan SPK dari antrian draft langsung ke tahap "Cetak & Curing".
-  - Tombol "Kirim ke Antrian Produksi (WO)" pada detail Sales Order di `SalesView.tsx`.
+- **Pembatasan Duplikasi Pengiriman Antrian Work Order (WO)**:
+  - Pada `SalesView.tsx`, tombol "Kirim ke Antrian Produksi (WO)" kini hanya muncul jika Sales Order belum memiliki Work Order aktif (`!selectedDoc.hasActiveWorkOrder`).
+  - Jika Work Order sudah pernah digenerate dan statusnya masih aktif (belum dibatalkan), tombol tidak akan ditampilkan agar tidak terjadi pembuatan data ganda.
+  - Jika seluruh Work Order terkait sebelumnya telah dibatalkan (`cancelled`), tombol secara otomatis kembali muncul sehingga pengguna dapat membuat Work Order baru bila diperlukan.
+  - Menambahkan relasi `productionWorkOrders` dan pemetaan `hasActiveWorkOrder` pada `types/sales.ts`, `features/sales/types.ts`, `features/sales/api.ts`, dan `features/sales/mappers.ts`.
 
 ### Fixed
+- **Pembersihan Catatan Alert Box di Modal Sales Order (`SalesView.tsx`)**:
+  - Menghapus kotak notifikasi/catatan draft (`Sales Order masih Draft...`) dan catatan beli jadi pada tombol aksi modal detail Sales Order untuk menjaga antarmuka tetap bersih dan ringkas. Tombol "Kirim ke Antrian Produksi (WO)" kini hanya muncul saat Sales Order sudah bukan draft dan memiliki item produksi pabrik.
 - **Modal Faktur & Pembayaran Scrollable (`InvoicesView.tsx` & `PaymentsView.tsx`)**:
   - Memperbaiki modal slip detail faktur penagihan (Billing) yang terpotong pada layar atau tab kecil dengan menerapkan `max-h-[92vh]`, `overflow-y-auto` pada isi faktur, serta membuat bilah tombol aksi (termasuk tombol "Lanjut Terima Pembayaran") berstatus `sticky`/`shrink-0` di bagian bawah modal.
 - **Perbaikan Missing Imports pada `SalesView.tsx`**:

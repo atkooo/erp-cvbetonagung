@@ -7,6 +7,7 @@ import type { ViewType, AuthPermission } from '../types';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { viewFromPath, pathForView } from '../routes';
+import { hasViewAccess } from '../utils/permissions';
 
 const isItemActive = (item: NavigationItem, currentView: ViewType) => {
   return item.view === currentView || Boolean(item.activeViews?.includes(currentView));
@@ -33,21 +34,7 @@ export default function Sidebar() {
   };
 
   const hasAccessToModule = (requiredModule?: string, itemView?: string) => {
-    if (userRoleCode === 'admin') return true;
-
-    if (userRoleCode === 'employee') {
-      if (itemView === 'dashboard') return false;
-      if (!requiredModule) return true;
-      return requiredModule === 'employees';
-    }
-
-    if (!requiredModule) return true;
-
-    if (!userPermissions || userPermissions.length === 0) {
-      return false;
-    }
-
-    return userPermissions.some(p => p.module === requiredModule || p.module === '*');
+    return hasViewAccess(userRoleCode, userPermissions, requiredModule, itemView);
   };
 
   const renderNavItem = (item: NavigationItem) => {

@@ -97,6 +97,13 @@ export interface SalesOrderDto {
     status: string;
   }[];
   deliveryOrders?: DeliveryOrderDto[];
+  productionWorkOrders?: {
+    id: string;
+    work_order_number: string;
+    stage: string;
+    product_id: string;
+    sales_order_item_id?: string | null;
+  }[];
 }
 
 export interface CreateQuotationDto {

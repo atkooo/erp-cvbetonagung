@@ -4,6 +4,8 @@ import { useAuth } from './contexts/AuthContext';
 import { pathForView } from './routes';
 import type { ViewType } from './types';
 import ErrorBoundaryClass, { RouteErrorFallback } from './components/ErrorBoundary';
+import { NAVIGATION_SECTIONS } from './config/navigation';
+import { hasViewAccess } from './utils/permissions';
 
 /**
  * Robust lazy import wrapper with automatic retry on chunk load failure.
@@ -160,8 +162,23 @@ const lazyRoute = (Component: React.ComponentType<any>, props?: any) => (
 );
 
 const NavigateToHome = () => {
-  const { userRoleCode } = useAuth();
-  return <Navigate to={userRoleCode === 'employee' ? '/employee-dashboard' : '/dashboard'} replace />;
+  const { userRoleCode, authUser } = useAuth();
+  if (userRoleCode === 'employee') {
+    return <Navigate to="/employee-dashboard" replace />;
+  }
+
+  const userPermissions = authUser?.role?.permissions;
+  if (!hasViewAccess(userRoleCode, userPermissions, 'reports', 'dashboard')) {
+    for (const section of NAVIGATION_SECTIONS) {
+      for (const item of section.items) {
+        if (hasViewAccess(userRoleCode, userPermissions, item.requiredModule, item.view)) {
+          return <Navigate to={pathForView(item.view)} replace />;
+        }
+      }
+    }
+  }
+
+  return <Navigate to="/dashboard" replace />;
 };
 
 const routes: RouteObject[] = [

@@ -62,6 +62,7 @@ const MODULE_LABELS: Record<string, string> = {
   users: 'User Akun',
   roles: 'Role & Permission',
   employees: 'Karyawan',
+  payroll: 'Penggajian (Payroll)',
   customers: 'Customer',
   suppliers: 'Supplier',
   products: 'Produk',

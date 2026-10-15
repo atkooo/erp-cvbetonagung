@@ -55,6 +55,14 @@ export interface SalesOrder {
     status?: string;
   }[];
   deliveryOrders?: DeliveryOrder[];
+  productionWorkOrders?: {
+    id: string;
+    workOrderNumber?: string;
+    stage?: string;
+    productId?: string;
+    salesOrderItemId?: string | null;
+  }[];
+  hasActiveWorkOrder?: boolean;
 }
 
 export interface Quotation {

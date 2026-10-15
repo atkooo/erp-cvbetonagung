@@ -126,8 +126,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
   {
     id: "core",
     items: [
-      { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard },
-      // { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard, requiredModule: "employees" },
+      { view: "dashboard", label: "Dashboard Utama", icon: LayoutDashboard, requiredModule: "reports" },
+      { view: "employee-dashboard", label: "Portal Karyawan", icon: LayoutDashboard },
     ],
   },
   {
@@ -417,6 +417,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "report-center",
         label: "Semua Laporan",
         icon: TrendingUp,
+        requiredModule: "reports",
       },
     ],
   },
@@ -484,7 +485,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "users",
         label: "Master User / Akun",
         icon: Users,
-        requiredModule: "roles",
+        requiredModule: "users",
       },
       {
         view: "approval-workflows",
@@ -496,9 +497,14 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         view: "audit-logs",
         label: "Audit Log",
         icon: FileSearch,
-        requiredModule: "settings",
-      }, // or audit log module
-      { view: "reminders", label: "Reminder Center", icon: BellRing },
+        requiredModule: "reports",
+      },
+      {
+        view: "reminders",
+        label: "Reminder Center",
+        icon: BellRing,
+        requiredModule: "reports",
+      },
     ],
   },
   {

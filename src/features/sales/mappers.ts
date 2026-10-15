@@ -128,7 +128,17 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     total: Number(inv.total || 0),
     status: inv.status
   })),
-  deliveryOrders: (dto.deliveryOrders || (dto as any).delivery_orders || []).map(mapDeliveryOrderFromDto)
+  deliveryOrders: (dto.deliveryOrders || (dto as any).delivery_orders || []).map(mapDeliveryOrderFromDto),
+  hasActiveWorkOrder: (dto.productionWorkOrders || (dto as any).production_work_orders || []).some(
+    (wo: any) => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
+  ),
+  productionWorkOrders: (dto.productionWorkOrders || (dto as any).production_work_orders || []).map((wo: any) => ({
+    id: wo.id,
+    workOrderNumber: wo.work_order_number,
+    stage: wo.stage,
+    productId: wo.product_id,
+    salesOrderItemId: wo.sales_order_item_id,
+  }))
 });
 
 // Helper for status translations
