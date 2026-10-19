@@ -59,23 +59,153 @@ const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; t
 };
 
 const MODULE_LABELS: Record<string, string> = {
-  users: 'User Akun',
-  roles: 'Role & Permission',
-  employees: 'Karyawan',
+  // Coarse / Legacy modules
+  users: 'Manajemen User & Akun',
+  roles: 'Role & Hak Akses (RBAC)',
+  employees: 'Master Karyawan',
   payroll: 'Penggajian (Payroll)',
-  customers: 'Customer',
-  suppliers: 'Supplier',
-  products: 'Produk',
-  inventory: 'Inventory',
-  sales: 'Sales & Orders',
-  purchasing: 'Purchasing',
-  projects: 'Proyek',
-  finance: 'Finance',
-  production: 'Produksi',
-  approvals: 'Approval',
-  reports: 'Laporan',
-  settings: 'Pengaturan',
+  customers: 'Manajemen Customer (Pelanggan)',
+  suppliers: 'Manajemen Supplier (Pemasok)',
+  products: 'Master Produk Konstruksi',
+  warehouses: 'Master Gudang & Rak',
+  inventory: 'Inventory & Gudang (Umum)',
+  sales: 'Sales & Orders (Umum)',
+  purchasing: 'Purchasing & Pengadaan (Umum)',
+  projects: 'Manajemen Proyek (Umum)',
+  finance: 'Finance & Akuntansi (Umum)',
+  production: 'Produksi (Umum)',
+  approvals: 'Approval Workflow Center',
+  reports: 'Pusat Laporan Terpadu',
+  settings: 'Pengaturan Sistem ERP',
+
+  // Granular Sales & Orders
+  pos: 'Kasir (POS)',
+  quotations: 'Penawaran Harga (Quotation)',
+  sales_orders: 'Sales Order (SO)',
+  delivery_orders: 'Delivery Order (DO)',
+  sales_returns: 'Retur Penjualan',
+
+  // Granular Purchasing
+  purchase_requests: 'Purchase Request (PR)',
+  rfqs: 'Permintaan Penawaran (RFQ)',
+  purchase_orders: 'Purchase Order (PO)',
+  goods_receipts: 'Penerimaan Barang (GRN)',
+  purchase_returns: 'Retur Pembelian',
+
+  // Granular Inventory
+  inventory_stocks: 'Stok Produk',
+  incoming_goods: 'Penerimaan Barang Masuk',
+  outgoing_goods: 'Barang Keluar (Internal)',
+  stock_movements: 'Riwayat Pergerakan Stok',
+  berita_acara_gudang: 'Berita Acara Gudang (BAG)',
+  stock_opname: 'Stock Opname Gudang',
+  qr_products: 'Daftar Barcode Produk',
+  qr_scanner: 'Scanner Barcode',
+
+  // Granular Production & Projects
+  production_work_orders: 'Work Order Produksi (SPK)',
+  bom_costing: 'Bill of Materials & HPP',
+  project_budgeting: 'Budgeting & RAB Proyek',
+
+  // Granular Finance
+  accounts: 'Buku Kas & Bank',
+  cash_expense: 'Kas & Biaya Operasional',
+  invoices: 'Billing (Invoice Customer)',
+  payments: 'Kasir (Penerimaan Customer)',
+  accounts_receivable: 'Piutang Usaha (AR)',
+  accounts_payable: 'Hutang Usaha (AP)',
+  finance_reports: 'Laporan Keuangan & Omset',
+
+  // Granular HRD
+  attendance: 'Absensi & Kehadiran',
+  attendance_scanner: 'Scan Absensi (QR)',
+  leave: 'Pengajuan & Approval Cuti',
+  leave_types: 'Master Jenis Cuti',
+  employee_loans: 'Kasbon & Pinjaman Karyawan',
+
+  // Granular Control
+  audit_logs: 'Audit Log Aktivitas Sistem',
+  reminders: 'Reminder & Notifikasi',
 };
+
+const MODULE_CATEGORIES: Record<string, string> = {
+  // Sales
+  sales: 'sales',
+  pos: 'sales',
+  quotations: 'sales',
+  sales_orders: 'sales',
+  delivery_orders: 'sales',
+  sales_returns: 'sales',
+
+  // Purchasing
+  purchasing: 'purchasing',
+  purchase_requests: 'purchasing',
+  rfqs: 'purchasing',
+  purchase_orders: 'purchasing',
+  goods_receipts: 'purchasing',
+  purchase_returns: 'purchasing',
+
+  // Inventory
+  inventory: 'inventory',
+  inventory_stocks: 'inventory',
+  incoming_goods: 'inventory',
+  outgoing_goods: 'inventory',
+  stock_movements: 'inventory',
+  berita_acara_gudang: 'inventory',
+  stock_opname: 'inventory',
+  qr_products: 'inventory',
+  qr_scanner: 'inventory',
+
+  // Finance
+  finance: 'finance',
+  accounts: 'finance',
+  cash_expense: 'finance',
+  invoices: 'finance',
+  payments: 'finance',
+  accounts_receivable: 'finance',
+  accounts_payable: 'finance',
+  finance_reports: 'finance',
+
+  // Production & Projects
+  production: 'production_projects',
+  projects: 'production_projects',
+  production_work_orders: 'production_projects',
+  bom_costing: 'production_projects',
+  project_budgeting: 'production_projects',
+
+  // HRD
+  employees: 'hrd',
+  payroll: 'hrd',
+  attendance: 'hrd',
+  attendance_scanner: 'hrd',
+  leave: 'hrd',
+  leave_types: 'hrd',
+  employee_loans: 'hrd',
+
+  // Master & System
+  users: 'master_system',
+  roles: 'master_system',
+  customers: 'master_system',
+  suppliers: 'master_system',
+  products: 'master_system',
+  warehouses: 'master_system',
+  approvals: 'master_system',
+  reports: 'master_system',
+  settings: 'master_system',
+  audit_logs: 'master_system',
+  reminders: 'master_system',
+};
+
+const CATEGORIES = [
+  { id: 'all', label: 'Semua Modul' },
+  { id: 'sales', label: 'Sales & POS' },
+  { id: 'purchasing', label: 'Purchasing' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'production_projects', label: 'Produksi & Proyek' },
+  { id: 'hrd', label: 'HRD' },
+  { id: 'master_system', label: 'Master & Sistem' },
+];
 
 const ACTION_LABELS: Record<string, string> = {
   view: 'Lihat',
@@ -294,31 +424,37 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
     }
   };
 
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const selectedRole = roles.find(role => role.id === selectedRoleId) || roles[0];
   const moduleRows = Array.from(new Set(uniquePermissionsList.map(permission => permission.module)))
     .map((module) => ({
       module,
       label: getModuleLabel(module),
+      category: MODULE_CATEGORIES[module] || 'master_system',
       permissions: actionOrder.reduce<Record<string, Permission | undefined>>((acc, action) => {
         acc[action] = uniquePermissionsList.find(permission => permission.module === module && permission.action === action);
         return acc;
       }, {}),
     }))
-    .filter(row => (
-      row.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.module.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      actionOrder.some(action => getActionLabel(action).toLowerCase().includes(searchQuery.toLowerCase()))
-    ));
+    .filter(row => {
+      const matchesCategory = selectedCategory === 'all' || row.category === selectedCategory;
+      const matchesSearch = (
+        row.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        row.module.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        actionOrder.some(action => getActionLabel(action).toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+      return matchesCategory && matchesSearch;
+    });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 15;
   const totalPages = Math.ceil(moduleRows.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRows = moduleRows.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedRoleId]);
+  }, [searchQuery, selectedRoleId, selectedCategory]);
 
   const filteredRoles = roles.filter(r =>
     r.name.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
@@ -440,6 +576,27 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
               </div>
             </div>
 
+            {/* Category Filter Tabs */}
+            <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {CATEGORIES.map(cat => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1 rounded-md text-[11px] transition-colors whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-cyan-600 text-white font-bold shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white border border-slate-200'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {isLoading ? (
               <div className="flex justify-center py-24">
                 <RefreshCw className="animate-spin text-slate-400" size={24} />
@@ -456,10 +613,10 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[760px]">
+                <table className="w-full text-left border-collapse min-w-190">
                   <thead>
                     <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
-                      <th className="p-3.5 pl-5 min-w-[220px]">Modul</th>
+                      <th className="p-3.5 pl-5 min-w-55">Modul</th>
                       <th className="p-3.5 w-32 font-mono">Kode</th>
                       {actionOrder.map(action => (
                         <th key={action} className="p-3.5 text-center font-bold text-slate-700">
@@ -509,7 +666,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                                 value={level}
                                 onChange={(e) => handleAccessLevelChange(selectedRole, permission, e.target.value as any)}
                                 disabled={isCellUpdating || isLoading || isUpdating === `${selectedRole.id}-${row.module}-bulk`}
-                                className={`block w-[75px] mx-auto appearance-none text-center px-1 py-1 text-[10px] font-bold border rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 cursor-pointer ${level === 'full' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                className={`block w-18.75 mx-auto appearance-none text-center px-1 py-1 text-[10px] font-bold border rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 cursor-pointer ${level === 'full' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                   level === 'edit' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                     level === 'read' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
                                       'bg-slate-50 text-slate-500 border-slate-200'

@@ -27,7 +27,9 @@ import {
   Trash2,
   XCircle,
   Factory,
-  Edit2
+  Edit2,
+  CheckCircle2,
+  Clock,
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage, apiClient } from '../services/api';
@@ -374,7 +376,7 @@ export default function SalesView({
 
   const getMonitoringStatus = (doc: any) => {
     if (isQuotation) return doc.status;
-    
+
     const baseStatus = doc.status;
     if (['Draft', 'Dibatalkan', 'Ditolak'].includes(baseStatus)) {
       return baseStatus;
@@ -384,9 +386,9 @@ export default function SalesView({
     const invs = doc.invoices || [];
 
     let paidAmount = 0;
-    invs.forEach((i: any) => { 
+    invs.forEach((i: any) => {
       if (i.status !== 'cancelled' && i.status !== 'dibatalkan') {
-        paidAmount += Number(i.paidAmount || 0); 
+        paidAmount += Number(i.paidAmount || 0);
       }
     });
     const isFullyPaid = paidAmount >= doc.total && doc.total > 0;
@@ -405,7 +407,7 @@ export default function SalesView({
     const isPartiallyDelivered = totalDelivered > 0 && totalDelivered < totalItems;
 
     if (isFullyDelivered && isFullyPaid) return 'Selesai';
-    
+
     if (paidAmount === 0) {
       if (isFullyDelivered) return 'Menunggu Pembayaran';
       return 'Menunggu Pembayaran DP';
@@ -420,7 +422,7 @@ export default function SalesView({
     if (isFullyPaid) {
       if (!isFullyDelivered) return (isPartiallyDelivered || dos.length > 0) ? 'Proses Pengiriman' : 'Menunggu Pengiriman';
     }
-    
+
     return 'Menunggu Pengiriman';
   };
 
@@ -1019,15 +1021,48 @@ export default function SalesView({
                               <strong className="text-slate-800 leading-snug">
                                 {item.product?.name || item.productName || 'Unknown Product'}
                               </strong>
-                              {item.product?.type === 'raw_material' ? (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
-                                  Bahan Baku (PO)
-                                </span>
-                              ) : item.product?.procurementType === 'purchase' ? (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
-                                  Beli Jadi (PO)
-                                </span>
-                              ) : (
+                              {item.product?.type === 'raw_material' || item.product?.procurementType === 'purchase' ? (() => {
+                                const linkedPos = (selectedDoc.purchaseOrders || []).filter(
+                                  (po: any) => !['cancelled', 'dibatalkan'].includes((po.status || '').toLowerCase())
+                                );
+                                const matchingPos = linkedPos.filter((po: any) =>
+                                  (po.items || []).some((pi: any) => pi.productId === item.productId)
+                                );
+                                const totalReceived = matchingPos
+                                  .flatMap((po: any) => po.items || [])
+                                  .filter((pi: any) => pi.productId === item.productId)
+                                  .reduce((s: number, pi: any) => s + Number(pi.receivedQty || 0), 0);
+                                const reqQty = Number(item.pieceCount || item.quantity || 0);
+
+                                if (matchingPos.length > 0) {
+                                  if (totalReceived >= reqQty) {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                                        <CheckCircle2 size={10} className="text-emerald-600" />
+                                        Beli Jadi (PO Diterima - Siap Kirim)
+                                      </span>
+                                    );
+                                  } else {
+                                    const poNums = matchingPos.map((p: any) => p.poNumber).filter(Boolean).join(', ');
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                                        <Clock size={10} className="text-amber-600" />
+                                        Beli Jadi (Menunggu PO Supplier{poNums ? `: ${poNums}` : ''})
+                                      </span>
+                                    );
+                                  }
+                                }
+
+                                return item.product?.type === 'raw_material' ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                                    Bahan Baku (PO)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                                    Beli Jadi (PO)
+                                  </span>
+                                );
+                              })() : (
                                 <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
                                   Produksi Pabrik (WO)
                                 </span>
@@ -1175,6 +1210,7 @@ export default function SalesView({
 
 
 
+
                     <button
                       onClick={() => setSelectedDoc(null)}
                       className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
@@ -1182,13 +1218,13 @@ export default function SalesView({
                       Tutup
                     </button>
                     {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
-                       <button
-                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
-                         className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                       >
-                         <XCircle size={13} className="text-rose-500" />
-                         <span>Batalkan</span>
-                       </button>
+                      <button
+                        onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
+                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <XCircle size={13} className="text-rose-500" />
+                        <span>Batalkan</span>
+                      </button>
                     )}
                   </div>
                 ) : (
@@ -1200,13 +1236,13 @@ export default function SalesView({
                       Tutup
                     </button>
                     {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
-                       <button
-                         onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
-                         className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                       >
-                         <XCircle size={13} className="text-rose-500" />
-                         <span>Batalkan</span>
-                       </button>
+                      <button
+                        onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
+                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <XCircle size={13} className="text-rose-500" />
+                        <span>Batalkan</span>
+                      </button>
                     )}
                   </div>
                 )}
@@ -1227,41 +1263,41 @@ export default function SalesView({
 
                 {!isQuotation && !['Draft', 'Dibatalkan', 'Selesai', 'cancelled'].includes(selectedDoc.status) && (
                   <>
-                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' || 
-                      getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran' || 
+                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' ||
+                      getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran' ||
                       getMonitoringStatus(selectedDoc) === 'Menunggu Pelunasan') && (
-                      <button
-                        onClick={() => {
-                          sessionStorage.setItem('action_create_invoice', selectedDoc.id);
-                          setSelectedDoc(null);
-                          onNavigate('invoices');
-                        }}
-                        className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                      >
-                        <span>
-                          {getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' 
-                            ? 'Lanjut Buat Tagihan DP (Invoice)' 
-                            : 'Lanjut Buat Tagihan Pelunasan (Invoice)'}
-                        </span>
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
+                        <button
+                          onClick={() => {
+                            sessionStorage.setItem('action_create_invoice', selectedDoc.id);
+                            setSelectedDoc(null);
+                            onNavigate('invoices');
+                          }}
+                          className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <span>
+                            {getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP'
+                              ? 'Lanjut Buat Tagihan DP (Invoice)'
+                              : 'Lanjut Buat Tagihan Pelunasan (Invoice)'}
+                          </span>
+                          <ChevronRight size={14} />
+                        </button>
+                      )}
 
-                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman' || 
+                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman' ||
                       getMonitoringStatus(selectedDoc) === 'Proses Pengiriman' ||
                       getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman (Dibayar Sebagian)') && (
-                      <button
-                        onClick={() => {
-                          sessionStorage.setItem('action_create_do', selectedDoc.id);
-                          setSelectedDoc(null);
-                          onNavigate('delivery-orders');
-                        }}
-                        className="w-full col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                      >
-                        <span>Lanjut Buat Surat Jalan (DO)</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
+                        <button
+                          onClick={() => {
+                            sessionStorage.setItem('action_create_do', selectedDoc.id);
+                            setSelectedDoc(null);
+                            onNavigate('delivery-orders');
+                          }}
+                          className="w-full col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <span>Lanjut Buat Surat Jalan (DO)</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      )}
                   </>
                 )}
               </div>
@@ -1416,8 +1452,8 @@ export default function SalesView({
                   {editingQuotation
                     ? `Edit Penawaran (${editingQuotation.quoteNumber || editingQuotation.quotationNumber})`
                     : isQuotation
-                    ? 'Entri Penawaran Baru'
-                    : 'Entri Sales Order Baru'}
+                      ? 'Entri Penawaran Baru'
+                      : 'Entri Sales Order Baru'}
                 </h3>
               </div>
               <button onClick={handleCloseForm} className="text-slate-400 hover:text-white cursor-pointer">
@@ -1429,296 +1465,296 @@ export default function SalesView({
               <div className="flex flex-row flex-1 overflow-hidden">
                 <div className="w-1/3 p-5 space-y-4 border-r border-slate-200 overflow-y-auto">
                   {!isQuotation && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
-                    <SearchableSelect
-                      value={quotationId}
-                      onChange={(qId) => applyQuotationToForm(qId)}
-                      options={[
-                        { value: "", label: "-- Tanpa Referensi Quotation --" },
-                        ...quotations
-                          .filter(q => q.status !== 'Dibatalkan' && q.status !== 'cancelled' && q.status !== 'Ditolak')
-                          .map(q => {
-                            const qNum = q.quoteNumber || q.quotationNumber || 'Tanpa No';
-                            const statusSuffix = q.status !== 'Disetujui' ? ` [${q.status}]` : '';
-                            return {
-                              value: q.id,
-                              label: `${qNum} - ${q.customerName} - ${formatIDR(q.total)}${statusSuffix}`
-                            };
-                          })
-                      ]}
-                      placeholder="Pilih Referensi Quotation..."
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
-                    <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
-                      <Plus size={10} /> Tambah Baru
-                    </button>
-                  </div>
-                  {customers.length > 0 ? (
-                    <SearchableSelect
-                      value={custId}
-                      onChange={(val) => setCustId(val)}
-                      options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-                      placeholder="Pilih Customer..."
-                    />
-                  ) : (
-                    <SearchableSelect
-                      value=""
-                      onChange={() => { }}
-                      options={[]}
-                      placeholder="Memuat Customer..."
-                      disabled
-                    />
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
+                      <SearchableSelect
+                        value={quotationId}
+                        onChange={(qId) => applyQuotationToForm(qId)}
+                        options={[
+                          { value: "", label: "-- Tanpa Referensi Quotation --" },
+                          ...quotations
+                            .filter(q => q.status !== 'Dibatalkan' && q.status !== 'cancelled' && q.status !== 'Ditolak')
+                            .map(q => {
+                              const qNum = q.quoteNumber || q.quotationNumber || 'Tanpa No';
+                              const statusSuffix = q.status !== 'Disetujui' ? ` [${q.status}]` : '';
+                              return {
+                                value: q.id,
+                                label: `${qNum} - ${q.customerName} - ${formatIDR(q.total)}${statusSuffix}`
+                              };
+                            })
+                        ]}
+                        placeholder="Pilih Referensi Quotation..."
+                      />
+                    </div>
                   )}
-                </div>
 
-                {isQuotation && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Tgl Penawaran</label>
-                      <input
-                        type="date"
-                        value={docDate}
-                        onChange={(e) => setDocDate(e.target.value)}
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
-                      />
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
+                      <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+                        <Plus size={10} /> Tambah Baru
+                      </button>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Berlaku Hingga</label>
-                      <input
-                        type="date"
-                        value={docValidUntil}
-                        onChange={(e) => setDocValidUntil(e.target.value)}
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                    {customers.length > 0 ? (
+                      <SearchableSelect
+                        value={custId}
+                        onChange={(val) => setCustId(val)}
+                        options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
+                        placeholder="Pilih Customer..."
                       />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
-                  </label>
-                  <textarea
-                    value={documentNotes}
-                    onChange={(e) => setDocumentNotes(e.target.value)}
-                    rows={4}
-                    placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="w-2/3 p-5 space-y-4 overflow-y-auto flex flex-col">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
-                    <button
-                      type="button"
-                      onClick={addFormItem}
-                      className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus size={10} /> Tambah Baris
-                    </button>
+                    ) : (
+                      <SearchableSelect
+                        value=""
+                        onChange={() => { }}
+                        options={[]}
+                        placeholder="Memuat Customer..."
+                        disabled
+                      />
+                    )}
                   </div>
 
-                  <div className="space-y-3 pr-1">
-                    {formItems.map((item, index) => (
-                      <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Baris {index + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <ProductPicker
-                              value={item.productId}
-                              showCategoryFilter
-                              onChange={(product) => {
-                                updateFormItem(index, {
-                                  productId: product.id,
-                                  unitPrice: product.sellingPrice || 0,
-                                  quantity: item.quantity > 0 ? item.quantity : 1,
-                                  unit: product.unit,
-                                  stock: product.stock,
-                                  isCustomizable: product.isCustomizable,
-                                  pricingMethod: product.pricingMethod,
-                                });
-                              }}
-                              placeholder="Pilih Produk..."
-                            />
+                  {isQuotation && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Tgl Penawaran</label>
+                        <input
+                          type="date"
+                          value={docDate}
+                          onChange={(e) => setDocDate(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Berlaku Hingga</label>
+                        <input
+                          type="date"
+                          value={docValidUntil}
+                          onChange={(e) => setDocValidUntil(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase">
+                      Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
+                    </label>
+                    <textarea
+                      value={documentNotes}
+                      onChange={(e) => setDocumentNotes(e.target.value)}
+                      rows={4}
+                      placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="w-2/3 p-5 space-y-4 overflow-y-auto flex flex-col">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
+                      <button
+                        type="button"
+                        onClick={addFormItem}
+                        className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={10} /> Tambah Baris
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 pr-1">
+                      {formItems.map((item, index) => (
+                        <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Baris {index + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <ProductPicker
+                                value={item.productId}
+                                showCategoryFilter
+                                onChange={(product) => {
+                                  updateFormItem(index, {
+                                    productId: product.id,
+                                    unitPrice: product.sellingPrice || 0,
+                                    quantity: item.quantity > 0 ? item.quantity : 1,
+                                    unit: product.unit,
+                                    stock: product.stock,
+                                    isCustomizable: product.isCustomizable,
+                                    pricingMethod: product.pricingMethod,
+                                  });
+                                }}
+                                placeholder="Pilih Produk..."
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFormItem(index)}
+                              disabled={formItems.length === 1}
+                              className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white shrink-0"
+                              title="Hapus baris"
+                            >
+                              <Trash2 size={12} />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFormItem(index)}
-                            disabled={formItems.length === 1}
-                            className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white shrink-0"
-                            title="Hapus baris"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
 
-                        <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3">
-                          {item.isCustomizable ? (
-                            <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
-                              <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                Detail Dimensi Custom
-                              </h4>
+                          <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3">
+                            {item.isCustomizable ? (
+                              <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
+                                <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                  Detail Dimensi Custom
+                                </h4>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">Jml Fisik (Batang/Pcs)</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={item.pieceCount || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value ? Number(e.target.value) : undefined;
+                                        const l = item.length || 1;
+                                        const p = val || 1;
+                                        updateFormItem(index, {
+                                          pieceCount: val,
+                                          quantity: parseFloat((p * l).toFixed(2))
+                                        });
+                                      }}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                      placeholder="Jml"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">Ukuran per Fisik ({item.unit || 'M'})</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.length || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value ? Number(e.target.value) : undefined;
+                                        const p = item.pieceCount || 1;
+                                        const l = val || 1;
+                                        updateFormItem(index, {
+                                          length: val,
+                                          quantity: parseFloat((p * l).toFixed(2))
+                                        });
+                                      }}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                      placeholder="Ukuran"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.unit || 'Item'})</label>
+                                    <input
+                                      type="number"
+                                      required
+                                      min="0.01"
+                                      step="0.01"
+                                      value={item.quantity || ''}
+                                      readOnly={true}
+                                      className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50 border-indigo-200 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
                               <div className="grid grid-cols-3 gap-3">
                                 <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">Jml Fisik (Batang/Pcs)</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={item.pieceCount || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value ? Number(e.target.value) : undefined;
-                                      const l = item.length || 1;
-                                      const p = val || 1;
-                                      updateFormItem(index, {
-                                        pieceCount: val,
-                                        quantity: parseFloat((p * l).toFixed(2))
-                                      });
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
-                                    placeholder="Jml"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">Ukuran per Fisik ({item.unit || 'M'})</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={item.length || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value ? Number(e.target.value) : undefined;
-                                      const p = item.pieceCount || 1;
-                                      const l = val || 1;
-                                      updateFormItem(index, {
-                                        length: val,
-                                        quantity: parseFloat((p * l).toFixed(2))
-                                      });
-                                    }}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
-                                    placeholder="Ukuran"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.unit || 'Item'})</label>
+                                  <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
                                   <input
                                     type="number"
                                     required
                                     min="0.01"
                                     step="0.01"
                                     value={item.quantity || ''}
-                                    readOnly={true}
-                                    className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50 border-indigo-200 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                                    onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                    placeholder="Misal: 10"
+                                  />
+                                  {typeof item.stock === 'number' && (
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                      Stok: {item.stock} {item.unit || 'unit'}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">
+                                    Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                  </label>
+                                  <CurrencyInput
+                                    required
+                                    value={item.unitPrice || ''}
+                                    onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">
+                                    Diskon Item (Rp)
+                                  </label>
+                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                    <span>Rp</span>
+                                    <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {item.isCustomizable && (
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">
+                                    Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                  </label>
+                                  <CurrencyInput
+                                    required
+                                    value={item.unitPrice || ''}
+                                    onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">
+                                    Diskon Item (Rp)
+                                  </label>
+                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                    <span>Rp</span>
+                                    <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-600">Keterangan</label>
+                                  <input
+                                    type="text"
+                                    value={item.description || ''}
+                                    onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                    placeholder="Opsional"
                                   />
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
-                                <input
-                                  type="number"
-                                  required
-                                  min="0.01"
-                                  step="0.01"
-                                  value={item.quantity || ''}
-                                  onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                  placeholder="Misal: 10"
-                                />
-                                {typeof item.stock === 'number' && (
-                                  <p className="text-[10px] text-slate-400 mt-1">
-                                    Stok: {item.stock} {item.unit || 'unit'}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">
-                                  Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                                </label>
-                                <CurrencyInput
-                                  required
-                                  value={item.unitPrice || ''}
-                                  onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">
-                                  Diskon Item (Rp)
-                                </label>
-                                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
-                                  <span>Rp</span>
-                                  <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
 
-                          {item.isCustomizable && (
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">
-                                  Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                                </label>
-                                <CurrencyInput
-                                  required
-                                  value={item.unitPrice || ''}
-                                  onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">
-                                  Diskon Item (Rp)
-                                </label>
-                                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
-                                  <span>Rp</span>
-                                  <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">Keterangan</label>
-                                <input
-                                  type="text"
-                                  value={item.description || ''}
-                                  onChange={(e) => updateFormItem(index, { description: e.target.value })}
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                  placeholder="Opsional"
-                                />
-                              </div>
+                          {!item.isCustomizable && (
+                            <div className="space-y-1 mt-2">
+                              <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
+                              <input
+                                type="text"
+                                value={item.description || ''}
+                                onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                placeholder="Opsional (catatan khusus...)"
+                              />
                             </div>
                           )}
                         </div>
-
-                        {!item.isCustomizable && (
-                          <div className="space-y-1 mt-2">
-                            <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
-                            <input
-                              type="text"
-                              value={item.description || ''}
-                              onChange={(e) => updateFormItem(index, { description: e.target.value })}
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                              placeholder="Opsional (catatan khusus...)"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-              </div>
+                </div>
               </div>
               <div className="p-4 border-t bg-slate-50 flex justify-between items-end shrink-0">
                 <div className="flex flex-col gap-2 w-1/2">

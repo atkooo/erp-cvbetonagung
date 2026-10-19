@@ -138,6 +138,18 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     stage: wo.stage,
     productId: wo.product_id,
     salesOrderItemId: wo.sales_order_item_id,
+  })),
+  purchaseOrders: (dto.purchaseOrders || (dto as any).purchase_orders || []).map((po: any) => ({
+    id: po.id,
+    poNumber: po.po_number,
+    status: po.status,
+    supplierId: po.supplier_id,
+    items: (po.items || []).map((item: any) => ({
+      id: item.id,
+      productId: item.product_id,
+      quantity: Number(item.quantity || 0),
+      receivedQty: Number(item.received_qty || 0),
+    })),
   }))
 });
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { createBrowserRouter, RouteObject, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { pathForView } from './routes';
+import { pathForView, viewFromPath } from './routes';
 import type { ViewType } from './types';
 import ErrorBoundaryClass, { RouteErrorFallback } from './components/ErrorBoundary';
-import { NAVIGATION_SECTIONS } from './config/navigation';
+import { NAVIGATION_SECTIONS, type NavigationItem } from './config/navigation';
 import { hasViewAccess } from './utils/permissions';
 
 /**
@@ -97,8 +97,25 @@ const LoadingFallback = () => (
 
 // TODO: remove ViewWrapper after all views use hooks (useNavigate, useAuth) directly
 const ViewWrapper = ({ Component, componentProps }: { Component: React.ComponentType<any>, componentProps?: any }) => {
-  const { triggerNotification } = useAuth();
+  const { triggerNotification, userRoleCode, authUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Guard direct URL navigation based on role permissions and minAccessLevel
+  const currentView = viewFromPath(location.pathname);
+  if (currentView) {
+    let navItem: NavigationItem | undefined;
+    for (const section of NAVIGATION_SECTIONS) {
+      const found = section.items.find(i => i.view === currentView);
+      if (found) {
+        navItem = found;
+        break;
+      }
+    }
+    if (navItem && !hasViewAccess(userRoleCode, authUser?.role?.permissions, navItem.requiredModule, navItem.view, navItem.minAccessLevel)) {
+      return <Navigate to="/" replace />;
+    }
+  }
 
   const handleNavigate = (view: ViewType | string) => {
     // If it's a known view type, use pathForView. Otherwise, treat as raw path (like 'project-detail/proj1')
@@ -171,7 +188,7 @@ const NavigateToHome = () => {
   if (!hasViewAccess(userRoleCode, userPermissions, 'reports', 'dashboard')) {
     for (const section of NAVIGATION_SECTIONS) {
       for (const item of section.items) {
-        if (hasViewAccess(userRoleCode, userPermissions, item.requiredModule, item.view)) {
+        if (hasViewAccess(userRoleCode, userPermissions, item.requiredModule, item.view, item.minAccessLevel)) {
           return <Navigate to={pathForView(item.view)} replace />;
         }
       }

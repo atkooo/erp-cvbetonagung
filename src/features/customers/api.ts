@@ -1,19 +1,16 @@
-import { resourceClient } from '../../services/resources';
+import { apiClient } from '../../services/api';
 import { createCustomerPayload, mapCustomerDtoToCustomer } from './mappers';
 import type { Customer } from '../../types';
 import type { CreateCustomerPayload, CustomerDto } from './types';
 
-const READ_MODULE = 'master';
-const WRITE_MODULE = 'master-data';
-const RESOURCE = 'customers';
+const READ_ENDPOINT = '/master/customers';
+const WRITE_ENDPOINT = '/master-data/customers';
 
 export const customersApi = {
   async listCustomers() {
-    const response = await resourceClient.list<CustomerDto>(READ_MODULE, RESOURCE, {
-      per_page: 100,
-      sort: 'code',
-      direction: 'asc',
-    });
+    const response = await apiClient.get<{ data: CustomerDto[]; meta?: any }>(
+      `${READ_ENDPOINT}?per_page=100&sort=code&direction=asc`
+    );
 
     return {
       customers: response.data.map(mapCustomerDtoToCustomer),
@@ -23,28 +20,17 @@ export const customersApi = {
 
   async createCustomer(input: Parameters<typeof createCustomerPayload>[0]): Promise<Customer> {
     const payload: CreateCustomerPayload = createCustomerPayload(input);
-    const response = await resourceClient.create<CustomerDto, CreateCustomerPayload>(
-      WRITE_MODULE,
-      RESOURCE,
-      payload
-    );
-
+    const response = await apiClient.post<{ data: CustomerDto }>(WRITE_ENDPOINT, payload);
     return mapCustomerDtoToCustomer(response.data);
   },
 
   async updateCustomer(id: string, input: Parameters<typeof createCustomerPayload>[0]): Promise<Customer> {
     const payload: CreateCustomerPayload = createCustomerPayload(input);
-    const response = await resourceClient.update<CustomerDto, CreateCustomerPayload>(
-      WRITE_MODULE,
-      RESOURCE,
-      id,
-      payload
-    );
-
+    const response = await apiClient.patch<{ data: CustomerDto }>(`${WRITE_ENDPOINT}/${id}`, payload);
     return mapCustomerDtoToCustomer(response.data);
   },
 
   async deleteCustomer(id: string): Promise<void> {
-    await resourceClient.delete(WRITE_MODULE, RESOURCE, id);
+    await apiClient.delete(`${WRITE_ENDPOINT}/${id}`);
   },
 };

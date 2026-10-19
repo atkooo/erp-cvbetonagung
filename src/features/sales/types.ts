@@ -104,6 +104,18 @@ export interface SalesOrderDto {
     product_id: string;
     sales_order_item_id?: string | null;
   }[];
+  purchaseOrders?: {
+    id: string;
+    po_number: string;
+    status: string;
+    supplier_id?: string;
+    items?: {
+      id: string;
+      product_id: string;
+      quantity: string | number;
+      received_qty: string | number;
+    }[];
+  }[];
 }
 
 export interface CreateQuotationDto {

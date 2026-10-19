@@ -33,12 +33,12 @@ export default function Sidebar() {
     }));
   };
 
-  const hasAccessToModule = (requiredModule?: string, itemView?: string) => {
-    return hasViewAccess(userRoleCode, userPermissions, requiredModule, itemView);
+  const hasAccessToModule = (requiredModule?: string, itemView?: string, minAccessLevel?: 'read' | 'edit' | 'full') => {
+    return hasViewAccess(userRoleCode, userPermissions, requiredModule, itemView, minAccessLevel);
   };
 
   const renderNavItem = (item: NavigationItem) => {
-    if (!hasAccessToModule(item.requiredModule, item.view)) {
+    if (!hasAccessToModule(item.requiredModule, item.view, item.minAccessLevel)) {
       return null;
     }
 
@@ -68,7 +68,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={`${isPinned ? 'w-64' : 'w-[72px]'} bg-slate-950 text-slate-100 h-screen flex flex-col border-r border-slate-900 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300`}>
+    <div className={`${isPinned ? 'w-64' : 'w-18'} bg-slate-950 text-slate-100 h-screen flex flex-col border-r border-slate-900 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300`}>
       <div className={`p-4 border-b border-slate-900 bg-slate-950/60 sticky top-0 backdrop-blur-md z-10 flex items-center ${isPinned ? 'justify-between' : 'justify-center'}`}>
         {isPinned ? (
           <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export default function Sidebar() {
         {NAVIGATION_SECTIONS.map((section) => {
           const isExpanded = expandedSections[section.id];
 
-          const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule, item.view));
+          const visibleItems = section.items.filter(item => hasAccessToModule(item.requiredModule, item.view, item.minAccessLevel));
 
           if (visibleItems.length === 0) {
             return null;

@@ -63,6 +63,18 @@ export interface SalesOrder {
     salesOrderItemId?: string | null;
   }[];
   hasActiveWorkOrder?: boolean;
+  purchaseOrders?: {
+    id: string;
+    poNumber?: string;
+    status?: string;
+    supplierId?: string;
+    items?: {
+      id: string;
+      productId: string;
+      quantity: number;
+      receivedQty: number;
+    }[];
+  }[];
 }
 
 export interface Quotation {

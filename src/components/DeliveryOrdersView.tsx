@@ -22,6 +22,7 @@ import {
   Check,
   Printer,
   XCircle,
+  AlertCircle,
 } from "@/src/components/icons";
 import Swal from 'sweetalert2';
 import { authStorage, apiClient } from "../services/api";
@@ -169,11 +170,65 @@ export default function DeliveryOrdersView({
     setIsCreateModalOpen(true);
   };
 
+  const checkSalesOrderDeliveryStatus = (so: SalesOrder): { isBlocked: boolean; reason?: string } => {
+    const items = so.items || [];
+    for (const item of items) {
+      const prod = item.product;
+      const isPurchase = prod?.procurementType === 'purchase' || (prod as any)?.procurement_type === 'purchase' || prod?.type === 'raw_material';
+      if (isPurchase) {
+        const requiredQty = Number(item.pieceCount || item.quantity || 0);
+        const linkedPos = (so.purchaseOrders || []).filter(
+          (po) => !['cancelled', 'dibatalkan'].includes((po.status || '').toLowerCase())
+        );
+        const hasLinkedPo = linkedPos.some((po) => (po.items || []).some((pi) => pi.productId === item.productId));
+
+        if (hasLinkedPo) {
+          const totalReceived = linkedPos
+            .flatMap((po) => po.items || [])
+            .filter((pi) => pi.productId === item.productId)
+            .reduce((s, pi) => s + Number(pi.receivedQty || 0), 0);
+
+          if (totalReceived < requiredQty) {
+            const pendingPos = linkedPos
+              .filter((po) => ['ordered', 'partially_received', 'draft', 'pending'].includes((po.status || '').toLowerCase()))
+              .map((po) => po.poNumber)
+              .filter(Boolean)
+              .join(', ');
+            return {
+              isBlocked: true,
+              reason: `Barang beli-jadi "${prod?.name || 'Item'}" belum selesai diterima dari supplier${pendingPos ? ` (PO: ${pendingPos})` : ''}.`,
+            };
+          }
+        } else {
+          const prodStock = allStocks
+            .filter((s) => s.product_id === item.productId)
+            .reduce((sum, s) => sum + Number(s.quantity || 0), 0);
+          if (prodStock < requiredQty) {
+            return {
+              isBlocked: true,
+              reason: `Stok barang beli-jadi "${prod?.name || 'Item'}" tidak mencukupi (${prodStock}/${requiredQty}) dan belum ada penerimaan barang (PO) dari supplier.`,
+            };
+          }
+        }
+      }
+    }
+    return { isBlocked: false };
+  };
+
   const handleCreateDo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSalesOrderId || !deliveryNumber) {
       onTriggerNotification("Pilih Sales Order dan isi nomor surat jalan.");
       return;
+    }
+
+    const targetSo = salesOrders.find((s) => s.id === selectedSalesOrderId);
+    if (targetSo) {
+      const statusCheck = checkSalesOrderDeliveryStatus(targetSo);
+      if (statusCheck.isBlocked) {
+        onTriggerNotification(statusCheck.reason || "Pengiriman ditahan: Barang beli-jadi belum diterima dari supplier.");
+        return;
+      }
     }
 
     try {
@@ -525,7 +580,7 @@ export default function DeliveryOrdersView({
                           {(doOrder.driverName || doOrder.vehicleNumber) && (
                             <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                               <Truck size={10} className="text-slate-400 shrink-0" />
-                              <span className="truncate max-w-[140px]">{doOrder.driverName || '-'}{doOrder.vehicleNumber ? ` (${doOrder.vehicleNumber})` : ''}</span>
+                              <span className="truncate max-w-35">{doOrder.driverName || '-'}{doOrder.vehicleNumber ? ` (${doOrder.vehicleNumber})` : ''}</span>
                             </div>
                           )}
                         </div>
@@ -1040,12 +1095,44 @@ export default function DeliveryOrdersView({
                     .filter(
                       (so) => so.status === "Disetujui" && so.hasInvoice,
                     )
-                    .map((so) => ({
-                      value: so.id,
-                      label: `${so.orderNumber} - ${so.customerName || so.customer?.name || '-'}`
-                    }))}
+                    .map((so) => {
+                      const statusCheck = checkSalesOrderDeliveryStatus(so);
+                      return {
+                        value: so.id,
+                        label: `${so.orderNumber} - ${so.customerName || so.customer?.name || '-'}`,
+                        disabled: statusCheck.isBlocked,
+                        hint: statusCheck.isBlocked ? 'PO Supplier Menunggu' : undefined,
+                      };
+                    })}
                   placeholder="-- Cari atau Pilih Sales Order --"
                 />
+                {selectedSalesOrderId && (() => {
+                  const currentSo = salesOrders.find((s) => s.id === selectedSalesOrderId);
+                  const statusCheck = currentSo ? checkSalesOrderDeliveryStatus(currentSo) : { isBlocked: false };
+                  if (statusCheck.isBlocked) {
+                    return (
+                      <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start gap-2.5">
+                        <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-bold">Pengiriman Ditahan (Menunggu Barang Supplier)</p>
+                          <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">{statusCheck.reason}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreateModalOpen(false);
+                              onNavigate?.('purchase-orders');
+                            }}
+                            className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-amber-300 text-amber-800 rounded-lg font-bold text-[10px] hover:bg-amber-100/50 cursor-pointer transition-colors shadow-xs"
+                          >
+                            <span>Buka Modul Pembelian (PO)</span>
+                            <ChevronRight size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {salesOrders.filter((so) => so.status === "Disetujui" && so.hasInvoice).length === 0 && (
                   <p className="text-[10px] text-amber-600 mt-1">Tidak ada Sales Order siap kirim (belum dibayar/approve).</p>
                 )}
@@ -1054,15 +1141,17 @@ export default function DeliveryOrdersView({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">
-                    No. Surat Jalan *
+                    No. Surat Jalan (Otomatis)
                   </label>
                   <input
                     type="text"
                     required
+                    readOnly
                     value={deliveryNumber}
-                    onChange={(e) => setDeliveryNumber(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-cyan-400 font-mono"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-mono cursor-not-allowed select-none focus:outline-none"
+                    title="Nomor Surat Jalan dibuat otomatis oleh sistem dan tidak dapat diedit"
                   />
+                  <p className="text-[10px] text-slate-400">Digenerate otomatis oleh sistem (tidak dapat diubah).</p>
                 </div>
 
                 <div className="space-y-1">
@@ -1217,7 +1306,9 @@ export default function DeliveryOrdersView({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  disabled={Boolean(selectedSalesOrderId && salesOrders.find(s => s.id === selectedSalesOrderId) && checkSalesOrderDeliveryStatus(salesOrders.find(s => s.id === selectedSalesOrderId)!).isBlocked)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  title={Boolean(selectedSalesOrderId && salesOrders.find(s => s.id === selectedSalesOrderId) && checkSalesOrderDeliveryStatus(salesOrders.find(s => s.id === selectedSalesOrderId)!).isBlocked) ? "Pengiriman ditahan: Barang beli-jadi belum diterima dari supplier" : undefined}
                 >
                   Simpan
                 </button>

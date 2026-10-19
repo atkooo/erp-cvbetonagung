@@ -180,6 +180,9 @@ export const apiClient = {
   async put<T>(path: string, body?: unknown, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
   },
+  async patch<T>(path: string, body?: unknown, options?: RequestInit) {
+    return apiClient.request<T>(path, { ...options, method: 'PATCH', body: JSON.stringify(body) });
+  },
   async delete<T>(path: string, options?: RequestInit) {
     return apiClient.request<T>(path, { ...options, method: 'DELETE' });
   },

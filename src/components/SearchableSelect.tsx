@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronRight } from '@/src/components/icons';
 
-interface Option {
+export interface Option {
   value: string;
   label: string;
+  disabled?: boolean;
+  hint?: string;
 }
 
 interface SearchableSelectProps {
@@ -77,14 +79,28 @@ export default function SearchableSelect({
               filteredOptions.map((opt) => (
                 <div
                   key={opt.value}
-                  className={`px-3 py-2 text-xs rounded cursor-pointer hover:bg-slate-50 ${opt.value === value ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'}`}
+                  className={`px-3 py-2 text-xs rounded transition-colors ${
+                    opt.disabled
+                      ? 'opacity-60 bg-slate-50 cursor-not-allowed text-slate-400'
+                      : opt.value === value
+                        ? 'bg-indigo-50 text-indigo-700 font-bold cursor-pointer'
+                        : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                  }`}
                   onClick={() => {
+                    if (opt.disabled) return;
                     onChange(opt.value);
                     setIsOpen(false);
                     setSearch('');
                   }}
                 >
-                  {opt.label}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{opt.label}</span>
+                    {opt.hint && (
+                      <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
+                        {opt.hint}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
