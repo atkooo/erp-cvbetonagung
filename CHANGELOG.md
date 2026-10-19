@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- **Pembersihan & Penyederhanaan Teks UI, Label Sidebar, dan Preset RBAC (`navigation.tsx` & `RolePermissionView.tsx`)**:
+  - Mempersingkat menu preset akses massal menjadi ringkas: `Full`, `Edit`, `Read`, `Reset` (menghapus pengulangan kata dalam kurung seperti `(Semua Aksi)`, `(Lihat, Tambah, Ubah)`).
+  - Menghapus teks instruksi/note yang repetitif di halaman matriks RBAC: banner header redundan, note petunjuk centang di atas tabel, label pengulangan `5 aksi tersedia` di bawah setiap baris modul, note panjang di footer tabel, dan card peringatan di bawah tabel.
+  - Membersihkan seluruh nama menu sidebar dan judul halaman dari tanda kurung singkatan/keterangan repetitif (misal `Kasir (POS)` $\rightarrow$ `Kasir`, `Penawaran Harga (Quotation)` $\rightarrow$ `Penawaran Harga`, `Sales Order (SO)` $\rightarrow$ `Sales Order`, `Delivery Order (DO)` $\rightarrow$ `Delivery Order`, `Buku Kas & Bank` $\rightarrow$ `Kas & Bank`, `Manajemen Customer (Pelanggan)` $\rightarrow$ `Customer`, `Master Produk Konstruksi` $\rightarrow$ `Produk`, dll.).
+- **Isolasi Granular Menu Sidebar & Hak Akses Modul (Penghapusan Keterikatan `PARENT_MODULES` di `permissions.ts`)**:
+  - Menghapus pemetaan relasi `PARENT_MODULES` yang sebelumnya menyebabkan menu sidebar HRD (`attendance`, `attendance_scanner`, `leave`, `leave_types`, `employee_loans`) otomatis terbuka semua ketika izin Master Karyawan (`employees`) diaktifkan.
+  - Setiap menu navigasi sidebar kini divalidasi secara independen 1-to-1 (`p.module === requiredModule || p.module === '*'`).
+  - Mengaktifkan izin Master Karyawan (Read Only) kini benar-benar hanya menampilkan menu Master Karyawan di sidebar tanpa memicu kemunculan menu HRD lainnya.
+- **Penyederhanaan Matriks Hak Akses RBAC ke Checkbox Matriks (`RolePermissionView.tsx`)**:
+  - Mengubah sel hak akses individual (`LIHAT`, `TAMBAH`, `UBAH`, `HAPUS`, `SETUJUI`) dari dropdown berulang (`None/Read/Edit/Full`) menjadi **Checkbox Interaktif (Centang / On-Off)** yang bersih dan intuitif.
+  - Menghilangkan kebingungan logika di mana aksi tunggal seperti "Tambah" atau "Hapus" sebelumnya memiliki pilihan dropdown tingkatan akses.
+  - Memperbarui menu titik tiga (`Set Akses`) menjadi **Preset Akses Cepat** yang logis:
+    - *Full Access*: Mengaktifkan semua aksi untuk modul tersebut (`Lihat`, `Tambah`, `Ubah`, `Hapus`, `Setujui`).
+    - *Edit Access*: Mengaktifkan aksi operasional (`Lihat`, `Tambah`, `Ubah`) dan mencabut izin destruktif (`Hapus`, `Setujui`).
+    - *Read Access*: Hanya mengaktifkan aksi `Lihat`.
+    - *Hapus Semua Akses*: Mencabut seluruh hak akses modul.
 - **Penambahan Method `patch` pada `apiClient` (`services/api.ts`)**:
   - Menyediakan implementasi method `patch<T>(path, body?, options?)` pada `apiClient` untuk menyelesaikan error TypeScript pada pemanggilan API partial updates pelanggan (`customers/api.ts`).
 - **Optimasi Class Tailwind CSS**:

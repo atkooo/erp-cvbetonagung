@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2
+  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2, Check
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { identityApi } from '../features/identity/api';
@@ -60,72 +60,72 @@ const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; t
 
 const MODULE_LABELS: Record<string, string> = {
   // Coarse / Legacy modules
-  users: 'Manajemen User & Akun',
-  roles: 'Role & Hak Akses (RBAC)',
+  users: 'User & Akun',
+  roles: 'Role & Hak Akses',
   employees: 'Master Karyawan',
-  payroll: 'Penggajian (Payroll)',
-  customers: 'Manajemen Customer (Pelanggan)',
-  suppliers: 'Manajemen Supplier (Pemasok)',
-  products: 'Master Produk Konstruksi',
-  warehouses: 'Master Gudang & Rak',
-  inventory: 'Inventory & Gudang (Umum)',
-  sales: 'Sales & Orders (Umum)',
-  purchasing: 'Purchasing & Pengadaan (Umum)',
-  projects: 'Manajemen Proyek (Umum)',
-  finance: 'Finance & Akuntansi (Umum)',
-  production: 'Produksi (Umum)',
-  approvals: 'Approval Workflow Center',
-  reports: 'Pusat Laporan Terpadu',
-  settings: 'Pengaturan Sistem ERP',
+  payroll: 'Penggajian',
+  customers: 'Customer',
+  suppliers: 'Supplier',
+  products: 'Produk',
+  warehouses: 'Gudang & Rak',
+  inventory: 'Inventory',
+  sales: 'Sales',
+  purchasing: 'Purchasing',
+  projects: 'Proyek',
+  finance: 'Finance',
+  production: 'Produksi',
+  approvals: 'Approval Workflow',
+  reports: 'Pusat Laporan',
+  settings: 'Pengaturan Sistem',
 
   // Granular Sales & Orders
-  pos: 'Kasir (POS)',
-  quotations: 'Penawaran Harga (Quotation)',
-  sales_orders: 'Sales Order (SO)',
-  delivery_orders: 'Delivery Order (DO)',
+  pos: 'Kasir',
+  quotations: 'Penawaran Harga',
+  sales_orders: 'Sales Order',
+  delivery_orders: 'Delivery Order',
   sales_returns: 'Retur Penjualan',
 
   // Granular Purchasing
-  purchase_requests: 'Purchase Request (PR)',
-  rfqs: 'Permintaan Penawaran (RFQ)',
-  purchase_orders: 'Purchase Order (PO)',
-  goods_receipts: 'Penerimaan Barang (GRN)',
+  purchase_requests: 'Purchase Request',
+  rfqs: 'Permintaan Penawaran',
+  purchase_orders: 'Purchase Order',
+  goods_receipts: 'Penerimaan Barang',
   purchase_returns: 'Retur Pembelian',
 
   // Granular Inventory
   inventory_stocks: 'Stok Produk',
   incoming_goods: 'Penerimaan Barang Masuk',
-  outgoing_goods: 'Barang Keluar (Internal)',
-  stock_movements: 'Riwayat Pergerakan Stok',
-  berita_acara_gudang: 'Berita Acara Gudang (BAG)',
-  stock_opname: 'Stock Opname Gudang',
-  qr_products: 'Daftar Barcode Produk',
+  outgoing_goods: 'Barang Keluar',
+  stock_movements: 'Riwayat Stok',
+  berita_acara_gudang: 'Berita Acara Gudang',
+  stock_opname: 'Stock Opname',
+  qr_products: 'Barcode Produk',
   qr_scanner: 'Scanner Barcode',
 
   // Granular Production & Projects
-  production_work_orders: 'Work Order Produksi (SPK)',
-  bom_costing: 'Bill of Materials & HPP',
-  project_budgeting: 'Budgeting & RAB Proyek',
+  production_work_orders: 'Work Order Produksi',
+  bom_costing: 'Bill of Materials',
+  project_budgeting: 'Budgeting Proyek',
 
   // Granular Finance
-  accounts: 'Buku Kas & Bank',
-  cash_expense: 'Kas & Biaya Operasional',
-  invoices: 'Billing (Invoice Customer)',
-  payments: 'Kasir (Penerimaan Customer)',
-  accounts_receivable: 'Piutang Usaha (AR)',
-  accounts_payable: 'Hutang Usaha (AP)',
-  finance_reports: 'Laporan Keuangan & Omset',
+  accounts: 'Kas & Bank',
+  cash_expense: 'Biaya Operasional',
+  invoices: 'Invoice',
+  payments: 'Penerimaan Pembayaran',
+  accounts_receivable: 'Piutang Usaha',
+  accounts_payable: 'Hutang Usaha',
+  finance_reports: 'Laporan Keuangan',
 
   // Granular HRD
-  attendance: 'Absensi & Kehadiran',
-  attendance_scanner: 'Scan Absensi (QR)',
-  leave: 'Pengajuan & Approval Cuti',
-  leave_types: 'Master Jenis Cuti',
-  employee_loans: 'Kasbon & Pinjaman Karyawan',
+  attendance: 'Absensi',
+  attendance_scanner: 'Scan Absensi',
+  leave: 'Pengajuan Cuti',
+  leave_types: 'Jenis Cuti',
+  employee_loans: 'Kasbon Karyawan',
 
   // Granular Control
-  audit_logs: 'Audit Log Aktivitas Sistem',
-  reminders: 'Reminder & Notifikasi',
+  audit_logs: 'Audit Log',
+  reminders: 'Reminder',
 };
 
 const MODULE_CATEGORIES: Record<string, string> = {
@@ -244,35 +244,35 @@ const BulkActionDropdown = ({ onSelect, disabled }: { onSelect: (level: 'none' |
         <MoreVertical size={16} />
       </button>
       {isOpen && !disabled && (
-        <div className="absolute right-0 mt-1.5 w-40 bg-white rounded-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 z-50 overflow-hidden py-1.5">
+        <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-slate-100 z-50 overflow-hidden py-1">
           <button
             onClick={() => { onSelect('full'); setIsOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
           >
-            <Shield size={14} className="opacity-70" />
-            Full Access
+            <Shield size={13} className="opacity-70" />
+            Full
           </button>
           <button
             onClick={() => { onSelect('edit'); setIsOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
           >
-            <Edit2 size={14} className="opacity-70" />
-            Edit Access
+            <Edit2 size={13} className="opacity-70" />
+            Edit
           </button>
           <button
             onClick={() => { onSelect('read'); setIsOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-cyan-700 hover:bg-cyan-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 transition-colors"
           >
-            <Eye size={14} className="opacity-70" />
-            Read Access
+            <Eye size={13} className="opacity-70" />
+            Read
           </button>
-          <div className="my-1.5 border-t border-slate-100"></div>
+          <div className="my-1 border-t border-slate-100"></div>
           <button
             onClick={() => { onSelect('none'); setIsOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
           >
-            <Trash2 size={14} className="opacity-70" />
-            Hapus Semua
+            <Trash2 size={13} className="opacity-70" />
+            Reset
           </button>
         </div>
       )}
@@ -327,9 +327,10 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
     return actionOrder.indexOf(a.action) - actionOrder.indexOf(b.action);
   });
 
-  const getAccessLevel = (role: Role, perm: Permission): 'none' | 'read' | 'edit' | 'full' => {
-    const matched = role.permissions.find(p => p.module === perm.module && p.action === perm.action);
-    return matched ? matched.accessLevel : 'none';
+  const isPermissionChecked = (role: Role, perm: Permission): boolean => {
+    return role.permissions.some(
+      p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action)) && p.accessLevel !== 'none'
+    );
   };
 
   const getActiveModuleCount = (role: Role) => {
@@ -340,80 +341,98 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
     return role.permissions.filter(p => p.accessLevel !== 'none').length;
   };
 
-  const handleAccessLevelChange = async (role: Role, perm: Permission, nextLevel: 'none' | 'read' | 'edit' | 'full') => {
-    const current = getAccessLevel(role, perm);
-    if (current === nextLevel) return;
-
+  const handleTogglePermission = async (role: Role, perm: Permission, enable: boolean) => {
     const updateKey = `${role.id}-${perm.id}`;
     setIsUpdating(updateKey);
 
     try {
-      if (nextLevel === 'none') {
-        // Find the specific permission ID that corresponds to this module/action in the role's permissions or general list
-        // Wait, the API delete requires roleId and permissionId. We use the permission ID of the permission row.
-        await identityApi.deleteRolePermission(role.id, perm.id);
-        onTriggerNotification(`Menghapus hak akses ${perm.label} dari Role ${role.name}.`);
-      } else {
+      if (enable) {
         await identityApi.syncRolePermission({
           role_id: role.id,
           permission_id: perm.id,
-          access_level: nextLevel
+          access_level: 'full',
         });
-        onTriggerNotification(`Mengubah hak akses ${perm.label} untuk Role ${role.name} menjadi ${nextLevel.toUpperCase()}.`);
+        onTriggerNotification(`Mengaktifkan hak akses ${getActionLabel(perm.action)} untuk Role ${role.name}.`);
+
+        setRoles(prevRoles => prevRoles.map(r => {
+          if (r.id !== role.id) return r;
+          const existIndex = r.permissions.findIndex(p => p.id === perm.id || (p.module === perm.module && p.action === perm.action));
+          const updatedPerm: Permission = { ...perm, accessLevel: 'full' };
+          const newPermissions = existIndex > -1
+            ? r.permissions.map((p, idx) => idx === existIndex ? updatedPerm : p)
+            : [...r.permissions, updatedPerm];
+          return { ...r, permissions: newPermissions };
+        }));
+      } else {
+        await identityApi.deleteRolePermission(role.id, perm.id).catch(() => {});
+        onTriggerNotification(`Mencabut hak akses ${getActionLabel(perm.action)} dari Role ${role.name}.`);
+
+        setRoles(prevRoles => prevRoles.map(r => {
+          if (r.id !== role.id) return r;
+          return {
+            ...r,
+            permissions: r.permissions.filter(p => p.id !== perm.id && !(p.module === perm.module && p.action === perm.action)),
+          };
+        }));
       }
-
-      // Update local state immediately to avoid full reload lag
-      setRoles(prevRoles => prevRoles.map(r => {
-        if (r.id !== role.id) return r;
-
-        let newPermissions = [...r.permissions];
-        const existIndex = newPermissions.findIndex(p => p.id === perm.id);
-
-        if (nextLevel === 'none') {
-          if (existIndex > -1) {
-            newPermissions.splice(existIndex, 1);
-          }
-        } else {
-          const updatedPerm: Permission = { ...perm, accessLevel: nextLevel };
-          if (existIndex > -1) {
-            newPermissions[existIndex] = updatedPerm;
-          } else {
-            newPermissions.push(updatedPerm);
-          }
-        }
-
-        return { ...r, permissions: newPermissions };
-      }));
-
     } catch (error) {
-      console.error('Error updating role permission:', error);
+      console.error('Error toggling role permission:', error);
       Swal.fire('Gagal', 'Terjadi kesalahan saat memperbarui hak akses.', 'error');
     } finally {
       setIsUpdating(null);
     }
   };
 
-
-
-  const handleBulkAccessLevel = async (role: Role, row: any, nextLevel: 'none' | 'read' | 'edit' | 'full') => {
-    const permsToUpdate = Object.values(row.permissions).filter(Boolean) as Permission[];
+  const handleBulkAccessLevel = async (role: Role, row: any, preset: 'none' | 'read' | 'edit' | 'full') => {
     const updateKey = `${role.id}-${row.module}-bulk`;
     setIsUpdating(updateKey);
 
+    const allowedActions = preset === 'full'
+      ? ['view', 'create', 'update', 'delete', 'approve']
+      : preset === 'edit'
+        ? ['view', 'create', 'update']
+        : preset === 'read'
+          ? ['view']
+          : [];
+
     try {
-      for (const perm of permsToUpdate) {
-        if (nextLevel === 'none') {
-          await identityApi.deleteRolePermission(role.id, perm.id).catch(() => { }); // ignore individual 404s
-        } else {
-          await identityApi.syncRolePermission({
-            role_id: role.id,
-            permission_id: perm.id,
-            access_level: nextLevel
-          });
+      const actionsList = ['view', 'create', 'update', 'delete', 'approve'];
+      const promises: Promise<any>[] = [];
+
+      for (const action of actionsList) {
+        const perm = row.permissions[action] as Permission | undefined;
+        if (!perm) continue;
+
+        const isCurrentlyActive = role.permissions.some(
+          p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action)) && p.accessLevel !== 'none'
+        );
+        const shouldBeActive = allowedActions.includes(action);
+
+        if (shouldBeActive && !isCurrentlyActive) {
+          promises.push(
+            identityApi.syncRolePermission({
+              role_id: role.id,
+              permission_id: perm.id,
+              access_level: 'full',
+            })
+          );
+        } else if (!shouldBeActive && isCurrentlyActive) {
+          promises.push(
+            identityApi.deleteRolePermission(role.id, perm.id).catch(() => {})
+          );
         }
       }
-      onTriggerNotification(`Berhasil mengubah semua hak akses ${row.label} untuk Role ${role.name} menjadi ${nextLevel.toUpperCase()}.`);
-      // Re-fetch roles completely to sync the state instead of manual array mutation for bulk
+
+      await Promise.all(promises);
+
+      const presetLabels: Record<string, string> = {
+        full: 'Full Access (Semua Aksi)',
+        edit: 'Edit Access (Lihat, Tambah, Ubah)',
+        read: 'Read Access (Hanya Lihat)',
+        none: 'Cabut Semua Akses',
+      };
+      onTriggerNotification(`Berhasil menerapkan ${presetLabels[preset]} pada modul ${row.label} untuk Role ${role.name}.`);
+
       const rolesData = await identityApi.getRoles();
       setRoles(rolesData);
     } catch (error) {
@@ -463,12 +482,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
   );
 
   return (
-    <div className="space-y-6 text-xs font-sans">
-      <Header
-        icon={<ShieldCheck size={20} />}
-        title="Role & Permission Matrix (RBAC)"
-        desc="Pusat konfigurasi tingkat keamanan dan otorisasi hak akses modul ERP berdasarkan Role divisi masing-masing."
-      />
+    <div className="space-y-4 text-xs font-sans">
 
       {/* Split Layout: Master (Roles) and Detail (Matrix) */}
       <div className="flex flex-col md:flex-row gap-6">
@@ -542,37 +556,42 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
         {/* Right Side: Matrix Panel */}
         <div className="flex-1 flex flex-col min-w-0">
           <Panel className="overflow-hidden flex flex-col shadow-sm border-slate-200">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500">
+            <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-white rounded-lg border border-slate-200 text-slate-500">
                   <Key size={14} />
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                      Hak Akses: {selectedRole?.name || '-'}
-                    </h4>
-                    {selectedRole && (
-                      <span className="font-mono text-[9px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                        {selectedRole.code}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Pilih role di atas, lalu klik badge akses per modul untuk mengubah izin.
-                  </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    Hak Akses: {selectedRole?.name || '-'}
+                  </h4>
+                  {selectedRole && (
+                    <span className="font-mono text-[9px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                      {selectedRole.code}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 bg-white border rounded-lg px-2.5 py-1.5 w-full md:w-72">
-                <Search size={12} className="text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari modul atau deskripsi..."
-                  className="bg-transparent focus:outline-none text-xs w-full text-slate-700"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-white border rounded-lg px-2.5 py-1.5 w-full md:w-64">
+                  <Search size={12} className="text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari modul..."
+                    className="bg-transparent focus:outline-none text-xs w-full text-slate-700"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchData}
+                  className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                  title="Muat Ulang"
+                >
+                  <RefreshCw size={13} className={isLoading ? 'animate-spin text-cyan-600' : ''} />
+                </button>
               </div>
             </div>
 
@@ -632,12 +651,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                         <td className="p-3.5 pl-5">
                           <div className="flex items-center gap-2">
                             <Lock size={12} className="text-slate-400" />
-                            <div>
-                              <span className="font-bold text-slate-700 block text-xs">{row.label}</span>
-                              <span className="text-[9px] text-slate-400 uppercase font-mono">
-                                {Object.values(row.permissions).filter(Boolean).length} aksi tersedia
-                              </span>
-                            </div>
+                            <span className="font-bold text-slate-700 text-xs">{row.label}</span>
                           </div>
                         </td>
                         <td className="p-3.5 font-mono text-[10px] text-slate-500 uppercase">{row.module}</td>
@@ -652,31 +666,35 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                             );
                           }
 
-                          const level = getAccessLevel(selectedRole, permission);
+                          const isChecked = isPermissionChecked(selectedRole, permission);
                           const isCellUpdating = isUpdating === `${selectedRole.id}-${permission.id}`;
 
                           return (
-                            <td key={action} className="p-2 text-center relative">
+                            <td key={action} className="p-2.5 text-center relative">
                               {isCellUpdating && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-white/50 rounded z-10">
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded z-10">
                                   <RefreshCw size={12} className="animate-spin text-cyan-600" />
                                 </div>
                               )}
-                              <select
-                                value={level}
-                                onChange={(e) => handleAccessLevelChange(selectedRole, permission, e.target.value as any)}
-                                disabled={isCellUpdating || isLoading || isUpdating === `${selectedRole.id}-${row.module}-bulk`}
-                                className={`block w-18.75 mx-auto appearance-none text-center px-1 py-1 text-[10px] font-bold border rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 cursor-pointer ${level === 'full' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                  level === 'edit' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                    level === 'read' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
-                                      'bg-slate-50 text-slate-500 border-slate-200'
-                                  }`}
+                              <label
+                                className="inline-flex items-center justify-center cursor-pointer group p-1"
+                                title={`${getActionLabel(action)} - ${row.label}`}
                               >
-                                <option value="none">None</option>
-                                <option value="read">Read</option>
-                                <option value="edit">Edit</option>
-                                <option value="full">Full</option>
-                              </select>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  disabled={isCellUpdating || isLoading || isUpdating === `${selectedRole.id}-${row.module}-bulk`}
+                                  onChange={(e) => handleTogglePermission(selectedRole, permission, e.target.checked)}
+                                  className="sr-only peer"
+                                />
+                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                                  isChecked
+                                    ? 'bg-cyan-600 border-cyan-600 text-white shadow-xs group-hover:bg-cyan-700 group-hover:border-cyan-700'
+                                    : 'bg-white border-slate-300 text-transparent group-hover:border-slate-400 hover:bg-slate-50'
+                                } peer-disabled:opacity-40 peer-disabled:cursor-not-allowed`}>
+                                  <Check size={13} strokeWidth={3} className={isChecked ? 'block' : 'hidden'} />
+                                </div>
+                              </label>
                             </td>
                           );
                         })}
@@ -723,34 +741,14 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                 )}
               </div>
             )}
-            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-500 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50 text-[10px] text-slate-500 flex items-center justify-between">
               <span>
-                Pilih tingkat izin dari <b>Dropdown</b> untuk mengubah hak akses.
-              </span>
-              <span>
-                Total modul tampil: <b>{moduleRows.length}</b>
+                Total: <b>{moduleRows.length} modul</b>
               </span>
             </div>
           </Panel>
         </div>
       </div>
-
-      {/* Info Warning Card */}
-      <Panel className="p-4 bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <ShieldIcon className="text-slate-400" size={18} />
-          <span className="text-slate-600 font-medium leading-relaxed">
-            Perubahan hak akses pada matriks di atas langsung tersimpan ke database dan akan diberlakukan saat pengguna log masuk kembali.
-          </span>
-        </div>
-        <button
-          onClick={fetchData}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition"
-        >
-          <RefreshCw size={10} />
-          <span>Refresh</span>
-        </button>
-      </Panel>
     </div>
   );
 }

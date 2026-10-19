@@ -5,60 +5,6 @@
 
 import type { AuthPermission } from '../types';
 
-const PARENT_MODULES: Record<string, string> = {
-  // Purchasing
-  purchase_requests: 'purchasing',
-  rfqs: 'purchasing',
-  purchase_orders: 'purchasing',
-  goods_receipts: 'purchasing',
-  purchase_returns: 'purchasing',
-
-  // Inventory
-  inventory_stocks: 'inventory',
-  incoming_goods: 'inventory',
-  outgoing_goods: 'inventory',
-  stock_movements: 'inventory',
-  berita_acara_gudang: 'inventory',
-  stock_opname: 'inventory',
-  warehouses: 'inventory',
-  qr_products: 'inventory',
-  qr_scanner: 'qr_products',
-
-  // Sales
-  pos: 'sales',
-  quotations: 'sales',
-  sales_orders: 'sales',
-  delivery_orders: 'sales',
-  sales_returns: 'sales',
-
-  // Finance
-  accounts: 'finance',
-  cash_expense: 'finance',
-  invoices: 'finance',
-  payments: 'finance',
-  accounts_receivable: 'finance',
-  accounts_payable: 'finance',
-  finance_reports: 'finance',
-
-  // Production
-  production_work_orders: 'production',
-  bom_costing: 'production',
-
-  // Projects
-  project_budgeting: 'projects',
-
-  // HRD
-  attendance: 'employees',
-  attendance_scanner: 'attendance',
-  leave: 'employees',
-  leave_types: 'leave',
-  employee_loans: 'employees',
-
-  // System
-  audit_logs: 'reports',
-  reminders: 'reports',
-};
-
 /**
  * Checks whether an authenticated user has permission to view a specific module/menu item.
  * Used for dynamic sidebar filtering and access control.
@@ -109,22 +55,10 @@ export const hasViewAccess = (
       ? ['edit', 'full']
       : ['read', 'edit', 'full'];
 
-  // Collect valid module names for hierarchical match (exact, parents recursively, wildcard)
-  const validModules = [requiredModule, '*'];
-  let cur: string | undefined = requiredModule;
-  while (cur && PARENT_MODULES[cur]) {
-    const parent = PARENT_MODULES[cur];
-    if (parent === cur || validModules.includes(parent)) {
-      break;
-    }
-    validModules.push(parent);
-    cur = parent;
-  }
-
-  // 6. Check if user has view permission for the required module
+  // 6. Check if user has view permission for the required module (strict 1-to-1 matching or wildcard '*')
   return userPermissions.some((p: any) => {
-    // Check module match: exact match, wildcard, or parent-level fallback
-    const moduleMatch = validModules.includes(p.module);
+    // Check module match: exact module match or wildcard '*'
+    const moduleMatch = p.module === requiredModule || p.module === '*';
     if (!moduleMatch) return false;
 
     // Check action match: must have 'view' permission, or wildcard / all
