@@ -63,7 +63,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
   const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
   const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
-  const [lastTransactionInfo, setLastTransactionInfo] = useState<any>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const locationUrl = useLocation();
@@ -127,17 +126,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
         const locs = locRes.data || [];
         setLocations(locs);
-
-        // Load last transaction from local storage
-        const savedLastTx = localStorage.getItem('pos_last_transaction');
-        if (savedLastTx) {
-          try {
-            setLastTransactionInfo(JSON.parse(savedLastTx));
-          } catch (e) {
-            console.error('Failed to parse last transaction', e);
-          }
-        }
-
       } catch (error) {
         console.error('Error fetching POS data:', error);
       }
@@ -408,12 +396,8 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         date: toApiDate(),
       };
 
-      // Save to localStorage so it persists across refreshes
-      localStorage.setItem('pos_last_transaction', JSON.stringify(txInfo));
-
       // Show success modal
       setCheckoutSuccessInfo(txInfo);
-      setLastTransactionInfo(txInfo);
       setShowCheckoutModal(false);
 
     } catch (error: any) {
@@ -518,16 +502,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 <Search size={16} />
                 <span className="hidden sm:inline">Riwayat</span>
               </button>
-              {lastTransactionInfo && (
-                <button
-                  onClick={() => printReceipt(lastTransactionInfo)}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-slate-200"
-                  title="Cetak Ulang Struk Terakhir"
-                >
-                  <Package size={16} />
-                  <span className="hidden sm:inline">Cetak Terakhir</span>
-                </button>
-              )}
               <button
                 onClick={() => setIsKioskMode(!isKioskMode)}
                 className="p-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-colors shadow-sm shadow-slate-900/20"

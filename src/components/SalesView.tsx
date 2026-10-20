@@ -1740,7 +1740,7 @@ export default function SalesView({
                                   <label className="text-[11px] font-bold text-slate-600">
                                     Diskon Item (Rp)
                                   </label>
-                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
                                     <span>Rp</span>
                                     <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
                                   </div>
@@ -1765,7 +1765,7 @@ export default function SalesView({
                                   <label className="text-[11px] font-bold text-slate-600">
                                     Diskon Item (Rp)
                                   </label>
-                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-[34px]">
+                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
                                     <span>Rp</span>
                                     <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
                                   </div>

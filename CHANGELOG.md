@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Standarisasi Penamaan Label Navigasi Sidebar & Matriks RBAC Sesuai Standar Industri ERP**:
+  - Menyelaraskan seluruh label menu navigasi sidebar (`navigation.tsx`) dan matriks perizinan modul RBAC (`RolePermissionView.tsx`) dengan istilah resmi dan baku standar industri ERP yang singkat, padat, dan profesional.
+  - Harmonisasi singkatan baku internasional dan akuntansi:
+    - Keuangan & Akuntansi: `Piutang (AR)` (*Accounts Receivable*), `Hutang (AP)` (*Accounts Payable*), `Faktur (Invoice)`, `Beban Operasional`, `Kas & Bank`.
+    - Penjualan & Distribusi: `Sales Order (SO)`, `Surat Jalan (DO)` (*Delivery Order*), `Penawaran (Quotation)`, `Kasir (POS)`, `Retur Penjualan`.
+    - Pengadaan: `Purchase Order (PO)`, `Permintaan Pembelian (PR)`, `Penawaran Pemasok (RFQ)`, `Penerimaan Barang (GR)`, `Retur Pembelian`.
+    - Produksi & Proyek: `Work Order (WO)`, `Bill of Materials (BOM)`, `Anggaran Proyek (RAB)`, `Manajemen Proyek`.
+    - Persediaan Gudang: `Stok Persediaan`, `Mutasi Stok`, `Berita Acara (BAG)`, `Barang Masuk`, `Barang Keluar`, `Master Gudang`.
+    - SDM & Kepegawaian: `Presensi Karyawan`, `Terminal Presensi`, `Penggajian (Payroll)`, `Pinjaman Karyawan`, `Manajemen Cuti`, `Data Karyawan`.
+    - Master & Tata Kelola: `Pelanggan (Customer)`, `Pemasok (Supplier)`, `Master Produk`, `Hak Akses (RBAC)`, `Pengguna Sistem`, `Satuan (UoM)`.
+  - Memastikan konsistensi 100% antara penamaan di navigasi sidebar, judul header tampilan (`VIEW_TITLES`), dan kategori perizinan matriks RBAC (`MODULE_LABELS` & `CATEGORIES`).
 - **Redesain Tema & Standarisasi Single Color Palette (Soft Sky Blue & Slate)**:
   - Mengganti tema gelap pekat (`slate-950`, `slate-900`) pada Sidebar, Topbar, dan Brand Panel Login menjadi palet biru muda/soft cerah (`sky-600`, `sky-50`, `sky-100`) dengan gradien lembut dan efek kaca transparan (`backdrop-blur-md`).
   - Menetapkan **Single Unified Color Palette** untuk mencegah tampilan warna-warni campur aduk:
@@ -17,9 +28,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Menyediakan komponen reusable [`Button.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/Button.tsx) dan index export [`ui/index.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/index.ts) dengan dukungan variant (`primary`, `secondary`, `danger`, `danger-solid`, `success`, `ghost`), ukuran (`xs`, `sm`, `md`, `lg`), status `isLoading`, ikon, serta efek interaktif (`active:scale-[0.98]`).
   - Menambahkan kelas utilitas CSS baku di [`index.css`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/index.css) (`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-success`, `.btn-ghost`, `.btn-sm`, `.btn-md`, `.btn-lg`).
   - Merestrukturisasi tombol ad-hoc di halaman utama ([`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx), [`CustomersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/CustomersView.tsx), [`ProductsView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ProductsView.tsx), [`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx)) yang sebelumnya memakai gaya gelap/warna-warni acak (`bg-slate-900`, `bg-indigo-600`) menjadi standar desain seragam.
-  - Menetapkan aturan wajib di [`.agents/AGENTS.md`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/.agents/AGENTS.md) agar setiap fitur baru wajib memakai komponen `<Button>` atau kelas `.btn` tanpa meracik gaya sendiri.
+- **Redesain Halaman Login Modern Minimalist dengan Blok Gradasi & Efek Garis (`LoginView.tsx`)**:
+  - Menggabungkan estetika visual modern: latar belakang dengan pola garis kisi arsitektural halus (*architectural grid lines*), serta panel kiri berupa blok gradasi soft sky-navy (`sky-600` via `sky-700` to `slate-900`) beraksen grid geometris transparan dan garis aksen tipis.
+  - Menghilangkan teks promosi berulang yang mengganggu sehingga informasi tetap bersih, fokus, dan profesional: nama entitas resmi **CV. Beton Agung**, logo, indikator status sistem terverifikasi, dan formulir login presisi.
+  - Mempertahankan integrasi input darurat Super Admin OTP yang elegan serta tombol terstandarisasi `.btn .btn-primary`.
 
 ### Fixed
+- **Pembersihan Modul Induk Legacy dari Tabel Matriks RBAC (`RolePermissionView.tsx`)**:
+  - Menyembunyikan modul induk warisan (`sales`, `purchasing`, `inventory`, `finance`, `production`, `approvals`) dari tampilan matriks perizinan RBAC.
+  - Memastikan 100% baris perizinan di tabel RBAC merepresentasikan menu nyata/konkret di sidebar (seperti POS, Penawaran, Sales Order, Surat Jalan, Retur Penjualan, dll.), sehingga tidak ada lagi baris modul semu yang membingungkan administrator.
+- **Pemisahan Granular 1-to-1 Hak Akses Master Data & Lokasi Gudang (`navigation.tsx` & `RolePermissionView.tsx`)**:
+  - Memisahkan perizinan untuk Kategori Produk (`product_categories`), Satuan (UoM) (`units`), Skema Diskon (`discounts`), dan Lokasi Gudang (`storage_locations`) menjadi modul mandiri 1-to-1 di RBAC.
+  - Mengatasi masalah di mana mencentang izin Master Produk (`products`) sebelumnya ikut memunculkan menu Kategori Produk, Satuan (UoM), dan Skema Diskon di sidebar.
+  - Mengatasi masalah di mana mencentang Master Gudang (`warehouses`) ikut memunculkan menu Lokasi Gudang di bagian Persediaan.
+  - Kini setiap menu sidebar berdiri sendiri: jika hanya mencentang *Master Produk*, maka murni hanya menu *Master Produk* yang tampil di sidebar.
+- **Pembersihan Toolbar Kasir POS (`PosView.tsx`)**:
+  - Menghapus tombol *Cetak Terakhir* di header kasir POS agar toolbar tetap bersih, minimalis, dan tidak memicu pencetakan duplikat yang tidak sengaja.
+  - Pencetakan struk transaksi sebelumnya tetap dapat diakses secara tertib melalui tombol *Riwayat* (History Modal) dan cetak instan tetap tersedia di modal sukses pembayaran.
 - **Pemisahan Riwayat Kasir POS dan Dokumen Sales Order B2B (`SalesView.tsx`)**:
   - Menghilangkan sepenuhnya riwayat transaksi kasir POS (`source === 'pos'`) dari daftar dan drawer dokumen Sales Order, sehingga modul Sales Order murni hanya mengelola kontrak & pesanan penjualan B2B (ERP).
   - Menghapus kolom `Sumber` (`Kasir (POS)` vs `B2B (ERP)`) dari tabel daftar Sales Order karena seluruh item di halaman ini adalah dokumen Sales Order B2B.

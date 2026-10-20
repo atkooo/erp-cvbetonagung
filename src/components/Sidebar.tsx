@@ -68,7 +68,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={`${isPinned ? 'w-64' : 'w-18'} bg-gradient-to-b from-sky-50/90 via-slate-50/95 to-blue-50/80 text-slate-700 h-screen flex flex-col border-r border-sky-100 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300 backdrop-blur-md shadow-[2px_0_15px_-4px_rgba(186,215,245,0.25)]`}>
+    <div className={`${isPinned ? 'w-64' : 'w-18'} bg-linear-to-b from-sky-50/90 via-slate-50/95 to-blue-50/80 text-slate-700 h-screen flex flex-col border-r border-sky-100 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300 backdrop-blur-md shadow-[2px_0_15px_-4px_rgba(186,215,245,0.25)]`}>
       <div className={`p-4 border-b border-sky-100 bg-white/70 sticky top-0 backdrop-blur-md z-10 flex items-center ${isPinned ? 'justify-between' : 'justify-center'}`}>
         {isPinned ? (
           <div className="flex items-center gap-3">

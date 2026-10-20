@@ -105,54 +105,64 @@ export default function LoginView({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-blue-50/30 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
-      <main className="w-full max-w-4xl min-h-130 grid lg:grid-cols-[1.1fr_1fr] bg-white/95 backdrop-blur-md border border-sky-100 rounded-2xl shadow-xl shadow-sky-500/5 overflow-hidden">
-        {/* Left Side: Brand Panel */}
-        <section className="bg-gradient-to-br from-sky-600 via-sky-700 to-blue-800 text-white p-8 md:p-10 flex flex-col justify-between gap-10 relative overflow-hidden">
-          {/* Subtle ambient lighting decorations */}
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-sky-400/20 rounded-full blur-2xl pointer-events-none" />
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 font-sans text-xs text-slate-600 selection:bg-sky-100 selection:text-sky-900 relative overflow-hidden">
+      {/* Background Subtle Architectural Grid & Ambient Tint */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0284c70a_1px,transparent_1px),linear-gradient(to_bottom,#0284c70a_1px,transparent_1px)] bg-size-[32px_32px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-sky-200/25 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="space-y-10 relative z-10">
+      {/* Main Login Card */}
+      <main className="w-full max-w-3xl grid md:grid-cols-[1fr_1.15fr] bg-white border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-900/5 overflow-hidden relative z-10">
+        {/* Left Side: Modern Geometric Gradient Block */}
+        <section className="bg-linear-to-br from-sky-600 via-sky-700 to-slate-900 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+          {/* Internal Geometric Grid Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+
+          {/* Top Brand Block */}
+          <div className="relative z-10 space-y-6">
             <div
-              className="flex items-center gap-3 select-none cursor-pointer"
               onClick={handleLogoClick}
+              className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 p-2.5 flex items-center justify-center cursor-pointer transition-transform active:scale-95 shadow-inner"
+              title="Klik 5x untuk mode akses khusus"
             >
-              <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center overflow-hidden p-2 shadow-inner">
-                <img src="/logo.png" alt={`${appName} Logo`} className="w-full h-full object-contain" />
-              </div>
-              <div>
-                <h1 className="text-sm font-black text-white uppercase tracking-wider">
-                  {appName}
-                </h1>
-                <p className="text-[10px] font-mono tracking-widest text-sky-100/80 mt-0.5">
-                  Sistem Operasional ERP
-                </p>
-              </div>
+              <img src="/logo.png" alt={`${appName} Logo`} className="w-full h-full object-contain" />
             </div>
 
-            <div className="space-y-4">
-              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-sky-100 border border-white/20 bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono tracking-widest uppercase text-sky-200 font-bold bg-white/10 px-2.5 py-0.5 rounded-full border border-white/15 inline-block">
                 Portal Internal
               </span>
-              <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
-                Sistem Manajemen & Operasional Terpusat.
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight">
+                {appName || "CV. Beton Agung"}
               </h2>
+              <div className="h-0.5 w-12 bg-linear-to-r from-sky-300 to-transparent my-2" />
+              <p className="text-xs text-sky-100/80 leading-relaxed">
+                Sistem Operasional Terpadu
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-sky-200/80 font-mono border-t border-white/15 pt-4 relative z-10">
-            <span>© {new Date().getFullYear()} {appName || 'Perusahaan'} - by Lintara Digital</span>
+          {/* Bottom Security Mark */}
+          <div className="relative z-10 pt-6 border-t border-white/15 flex items-center justify-between text-[10px] text-sky-200/70 font-mono">
+            <span>Sesi Terenkripsi</span>
+            <div className="flex items-center gap-1.5 text-emerald-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Online</span>
+            </div>
           </div>
         </section>
 
-        {/* Right Side: Login Form */}
-        <section className="p-8 md:p-10 flex items-center bg-white/80">
-          <div className="w-full space-y-6">
+        {/* Right Side: Clean Form with Top Accent Line */}
+        <section className="p-8 sm:p-10 flex flex-col justify-center bg-white relative">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-sky-500 via-blue-600 to-sky-400 md:hidden" />
+
+          <div className="w-full max-w-xs mx-auto space-y-6">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Sign In</h2>
-              <p className="mt-1 text-slate-400 text-xs">
-                Masukkan kredensial akun korporat Anda.
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+                Masuk ke Akun
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Masukkan kredensial akun Anda.
               </p>
             </div>
 
@@ -160,12 +170,12 @@ export default function LoginView({
               {!showOtpField && (
                 <>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-mono font-bold text-slate-500">
-                      Email Address
+                    <label className="text-[11px] font-semibold text-slate-700">
+                      Email
                     </label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                        <Mail size={13} />
+                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                        <Mail size={14} />
                       </span>
                       <input
                         type="email"
@@ -174,20 +184,18 @@ export default function LoginView({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="nama@perusahaan.com"
                         autoComplete="email"
-                        className="w-full bg-white border border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all text-xs"
+                        className="w-full bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 rounded-xl py-2 pl-9 pr-3 text-slate-900 placeholder:text-slate-400 outline-none transition-all text-xs"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-mono font-bold text-slate-500">
-                        Password
-                      </label>
-                    </div>
+                    <label className="text-[11px] font-semibold text-slate-700">
+                      Password
+                    </label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                        <KeyRound size={13} />
+                      <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                        <KeyRound size={14} />
                       </span>
                       <input
                         type="password"
@@ -195,7 +203,7 @@ export default function LoginView({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
-                        className="w-full bg-white border border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none transition-all text-xs"
+                        className="w-full bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 rounded-xl py-2 pl-9 pr-3 text-slate-900 outline-none transition-all text-xs"
                       />
                     </div>
                   </div>
@@ -203,29 +211,25 @@ export default function LoginView({
               )}
 
               {showOtpField && (
-                <div className="space-y-1.5 animate-pulse">
-                  <label className="text-[10px] uppercase font-mono font-bold text-emerald-600">
-                    Super OTP Key
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3 flex items-center text-emerald-600">
-                      <LockKeyhole size={13} />
-                    </span>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      required
-                      placeholder="******"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      className="w-full bg-emerald-50/50 border border-emerald-200 focus:border-emerald-500 rounded-lg py-2 pl-9 pr-3 text-emerald-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-xs font-mono tracking-widest text-center"
-                    />
+                <div className="space-y-1.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900">
+                    <LockKeyhole size={13} className="text-amber-700" />
+                    <span>Super Admin OTP</span>
                   </div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    placeholder="******"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className="w-full bg-white border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 rounded-lg py-2 px-3 text-amber-900 placeholder:text-amber-300 outline-none transition-all text-sm font-mono tracking-widest text-center"
+                  />
                 </div>
               )}
 
               {errorMessage && (
-                <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-lg px-3 py-2 text-[10px] leading-relaxed">
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-3.5 py-2 text-[11px] leading-relaxed">
                   {errorMessage}
                 </div>
               )}
@@ -233,23 +237,23 @@ export default function LoginView({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 border border-sky-600 font-bold text-white rounded-lg shadow-md shadow-sky-500/20 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
+                className="btn btn-primary btn-md w-full gap-2 shadow-xs mt-2"
               >
-                <span>
-                  {isSubmitting
-                    ? "Memproses Autentikasi"
-                    : "Masuk ke Dashboard"}
-                </span>
+                <span>{isSubmitting ? "Memproses..." : "Masuk"}</span>
                 {isSubmitting ? (
-                  <Loader2 size={13} className="animate-spin stroke-[2.5]" />
+                  <Loader2 size={14} className="animate-spin stroke-[2.5]" />
                 ) : (
-                  <ArrowRight size={13} className="stroke-[2.5]" />
+                  <ArrowRight size={14} className="stroke-[2.5]" />
                 )}
               </button>
             </form>
           </div>
         </section>
       </main>
+
+      <footer className="mt-8 text-center text-[11px] text-slate-400">
+        © {new Date().getFullYear()} {appName || "CV. Beton Agung"}
+      </footer>
     </div>
   );
 }

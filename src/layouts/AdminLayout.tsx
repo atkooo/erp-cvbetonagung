@@ -21,7 +21,7 @@ export default function AdminLayout() {
 
         <Topbar />
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-slate-50 via-sky-50/30 to-blue-50/20">
+        <div className="flex-1 overflow-y-auto p-6 bg-linear-to-br from-slate-50 via-sky-50/30 to-blue-50/20">
           <div className="w-full mx-auto space-y-6 animate-in fade-in duration-200">
             <Outlet />
           </div>
@@ -29,8 +29,8 @@ export default function AdminLayout() {
       </div>
 
       {toast && (
-        <div className="fixed top-5 right-5 bg-gradient-to-r from-sky-600 to-sky-700 text-white rounded-xl shadow-lg shadow-sky-500/20 border border-sky-400/30 p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200">
-          <CheckCircle2 size={15} className="text-white stroke-[3]" />
+        <div className="fixed top-5 right-5 bg-linear-to-r from-sky-600 to-sky-700 text-white rounded-xl shadow-lg shadow-sky-500/20 border border-sky-400/30 p-3.5 flex items-center gap-2.5 z-50 animate-in fade-in slide-in-from-top-5 duration-200">
+          <CheckCircle2 size={15} className="text-white stroke-3" />
           <span className="font-sans font-bold text-[11px]">{toast}</span>
         </div>
       )}
