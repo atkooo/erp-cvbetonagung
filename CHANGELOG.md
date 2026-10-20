@@ -6,7 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- **Redesain Tema & Standarisasi Single Color Palette (Soft Sky Blue & Slate)**:
+  - Mengganti tema gelap pekat (`slate-950`, `slate-900`) pada Sidebar, Topbar, dan Brand Panel Login menjadi palet biru muda/soft cerah (`sky-600`, `sky-50`, `sky-100`) dengan gradien lembut dan efek kaca transparan (`backdrop-blur-md`).
+  - Menetapkan **Single Unified Color Palette** untuk mencegah tampilan warna-warni campur aduk:
+    - *Warna Utama*: Soft Sky / Blue (`sky-600` / `#0284c7`, hover `sky-700`).
+    - *Latar & Kartu*: Gradien canvas lembut (`bg-gradient-to-br from-slate-50 via-sky-50/30 to-blue-50/20`) dan kartu beraksen frosted glass.
+    - *Warna Status (Semantic Only)*: Dibatasi ketat hanya untuk status data/dokumen (`emerald` = Selesai, `amber` = Menunggu, `rose` = Batal/Ditolak, `slate` = Draft).
+- **Standarisasi Desain Tombol (Standardized Button Design System)**:
+  - Menyediakan komponen reusable [`Button.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/Button.tsx) dan index export [`ui/index.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/index.ts) dengan dukungan variant (`primary`, `secondary`, `danger`, `danger-solid`, `success`, `ghost`), ukuran (`xs`, `sm`, `md`, `lg`), status `isLoading`, ikon, serta efek interaktif (`active:scale-[0.98]`).
+  - Menambahkan kelas utilitas CSS baku di [`index.css`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/index.css) (`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-success`, `.btn-ghost`, `.btn-sm`, `.btn-md`, `.btn-lg`).
+  - Merestrukturisasi tombol ad-hoc di halaman utama ([`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx), [`CustomersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/CustomersView.tsx), [`ProductsView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ProductsView.tsx), [`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx)) yang sebelumnya memakai gaya gelap/warna-warni acak (`bg-slate-900`, `bg-indigo-600`) menjadi standar desain seragam.
+  - Menetapkan aturan wajib di [`.agents/AGENTS.md`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/.agents/AGENTS.md) agar setiap fitur baru wajib memakai komponen `<Button>` atau kelas `.btn` tanpa meracik gaya sendiri.
+
 ### Fixed
+- **Pemisahan Riwayat Kasir POS dan Dokumen Sales Order B2B (`SalesView.tsx`)**:
+  - Menghilangkan sepenuhnya riwayat transaksi kasir POS (`source === 'pos'`) dari daftar dan drawer dokumen Sales Order, sehingga modul Sales Order murni hanya mengelola kontrak & pesanan penjualan B2B (ERP).
+  - Menghapus kolom `Sumber` (`Kasir (POS)` vs `B2B (ERP)`) dari tabel daftar Sales Order karena seluruh item di halaman ini adalah dokumen Sales Order B2B.
+  - Memanggil API dengan filter eksplisit `salesApi.getSalesOrders('erp')` dan filter ganda pada state lokal.
+  - Membersihkan percabangan logic status inden/PO kasir yang sebelumnya menempel di rincian item drawer Sales Order.
 - **Pembersihan & Penyederhanaan Teks UI, Label Sidebar, dan Preset RBAC (`navigation.tsx` & `RolePermissionView.tsx`)**:
   - Mempersingkat menu preset akses massal menjadi ringkas: `Full`, `Edit`, `Read`, `Reset` (menghapus pengulangan kata dalam kurung seperti `(Semua Aksi)`, `(Lihat, Tambah, Ubah)`).
   - Menghapus teks instruksi/note yang repetitif di halaman matriks RBAC: banner header redundan, note petunjuk centang di atas tabel, label pengulangan `5 aksi tersedia` di bawah setiap baris modul, note panjang di footer tabel, dan card peringatan di bawah tabel.
@@ -40,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Menghapus dependensi backend yang tidak terpakai dari client SPA (`express`, `@types/express`) serta devDependencies redundan (`tsx`, `esbuild`) dari `package.json`.
 
 ### Added
+- **Cetak Thermal Sales Order (80mm) Ringkas Tanpa Tanda Tangan (`SalesOrderPrintService.ts` & `SalesView.tsx`)**:
+  - Menyediakan layanan cetak struk thermal 80mm untuk transaksi B2B Sales Order (`SalesOrderPrintService.ts`) yang mendukung 3 mode:
+    - *Cetak Struk Browser (Window Print)*: Otomatis memicu dialog cetak browser dengan layout monospaced sempit (`@page { size: auto; margin: 0; }`).
+    - *Bluetooth ESC/POS*: Mengirim data byte langsung ke printer mini Bluetooth portable via Web Bluetooth API (`navigator.bluetooth`).
+    - *Unduh PDF Thermal*: Menghasilkan file PDF berukuran roll 80mm dinamis via `jspdf` dan `html-to-image`.
+  - Format slip thermal dirancang bersih dan ringkas tanpa kolom tanda tangan (nama perusahaan, No. SO, tanggal, customer, rincian barang vertikal/stacked, subtotal, diskon transaksi, grand total, dan catatan).
+  - Menambahkan tombol aksi cepat `Thermal` pada baris tabel daftar Sales Order dan tombol `Cetak Thermal (80mm)` pada panel rincian dokumen di `SalesView.tsx`, lengkap dengan modal live preview interaktif.
 - **Validasi Kesiapan Pengadaan Barang Beli-Jadi Sebelum Pembuatan Surat Jalan (Opsi A)**:
   - `DeliveryOrdersView.tsx`: Menambahkan pengecekan kesiapan penerimaan barang dari supplier (`checkSalesOrderDeliveryStatus`). Opsi Sales Order pada dropdown pembuatan Surat Jalan kini menampilkan status kesiapan dan diblokir/disabled jika terdapat barang beli-jadi (`purchase`) yang PO supplier-nya belum selesai diterima (`fully_received`) atau stok gudang belum mencukupi. Menampilkan alert peringatan jelas beserta tombol navigasi cepat ke modul Pembelian (PO).
   - `SalesView.tsx`: Menampilkan badge status kedatangan barang PO pada rincian item Sales Order (`Beli Jadi (PO Diterima - Siap Kirim)` vs `Beli Jadi (Menunggu PO Supplier)`). Alur pemesanan ke supplier difokuskan melalui modul Pembelian (PO) setelah pembayaran DP invoice diselesaikan pelanggan.

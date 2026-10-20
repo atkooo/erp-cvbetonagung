@@ -57,11 +57,11 @@ export default function LoginView({
       buttonsStyling: false,
       customClass: {
         popup:
-          "rounded-xl border border-slate-200 shadow-xl bg-white font-sans text-xs",
+          "rounded-xl border border-sky-100 shadow-xl bg-white font-sans text-xs",
         title: "text-sm font-bold text-slate-900 pt-4",
         htmlContainer: "text-xs text-slate-500 py-2",
         confirmButton:
-          "px-4 py-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold hover:bg-slate-800 transition-colors",
+          "px-4 py-2 rounded-lg bg-sky-600 text-white text-[10px] font-bold hover:bg-sky-700 transition-colors shadow-sm",
       },
     });
   };
@@ -105,30 +105,34 @@ export default function LoginView({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
-      <main className="w-full max-w-4xl min-h-130 grid lg:grid-cols-[1.1fr_1fr] bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-blue-50/30 flex items-center justify-center px-4 py-12 font-sans text-xs text-slate-600">
+      <main className="w-full max-w-4xl min-h-130 grid lg:grid-cols-[1.1fr_1fr] bg-white/95 backdrop-blur-md border border-sky-100 rounded-2xl shadow-xl shadow-sky-500/5 overflow-hidden">
         {/* Left Side: Brand Panel */}
-        <section className="bg-slate-900 text-slate-200 p-8 md:p-10 flex flex-col justify-between gap-10">
-          <div className="space-y-10">
+        <section className="bg-gradient-to-br from-sky-600 via-sky-700 to-blue-800 text-white p-8 md:p-10 flex flex-col justify-between gap-10 relative overflow-hidden">
+          {/* Subtle ambient lighting decorations */}
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-sky-400/20 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="space-y-10 relative z-10">
             <div
               className="flex items-center gap-3 select-none cursor-pointer"
               onClick={handleLogoClick}
             >
-              <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center overflow-hidden p-2">
+              <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center overflow-hidden p-2 shadow-inner">
                 <img src="/logo.png" alt={`${appName} Logo`} className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-sm font-black text-white uppercase tracking-wider">
                   {appName}
                 </h1>
-                <p className="text-[10px] font-mono tracking-widest text-slate-400 mt-0.5">
+                <p className="text-[10px] font-mono tracking-widest text-sky-100/80 mt-0.5">
                   Sistem Operasional ERP
                 </p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-slate-400 border border-slate-800 bg-slate-800/40 px-2 py-0.5 rounded">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-sky-100 border border-white/20 bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs">
                 Portal Internal
               </span>
               <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
@@ -137,13 +141,13 @@ export default function LoginView({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono border-t border-slate-800/60 pt-4">
+          <div className="flex items-center justify-between text-[10px] text-sky-200/80 font-mono border-t border-white/15 pt-4 relative z-10">
             <span>© {new Date().getFullYear()} {appName || 'Perusahaan'} - by Lintara Digital</span>
           </div>
         </section>
 
         {/* Right Side: Login Form */}
-        <section className="p-8 md:p-10 flex items-center bg-white">
+        <section className="p-8 md:p-10 flex items-center bg-white/80">
           <div className="w-full space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Sign In</h2>
@@ -170,7 +174,7 @@ export default function LoginView({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="nama@perusahaan.com"
                         autoComplete="email"
-                        className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
+                        className="w-full bg-white border border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg py-2 pl-9 pr-3 text-slate-800 placeholder:text-slate-400 focus:outline-none transition-all text-xs"
                       />
                     </div>
                   </div>
@@ -191,7 +195,7 @@ export default function LoginView({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
-                        className="w-full bg-white border border-slate-200 focus:border-slate-900 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all text-xs"
+                        className="w-full bg-white border border-slate-200 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg py-2 pl-9 pr-3 text-slate-800 focus:outline-none transition-all text-xs"
                       />
                     </div>
                   </div>
@@ -221,7 +225,7 @@ export default function LoginView({
               )}
 
               {errorMessage && (
-                <div className="bg-red-50 border border-red-100 text-red-700 rounded-lg px-3 py-2 text-[10px] leading-relaxed">
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-lg px-3 py-2 text-[10px] leading-relaxed">
                   {errorMessage}
                 </div>
               )}
@@ -229,7 +233,7 @@ export default function LoginView({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-slate-900 border border-slate-900 font-bold text-white rounded-lg hover:bg-slate-800 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
+                className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 border border-sky-600 font-bold text-white rounded-lg shadow-md shadow-sky-500/20 disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
               >
                 <span>
                   {isSubmitting

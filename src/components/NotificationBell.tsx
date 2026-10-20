@@ -121,7 +121,7 @@ export const NotificationBell: React.FC = () => {
       case 'success': return 'text-emerald-500 bg-emerald-50';
       case 'warning': return 'text-amber-500 bg-amber-50';
       case 'error': return 'text-rose-500 bg-rose-50';
-      default: return 'text-indigo-500 bg-indigo-50';
+      default: return 'text-sky-600 bg-sky-50';
     }
   };
 
@@ -129,7 +129,7 @@ export const NotificationBell: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-500 hover:text-slate-700 transition-colors rounded-full hover:bg-slate-100"
+        className="relative p-2 text-slate-500 hover:text-sky-700 transition-colors rounded-full hover:bg-sky-50/70"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -141,12 +141,12 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-          <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-sky-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+          <div className="p-3 border-b border-sky-100 flex items-center justify-between bg-sky-50/50">
             <h3 className="font-semibold text-slate-800 flex items-center gap-2">
               Notifikasi
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-xs font-medium">
                   {unreadCount} baru
                 </span>
               )}
@@ -154,7 +154,7 @@ export const NotificationBell: React.FC = () => {
             {unreadCount > 0 && (
               <button 
                 onClick={markAllAsRead}
-                className="text-xs text-slate-500 hover:text-indigo-600 font-medium transition-colors flex items-center gap-1"
+                className="text-xs text-slate-500 hover:text-sky-700 font-medium transition-colors flex items-center gap-1"
               >
                 <Check size={14} /> Tandai dibaca
               </button>
@@ -172,7 +172,7 @@ export const NotificationBell: React.FC = () => {
                 {notifications.map((notif) => (
                   <div 
                     key={notif.id} 
-                    className={`p-4 transition-colors hover:bg-slate-50 ${!notif.read_at ? 'bg-indigo-50/30' : ''}`}
+                    className={`p-4 transition-colors hover:bg-slate-50 ${!notif.read_at ? 'bg-sky-50/40' : ''}`}
                     onClick={() => !notif.read_at && markAsRead(notif.id)}
                   >
                     <div className="flex gap-3">
@@ -194,7 +194,7 @@ export const NotificationBell: React.FC = () => {
                       </div>
                       {!notif.read_at && (
                         <div className="shrink-0 pt-1">
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                          <div className="w-2 h-2 bg-sky-600 rounded-full"></div>
                         </div>
                       )}
                     </div>

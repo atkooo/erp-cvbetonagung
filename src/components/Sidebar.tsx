@@ -46,12 +46,12 @@ export default function Sidebar() {
     const active = isItemActive(item, currentView);
 
     const activeClass = isPinned
-      ? 'bg-slate-800/80 border-l-2 border-slate-400 pl-2.5 text-white font-bold transition-all'
-      : 'bg-slate-800/80 text-white font-bold justify-center rounded-lg';
+      ? 'bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-transparent border-l-3 border-sky-600 pl-2.5 text-sky-800 font-bold shadow-xs'
+      : 'bg-sky-500/15 text-sky-700 font-bold justify-center rounded-lg';
 
     const inactiveClass = isPinned
-      ? 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors pl-3'
-      : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 transition-colors justify-center rounded-lg';
+      ? 'text-slate-600 hover:bg-sky-100/50 hover:text-sky-800 transition-colors pl-3 font-medium'
+      : 'text-slate-500 hover:bg-sky-100/50 hover:text-sky-800 transition-colors justify-center rounded-lg';
 
     return (
       <Link
@@ -68,40 +68,40 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={`${isPinned ? 'w-64' : 'w-18'} bg-slate-950 text-slate-100 h-screen flex flex-col border-r border-slate-900 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300`}>
-      <div className={`p-4 border-b border-slate-900 bg-slate-950/60 sticky top-0 backdrop-blur-md z-10 flex items-center ${isPinned ? 'justify-between' : 'justify-center'}`}>
+    <div className={`${isPinned ? 'w-64' : 'w-18'} bg-gradient-to-b from-sky-50/90 via-slate-50/95 to-blue-50/80 text-slate-700 h-screen flex flex-col border-r border-sky-100 shrink-0 select-none overflow-y-auto scrollbar-thin transition-all duration-300 backdrop-blur-md shadow-[2px_0_15px_-4px_rgba(186,215,245,0.25)]`}>
+      <div className={`p-4 border-b border-sky-100 bg-white/70 sticky top-0 backdrop-blur-md z-10 flex items-center ${isPinned ? 'justify-between' : 'justify-center'}`}>
         {isPinned ? (
           <div className="flex items-center gap-3">
-            <div className="bg-slate-800 border border-slate-700/50 p-1.5 rounded-lg flex items-center justify-center">
+            <div className="bg-white border border-sky-200/80 shadow-xs p-1.5 rounded-lg flex items-center justify-center">
               <img src="/logo.png" alt={`${import.meta.env.VITE_APP_NAME || "Lintara Digital"} Logo`} className="w-6 h-6 object-contain" />
             </div>
             <div>
-              <h1 className="font-sans font-bold tracking-tight text-white text-sm whitespace-nowrap">{import.meta.env.VITE_APP_NAME || "Lintara Digital"}</h1>
-              <span className="text-[9px] uppercase tracking-widest font-mono text-slate-400 font-bold whitespace-nowrap">by Lintara Digital</span>
+              <h1 className="font-sans font-bold tracking-tight text-slate-900 text-sm whitespace-nowrap">{import.meta.env.VITE_APP_NAME || "Lintara Digital"}</h1>
+              <span className="text-[9px] uppercase tracking-widest font-mono text-sky-700/80 font-bold whitespace-nowrap">by Lintara Digital</span>
             </div>
           </div>
         ) : (
-          <button onClick={() => setIsPinned(true)} className="bg-slate-800 border border-slate-700/50 p-1.5 rounded-lg flex items-center justify-center hover:bg-slate-700 transition-colors" title="Expand Sidebar">
+          <button onClick={() => setIsPinned(true)} className="bg-white border border-sky-200/80 shadow-xs p-1.5 rounded-lg flex items-center justify-center hover:bg-sky-50 transition-colors cursor-pointer" title="Expand Sidebar">
             <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
           </button>
         )}
 
         {isPinned && (
-          <button onClick={() => setIsPinned(false)} className="text-slate-500 hover:text-slate-300 p-1 rounded-md hover:bg-slate-800 transition-colors" title="Collapse Sidebar">
+          <button onClick={() => setIsPinned(false)} className="text-slate-400 hover:text-sky-700 p-1 rounded-md hover:bg-sky-100/60 transition-colors cursor-pointer" title="Collapse Sidebar">
             <ChevronLeft size={16} />
           </button>
         )}
       </div>
 
       {isPinned ? (
-        <div className="p-4 mx-3 my-3 bg-slate-900/40 rounded-xl border border-slate-900/60 flex items-center justify-between">
+        <div className="p-3.5 mx-3 my-3 bg-white/80 rounded-xl border border-sky-100 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 text-xs shrink-0">
+            <div className="w-8 h-8 rounded-full bg-sky-100 border border-sky-200 flex items-center justify-center font-bold text-sky-700 text-xs shrink-0">
               {userRoleName.substring(0, 2).toUpperCase()}
             </div>
             <div className="truncate">
-              <p className="text-[11px] font-bold text-slate-200">Akun Aktif</p>
-              <p className="text-[9px] font-mono text-slate-400 mt-0.5 bg-slate-800 border border-slate-700/40 rounded px-1.5 py-0.5 inline-block truncate max-w-full" title={`Role Code: ${userRoleCode}`}>
+              <p className="text-[11px] font-bold text-slate-800">Akun Aktif</p>
+              <p className="text-[9px] font-mono text-sky-800 font-semibold bg-sky-50 border border-sky-200/60 rounded px-1.5 py-0.5 inline-block truncate max-w-full" title={`Role Code: ${userRoleCode}`}>
                 {userRoleName}
               </p>
             </div>
@@ -109,22 +109,22 @@ export default function Sidebar() {
           <button
             onClick={handleLogout}
             title="Keluar dari Sistem"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
           >
             <LogOut size={14} />
           </button>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4 py-4 border-b border-slate-900/60 mb-2">
-          <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 text-xs" title={`Role: ${userRoleName}`}>
+        <div className="flex flex-col items-center gap-3 py-3 border-b border-sky-100 mb-2">
+          <div className="w-8 h-8 rounded-full bg-sky-100 border border-sky-200 flex items-center justify-center font-bold text-sky-700 text-xs" title={`Role: ${userRoleName}`}>
             {userRoleName.substring(0, 2).toUpperCase()}
           </div>
           <button
             onClick={handleLogout}
             title="Keluar dari Sistem"
-            className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
-            <LogOut size={16} />
+            <LogOut size={15} />
           </button>
         </div>
       )}
@@ -141,32 +141,32 @@ export default function Sidebar() {
 
           if (!isPinned) {
             return (
-              <div key={section.id} className={section.separator ? 'pt-2 border-t border-slate-900/60 mt-2 space-y-1' : 'space-y-1'}>
+              <div key={section.id} className={section.separator ? 'pt-2 border-t border-sky-100 mt-2 space-y-1' : 'space-y-1'}>
                 {visibleItems.map(renderNavItem)}
               </div>
             );
           }
 
           return (
-            <div key={section.id} className={section.separator ? 'pt-4 border-t border-slate-900/60 mt-4 space-y-1.5' : 'space-y-1'}>
+            <div key={section.id} className={section.separator ? 'pt-4 border-t border-sky-100 mt-4 space-y-1.5' : 'space-y-1'}>
               {section.title && (
                 section.collapsible ? (
                   <button
                     onClick={() => toggleSection(section.id)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 mt-4 text-left"
+                    className="w-full flex items-center justify-between px-3 py-1.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider text-sky-900/60 hover:text-sky-900 mt-4 text-left cursor-pointer"
                   >
                     <span>{section.title}</span>
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </button>
                 ) : (
-                  <p className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 mt-4">
+                  <p className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-sky-900/60 mt-4">
                     {section.title}
                   </p>
                 )
               )}
 
               {(!section.collapsible || isExpanded) && (
-                <div className={section.title ? 'pl-1 border-l border-slate-900 ml-2 mt-1' : 'space-y-1.5'}>
+                <div className={section.title ? 'pl-1 border-l border-sky-200/60 ml-2 mt-1' : 'space-y-1.5'}>
                   {visibleItems.map(renderNavItem)}
                 </div>
               )}
@@ -176,8 +176,8 @@ export default function Sidebar() {
       </div>
 
       {isPinned && (
-        <div className="p-3 bg-slate-950 border-t border-slate-900 text-center text-[9px] text-slate-600 font-mono whitespace-nowrap">
-          Sistem ERP
+        <div className="p-2.5 bg-white/70 border-t border-sky-100 text-center text-[9px] text-sky-700/60 font-mono whitespace-nowrap">
+          Sistem ERP CV. Beton Agung
         </div>
       )}
     </div>

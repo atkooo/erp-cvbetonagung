@@ -242,7 +242,7 @@ export default function CustomersView({
 
         <button
           onClick={handleOpenAddModal}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
+          className="btn btn-primary btn-md shrink-0 shadow-xs"
         >
           <Plus size={16} />
           <span>Tambah Customer</span>
@@ -388,9 +388,9 @@ export default function CustomersView({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-5 py-4 soft-blue-header text-white flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2">
-                <UserPlus size={18} className="text-cyan-400" />
+                <UserPlus size={18} className="text-sky-100" />
                 <h3 className="font-sans font-bold text-sm">
                   {editingCustomer
                     ? `Edit Data Customer: ${editingCustomer.code}`
@@ -399,7 +399,7 @@ export default function CustomersView({
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -509,14 +509,14 @@ export default function CustomersView({
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   disabled={isSubmitting}
-                  className="px-3 py-2 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white font-bold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  className="btn btn-primary btn-md flex items-center gap-1.5"
                 >
                   <Save size={13} />
                   <span>{isSubmitting ? "Menyimpan..." : "Simpan"}</span>

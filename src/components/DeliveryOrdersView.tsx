@@ -432,7 +432,7 @@ export default function DeliveryOrdersView({
 
         <button
           onClick={handleOpenCreateModal}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+          className="btn btn-primary btn-md shrink-0 shadow-xs"
         >
           <Plus size={14} />
           <span>Buat Surat Jalan</span>
@@ -1070,14 +1070,14 @@ export default function DeliveryOrdersView({
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div className="p-4 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
               <div className="flex items-center gap-2">
-                <Truck size={16} className="text-cyan-400" />
+                <Truck size={16} className="text-sky-100" />
                 <h3 className="font-bold text-sm">Buat Surat Jalan</h3>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1300,14 +1300,14 @@ export default function DeliveryOrdersView({
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={Boolean(selectedSalesOrderId && salesOrders.find(s => s.id === selectedSalesOrderId) && checkSalesOrderDeliveryStatus(salesOrders.find(s => s.id === selectedSalesOrderId)!).isBlocked)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="btn btn-primary btn-md"
                   title={Boolean(selectedSalesOrderId && salesOrders.find(s => s.id === selectedSalesOrderId) && checkSalesOrderDeliveryStatus(salesOrders.find(s => s.id === selectedSalesOrderId)!).isBlocked) ? "Pengiriman ditahan: Barang beli-jadi belum diterima dari supplier" : undefined}
                 >
                   Simpan

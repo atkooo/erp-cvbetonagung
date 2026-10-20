@@ -30,6 +30,8 @@ import {
   Edit2,
   CheckCircle2,
   Clock,
+  Bluetooth,
+  Download,
 } from '@/src/components/icons';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage, apiClient } from '../services/api';
@@ -44,6 +46,13 @@ import SearchableSelect from './SearchableSelect';
 import ProductPicker from './ProductPicker';
 import { toApiDate, formatDate } from '../utils/date';
 import { getCompanyProfile, formatAddressForPrint, CompanyProfile } from '../utils/companyProfile';
+import {
+  printSalesOrderThermal,
+  downloadSalesOrderThermalPdf,
+  printBluetoothSalesOrder,
+  buildSalesOrderThermalHTML,
+  SalesOrderPrintInfo,
+} from '../features/sales/services/SalesOrderPrintService';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -103,6 +112,60 @@ export default function SalesView({
     documentTitle: printTitle,
   });
 
+  // State & Handlers for 80mm Thermal Printing (Sales Order)
+  const [thermalModalDoc, setThermalModalDoc] = useState<any>(null);
+
+  const mapSalesOrderToPrintInfo = (so: any): SalesOrderPrintInfo => {
+    return {
+      orderNumber: so.orderNumber,
+      orderDate: formatDate(so.orderDate),
+      customerName: so.customerName || so.customer?.name || 'Pelanggan',
+      status: so.status,
+      notes: so.notes || undefined,
+      quotationNumber: so.quotationNumber || so.quotation?.quotationNumber || undefined,
+      source: so.source,
+      total: Number(so.total) || 0,
+      globalDiscountAmount: Number(so.globalDiscountAmount) || 0,
+      globalDiscountType: so.globalDiscountType || undefined,
+      globalDiscountValue: Number(so.globalDiscountValue) || 0,
+      items: (so.items || []).map((item: any) => {
+        const unitPrice = Number(item.price ?? item.unitPrice ?? item.unit_price ?? 0);
+        const qty = Number(item.quantity) || 0;
+        const discount = Number(item.discountAmount ?? item.discount_amount ?? 0);
+        const subtotal = Number(item.subtotal) || (qty * unitPrice - discount);
+        const rawUnit = item.unit || item.product?.unit?.name || item.product?.unit?.code || item.product?.unit || '';
+        const unitName = typeof rawUnit === 'string' ? rawUnit : (rawUnit?.name || '');
+
+        return {
+          productName: item.product?.name || item.productName || 'Item',
+          pieceCount: item.pieceCount ? Number(item.pieceCount) : undefined,
+          length: item.length ? Number(item.length) : undefined,
+          quantity: qty,
+          unit: unitName,
+          unitPrice,
+          discountAmount: discount,
+          subtotal,
+          description: item.description || undefined,
+        };
+      }),
+    };
+  };
+
+  const handleThermalPrintWindow = (so: any) => {
+    const info = mapSalesOrderToPrintInfo(so);
+    printSalesOrderThermal(info, companyProfile, onTriggerNotification);
+  };
+
+  const handleThermalDownloadPdf = (so: any) => {
+    const info = mapSalesOrderToPrintInfo(so);
+    downloadSalesOrderThermalPdf(info, companyProfile, onTriggerNotification);
+  };
+
+  const handleThermalPrintBluetooth = (so: any) => {
+    const info = mapSalesOrderToPrintInfo(so);
+    printBluetoothSalesOrder(info, companyProfile, onTriggerNotification);
+  };
+
   // Form states to create a quick document
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [docDate, setDocDate] = useState('');
@@ -128,7 +191,7 @@ export default function SalesView({
     setErrorMessage(null);
     try {
       const [docs, custsRes, prods, stocks] = await Promise.all([
-        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders(),
+        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders('erp'),
         customersApi.listCustomers(),
         productsApi.getProducts(),
         inventoryApi.getProductStocks()
@@ -142,7 +205,7 @@ export default function SalesView({
         setQuotations(docs as Quotation[]);
         setSalesOrders([]);
       } else {
-        setSalesOrders(docs as SalesOrder[]);
+        setSalesOrders((docs as SalesOrder[]).filter(d => d.source !== 'pos'));
       }
       setCustomers(custsRes.customers);
       setProducts(productsWithStock);
@@ -403,7 +466,7 @@ export default function SalesView({
       }
     });
 
-    const isFullyDelivered = (totalDelivered >= totalItems && totalItems > 0) || (baseStatus === 'Selesai' && doc.source === 'pos' && dos.length === 0);
+    const isFullyDelivered = totalDelivered >= totalItems && totalItems > 0;
     const isPartiallyDelivered = totalDelivered > 0 && totalDelivered < totalItems;
 
     if (isFullyDelivered && isFullyPaid) return 'Selesai';
@@ -429,6 +492,7 @@ export default function SalesView({
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
     if (doc?.status === 'cancelled' || doc?.status === 'Dibatalkan') return false;
+    if (!isQuotation && doc?.source === 'pos') return false;
     const docNum = (isQuotation ? (doc?.quoteNumber || doc?.quotationNumber) : doc?.orderNumber) || '';
     const customerName = doc?.customerName || doc?.customer?.name || '';
     const searchLower = (search || '').toLowerCase();
@@ -717,7 +781,7 @@ export default function SalesView({
 
         <button
           onClick={handleOpenAddForm}
-          className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow hover:bg-slate-800 flex items-center gap-2 shrink-0 cursor-pointer"
+          className="btn btn-primary btn-md shrink-0 shadow-xs"
         >
           <Plus size={16} />
           <span>{isQuotation ? 'Buat Penawaran' : 'Rilis SO Baru'}</span>
@@ -782,7 +846,6 @@ export default function SalesView({
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
                     <th className="p-3.5 pl-5">Nomor Dokumen</th>
-                    <th className="p-3.5">Sumber</th>
                     <th className="p-3.5">Nama Relasi Customer</th>
                     <th className="p-3.5">Tanggal Dokumen</th>
                     {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
@@ -794,7 +857,7 @@ export default function SalesView({
                 <tbody className="divide-y divide-slate-100">
                   {paginatedDocs.length === 0 ? (
                     <tr>
-                      <td colSpan={isQuotation ? 8 : 7} className="text-center py-12 text-slate-400 font-medium">
+                      <td colSpan={isQuotation ? 7 : 6} className="text-center py-12 text-slate-400 font-medium">
                         Tidak ada dokumen transaksi terekam saat ini.
                       </td>
                     </tr>
@@ -824,15 +887,6 @@ export default function SalesView({
                             {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
                             <span>{docNum}</span>
                           </td>
-                          <td className="p-3.5">
-                            {!isQuotation && doc.source === 'pos' ? (
-                              <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold uppercase tracking-wider">Kasir (POS)</span>
-                            ) : !isQuotation ? (
-                              <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[9px] font-bold uppercase tracking-wider">B2B (ERP)</span>
-                            ) : (
-                              <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded text-[9px] font-bold uppercase tracking-wider">-</span>
-                            )}
-                          </td>
                           <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
                           <td className="p-3.5 font-mono text-slate-500">{isQuotation ? formatDate(doc.quotationDate) : formatDate(doc.orderDate)}</td>
                           {isQuotation && <td className="p-3.5 font-mono text-slate-450">{formatDate(doc.validUntil)}</td>}
@@ -843,12 +897,24 @@ export default function SalesView({
                             </span>
                           </td>
                           <td className="p-3.5 pr-5 text-right">
-                            <button
-                              onClick={() => setSelectedDoc(doc)}
-                              className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2 cursor-pointer"
-                            >
-                              Rincian Item
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setSelectedDoc(doc)}
+                                className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2 cursor-pointer"
+                              >
+                                Rincian Item
+                              </button>
+                              {!isQuotation && (
+                                <button
+                                  onClick={() => setThermalModalDoc(doc)}
+                                  className="p-1 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 hover:border-slate-300 transition-all font-bold text-[10px] px-2 flex items-center gap-1 cursor-pointer"
+                                  title="Cetak Thermal (80mm)"
+                                >
+                                  <Receipt size={11} className="text-amber-600" />
+                                  <span className="hidden sm:inline">Thermal</span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -981,41 +1047,11 @@ export default function SalesView({
                   <h5 className="font-mono font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-3">DAFTAR PENYUSUNAN BARANG</h5>
                   <div className="space-y-3 pt-2">
                     {selectedDoc.items?.map((item: any, idx: number) => {
-                      let itemLabel = "";
-                      let isPo = false;
-
-                      if (!isQuotation && selectedDoc.source === 'pos') {
-                        const poQty = selectedDoc.deliveryOrders?.filter((d: any) => {
-                          const status = (d.status || '').toLowerCase();
-                          return status === 'draft' || status === 'ready_to_load' || status === 'shipped';
-                        })
-                          .flatMap((d: any) => d.items || [])
-                          .filter((di: any) => di.productId === item.productId)
-                          .reduce((sum: number, di: any) => sum + di.quantity, 0) || 0;
-
-                        if (poQty > 0) {
-                          isPo = true;
-                          const totalQty = item.pieceCount || item.quantity;
-                          if (poQty < totalQty) {
-                            itemLabel = `Sisa PO: ${poQty} | Sudah Diambil: ${totalQty - poQty}`;
-                          } else {
-                            itemLabel = "Barang PO / Inden";
-                          }
-                        } else {
-                          itemLabel = "Sudah Diambil / Selesai";
-                        }
-                      }
-
                       const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
                       const itemSubtotal = (item.quantity * itemUnitPrice) - Number(item.discountAmount || 0);
 
                       return (
                         <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs relative mt-3">
-                          {itemLabel && (
-                            <div className={`absolute -top-2.5 right-4 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-widest text-white shadow-sm ${isPo ? 'bg-amber-500' : 'bg-emerald-500'}`}>
-                              {itemLabel}
-                            </div>
-                          )}
                           <div>
                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                               <strong className="text-slate-800 leading-snug">
@@ -1120,13 +1156,24 @@ export default function SalesView({
 
               <div className={(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) || (!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}>
                 {!(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && !(!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) && (
-                  <button
-                    onClick={() => handlePrintAction()}
-                    className="w-full py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Printer size={13} />
-                    <span>Cetak PDF</span>
-                  </button>
+                  <div className="col-span-2 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handlePrintAction()}
+                      className="w-full py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer size={13} />
+                      <span>Cetak PDF (A4)</span>
+                    </button>
+                    {!isQuotation && (
+                      <button
+                        onClick={() => setThermalModalDoc(selectedDoc)}
+                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Receipt size={13} className="text-amber-400" />
+                        <span>Cetak Thermal (80mm)</span>
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
@@ -1169,7 +1216,7 @@ export default function SalesView({
                   </>
                 ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                   <div className="flex flex-col gap-2 w-full">
-                    {selectedDoc.source !== 'pos' && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
+                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
                       <button
                         onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
                         className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
@@ -1445,9 +1492,9 @@ export default function SalesView({
       {showAddForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div className="px-5 py-4 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
               <div className="flex items-center gap-2">
-                <Receipt size={18} className="text-cyan-400" />
+                <Receipt size={18} className="text-sky-100" />
                 <h3 className="font-bold text-sm">
                   {editingQuotation
                     ? `Edit Penawaran (${editingQuotation.quoteNumber || editingQuotation.quotationNumber})`
@@ -1456,7 +1503,7 @@ export default function SalesView({
                       : 'Entri Sales Order Baru'}
                 </h3>
               </div>
-              <button onClick={handleCloseForm} className="text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={handleCloseForm} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1796,8 +1843,8 @@ export default function SalesView({
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs font-bold mb-1">
-                  <button type="button" onClick={handleCloseForm} className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer">Batal</button>
-                  <button type="submit" className="px-5 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-800 cursor-pointer">
+                  <button type="button" onClick={handleCloseForm} className="btn btn-secondary btn-md">Batal</button>
+                  <button type="submit" className="btn btn-primary btn-md">
                     {editingQuotation ? 'Simpan Perubahan' : 'Penerbitan Draft'}
                   </button>
                 </div>
@@ -1810,41 +1857,115 @@ export default function SalesView({
       {/* 6. Quick Add Customer Modal */}
       {showAddCustomer && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-4 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-2xl border border-sky-100 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-4 py-3 bg-sky-50 border-b border-sky-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-indigo-600" />
-                <h3 className="font-bold text-indigo-900 text-sm">Tambah Customer Baru</h3>
+                <Building2 size={16} className="text-sky-600" />
+                <h3 className="font-bold text-sky-900 text-sm">Tambah Customer Baru</h3>
               </div>
-              <button onClick={() => setShowAddCustomer(false)} className="text-indigo-400 hover:text-indigo-600">
+              <button onClick={() => setShowAddCustomer(false)} className="text-sky-400 hover:text-sky-700 p-1 rounded-lg">
                 <X size={16} />
               </button>
             </div>
             <form onSubmit={handleQuickAddCustomer} className="p-4 space-y-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">Nama Customer *</label>
-                <input required type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+                <input required type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
-                <input type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+                <input type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">Kota</label>
-                <input type="text" value={newCustCity} onChange={e => setNewCustCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none" />
+                <input type="text" value={newCustCity} onChange={e => setNewCustCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
-                <textarea rows={2} value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-indigo-400 focus:outline-none resize-none" />
+                <textarea rows={2} value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none resize-none" />
               </div>
-              <div className="pt-2 border-t flex justify-end gap-2 text-xs font-bold mt-2">
-                <button type="button" onClick={() => setShowAddCustomer(false)} className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer">Batal</button>
-                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm cursor-pointer">Simpan Customer</button>
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold mt-2">
+                <button type="button" onClick={() => setShowAddCustomer(false)} className="btn btn-secondary btn-sm">Batal</button>
+                <button type="submit" className="btn btn-primary btn-sm">Simpan Customer</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* 7. Thermal Print Modal (Sales Order) */}
+      {thermalModalDoc && (() => {
+        const info = mapSalesOrderToPrintInfo(thermalModalDoc);
+        const thermalHtml = buildSalesOrderThermalHTML(info, companyProfile, false);
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans text-xs">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="px-5 py-3.5 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Receipt size={18} className="text-sky-100" />
+                  <div>
+                    <h3 className="font-bold text-sm">Cetak Thermal Sales Order</h3>
+                    <p className="text-[10px] text-sky-100/80">{info.orderNumber} - Format roll 80mm tanpa tanda tangan</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setThermalModalDoc(null)}
+                  className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Thermal Live Preview */}
+              <div className="p-4 bg-slate-100 flex-1 overflow-y-auto">
+                <div className="bg-white p-4 shadow-sm border border-slate-200 rounded-lg mx-auto max-w-[76mm]">
+                  <div
+                    className="font-mono text-[11px] text-black"
+                    dangerouslySetInnerHTML={{ __html: thermalHtml }}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 bg-white border-t border-slate-100 flex flex-col gap-2 shrink-0">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => handleThermalPrintWindow(thermalModalDoc)}
+                    className="btn btn-success btn-md text-[11px]"
+                    title="Cetak langsung lewat dialog print browser / USB printer"
+                  >
+                    <Printer size={14} />
+                    <span>Cetak Struk</span>
+                  </button>
+                  <button
+                    onClick={() => handleThermalPrintBluetooth(thermalModalDoc)}
+                    className="btn btn-primary btn-md text-[11px]"
+                    title="Cetak via Bluetooth ESC/POS"
+                  >
+                    <Bluetooth size={14} />
+                    <span>Bluetooth</span>
+                  </button>
+                  <button
+                    onClick={() => handleThermalDownloadPdf(thermalModalDoc)}
+                    className="btn btn-secondary btn-md text-[11px]"
+                    title="Unduh file PDF roll 80mm"
+                  >
+                    <Download size={14} />
+                    <span>Unduh PDF</span>
+                  </button>
+                </div>
+                <button
+                  onClick={() => setThermalModalDoc(null)}
+                  className="btn btn-secondary btn-md text-[11px] w-full"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
