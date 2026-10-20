@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mengatasi freezing/infinite loading saat pengguna dengan role tanpa akses ke dashboard utama (seperti role Finance) masuk ke aplikasi.
 
 ### Removed
+- **Pembersihan Menu Redundan "Approval Workflow" (`navigation.tsx` & `RolePermissionView.tsx`)**:
+  - Menghapus menu "Approval Workflow" dari navigasi Sidebar dan tabel matriks hak akses RBAC.
+  - Seluruh alur persetujuan operasional (Cuti, Kasbon, Retur, Pembayaran, PO/PR, dan BAG) kini 100% diproses langsung di modul masing-masing tanpa duplikasi ke menu terpisah.
 - **Pembersihan Dead Code & Dependensi Tidak Terpakai**:
   - Menghapus abstraction wrapper redundan [`resources.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/resources.ts) (52 baris) dan menyederhanakan [`customers/api.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/customers/api.ts) untuk menggunakan `apiClient` secara langsung.
   - Menghapus dependensi backend yang tidak terpakai dari client SPA (`express`, `@types/express`) serta devDependencies redundan (`tsx`, `esbuild`) dari `package.json`.

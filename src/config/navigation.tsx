@@ -495,12 +495,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "users",
       },
       {
-        view: "approval-workflows",
-        label: "Approval Workflow",
-        icon: ClipboardCheck,
-        requiredModule: "approvals",
-      },
-      {
         view: "audit-logs",
         label: "Audit Log",
         icon: FileSearch,

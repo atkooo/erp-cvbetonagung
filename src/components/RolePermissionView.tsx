@@ -74,7 +74,6 @@ const MODULE_LABELS: Record<string, string> = {
   projects: 'Proyek',
   finance: 'Finance',
   production: 'Produksi',
-  approvals: 'Approval Workflow',
   reports: 'Pusat Laporan',
   settings: 'Pengaturan Sistem',
 
@@ -189,7 +188,6 @@ const MODULE_CATEGORIES: Record<string, string> = {
   suppliers: 'master_system',
   products: 'master_system',
   warehouses: 'master_system',
-  approvals: 'master_system',
   reports: 'master_system',
   settings: 'master_system',
   audit_logs: 'master_system',
@@ -426,12 +424,12 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
       await Promise.all(promises);
 
       const presetLabels: Record<string, string> = {
-        full: 'Full Access (Semua Aksi)',
-        edit: 'Edit Access (Lihat, Tambah, Ubah)',
-        read: 'Read Access (Hanya Lihat)',
-        none: 'Cabut Semua Akses',
+        full: 'Full',
+        edit: 'Edit',
+        read: 'Read',
+        none: 'Reset',
       };
-      onTriggerNotification(`Berhasil menerapkan ${presetLabels[preset]} pada modul ${row.label} untuk Role ${role.name}.`);
+      onTriggerNotification(`Berhasil menerapkan akses ${presetLabels[preset]} pada modul ${row.label} (${role.name}).`);
 
       const rolesData = await identityApi.getRoles();
       setRoles(rolesData);
@@ -446,6 +444,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const selectedRole = roles.find(role => role.id === selectedRoleId) || roles[0];
   const moduleRows = Array.from(new Set(uniquePermissionsList.map(permission => permission.module)))
+    .filter(module => module !== 'approvals')
     .map((module) => ({
       module,
       label: getModuleLabel(module),
