@@ -115,6 +115,7 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
     length: item.length != null ? Number(item.length) : undefined,
     specification: item.specification || undefined,
     quantity: Number(item.quantity),
+    fulfilledQuantity: item.fulfilled_quantity != null ? Number(item.fulfilled_quantity) : undefined,
     unitPrice: Number(item.unit_price),
     price: Number(item.unit_price),
     discountAmount: item.discount_amount != null ? Number(item.discount_amount) : undefined,

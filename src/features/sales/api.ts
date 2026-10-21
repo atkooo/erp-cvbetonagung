@@ -34,10 +34,12 @@ export const salesApi = {
     return mapSalesOrderFromDto(response.data);
   },
 
-  async getSalesOrders(source?: 'pos' | 'erp', perPage: number = 250): Promise<SalesOrder[]> {
+  async getSalesOrders(source?: 'pos' | 'erp' | 'all', perPage: number = 250): Promise<SalesOrder[]> {
     let url = `/sales/sales-orders?include=customer,quotation,items.product.unit,invoices,deliveryOrders.items,productionWorkOrders,purchaseOrders.items&sort=-created_at&per_page=${perPage}`;
-    if (source) {
+    if (source && source !== 'all') {
       url += `&source=${source}`;
+    } else if (source === 'all') {
+      url += `&source=all`;
     }
     const response = await apiClient.get<{ data: SalesOrderDto[] }>(url);
     return response.data.map(mapSalesOrderFromDto);

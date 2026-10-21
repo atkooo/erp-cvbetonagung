@@ -52,7 +52,7 @@ export default function PosProductGrid({
               placeholder="Cari nama produk atau SKU..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-100 border-transparent rounded-xl text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+              className="w-full pl-9 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-100 transition-all outline-none"
             />
           </div>
         </div>
@@ -88,11 +88,15 @@ export default function PosProductGrid({
               <div
                 key={product.id}
                 onClick={() => addToCart(product)}
-                className={`bg-white rounded-2xl cursor-pointer transition-all duration-200 border-2 overflow-hidden ${inCart ? 'border-emerald-500 shadow-md scale-[0.98]' : 'border-transparent hover:border-emerald-200 shadow-sm'} relative flex flex-col`}
+                className={`bg-white rounded-2xl cursor-pointer transition-all duration-200 border-2 overflow-hidden ${
+                  inCart
+                    ? 'border-sky-500 shadow-md ring-2 ring-sky-100 scale-[0.98]'
+                    : 'border-slate-100 hover:border-sky-300 shadow-2xs hover:shadow-sm'
+                } relative flex flex-col`}
               >
                 {/* Badge jumlah di keranjang */}
                 {inCart && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow z-10">
+                  <div className="absolute top-2 right-2 w-6 h-6 bg-sky-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-xs z-10 font-mono">
                     {inCart.quantity}
                   </div>
                 )}
@@ -143,23 +147,29 @@ export default function PosProductGrid({
 
                     <div className="text-[11px] mt-1.5 text-slate-500">
                       {Number((product as any).is_customizable) ? (
-                        <span className="text-amber-600 font-bold">Barang Inden / PO</span>
+                        <span className="inline-flex items-center text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md font-semibold">
+                          Barang Inden / PO
+                        </span>
+                      ) : totalStock > 0 ? (
+                        <span className="inline-flex items-center text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md font-semibold">
+                          Ready: {totalStock}
+                        </span>
                       ) : (
-                        <span className={totalStock > 0 ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'}>
-                          {totalStock > 0 ? `Stok: ${totalStock}` : 'Stok Habis'}
+                        <span className="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md font-semibold">
+                          Stok Habis (Inden)
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-emerald-50 px-2 py-1 rounded-lg self-start">
+                  <div className="bg-sky-50 border border-sky-100 px-2.5 py-1 rounded-xl self-start">
                     {discountAmount > 0 ? (
                       <div className="flex flex-col">
-                        <span className="text-slate-400 text-[10px] line-through leading-none mb-1">{formatRupiah(price)}</span>
-                        <span className="text-emerald-700 font-black text-sm leading-none">{formatRupiah(finalPrice)}</span>
+                        <span className="text-slate-400 text-[10px] line-through leading-none mb-1 font-mono">{formatRupiah(price)}</span>
+                        <span className="text-sky-800 font-black text-sm leading-none font-mono">{formatRupiah(finalPrice)}</span>
                       </div>
                     ) : (
-                      <div className="text-emerald-700 font-black text-sm">{formatRupiah(price)}</div>
+                      <div className="text-sky-800 font-black text-sm font-mono">{formatRupiah(price)}</div>
                     )}
                   </div>
                 </div>

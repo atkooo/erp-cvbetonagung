@@ -737,7 +737,19 @@ export default function SalesOrderDetailView({
                           {item.pieceCount ? ` (${item.pieceCount} btg)` : ''}
                         </td>
                         <td className="p-3.5 text-right font-mono font-bold text-slate-800">
-                          {qty.toLocaleString('id-ID')} <span className="font-normal text-slate-500 text-[10px]">{unitName}</span>
+                          <div>
+                            {qty.toLocaleString('id-ID')} <span className="font-normal text-slate-500 text-[10px]">{unitName}</span>
+                          </div>
+                          {item.fulfilledQuantity != null && item.fulfilledQuantity > 0 && (
+                            <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                              ✓ {item.fulfilledQuantity} diambil langsung
+                              {qty > item.fulfilledQuantity && (
+                                <span className="text-amber-600 ml-1">
+                                  ({qty - item.fulfilledQuantity} inden)
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="p-3.5 text-right font-mono text-slate-700">{formatIDR(unitPrice)}</td>
                         <td className="p-3.5 text-right font-mono text-slate-500">

@@ -234,13 +234,14 @@ export default function SalesView({
   const [newCustPhone, setNewCustPhone] = useState('');
   const [newCustCity, setNewCustCity] = useState('');
   const [newCustAddress, setNewCustAddress] = useState('');
+  const [orderSourceFilter, setOrderSourceFilter] = useState<'all' | 'erp' | 'pos'>('all');
 
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
       const [docs, custsRes, prods, stocks] = await Promise.all([
-        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders('erp'),
+        isQuotation ? salesApi.getQuotations() : salesApi.getSalesOrders('all'),
         customersApi.listCustomers(),
         productsApi.getProducts(),
         inventoryApi.getProductStocks()
@@ -254,7 +255,7 @@ export default function SalesView({
         setQuotations(docs as Quotation[]);
         setSalesOrders([]);
       } else {
-        setSalesOrders((docs as SalesOrder[]).filter(d => d.source !== 'pos'));
+        setSalesOrders(docs as SalesOrder[]);
       }
       setCustomers(custsRes.customers);
       setProducts(productsWithStock);
@@ -541,7 +542,10 @@ export default function SalesView({
   // Filter logic
   const filteredDocs = dataList.filter((doc: any) => {
     if (doc?.status === 'cancelled' || doc?.status === 'Dibatalkan') return false;
-    if (!isQuotation && doc?.source === 'pos') return false;
+    if (!isQuotation) {
+      if (orderSourceFilter === 'erp' && doc?.source === 'pos') return false;
+      if (orderSourceFilter === 'pos' && doc?.source !== 'pos') return false;
+    }
     const docNum = (isQuotation ? (doc?.quoteNumber || doc?.quotationNumber) : doc?.orderNumber) || '';
     const customerName = doc?.customerName || doc?.customer?.name || '';
     const searchLower = (search || '').toLowerCase();
@@ -564,7 +568,7 @@ export default function SalesView({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, itemsPerPage]);
+  }, [search, statusFilter, orderSourceFilter, itemsPerPage]);
 
   // Handle create/update document
   const handleCreateDocument = async (e: React.FormEvent) => {
@@ -853,29 +857,68 @@ export default function SalesView({
           </button>
         </div>
 
-        {/* 2. Lookup Controls */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-              <Search size={16} />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={isQuotation ? 'Cari Nomor Quotation atau Nama Customer...' : 'Cari Nomor Sales Order atau Nama Customer...'}
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-850 placeholder:text-slate-400 focus:outline-none"
-            />
-          </div>
+        {/* 2. Source Tabs & Lookup Controls */}
+        <div className="space-y-3">
+          {!isQuotation && (
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 w-fit">
+              <button
+                type="button"
+                onClick={() => setOrderSourceFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  orderSourceFilter === 'all'
+                    ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua Pesanan ({salesOrders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderSourceFilter('erp')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  orderSourceFilter === 'erp'
+                    ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Sales Order (ERP) ({salesOrders.filter(o => o.source !== 'pos').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderSourceFilter('pos')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  orderSourceFilter === 'pos'
+                    ? 'bg-white text-sky-700 shadow-2xs border border-sky-100'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Kasir (POS) ({salesOrders.filter(o => o.source === 'pos').length})
+              </button>
+            </div>
+          )}
 
-          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
-            <Filter size={13} className="text-slate-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none text-xs cursor-pointer font-sans"
-            >
-              <option value="All">Semua Status</option>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={isQuotation ? 'Cari Nomor Quotation atau Nama Customer...' : 'Cari Nomor Sales Order atau Nama Customer...'}
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-850 placeholder:text-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
+              <Filter size={13} className="text-slate-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none text-xs cursor-pointer font-sans"
+              >
+                <option value="All">Semua Status</option>
               {isQuotation ? (
                 <>
                   <option value="Draft">Draft</option>
@@ -897,6 +940,7 @@ export default function SalesView({
             </select>
           </div>
         </div>
+      </div>
 
         {/* 3. Document Tables */}
         {isLoading ? (
@@ -951,6 +995,17 @@ export default function SalesView({
                             <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
                               {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
                               <span>{docNum}</span>
+                              {!isQuotation && (
+                                doc.source === 'pos' ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                    POS
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                    ERP
+                                  </span>
+                                )
+                              )}
                             </td>
                             <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
                             <td className="p-3.5 font-mono text-slate-500">{isQuotation ? formatDate(doc.quotationDate) : formatDate(doc.orderDate)}</td>

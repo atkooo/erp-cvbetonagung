@@ -468,25 +468,27 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         <div className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm flex flex-col gap-4 z-20 sticky top-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 shadow-2xs">
                 <Package size={20} />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-800">Katalog Produk</h2>
-                <p className="text-xs text-slate-500">Pilih produk untuk ditambahkan ke keranjang</p>
+                <p className="text-xs text-slate-500">Pilih produk untuk ditambahkan ke keranjang belanja</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setShowScannerModal(true)}
-                className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-emerald-200"
+                className="btn btn-secondary btn-md text-sky-700 border-sky-200 hover:bg-sky-50"
                 title="Scan Barcode Produk"
               >
                 <ScanLine size={16} />
                 <span className="hidden sm:inline">Scan Barcode</span>
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setHistoryPage(1);
                   setHistorySearch('');
@@ -496,15 +498,16 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                   fetchHistory(1, '', '', '', '');
                   setShowHistoryModal(true);
                 }}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors flex items-center gap-2 border border-slate-200"
+                className="btn btn-secondary btn-md text-slate-700"
                 title="Riwayat Transaksi"
               >
                 <Search size={16} />
                 <span className="hidden sm:inline">Riwayat</span>
               </button>
               <button
+                type="button"
                 onClick={() => setIsKioskMode(!isKioskMode)}
-                className="p-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-colors shadow-sm shadow-slate-900/20"
+                className="btn btn-secondary btn-md p-2.5 text-slate-700"
                 title={isKioskMode ? 'Tutup Mode Penuh' : 'Mode Kasir Penuh'}
               >
                 {isKioskMode ? <Minimize size={18} /> : <Maximize size={18} />}
@@ -577,19 +580,19 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       {showCheckoutModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-100 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 text-center border-b border-slate-100">
-              <h3 className="text-2xl font-black text-slate-900">Pembayaran</h3>
-              <p className="text-slate-500 mt-1">Total Tagihan: <span className="font-bold text-emerald-600">{formatRupiah(grandTotal)}</span></p>
+            <div className="p-6 text-center border-b border-slate-100 bg-white">
+              <h3 className="text-2xl font-black text-slate-900">Pembayaran Kasir</h3>
+              <p className="text-slate-500 mt-1">Total Tagihan: <span className="font-bold text-sky-700 text-lg">{formatRupiah(grandTotal)}</span></p>
             </div>
 
             <div className="p-6 space-y-4 bg-slate-50">
               {hasPOItems && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs mb-4">
-                  <strong>⚠️ Perhatian:</strong> Terdapat barang Inden/PO atau <strong>Backorder</strong> (stok kurang) di keranjang. Transaksi ini akan otomatis dialihkan menjadi <strong>Sales Order</strong> dengan sistem partial-delivery.
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
+                  <strong>⚠️ Perhatian:</strong> Terdapat barang Inden/PO atau <strong>Backorder</strong> (stok kurang) di keranjang. Transaksi ini akan otomatis terintegrasi ke <strong>Sales Order</strong> dengan alokasi pengiriman sisa.
                 </div>
               )}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
                   {hasPOItems ? 'Jumlah Diterima / DP (Rp)' : 'Jumlah Diterima (Rp)'}
                 </label>
                 <input
@@ -599,68 +602,69 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                     const val = e.target.value.replace(/\D/g, '');
                     setAmountPaid(val);
                   }}
-                  className="w-full text-2xl font-bold p-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-0 outline-none transition-colors text-right"
+                  className="w-full text-2xl font-bold p-3 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-100 outline-none transition-all text-right shadow-2xs font-mono"
                   placeholder="0"
                 />
                 {parseFloat(amountPaid || '0') >= grandTotal && (
                   <div className="mt-2 text-right">
                     <span className="text-sm text-slate-500">Kembalian: </span>
-                    <span className="font-bold text-emerald-600">{formatRupiah(parseFloat(amountPaid || '0') - grandTotal)}</span>
+                    <span className="font-bold text-emerald-600 font-mono text-base">{formatRupiah(parseFloat(amountPaid || '0') - grandTotal)}</span>
                   </div>
                 )}
                 {parseFloat(amountPaid || '0') < grandTotal && (
                   <div className="mt-2 text-right">
-                    <span className="text-sm text-slate-500">Sisa Outstanding Receivable: </span>
-                    <span className="font-bold text-rose-500">{formatRupiah(grandTotal - parseFloat(amountPaid || '0'))}</span>
+                    <span className="text-sm text-slate-500">Sisa Piutang: </span>
+                    <span className="font-bold text-rose-500 font-mono text-base">{formatRupiah(grandTotal - parseFloat(amountPaid || '0'))}</span>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Penerimaan Pembayaran (Kas/Bank)</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Penerimaan Kas / Bank</label>
                 <select
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-emerald-500 bg-white font-bold text-slate-700 outline-none transition-colors"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-100 bg-white font-semibold text-slate-700 outline-none transition-all text-xs"
                 >
-                  <option value="" disabled>-- Pilih Akun --</option>
+                  <option value="" disabled>-- Pilih Akun Penerimaan --</option>
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>{acc.name} ({acc.code || acc.account_number || '-'})</option>
                   ))}
                 </select>
               </div>
 
-
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Catatan Transaksi</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Catatan Transaksi</label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full border-slate-200 rounded-lg"
-                  placeholder="Note"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs bg-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  placeholder="Catatan pesanan kasir..."
                 />
               </div>
             </div>
 
-            <div className="p-4 flex gap-3 bg-white">
+            <div className="p-4 flex gap-3 bg-white border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setShowCheckoutModal(false)}
-                className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                className="btn btn-secondary btn-md flex-1"
                 disabled={isProcessing}
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleCheckout}
                 disabled={isProcessing || !amountPaid || !selectedAccountId}
-                className="flex-2 px-4 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="btn btn-primary btn-md flex-2 text-sm shadow-md shadow-sky-500/20"
               >
                 {isProcessing ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <CheckCircle2 size={20} />
+                    <CheckCircle2 size={18} />
                     Selesaikan Transaksi
                   </>
                 )}
@@ -716,16 +720,18 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
             <div className="p-4 flex gap-3 bg-white border-t border-slate-100">
               <button
+                type="button"
                 onClick={() => setShowAddCustomerModal(false)}
-                className="flex-1 px-4 py-2.5 border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                className="btn btn-secondary btn-md flex-1"
                 disabled={isAddingCustomer}
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleAddCustomer}
                 disabled={isAddingCustomer || !newCustomerName.trim()}
-                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="btn btn-primary btn-md flex-1"
               >
                 {isAddingCustomer ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -742,30 +748,30 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       {checkoutSuccessInfo && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-120 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-linear-to-br from-emerald-500 to-emerald-700 p-8 text-center text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-sky-600 to-sky-700 p-8 text-center text-white relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
               <div className="relative z-10">
-                <div className="w-20 h-20 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-900/20">
-                  <CheckCircle2 size={40} />
+                <div className="w-16 h-16 bg-white text-sky-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-950/20">
+                  <CheckCircle2 size={36} />
                 </div>
                 <h3 className="text-2xl font-black">Transaksi Sukses!</h3>
-                <p className="text-emerald-100 mt-1 opacity-90">{checkoutSuccessInfo.orderNumber} • {checkoutSuccessInfo.customerName}</p>
+                <p className="text-sky-100 mt-1 text-sm font-medium opacity-90">{checkoutSuccessInfo.orderNumber} • {checkoutSuccessInfo.customerName}</p>
               </div>
             </div>
 
-            <div className="p-8 text-center bg-slate-50 border-b border-slate-100">
+            <div className="p-6 text-center bg-slate-50 border-b border-slate-100">
               {checkoutSuccessInfo.change >= 0 ? (
                 <>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Kembalian</p>
-                  <div className="text-4xl font-black text-slate-800">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Kembalian Pelanggan</p>
+                  <div className="text-3xl font-black text-slate-800 font-mono">
                     {formatRupiah(checkoutSuccessInfo.change)}
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Sisa Outstanding Receivable</p>
-                  <div className="text-4xl font-black text-rose-600">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Sisa Piutang / Outstanding</p>
+                  <div className="text-3xl font-black text-rose-600 font-mono">
                     {formatRupiah(Math.abs(checkoutSuccessInfo.change))}
                   </div>
                 </>
@@ -773,46 +779,51 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
             </div>
 
             <div className="p-6 space-y-3 bg-white">
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button
+                  type="button"
                   onClick={() => printReceipt(checkoutSuccessInfo)}
-                  className="flex-1 py-3.5 border-2 border-emerald-500 text-emerald-700 font-bold rounded-xl hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+                  className="btn btn-primary btn-md justify-center shadow-xs"
                 >
-                  <Package size={20} />
-                  Cetak Struk
+                  <Package size={16} />
+                  <span>Cetak Struk</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => printBluetoothReceipt(checkoutSuccessInfo)}
-                  className="flex-1 py-3.5 border-2 border-blue-500 text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                  className="btn btn-secondary btn-md justify-center hover:text-sky-700"
                 >
-                  <Bluetooth size={20} />
-                  Bluetooth
+                  <Bluetooth size={16} />
+                  <span>Bluetooth</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => downloadReceipt(checkoutSuccessInfo)}
-                  className="flex-1 py-3.5 border-2 border-slate-500 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                  className="btn btn-secondary btn-md justify-center hover:text-sky-700"
                 >
-                  <Download size={20} />
-                  Download PDF
+                  <Download size={16} />
+                  <span>PDF Struk</span>
                 </button>
               </div>
 
               {checkoutSuccessInfo.fulfillmentType === 'delivery' && (
                 <button
+                  type="button"
                   onClick={() => onTriggerNotification('Mencetak Surat Jalan...')}
-                  className="w-full py-3.5 border-2 border-indigo-500 text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                  className="btn btn-secondary btn-md w-full justify-center text-sky-700 border-sky-200 hover:bg-sky-50"
                 >
-                  <MapPin size={20} />
-                  Cetak Surat Jalan (DO)
+                  <Truck size={16} />
+                  <span>Cetak Surat Jalan (DO)</span>
                 </button>
               )}
 
               <button
+                type="button"
                 onClick={handleResetPos}
-                className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 mt-4"
+                className="btn btn-secondary btn-md w-full justify-center mt-3 border-slate-300 font-bold"
               >
-                <ShoppingCart size={20} />
-                Mulai Transaksi Baru
+                <ShoppingCart size={16} />
+                <span>Mulai Transaksi Baru</span>
               </button>
             </div>
           </div>

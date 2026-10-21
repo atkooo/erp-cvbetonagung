@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- **Integrasi Transaksi Kasir POS ke Sales Order (Opsi A) dengan Filter Tab Sumber & Badge (`SalesView.tsx`, `salesApi.ts`)**:
+  - Menambahkan segmented control tab filter di atas daftar pesanan Sales Order: `Semua Pesanan`, `Sales Order (ERP)`, dan `Kasir (POS)` lengkap dengan penghitung jumlah pesanan secara real-time.
+  - Menampilkan badge sumber pesanan yang bersih (`ERP` vs `POS`) di sebelah nomor dokumen pada baris tabel Sales Order.
+  - Memperbarui `salesApi.getSalesOrders` dan pemetaan data agar mendukung pengambilan seluruh transaksi (`source: 'all'`).
+- **Redesain & Percantik Antarmuka POS Kasir Sesuai Design System Soft Sky Blue & Slate (`PosView.tsx`, `PosProductGrid.tsx`, `PosCartSidebar.tsx`, `PosPrintService.ts`)**:
+  - Menghilangkan warna hijau gelap/ad-hoc lama (`from-slate-900 to-emerald-950`) dan menggantikannya dengan palet standar **Soft Sky Blue (`sky-600`) & Slate**.
+  - **Header & Modal Transaksi:** Tombol aksi standar baku (`btn btn-secondary`, `btn btn-primary`), input pembayaran font-mono dengan highlight Soft Sky, serta dialog sukses transaksi bergradien modern.
+  - **Katalog Produk:** Kartu produk berdesain modern dengan border `hover:border-sky-300`, badge stok ready (*Ready: X*) vs habis (*Stok Habis (Inden)*), serta badge jumlah dalam keranjang berwarna Soft Sky bulat.
+  - **Sidebar Keranjang & Struk:** Header gradien Soft Sky, indikator stok gudang cerdas per item (*✓ Ready*, *⚡ Bawa Sebagian*, *⚠️ 100% Inden*), pemilihan gudang stok yang rapi, dan tombol checkout baku `btn btn-primary`.
+  - **Struk Kasir:** Pembaruan format struk thermal dan PDF untuk mencetak rincian kuantitas yang dibawa langsung (*Ambil*) dan kuantitas yang masih inden/dalam pengiriman (*Inden/Kirim*).
+- **Tampilan Rincian Alokasi Pengambilan Barang di Detail Sales Order (`SalesOrderDetailView.tsx`)**:
+  - Menampilkan breakdown unit yang telah diambil langsung (*take away*) dan unit sisa yang masih inden/dalam pengiriman di bawah kolom kuantitas item Sales Order.
+
 ### Fixed
 - **Perbaikan Filter Hak Akses Granular pada Sidebar (`permissions.ts` & `navigation.tsx`)**:
   - Memperbaiki logika evaluasi hak akses `hasViewAccess` untuk sistem perizinan berbasis aksi granular (`view`, `create`, `update`, `delete`). Sebelumnya hak akses `minAccessLevel: "edit"` masih meloloskan pengguna yang hanya memiliki izin `view` (Lihat Saja).

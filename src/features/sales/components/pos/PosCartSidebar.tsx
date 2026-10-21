@@ -91,12 +91,17 @@ export default function PosCartSidebar({
 
   return (
     <div className="w-100 flex flex-col bg-white shrink-0 z-30 shadow-2xl border-l border-slate-200">
-      <div className="p-5 bg-linear-to-r from-slate-900 to-emerald-950 text-white flex items-center gap-3">
-        <ShoppingCart size={20} />
-        <h2 className="font-bold tracking-wide">Struk Belanja</h2>
+      <div className="p-4 bg-gradient-to-r from-sky-600 to-sky-700 text-white flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5 font-bold tracking-wide">
+          <ShoppingCart size={18} />
+          <span>Struk Belanja</span>
+        </div>
+        <span className="text-[11px] font-semibold bg-white/20 px-2 py-0.5 rounded-full font-mono">
+          {cart.length} item
+        </span>
       </div>
 
-      <div className="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
+      <div className="p-3.5 border-b border-slate-100 bg-slate-50 space-y-2.5">
         <div>
           <label className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1.5 mb-1.5">
             <User size={12} /> Pelanggan
@@ -111,11 +116,12 @@ export default function PosCartSidebar({
               />
             </div>
             <button
+              type="button"
               onClick={() => setShowAddCustomerModal(true)}
-              className="px-3 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors flex items-center justify-center shrink-0 border border-emerald-200"
+              className="btn btn-secondary btn-sm p-2 text-sky-700 border-sky-200 hover:bg-sky-50 shrink-0"
               title="Tambah Pelanggan Baru"
             >
-              <Plus size={18} />
+              <Plus size={16} />
             </button>
           </div>
         </div>
@@ -134,13 +140,16 @@ export default function PosCartSidebar({
             const itemSubtotal = (defaultPrice * item.quantity) - discountAmount;
             const itemStocks = stocks.filter(s => s.product_id === item.product.id && parseFloat(s.quantity) > 0);
 
+            const selectedLocStock = itemStocks.find(s => s.location_id === item.location_id)?.quantity;
+            const locStockNum = selectedLocStock != null ? parseFloat(selectedLocStock.toString()) : 0;
+
             return (
-              <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md transition-shadow relative">
-                <div className="flex-1">
-                  <div className="font-bold text-slate-800 text-sm mb-1">{item.product.name}</div>
-                  <div className="text-emerald-600 font-semibold text-sm mb-1 flex justify-between">
+              <div key={item.id} className="bg-white border border-slate-200/80 rounded-xl p-3 flex gap-3 shadow-2xs hover:shadow-xs transition-shadow relative">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-800 text-xs mb-1 truncate">{item.product.name}</div>
+                  <div className="text-sky-700 font-semibold text-xs mb-1 flex justify-between font-mono">
                     <span>{formatRupiah(defaultPrice)}</span>
-                    <span className="text-slate-800 font-bold">{formatRupiah(itemSubtotal)}</span>
+                    <span className="text-slate-900 font-bold">{formatRupiah(itemSubtotal)}</span>
                   </div>
 
                   {(() => {
@@ -150,7 +159,7 @@ export default function PosCartSidebar({
                       const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
                       const discountLabel = discountType === 'percentage' ? `(${parseFloat(discountValue)}%)` : '';
                       return (
-                        <div className="text-rose-500 text-xs font-semibold mb-1 text-right">
+                        <div className="text-rose-500 text-[10px] font-semibold mb-1 text-right font-mono">
                           Diskon {discountLabel}: -{formatRupiah(discountAmount)}
                         </div>
                       );
@@ -158,24 +167,43 @@ export default function PosCartSidebar({
                     return null;
                   })()}
 
-                  <button
-                    onClick={() => toggleItemFulfillment(item.id)}
-                    className="mt-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors bg-slate-100 hover:bg-slate-200 text-slate-600"
-                  >
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => toggleItemFulfillment(item.id)}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    >
+                      {item.fulfillment_type === 'take_away' ? (
+                        <><Car size={12} className="text-sky-600" /> Bawa Sendiri</>
+                      ) : (
+                        <><Truck size={12} className="text-sky-600" /> Diantar</>
+                      )}
+                    </button>
+
                     {item.fulfillment_type === 'take_away' ? (
-                      <><Car size={16} className="text-emerald-600" /> Bawa Sendiri</>
-                    ) : (
-                      <><Truck size={16} className="text-indigo-500" /> Diantar</>
-                    )}
-                  </button>
+                      item.quantity <= locStockNum ? (
+                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                          ✓ Ready ({locStockNum})
+                        </span>
+                      ) : locStockNum > 0 ? (
+                        <span className="text-[9px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                          ⚡ {locStockNum} Ready, {item.quantity - locStockNum} Inden
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                          100% Inden
+                        </span>
+                      )
+                    ) : null}
+                  </div>
 
                   <div className="mt-2">
                     <select
                       value={item.location_id}
                       onChange={(e) => updateCartItemLocation(item.id, e.target.value)}
-                      className="w-full border border-slate-200 rounded px-2 py-1 text-[10px] bg-slate-50 text-slate-700 outline-none focus:border-emerald-400"
+                      className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[10px] bg-slate-50 text-slate-700 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-100 font-sans"
                     >
-                      <option value="">-- Pilih Gudang --</option>
+                      <option value="">-- Pilih Gudang Stok --</option>
                       {itemStocks.map(s => (
                         <option key={s.location_id} value={s.location_id}>
                           {s.location?.warehouse?.name ? s.location.warehouse.name + ' - ' : ''}{s.location?.name} (Stok: {parseFloat(s.quantity)})
@@ -283,6 +311,7 @@ export default function PosCartSidebar({
           </div>
         </div>
         <button
+          type="button"
           onClick={() => {
             if (!selectedCustomerId || cart.length === 0) {
               onTriggerNotification('Mohon lengkapi data pelanggan dan keranjang.');
@@ -293,16 +322,15 @@ export default function PosCartSidebar({
               return;
             }
             if (accounts.length > 0 && !selectedAccountId) {
-              // Auto-select first account if not selected
               setSelectedAccountId(accounts[0].id);
             }
             setAmountPaid(grandTotal.toString());
             setShowCheckoutModal(true);
           }}
           disabled={cart.length === 0}
-          className="w-full py-4 bg-linear-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+          className="btn btn-primary w-full py-3.5 text-base rounded-xl font-bold shadow-md shadow-sky-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          <CheckCircle2 size={24} className="drop-shadow-sm" />
+          <CheckCircle2 size={20} />
           BAYAR SEKARANG
         </button>
       </div>

@@ -51,6 +51,7 @@ export interface SalesOrderItemDto {
   length: number | null;
   specification: string | null;
   quantity: number;
+  fulfilled_quantity?: number | string | null;
   unit_price: number;
   discount_amount?: string | number | null;
   subtotal: number;

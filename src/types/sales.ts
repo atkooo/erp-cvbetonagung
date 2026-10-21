@@ -21,6 +21,7 @@ export interface SalesOrder {
     length?: number | null;
     specification?: string | null;
     quantity: number;
+    fulfilledQuantity?: number;
     unitPrice: number;
     discountAmount?: number | string | null;
     subtotal?: number;

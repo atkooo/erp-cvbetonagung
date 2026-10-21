@@ -63,10 +63,14 @@ const normalizeReceiptItems = (items: any[], stocks: StockItem[], isHistory: boo
     const discountLabel = discountType === 'percentage' ? `(${parseFloat(String(discountValue))}%)` : '';
 
     const maxStock = parseFloat(String(stocks.find((s) => s.product_id === item.product?.id && s.location_id === item.location_id)?.quantity || '0'));
-    const isCustom = Number(item.product?.is_customizable);
+    const readyQty = Math.min(qty, maxStock);
     const indentQty = isHistory ? 0 : (isCustom ? qty : Math.max(0, qty - maxStock));
     const unitName = item.product?.unit?.name || (typeof item.product?.unit === 'string' ? item.product.unit : 'Unit');
-    const indentText = indentQty > 0 ? `(Indent/PO: ${indentQty} ${unitName})` : '';
+    const indentText = indentQty > 0
+      ? (readyQty > 0
+          ? `(Ambil: ${readyQty} ${unitName}, Inden/Kirim: ${indentQty} ${unitName})`
+          : `(Inden/Kirim: ${indentQty} ${unitName})`)
+      : `(Bawa Langsung: ${qty} ${unitName})`;
 
     return {
       name: item.product?.name || 'Item',
