@@ -945,7 +945,7 @@ export default function PurchaseView({
                 </div>
 
                 <div className="bg-slate-50 border rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[620px] table-fixed text-left">
+                  <table className="w-full min-w-155 table-fixed text-left">
                     <colgroup>
                       <col className="w-[52%]" />
                       <col className="w-[18%]" />

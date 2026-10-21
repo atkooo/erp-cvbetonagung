@@ -82,6 +82,9 @@ export interface SalesOrderDto {
   customer?: {
     id: string;
     name: string;
+    phone?: string;
+    address?: string;
+    city?: string;
   };
   quotation?: {
     id: string;
@@ -93,8 +96,23 @@ export interface SalesOrderDto {
   items?: SalesOrderItemDto[];
   invoices?: {
     id: string;
+    invoice_number?: string;
+    invoice_date?: string;
+    due_date?: string;
     paid_amount: string | number;
+    total?: string | number;
+    subtotal?: string | number;
     status: string;
+    created_at?: string;
+    payments?: {
+      id: string;
+      payment_number?: string;
+      payment_date?: string;
+      method?: string;
+      amount?: string | number;
+      status?: string;
+      notes?: string | null;
+    }[];
   }[];
   deliveryOrders?: DeliveryOrderDto[];
   productionWorkOrders?: {
@@ -103,17 +121,53 @@ export interface SalesOrderDto {
     stage: string;
     product_id: string;
     sales_order_item_id?: string | null;
+    target_qty?: number | string | null;
+    completed_qty?: number | string | null;
+    progress?: number | string | null;
+    due_date?: string | null;
+    product?: {
+      id: string;
+      sku: string;
+      name: string;
+      unit?: {
+        code: string;
+        name: string;
+      };
+    };
+    tasks?: {
+      id: string;
+      task_code: string;
+      task_name: string;
+      status: string;
+      sequence: number;
+      target_qty: number;
+      completed_qty?: number;
+    }[];
   }[];
   purchaseOrders?: {
     id: string;
     po_number: string;
     status: string;
     supplier_id?: string;
+    supplier?: {
+      id: string;
+      name: string;
+      phone?: string;
+    };
     items?: {
       id: string;
       product_id: string;
       quantity: string | number;
       received_qty: string | number;
+      product?: {
+        id: string;
+        sku: string;
+        name: string;
+        unit?: {
+          code: string;
+          name: string;
+        };
+      };
     }[];
   }[];
 }

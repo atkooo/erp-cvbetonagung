@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Lampiran Rincian Informasi Invoice & Kuitansi Pembayaran pada Cetakan Thermal Printer (80mm) & PDF Printer (A4)**:
+  - **Thermal Printer (80mm Roll & Web Bluetooth ESC/POS)**: Menambahkan seksi status pembayaran, rincian nomor invoice, total tagihan faktur, tanggal, nomor kuitansi pembayaran (kode `PAY-...`), metode pelunasan, nominal pembayaran, total terbayar, dan sisa tagihan (*outstanding*).
+  - **PDF Printer (A4 Dokumen Resmi)**: Menambahkan tabel resmi terstandarisasi *Rincian Invoice & Kuitansi Tanda Terima Pembayaran* yang memuat nomor invoice, tanggal terbit, nilai faktur, rincian kuitansi pelunasan lengkap (nomor kuitansi, tanggal bayar, metode, nominal), total yang telah terbayar, dan sisa tagihan terutang.
+  - Memperbarui integrasi cetak A4 pada halaman detail Sales Order menggunakan `react-to-print` dengan layout dokumen formal yang rapi dan konsisten.
+- **Halaman Khusus Detail Sales Order Mandiri dengan Breadcrumb & Monitoring Tab (`SalesOrderDetailView.tsx`)**:
+  - Mengubah tampilan rincian modal menjadi halaman terpisah penuh dengan navigasi *Breadcrumb* interaktif (`Penjualan / Sales Order / [No SO]`).
+  - Menghubungkan pelacakan lintas alur operasional: monitoring Work Order (WO) produksi, OPL / Purchase Order (PO), Surat Jalan (DO), dan status penagihan faktur & kuitansi.
+  - Menghapus tombol thermal dari baris tabel daftar utama Sales Order dan memindahkannya secara elegan ke dalam toolbar halaman detail.
 - **Standarisasi Penamaan Label Navigasi Sidebar & Matriks RBAC Sesuai Standar Industri ERP**:
   - Menyelaraskan seluruh label menu navigasi sidebar (`navigation.tsx`) dan matriks perizinan modul RBAC (`RolePermissionView.tsx`) dengan istilah resmi dan baku standar industri ERP yang singkat, padat, dan profesional.
   - Harmonisasi singkatan baku internasional dan akuntansi:

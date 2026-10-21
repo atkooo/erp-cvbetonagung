@@ -17,6 +17,24 @@ export interface SalesOrderItemPrint {
   description?: string;
 }
 
+export interface SalesOrderPaymentPrint {
+  paymentNumber: string;
+  paymentDate?: string;
+  method: string;
+  amount: number;
+}
+
+export interface SalesOrderInvoicePrint {
+  invoiceNumber: string;
+  issueDate?: string;
+  dueDate?: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: string;
+  payments: SalesOrderPaymentPrint[];
+}
+
 export interface SalesOrderPrintInfo {
   orderNumber: string;
   orderDate: string;
@@ -31,6 +49,10 @@ export interface SalesOrderPrintInfo {
   globalDiscountType?: 'percentage' | 'nominal';
   globalDiscountValue?: number;
   items: SalesOrderItemPrint[];
+  invoices?: SalesOrderInvoicePrint[];
+  totalPaid?: number;
+  totalRemaining?: number;
+  paymentStatus?: string;
 }
 
 const PRINTER_WIDTH_80MM = 48;
@@ -175,6 +197,70 @@ export const buildSalesOrderThermalHTML = (
           <td class="text-right" ${isPdf ? 'style="padding: 3px 0; vertical-align: top; text-align: right; font-size: 12px;"' : 'style="font-size: 12px;"'}>Rp ${formatIDR(grandTotal)}</td>
         </tr>
       </table>
+
+      <!-- Status Pembayaran, Invoice & Kuitansi -->
+      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px;"' : ''}></div>
+      <div class="text-center font-bold mb-1" ${isPdf ? 'style="text-align: center; font-size: 11px; font-weight: 900; margin-bottom: 4px;"' : 'style="font-size: 11px;"'}>
+        -- STATUS PEMBAYARAN & INVOICE --
+      </div>
+
+      ${(() => {
+        const calculatedPaid = info.totalPaid !== undefined
+          ? info.totalPaid
+          : (info.invoices || []).reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
+        const calculatedRemaining = info.totalRemaining !== undefined
+          ? info.totalRemaining
+          : Math.max(0, grandTotal - calculatedPaid);
+        const calcPayStatus = info.paymentStatus || (calculatedPaid >= grandTotal && grandTotal > 0 ? 'Lunas' : calculatedPaid > 0 ? 'Sebagian (DP)' : 'Belum Dibayar');
+
+        return `
+          <div class="mb-2" ${isPdf ? 'style="margin-bottom: 6px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
+            <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}>
+              <span>Status Bayar:</span> <strong class="font-bold">${escapeHtml(calcPayStatus)}</strong>
+            </div>
+            <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}>
+              <span>Total Terbayar:</span> <strong>Rp ${formatIDR(calculatedPaid)}</strong>
+            </div>
+            <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}>
+              <span>Sisa Tagihan:</span> <strong class="font-bold">${calculatedRemaining > 0 ? `Rp ${formatIDR(calculatedRemaining)}` : 'Rp 0 (Lunas)'}</strong>
+            </div>
+          </div>
+
+          ${info.invoices && info.invoices.length > 0 ? `
+            <div class="mb-2" ${isPdf ? 'style="margin-bottom: 8px; font-size: 9px;"' : 'style="font-size: 9px;"'}>
+              ${info.invoices.map((inv) => `
+                <div style="border-top: 1px dotted #666; padding-top: 3px; margin-top: 4px;">
+                  <div ${isPdf ? 'style="display: flex; justify-content: space-between; font-weight: bold;"' : 'class="flex font-bold"'}>
+                    <span>Inv #${escapeHtml(inv.invoiceNumber)}</span>
+                    <span>Rp ${formatIDR(inv.totalAmount)}</span>
+                  </div>
+                  <div style="color: #444; font-size: 8.5px;">
+                    Tgl: ${escapeHtml(inv.issueDate || '-')} | Status: ${escapeHtml(inv.status)}
+                  </div>
+                  ${inv.payments && inv.payments.length > 0 ? `
+                    <div style="margin-top: 2px; padding-left: 5px; border-left: 2px solid #999;">
+                      <div style="font-weight: bold; font-size: 8.5px;">Kuitansi Tanda Terima:</div>
+                      ${inv.payments.map((p) => `
+                        <div ${isPdf ? 'style="display: flex; justify-content: space-between; font-size: 8.5px;"' : 'class="flex" style="font-size: 8.5px;"'}>
+                          <span>* ${escapeHtml(p.paymentNumber)} (${escapeHtml(p.method)})</span>
+                          <span class="font-bold">Rp ${formatIDR(p.amount)}</span>
+                        </div>
+                        ${p.paymentDate ? `<div style="font-size: 7.5px; color: #555; padding-left: 8px;">Tgl Bayar: ${escapeHtml(p.paymentDate)}</div>` : ''}
+                      `).join('')}
+                    </div>
+                  ` : `
+                    <div style="font-size: 8px; font-style: italic; color: #777; margin-top: 1px;">(Belum ada kuitansi pembayaran)</div>
+                  `}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="text-center mb-2" ${isPdf ? 'style="text-align: center; font-size: 8.5px; font-style: italic; color: #666; margin-bottom: 6px;"' : 'style="font-size: 8.5px; font-style: italic; color: #666;"'}>
+              (Belum ada invoice diterbitkan)
+            </div>
+          `}
+        `;
+      })()}
 
       ${
         info.notes
@@ -519,6 +605,48 @@ export const printBluetoothSalesOrder = async (
     appendStr(totalStr.padStart(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
     appendBytes(boldOff);
+
+    // Section Status Pembayaran & Invoice
+    appendStr('-'.repeat(PRINTER_WIDTH_80MM));
+    appendBytes(lineFeed);
+    appendBytes(boldOn);
+    appendStr('INFO PEMBAYARAN & INVOICE');
+    appendBytes(lineFeed);
+    appendBytes(boldOff);
+
+    const calculatedPaid = info.totalPaid !== undefined
+      ? info.totalPaid
+      : (info.invoices || []).reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
+    const calculatedRemaining = info.totalRemaining !== undefined
+      ? info.totalRemaining
+      : Math.max(0, (Number(info.total) || 0) - calculatedPaid);
+    const calcPayStatus = info.paymentStatus || (calculatedPaid >= (Number(info.total) || 0) && (Number(info.total) || 0) > 0 ? 'Lunas' : calculatedPaid > 0 ? 'Sebagian (DP)' : 'Belum Dibayar');
+
+    appendStr(`Status Bayar  : ${calcPayStatus}`);
+    appendBytes(lineFeed);
+    appendStr(`Total Terbayar: Rp ${formatRupiahStr(calculatedPaid)}`);
+    appendBytes(lineFeed);
+    appendStr(`Sisa Tagihan  : Rp ${formatRupiahStr(calculatedRemaining)}`);
+    appendBytes(lineFeed);
+
+    if (info.invoices && info.invoices.length > 0) {
+      info.invoices.forEach((inv) => {
+        appendStr(`- Inv #${inv.invoiceNumber} (Rp ${formatRupiahStr(inv.totalAmount)})`);
+        appendBytes(lineFeed);
+        if (inv.payments && inv.payments.length > 0) {
+          inv.payments.forEach((p) => {
+            appendStr(`  * Kuitansi: ${p.paymentNumber}`);
+            appendBytes(lineFeed);
+            const pDateStr = p.paymentDate ? `[${p.paymentDate}] ` : '';
+            appendStr(`    ${pDateStr}(${p.method}): Rp ${formatRupiahStr(p.amount)}`);
+            appendBytes(lineFeed);
+          });
+        } else {
+          appendStr('  (Belum ada kuitansi)');
+          appendBytes(lineFeed);
+        }
+      });
+    }
 
     if (info.notes) {
       appendStr('-'.repeat(PRINTER_WIDTH_80MM));

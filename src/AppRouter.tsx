@@ -221,6 +221,7 @@ const routes: RouteObject[] = [
       { path: 'sales/pos', element: lazyRoute(PosView) },
       { path: 'sales/quotation', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/order', element: lazyRoute(SalesView, { type: 'sales-order' }) },
+      { path: 'sales/order/:id', element: lazyRoute(SalesView, { type: 'sales-order' }) },
       { path: 'sales/delivery-orders', element: lazyRoute(DeliveryOrdersView) },
       { path: 'sales/returns', element: lazyRoute(ReturnsView, { defaultType: 'customer' }) },
 

@@ -6,6 +6,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Swal from 'sweetalert2';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   FileSpreadsheet,
   FileCheck,
@@ -32,7 +33,9 @@ import {
   Clock,
   Bluetooth,
   Download,
+  FileText,
 } from '@/src/components/icons';
+import SalesOrderDetailView from '../features/sales/components/SalesOrderDetailView';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
@@ -52,6 +55,7 @@ import {
   printBluetoothSalesOrder,
   buildSalesOrderThermalHTML,
   SalesOrderPrintInfo,
+  SalesOrderInvoicePrint,
 } from '../features/sales/services/SalesOrderPrintService';
 
 interface SalesViewProps {
@@ -112,10 +116,51 @@ export default function SalesView({
     documentTitle: printTitle,
   });
 
+  const navigate = useNavigate();
+  const { id: paramOrderId } = useParams<{ id?: string }>();
+  const [activeSalesOrderId, setActiveSalesOrderId] = useState<string | null>(paramOrderId || null);
+
+  useEffect(() => {
+    if (!isQuotation) {
+      setActiveSalesOrderId(paramOrderId || null);
+    }
+  }, [paramOrderId, isQuotation]);
+
   // State & Handlers for 80mm Thermal Printing (Sales Order)
   const [thermalModalDoc, setThermalModalDoc] = useState<any>(null);
 
   const mapSalesOrderToPrintInfo = (so: any): SalesOrderPrintInfo => {
+    const mappedInvoices: SalesOrderInvoicePrint[] = (so.invoices || []).map((inv: any) => {
+      const invTotal = Number(inv.totalAmount ?? inv.total_amount ?? inv.total ?? 0);
+      const invPaid = Number(inv.paidAmount ?? inv.paid_amount ?? 0);
+      const invRemaining = Number(inv.remainingAmount ?? inv.remaining_amount ?? Math.max(0, invTotal - invPaid));
+      const payments = (inv.payments || []).map((p: any) => ({
+        paymentNumber: p.paymentNumber || p.payment_number || 'PAY',
+        paymentDate: p.paymentDate || p.payment_date ? formatDate(p.paymentDate || p.payment_date) : undefined,
+        method: p.method || 'cash',
+        amount: Number(p.amount || 0),
+      }));
+
+      return {
+        invoiceNumber: inv.invoiceNumber || inv.invoice_number || `INV-${inv.id ? String(inv.id).substring(0, 8) : ''}`,
+        issueDate: inv.issueDate || inv.issue_date ? formatDate(inv.issueDate || inv.issue_date) : undefined,
+        dueDate: inv.dueDate || inv.due_date ? formatDate(inv.dueDate || inv.due_date) : undefined,
+        totalAmount: invTotal,
+        paidAmount: invPaid,
+        remainingAmount: invRemaining,
+        status: inv.status || (invPaid >= invTotal && invTotal > 0 ? 'paid' : invPaid > 0 ? 'partial' : 'unpaid'),
+        payments,
+      };
+    });
+
+    const totalPaid = mappedInvoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
+    const totalRemaining = Math.max(0, (Number(so.total) || 0) - totalPaid);
+    const paymentStatus = totalPaid >= (Number(so.total) || 0) && (Number(so.total) || 0) > 0
+      ? 'Lunas'
+      : totalPaid > 0
+        ? 'Sebagian (DP)'
+        : 'Belum Dibayar';
+
     return {
       orderNumber: so.orderNumber,
       orderDate: formatDate(so.orderDate),
@@ -128,6 +173,10 @@ export default function SalesView({
       globalDiscountAmount: Number(so.globalDiscountAmount) || 0,
       globalDiscountType: so.globalDiscountType || undefined,
       globalDiscountValue: Number(so.globalDiscountValue) || 0,
+      invoices: mappedInvoices,
+      totalPaid,
+      totalRemaining,
+      paymentStatus,
       items: (so.items || []).map((item: any) => {
         const unitPrice = Number(item.price ?? item.unitPrice ?? item.unit_price ?? 0);
         const qty = Number(item.quantity) || 0;
@@ -761,1211 +810,1310 @@ export default function SalesView({
     }
   };
 
-  return (
-    <div className="space-y-6 relative">
-      {/* 1. Header Banner */}
-      <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-700">
-            {isQuotation ? <FileSpreadsheet size={20} /> : <FileCheck size={20} />}
-          </div>
-          <div>
-            <h3 className="font-sans font-bold text-sm text-slate-800">
-              {isQuotation ? 'Siklus Penawaran (Quotation Platform)' : 'Manajemen Kontrak Sales Order (SO)'}
-            </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
-            </p>
-          </div>
-        </div>
+  // Jika dalam mode Sales Order dan ada SO yang dipilih, tampilkan halaman terpisah (SalesOrderDetailView)
+  if (!isQuotation && activeSalesOrderId) {
+      return (
+        <SalesOrderDetailView
+          salesOrderId={activeSalesOrderId}
+          initialOrder={salesOrders.find(s => s.id === activeSalesOrderId || s.orderNumber === activeSalesOrderId) || null}
+          onBack={() => {
+            setActiveSalesOrderId(null);
+            navigate('/sales/order');
+          }}
+          onNavigate={onNavigate}
+          onTriggerNotification={onTriggerNotification}
+        />
+      );
+    }
 
-        <button
-          onClick={handleOpenAddForm}
-          className="btn btn-primary btn-md shrink-0 shadow-xs"
-        >
-          <Plus size={16} />
-          <span>{isQuotation ? 'Buat Penawaran' : 'Rilis SO Baru'}</span>
-        </button>
-      </div>
-
-      {/* 2. Lookup Controls */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={isQuotation ? 'Cari Nomor Quotation atau Nama Customer...' : 'Cari Nomor Sales Order atau Nama Customer...'}
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-850 placeholder:text-slate-400 focus:outline-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
-          <Filter size={13} className="text-slate-400" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none text-xs cursor-pointer font-sans"
-          >
-            <option value="All">Semua Status</option>
-            {isQuotation ? (
-              <>
-                <option value="Draft">Draft</option>
-                <option value="Terkirim">Terkirim</option>
-                <option value="Disetujui">Disetujui</option>
-                <option value="Ditolak">Ditolak</option>
-              </>
-            ) : (
-              <>
-                <option value="Draft">Draft</option>
-                <option value="Diproses">Diproses / Disetujui</option>
-                <option value="Menunggu Pembayaran DP">Menunggu Pembayaran DP</option>
-                <option value="Menunggu Pelunasan">Menunggu Pelunasan</option>
-                <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
-                <option value="Proses Pengiriman">Proses Pengiriman</option>
-                <option value="Selesai">Selesai</option>
-              </>
-            )}
-          </select>
-        </div>
-      </div>
-
-      {/* 3. Document Tables */}
-      {isLoading ? (
-        <SkeletonTable rows={5} cols={isQuotation ? 7 : 6} />
-      ) : errorMessage ? (
-        <ErrorCard message={errorMessage} onRetry={loadData} />
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-sans text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                    <th className="p-3.5 pl-5">Nomor Dokumen</th>
-                    <th className="p-3.5">Nama Relasi Customer</th>
-                    <th className="p-3.5">Tanggal Dokumen</th>
-                    {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
-                    <th className="p-3.5">Nilai Transaksi (Gross)</th>
-                    <th className="p-3.5">Status Alur</th>
-                    <th className="p-3.5 pr-5 text-right">Rincian</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paginatedDocs.length === 0 ? (
-                    <tr>
-                      <td colSpan={isQuotation ? 7 : 6} className="text-center py-12 text-slate-400 font-medium">
-                        Tidak ada dokumen transaksi terekam saat ini.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedDocs.map((doc: any, idx) => {
-                      const docNum = isQuotation ? (doc.quoteNumber || doc.quotationNumber) : doc.orderNumber;
-                      const statusColors: Record<string, string> = {
-                        Draft: 'bg-slate-100 text-slate-600',
-                        Terkirim: 'bg-blue-100 text-blue-700',
-                        Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                        Ditolak: 'bg-red-100 text-red-700',
-                        Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
-                        'Menunggu Pengiriman': 'bg-orange-100 text-orange-800 border-orange-300',
-                        'Proses Pengiriman': 'bg-cyan-100 text-cyan-800 border-cyan-300',
-                        'Menunggu Pembayaran DP': 'bg-rose-100 text-rose-800 border-rose-300',
-                        'Menunggu Pembayaran': 'bg-amber-100 text-amber-800 border-amber-300',
-                        'Menunggu Pelunasan': 'bg-amber-100 text-amber-800 border-amber-300',
-                        pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
-                        Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                        completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                        Dibatalkan: 'bg-slate-100 text-slate-400',
-                      };
-
-                      return (
-                        <tr key={idx} className="hover:bg-slate-50/40">
-                          <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
-                            {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
-                            <span>{docNum}</span>
-                          </td>
-                          <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{isQuotation ? formatDate(doc.quotationDate) : formatDate(doc.orderDate)}</td>
-                          {isQuotation && <td className="p-3.5 font-mono text-slate-450">{formatDate(doc.validUntil)}</td>}
-                          <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
-                          <td className="p-3.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || statusColors[getMonitoringStatus(doc)] || 'bg-slate-50'}`}>
-                              {getMonitoringStatus(doc)}
-                            </span>
-                          </td>
-                          <td className="p-3.5 pr-5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => setSelectedDoc(doc)}
-                                className="p-1 text-cyan-600 hover:text-cyan-700 bg-slate-50 hover:bg-slate-100 rounded border hover:border-slate-200 transition-all font-bold text-[10px] px-2 cursor-pointer"
-                              >
-                                Rincian Item
-                              </button>
-                              {!isQuotation && (
-                                <button
-                                  onClick={() => setThermalModalDoc(doc)}
-                                  className="p-1 text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 hover:border-slate-300 transition-all font-bold text-[10px] px-2 flex items-center gap-1 cursor-pointer"
-                                  title="Cetak Thermal (80mm)"
-                                >
-                                  <Receipt size={11} className="text-amber-600" />
-                                  <span className="hidden sm:inline">Thermal</span>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+    return (
+      <div className="space-y-6 relative">
+        {/* 1. Header Banner */}
+        <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-700">
+              {isQuotation ? <FileSpreadsheet size={20} /> : <FileCheck size={20} />}
             </div>
-          </div>
-
-          {!isLoading && totalDocs > 0 && (
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
-                <span>Tampilkan:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
-                >
-                  <option value={10}>10 per halaman</option>
-                  <option value={15}>15 per halaman</option>
-                  <option value={25}>25 per halaman</option>
-                  <option value={50}>50 per halaman</option>
-                  <option value={100}>100 per halaman</option>
-                </select>
-                <span className="text-slate-300">|</span>
-                <span>
-                  Menampilkan <strong className="text-slate-800">{startIndex + 1}</strong> - <strong className="text-slate-800">{Math.min(startIndex + itemsPerPage, totalDocs)}</strong> dari <strong className="text-slate-800">{totalDocs}</strong> {isQuotation ? 'penawaran' : 'sales order'}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1 font-mono text-xs">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={safePage <= 1}
-                  className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
-                  title="Halaman Pertama"
-                >
-                  <ChevronsLeft size={14} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={safePage <= 1}
-                  className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
-                >
-                  <ChevronLeft size={14} />
-                  <span>Sebelumnya</span>
-                </button>
-
-                <div className="px-3 py-1 font-bold text-slate-700 text-xs">
-                  {safePage} / {totalPages}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={safePage >= totalPages}
-                  className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
-                >
-                  <span>Selanjutnya</span>
-                  <ChevronRight size={14} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={safePage >= totalPages}
-                  className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
-                  title="Halaman Terakhir"
-                >
-                  <ChevronsRight size={14} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 4. Side Drawer Modal for Detailed Items overview */}
-      {selectedDoc && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-end z-50 p-4">
-          <div className="bg-white h-full max-w-md w-full shadow-2xl border-l border-slate-200 overflow-y-auto p-6 flex flex-col justify-between animate-in slide-in-from-right duration-150 rounded-l-2xl">
             <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt size={18} className="text-cyan-500" />
-                  <h4 className="font-sans font-bold text-slate-800 text-sm">
-                    Rincian Document {isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}
-                  </h4>
-                </div>
-                <button onClick={() => setSelectedDoc(null)} className="text-slate-400 hover:text-slate-600">
-                  <X size={18} />
-                </button>
-              </div>
+              <h3 className="font-sans font-bold text-sm text-slate-800">
+                {isQuotation ? 'Siklus Penawaran (Quotation Platform)' : 'Manajemen Kontrak Sales Order (SO)'}
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {isQuotation ? 'Kelola pipeline negosiasi biaya ornamen, precast, dan pekerjaan custom' : 'Kontrol pengiriman produksi workshop setelah DP tervalidasi terekam'}
+              </p>
+            </div>
+          </div>
 
-              {/* Informative details */}
-              <div className="space-y-4 py-5 text-xs font-sans text-slate-700">
-                <div className="flex justify-between border-b border-slate-150 pb-2">
-                  <span className="text-slate-400 font-medium">Customer:</span>
-                  <strong className="text-slate-800">{selectedDoc.customerName}</strong>
-                </div>
-                <div className="flex justify-between border-b border-slate-150 pb-2">
-                  <span className="text-slate-400 font-medium">Tanggal Masuk:</span>
-                  <span className="font-mono">{isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</span>
-                </div>
-                {isQuotation ? (
-                  <div className="flex justify-between border-b border-slate-150 pb-2">
-                    <span className="text-slate-400 font-medium">Berlaku Hingga:</span>
-                    <span className="font-mono text-amber-600">{formatDate(selectedDoc.validUntil)}</span>
-                  </div>
-                ) : (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) ? (
-                  <div className="flex justify-between border-b border-slate-150 pb-2">
-                    <span className="text-slate-400 font-medium">Ref. Quotation:</span>
-                    <strong className="text-slate-800">{selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</strong>
-                  </div>
-                ) : null}
-                <div className="flex justify-between border-b border-slate-150 pb-2">
-                  <span className="text-slate-400 font-medium">Status Dokumen:</span>
-                  <span className="font-bold text-indigo-700">{selectedDoc.status}</span>
-                </div>
-                {selectedDoc.notes && (
-                  <div className="border-b border-slate-150 pb-2">
-                    <span className="text-slate-400 font-medium block mb-1">Catatan:</span>
-                    <p className="text-slate-700 leading-relaxed whitespace-pre-line">{selectedDoc.notes}</p>
-                  </div>
-                )}
+          <button
+            onClick={handleOpenAddForm}
+            className="btn btn-primary btn-md shrink-0 shadow-xs"
+          >
+            <Plus size={16} />
+            <span>{isQuotation ? 'Buat Penawaran' : 'Rilis SO Baru'}</span>
+          </button>
+        </div>
 
-                {/* Items loop */}
-                <div className="mt-6">
-                  <h5 className="font-mono font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-3">DAFTAR PENYUSUNAN BARANG</h5>
-                  <div className="space-y-3 pt-2">
-                    {selectedDoc.items?.map((item: any, idx: number) => {
-                      const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
-                      const itemSubtotal = (item.quantity * itemUnitPrice) - Number(item.discountAmount || 0);
+        {/* 2. Lookup Controls */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isQuotation ? 'Cari Nomor Quotation atau Nama Customer...' : 'Cari Nomor Sales Order atau Nama Customer...'}
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-sans text-slate-850 placeholder:text-slate-400 focus:outline-none"
+            />
+          </div>
 
-                      return (
-                        <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs relative mt-3">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                              <strong className="text-slate-800 leading-snug">
-                                {item.product?.name || item.productName || 'Unknown Product'}
-                              </strong>
-                              {item.product?.type === 'raw_material' || item.product?.procurementType === 'purchase' ? (() => {
-                                const linkedPos = (selectedDoc.purchaseOrders || []).filter(
-                                  (po: any) => !['cancelled', 'dibatalkan'].includes((po.status || '').toLowerCase())
-                                );
-                                const matchingPos = linkedPos.filter((po: any) =>
-                                  (po.items || []).some((pi: any) => pi.productId === item.productId)
-                                );
-                                const totalReceived = matchingPos
-                                  .flatMap((po: any) => po.items || [])
-                                  .filter((pi: any) => pi.productId === item.productId)
-                                  .reduce((s: number, pi: any) => s + Number(pi.receivedQty || 0), 0);
-                                const reqQty = Number(item.pieceCount || item.quantity || 0);
+          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 shrink-0">
+            <Filter size={13} className="text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-[11px] text-slate-600 bg-transparent py-1 focus:outline-none text-xs cursor-pointer font-sans"
+            >
+              <option value="All">Semua Status</option>
+              {isQuotation ? (
+                <>
+                  <option value="Draft">Draft</option>
+                  <option value="Terkirim">Terkirim</option>
+                  <option value="Disetujui">Disetujui</option>
+                  <option value="Ditolak">Ditolak</option>
+                </>
+              ) : (
+                <>
+                  <option value="Draft">Draft</option>
+                  <option value="Diproses">Diproses / Disetujui</option>
+                  <option value="Menunggu Pembayaran DP">Menunggu Pembayaran DP</option>
+                  <option value="Menunggu Pelunasan">Menunggu Pelunasan</option>
+                  <option value="Menunggu Pengiriman">Menunggu Pengiriman</option>
+                  <option value="Proses Pengiriman">Proses Pengiriman</option>
+                  <option value="Selesai">Selesai</option>
+                </>
+              )}
+            </select>
+          </div>
+        </div>
 
-                                if (matchingPos.length > 0) {
-                                  if (totalReceived >= reqQty) {
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                                        <CheckCircle2 size={10} className="text-emerald-600" />
-                                        Beli Jadi (PO Diterima - Siap Kirim)
-                                      </span>
-                                    );
-                                  } else {
-                                    const poNums = matchingPos.map((p: any) => p.poNumber).filter(Boolean).join(', ');
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
-                                        <Clock size={10} className="text-amber-600" />
-                                        Beli Jadi (Menunggu PO Supplier{poNums ? `: ${poNums}` : ''})
-                                      </span>
-                                    );
-                                  }
-                                }
+        {/* 3. Document Tables */}
+        {isLoading ? (
+          <SkeletonTable rows={5} cols={isQuotation ? 7 : 6} />
+        ) : errorMessage ? (
+          <ErrorCard message={errorMessage} onRetry={loadData} />
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-sans text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                      <th className="p-3.5 pl-5">Nomor Dokumen</th>
+                      <th className="p-3.5">Nama Relasi Customer</th>
+                      <th className="p-3.5">Tanggal Dokumen</th>
+                      {isQuotation && <th className="p-3.5">Masa Berlaku s/d</th>}
+                      <th className="p-3.5">Nilai Transaksi (Gross)</th>
+                      <th className="p-3.5">Status Alur</th>
+                      <th className="p-3.5 pr-5 text-right">Rincian</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedDocs.length === 0 ? (
+                      <tr>
+                        <td colSpan={isQuotation ? 7 : 6} className="text-center py-12 text-slate-400 font-medium">
+                          Tidak ada dokumen transaksi terekam saat ini.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedDocs.map((doc: any, idx) => {
+                        const docNum = isQuotation ? (doc.quoteNumber || doc.quotationNumber) : doc.orderNumber;
+                        const statusColors: Record<string, string> = {
+                          Draft: 'bg-slate-100 text-slate-600',
+                          Terkirim: 'bg-blue-100 text-blue-700',
+                          Disetujui: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                          Ditolak: 'bg-red-100 text-red-700',
+                          Diproses: 'bg-amber-100 text-amber-700 border-amber-300',
+                          'Menunggu Pengiriman': 'bg-orange-100 text-orange-800 border-orange-300',
+                          'Proses Pengiriman': 'bg-cyan-100 text-cyan-800 border-cyan-300',
+                          'Menunggu Pembayaran DP': 'bg-rose-100 text-rose-800 border-rose-300',
+                          'Menunggu Pembayaran': 'bg-amber-100 text-amber-800 border-amber-300',
+                          'Menunggu Pelunasan': 'bg-amber-100 text-amber-800 border-amber-300',
+                          pending_delivery: 'bg-orange-100 text-orange-800 border-orange-300',
+                          Selesai: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                          completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                          Dibatalkan: 'bg-slate-100 text-slate-400',
+                        };
 
-                                return item.product?.type === 'raw_material' ? (
-                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
-                                    Bahan Baku (PO)
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
-                                    Beli Jadi (PO)
-                                  </span>
-                                );
-                              })() : (
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
-                                  Produksi Pabrik (WO)
-                                </span>
-                              )}
-                            </div>
-                            {item.description && (
-                              <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
-                            )}
-                            <span className="text-slate-400 text-[11px] font-mono block">
-                              {item.pieceCount && item.length ? (
-                                <span className="text-indigo-600 font-bold mr-1">
-                                  [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
-                                </span>
-                              ) : null}
-                              {item.quantity} {item.unit || 'Unit'} x {formatIDR(itemUnitPrice)}
-                            </span>
-                            {Number(item.discountAmount || 0) > 0 && (
-                              <span className="text-[10px] text-rose-500 font-mono block">
-                                - Diskon Item: {formatIDR(item.discountAmount)}
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/40">
+                            <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-2">
+                              {isQuotation ? <FileSpreadsheet size={13} className="text-slate-400" /> : <FileCheck size={13} className="text-slate-400" />}
+                              <span>{docNum}</span>
+                            </td>
+                            <td className="p-3.5 font-bold text-slate-700">{doc.customerName}</td>
+                            <td className="p-3.5 font-mono text-slate-500">{isQuotation ? formatDate(doc.quotationDate) : formatDate(doc.orderDate)}</td>
+                            {isQuotation && <td className="p-3.5 font-mono text-slate-450">{formatDate(doc.validUntil)}</td>}
+                            <td className="p-3.5 font-mono font-black text-slate-900">{formatIDR(doc.total)}</td>
+                            <td className="p-3.5">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[doc.status] || statusColors[getMonitoringStatus(doc)] || 'bg-slate-50'}`}>
+                                {getMonitoringStatus(doc)}
                               </span>
-                            )}
-                          </div>
-                          <span className="font-bold text-slate-900 font-mono text-[11px]">
-                            {formatIDR(itemSubtotal)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                            </td>
+                            <td className="p-3.5 pr-5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isQuotation ? (
+                                  <button
+                                    onClick={() => setSelectedDoc(doc)}
+                                    className="p-1 text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 rounded-lg border border-sky-200 transition-all font-bold text-[10px] px-2.5 py-1 cursor-pointer"
+                                  >
+                                    Rincian Item
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setActiveSalesOrderId(doc.id);
+                                      navigate(`/sales/order/${doc.id}`);
+                                    }}
+                                    className="btn btn-secondary btn-sm text-[11px] font-semibold flex items-center gap-1.5 hover:text-sky-700 hover:border-sky-300"
+                                    title="Buka Detail Sales Order"
+                                  >
+                                    <FileText size={12} className="text-sky-600" />
+                                    <span>Detail Sales Order</span>
+                                    <ChevronRight size={12} className="text-slate-400" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Actions Footer */}
-            <div className="border-t border-slate-100 pt-5 space-y-2">
-              <div className="space-y-2 mb-4 px-1">
-                <div className="flex justify-between text-xs text-slate-600">
-                  <span>Subtotal</span>
-                  <span className="font-mono">{formatIDR((selectedDoc.total || 0) + (selectedDoc.globalDiscountAmount || 0))}</span>
+            {!isLoading && totalDocs > 0 && (
+              <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value={10}>10 per halaman</option>
+                    <option value={15}>15 per halaman</option>
+                    <option value={25}>25 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={100}>100 per halaman</option>
+                  </select>
+                  <span className="text-slate-300">|</span>
+                  <span>
+                    Menampilkan <strong className="text-slate-800">{startIndex + 1}</strong> - <strong className="text-slate-800">{Math.min(startIndex + itemsPerPage, totalDocs)}</strong> dari <strong className="text-slate-800">{totalDocs}</strong> {isQuotation ? 'penawaran' : 'sales order'}
+                  </span>
                 </div>
-                {selectedDoc.globalDiscountAmount > 0 && (
-                  <div className="flex justify-between text-xs text-rose-600">
-                    <span>
-                      Diskon Transaksi
-                      {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? ` (${selectedDoc.globalDiscountValue}%)` : ''}
-                    </span>
-                    <span className="font-mono">- {formatIDR(selectedDoc.globalDiscountAmount)}</span>
+
+                <div className="flex items-center gap-1 font-mono text-xs">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safePage <= 1}
+                    className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                    title="Halaman Pertama"
+                  >
+                    <ChevronsLeft size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Sebelumnya</span>
+                  </button>
+
+                  <div className="px-3 py-1 font-bold text-slate-700 text-xs">
+                    {safePage} / {totalPages}
                   </div>
-                )}
-                <div className="flex justify-between text-sm font-bold text-slate-800 pt-2 border-t border-slate-200">
-                  <span>Total</span>
-                  <span className="text-indigo-700 font-mono">{formatIDR(selectedDoc.total)}</span>
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="p-1 px-2.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  >
+                    <span>Selanjutnya</span>
+                    <ChevronRight size={14} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safePage >= totalPages}
+                    className="p-1 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                    title="Halaman Terakhir"
+                  >
+                    <ChevronsRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. Side Drawer Modal for Detailed Items overview */}
+        {selectedDoc && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-end z-50 p-4">
+            <div className="bg-white h-full max-w-md w-full shadow-2xl border-l border-slate-200 overflow-y-auto p-6 flex flex-col justify-between animate-in slide-in-from-right duration-150 rounded-l-2xl">
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Receipt size={18} className="text-cyan-500" />
+                    <h4 className="font-sans font-bold text-slate-800 text-sm">
+                      Rincian Document {isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber}
+                    </h4>
+                  </div>
+                  <button onClick={() => setSelectedDoc(null)} className="text-slate-400 hover:text-slate-600">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Informative details */}
+                <div className="space-y-4 py-5 text-xs font-sans text-slate-700">
+                  <div className="flex justify-between border-b border-slate-150 pb-2">
+                    <span className="text-slate-400 font-medium">Customer:</span>
+                    <strong className="text-slate-800">{selectedDoc.customerName}</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-150 pb-2">
+                    <span className="text-slate-400 font-medium">Tanggal Masuk:</span>
+                    <span className="font-mono">{isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</span>
+                  </div>
+                  {isQuotation ? (
+                    <div className="flex justify-between border-b border-slate-150 pb-2">
+                      <span className="text-slate-400 font-medium">Berlaku Hingga:</span>
+                      <span className="font-mono text-amber-600">{formatDate(selectedDoc.validUntil)}</span>
+                    </div>
+                  ) : (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) ? (
+                    <div className="flex justify-between border-b border-slate-150 pb-2">
+                      <span className="text-slate-400 font-medium">Ref. Quotation:</span>
+                      <strong className="text-slate-800">{selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</strong>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between border-b border-slate-150 pb-2">
+                    <span className="text-slate-400 font-medium">Status Dokumen:</span>
+                    <span className="font-bold text-indigo-700">{selectedDoc.status}</span>
+                  </div>
+                  {selectedDoc.notes && (
+                    <div className="border-b border-slate-150 pb-2">
+                      <span className="text-slate-400 font-medium block mb-1">Catatan:</span>
+                      <p className="text-slate-700 leading-relaxed whitespace-pre-line">{selectedDoc.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Items loop */}
+                  <div className="mt-6">
+                    <h5 className="font-mono font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-3">DAFTAR PENYUSUNAN BARANG</h5>
+                    <div className="space-y-3 pt-2">
+                      {selectedDoc.items?.map((item: any, idx: number) => {
+                        const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
+                        const itemSubtotal = (item.quantity * itemUnitPrice) - Number(item.discountAmount || 0);
+
+                        return (
+                          <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-xl flex justify-between items-center text-xs relative mt-3">
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <strong className="text-slate-800 leading-snug">
+                                  {item.product?.name || item.productName || 'Unknown Product'}
+                                </strong>
+                                {item.product?.type === 'raw_material' || item.product?.procurementType === 'purchase' ? (() => {
+                                  const linkedPos = (selectedDoc.purchaseOrders || []).filter(
+                                    (po: any) => !['cancelled', 'dibatalkan'].includes((po.status || '').toLowerCase())
+                                  );
+                                  const matchingPos = linkedPos.filter((po: any) =>
+                                    (po.items || []).some((pi: any) => pi.productId === item.productId)
+                                  );
+                                  const totalReceived = matchingPos
+                                    .flatMap((po: any) => po.items || [])
+                                    .filter((pi: any) => pi.productId === item.productId)
+                                    .reduce((s: number, pi: any) => s + Number(pi.receivedQty || 0), 0);
+                                  const reqQty = Number(item.pieceCount || item.quantity || 0);
+
+                                  if (matchingPos.length > 0) {
+                                    if (totalReceived >= reqQty) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                                          <CheckCircle2 size={10} className="text-emerald-600" />
+                                          Beli Jadi (PO Diterima - Siap Kirim)
+                                        </span>
+                                      );
+                                    } else {
+                                      const poNums = matchingPos.map((p: any) => p.poNumber).filter(Boolean).join(', ');
+                                      return (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                                          <Clock size={10} className="text-amber-600" />
+                                          Beli Jadi (Menunggu PO Supplier{poNums ? `: ${poNums}` : ''})
+                                        </span>
+                                      );
+                                    }
+                                  }
+
+                                  return item.product?.type === 'raw_material' ? (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                                      Bahan Baku (PO)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                                      Beli Jadi (PO)
+                                    </span>
+                                  );
+                                })() : (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                                    Produksi Pabrik (WO)
+                                  </span>
+                                )}
+                              </div>
+                              {item.description && (
+                                <div className="text-[10px] text-slate-500 mb-1 leading-tight italic">{item.description}</div>
+                              )}
+                              <span className="text-slate-400 text-[11px] font-mono block">
+                                {item.pieceCount && item.length ? (
+                                  <span className="text-indigo-600 font-bold mr-1">
+                                    [{item.pieceCount} Fisik @ {item.length} {item.unit || 'M'}]
+                                  </span>
+                                ) : null}
+                                {item.quantity} {item.unit || 'Unit'} x {formatIDR(itemUnitPrice)}
+                              </span>
+                              {Number(item.discountAmount || 0) > 0 && (
+                                <span className="text-[10px] text-rose-500 font-mono block">
+                                  - Diskon Item: {formatIDR(item.discountAmount)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-bold text-slate-900 font-mono text-[11px]">
+                              {formatIDR(itemSubtotal)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className={(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) || (!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}>
-                {!(isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && !(!isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses')) && (
-                  <div className="col-span-2 grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handlePrintAction()}
-                      className="w-full py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-[11px] transition-all hover:bg-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer size={13} />
-                      <span>Cetak PDF (A4)</span>
-                    </button>
-                    {!isQuotation && (
-                      <button
-                        onClick={() => setThermalModalDoc(selectedDoc)}
-                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                      >
-                        <Receipt size={13} className="text-amber-400" />
-                        <span>Cetak Thermal (80mm)</span>
-                      </button>
-                    )}
+              {/* Actions Footer */}
+              <div className="border-t border-slate-100 pt-5 space-y-2">
+                <div className="space-y-2 mb-4 px-1">
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>Subtotal</span>
+                    <span className="font-mono">{formatIDR((selectedDoc.total || 0) + (selectedDoc.globalDiscountAmount || 0))}</span>
                   </div>
-                )}
+                  {selectedDoc.globalDiscountAmount > 0 && (
+                    <div className="flex justify-between text-xs text-rose-600">
+                      <span>
+                        Diskon Transaksi
+                        {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? ` (${selectedDoc.globalDiscountValue}%)` : ''}
+                      </span>
+                      <span className="font-mono">- {formatIDR(selectedDoc.globalDiscountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold text-slate-800 pt-2 border-t border-slate-200">
+                    <span>Total</span>
+                    <span className="text-indigo-700 font-mono">{formatIDR(selectedDoc.total)}</span>
+                  </div>
+                </div>
 
-                {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
-                  <>
-                    <button
-                      onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
-                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <FileCheck size={13} className="text-white" />
-                      <span>Approve</span>
-                    </button>
-                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'draft') && (
+                <div className="flex flex-col gap-2">
+                  {(!isQuotation || !(selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && (
+                    <div className={`col-span-2 grid ${!isQuotation ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
                       <button
-                        onClick={() => {
-                          const doc = selectedDoc;
-                          setSelectedDoc(null);
-                          handleOpenEditQuotation(doc);
-                        }}
-                        className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        onClick={() => handlePrintAction()}
+                        className="w-full py-2 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-800 hover:border-sky-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <Edit2 size={13} />
-                        <span>Edit Penawaran</span>
+                        <Printer size={13} />
+                        <span>Cetak PDF (A4)</span>
                       </button>
-                    )}
-                    <button
-                      onClick={() => setSelectedDoc(null)}
-                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
-                    >
-                      Tutup
-                    </button>
-                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
+                      {!isQuotation && (
+                        <button
+                          onClick={() => setThermalModalDoc(selectedDoc)}
+                          className="w-full py-2 bg-linear-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Receipt size={13} />
+                          <span>Cetak Thermal (80mm)</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
+                    <>
                       <button
-                        onClick={() => handleCancelDocument(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
-                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <XCircle size={13} className="text-rose-500" />
-                        <span>Batalkan</span>
-                      </button>
-                    )}
-                  </>
-                ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
-                  <div className="flex flex-col gap-2 w-full">
-                    {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
-                      <button
-                        onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
-                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                        onClick={() => handleApproveQuotation(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <FileCheck size={13} className="text-white" />
                         <span>Approve</span>
                       </button>
-                    ) : null}
-
-                    {!isQuotation && selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && selectedDoc.status !== 'Draft' && selectedDoc.status !== 'draft' && !selectedDoc.hasActiveWorkOrder && (
-                      (selectedDoc.items || []).some((item: any) => {
-                        const prod = item.product;
-                        if (!prod) return false;
-                        if (prod.type === 'raw_material' || prod.type === 'service') return false;
-                        if (prod.procurementType === 'purchase' || prod.procurement_type === 'purchase') return false;
-                        return prod.procurementType === 'manufacture' || prod.procurement_type === 'manufacture' || prod.type === 'finished_good';
-                      }) ? (
+                      {(selectedDoc.status === 'Draft' || selectedDoc.status === 'draft') && (
                         <button
-                          onClick={async () => {
-                            try {
-                              const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
-                              onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
-                              await loadData();
-                              if (res?.data && res.data.length > 0 && onNavigate) {
-                                onNavigate('production-work-orders');
+                          onClick={() => {
+                            const doc = selectedDoc;
+                            setSelectedDoc(null);
+                            handleOpenEditQuotation(doc);
+                          }}
+                          className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Edit2 size={13} />
+                          <span>Edit Penawaran</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedDoc(null)}
+                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                      {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
+                        <button
+                          onClick={() => handleCancelDocument(selectedDoc.id, selectedDoc.quoteNumber || selectedDoc.quotationNumber)}
+                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <XCircle size={13} className="text-rose-500" />
+                          <span>Batalkan</span>
+                        </button>
+                      )}
+                    </>
+                  ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
+                    <div className="flex flex-col gap-2 w-full">
+                      {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
+                        <button
+                          onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
+                          className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
+                        >
+                          <FileCheck size={13} className="text-white" />
+                          <span>Approve</span>
+                        </button>
+                      ) : null}
+
+                      {!isQuotation && selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && selectedDoc.status !== 'Draft' && selectedDoc.status !== 'draft' && !selectedDoc.hasActiveWorkOrder && (
+                        (selectedDoc.items || []).some((item: any) => {
+                          const prod = item.product;
+                          if (!prod) return false;
+                          if (prod.type === 'raw_material' || prod.type === 'service') return false;
+                          if (prod.procurementType === 'purchase' || prod.procurement_type === 'purchase') return false;
+                          return prod.procurementType === 'manufacture' || prod.procurement_type === 'manufacture' || prod.type === 'finished_good';
+                        }) ? (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const res = await apiClient.post<{ message: string; data: any[] }>(`/sales/sales-orders/${selectedDoc.id}/generate-work-orders`, {});
+                                onTriggerNotification(res?.message || 'Auto Work Order berhasil digenerate.');
+                                await loadData();
+                                if (res?.data && res.data.length > 0 && onNavigate) {
+                                  onNavigate('production-work-orders');
+                                }
+                              } catch (err) {
+                                onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
                               }
-                            } catch (err) {
-                              onTriggerNotification(err instanceof Error ? err.message : 'Gagal generate WO');
-                            }
-                          }}
-                          className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Factory size={13} className="text-indigo-600" />
-                          <span>Kirim ke Antrian Produksi (WO)</span>
-                        </button>
-                      ) : null
-                    )}
-
-
-
-
-                    <button
-                      onClick={() => setSelectedDoc(null)}
-                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
-                    >
-                      Tutup
-                    </button>
-                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
-                      <button
-                        onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
-                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <XCircle size={13} className="text-rose-500" />
-                        <span>Batalkan</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2 w-full col-span-2">
-                    <button
-                      onClick={() => setSelectedDoc(null)}
-                      className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
-                    >
-                      Tutup
-                    </button>
-                    {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
-                      <button
-                        onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
-                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <XCircle size={13} className="text-rose-500" />
-                        <span>Batalkan</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {isQuotation && selectedDoc.status === 'Disetujui' && (
-                  <button
-                    onClick={() => {
-                      sessionStorage.setItem('action_create_so', selectedDoc.id);
-                      setSelectedDoc(null);
-                      onNavigate('sales-orders');
-                    }}
-                    className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                  >
-                    <span>Lanjut Buat Sales Order (SO)</span>
-                    <ChevronRight size={14} />
-                  </button>
-                )}
-
-                {!isQuotation && !['Draft', 'Dibatalkan', 'Selesai', 'cancelled'].includes(selectedDoc.status) && (
-                  <>
-                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' ||
-                      getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran' ||
-                      getMonitoringStatus(selectedDoc) === 'Menunggu Pelunasan') && (
-                        <button
-                          onClick={() => {
-                            sessionStorage.setItem('action_create_invoice', selectedDoc.id);
-                            setSelectedDoc(null);
-                            onNavigate('invoices');
-                          }}
-                          className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
-                        >
-                          <span>
-                            {getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP'
-                              ? 'Lanjut Buat Tagihan DP (Invoice)'
-                              : 'Lanjut Buat Tagihan Pelunasan (Invoice)'}
-                          </span>
-                          <ChevronRight size={14} />
-                        </button>
+                            }}
+                            className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Factory size={13} className="text-indigo-600" />
+                            <span>Kirim ke Antrian Produksi (WO)</span>
+                          </button>
+                        ) : null
                       )}
 
-                    {(getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman' ||
-                      getMonitoringStatus(selectedDoc) === 'Proses Pengiriman' ||
-                      getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman (Dibayar Sebagian)') && (
+
+
+
+                      <button
+                        onClick={() => setSelectedDoc(null)}
+                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                      {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
                         <button
-                          onClick={() => {
-                            sessionStorage.setItem('action_create_do', selectedDoc.id);
-                            setSelectedDoc(null);
-                            onNavigate('delivery-orders');
-                          }}
-                          className="w-full col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                          onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
+                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>Lanjut Buat Surat Jalan (DO)</span>
-                          <ChevronRight size={14} />
+                          <XCircle size={13} className="text-rose-500" />
+                          <span>Batalkan</span>
                         </button>
                       )}
-                  </>
-                )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 w-full col-span-2">
+                      <button
+                        onClick={() => setSelectedDoc(null)}
+                        className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold text-[11px] transition-all hover:bg-slate-800 cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+                      {selectedDoc.status !== 'cancelled' && selectedDoc.status !== 'Dibatalkan' && (
+                        <button
+                          onClick={() => handleCancelDocument(selectedDoc.id, isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber)}
+                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <XCircle size={13} className="text-rose-500" />
+                          <span>Batalkan</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isQuotation && selectedDoc.status === 'Disetujui' && (
+                    <button
+                      onClick={() => {
+                        sessionStorage.setItem('action_create_so', selectedDoc.id);
+                        setSelectedDoc(null);
+                        onNavigate('sales-orders');
+                      }}
+                      className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                    >
+                      <span>Lanjut Buat Sales Order (SO)</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
+
+                  {!isQuotation && !['Draft', 'Dibatalkan', 'Selesai', 'cancelled'].includes(selectedDoc.status) && (
+                    <>
+                      {(getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP' ||
+                        getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran' ||
+                        getMonitoringStatus(selectedDoc) === 'Menunggu Pelunasan') && (
+                          <button
+                            onClick={() => {
+                              sessionStorage.setItem('action_create_invoice', selectedDoc.id);
+                              setSelectedDoc(null);
+                              onNavigate('invoices');
+                            }}
+                            className="w-full col-span-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                          >
+                            <span>
+                              {getMonitoringStatus(selectedDoc) === 'Menunggu Pembayaran DP'
+                                ? 'Lanjut Buat Tagihan DP (Invoice)'
+                                : 'Lanjut Buat Tagihan Pelunasan (Invoice)'}
+                            </span>
+                            <ChevronRight size={14} />
+                          </button>
+                        )}
+
+                      {(getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman' ||
+                        getMonitoringStatus(selectedDoc) === 'Proses Pengiriman' ||
+                        getMonitoringStatus(selectedDoc) === 'Menunggu Pengiriman (Dibayar Sebagian)') && (
+                          <button
+                            onClick={() => {
+                              sessionStorage.setItem('action_create_do', selectedDoc.id);
+                              setSelectedDoc(null);
+                              onNavigate('delivery-orders');
+                            }}
+                            className="w-full col-span-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                          >
+                            <span>Lanjut Buat Surat Jalan (DO)</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="hidden print:block">
-        <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
-          {selectedDoc && (() => {
-            const docNumber = isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber;
-            const docTitle = isQuotation ? 'QUOTATION' : 'SALES ORDER';
-            const docDateLabel = isQuotation ? 'Tanggal Penawaran' : 'Tanggal Sales Order';
-            const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
+        <div className="hidden print:block">
+          <div ref={printRef} className="print:block p-8 font-sans text-sm text-black bg-white">
+            {selectedDoc && (() => {
+              const docNumber = isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber;
+              const docTitle = isQuotation ? 'QUOTATION' : 'SALES ORDER';
+              const docDateLabel = isQuotation ? 'Tanggal Penawaran' : 'Tanggal Sales Order';
+              const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
 
-            return (
-              <div className="max-w-200 mx-auto">
-                <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
-                  <div className="flex items-center gap-4">
-                    {companyProfile.logoUrl ? (
-                      <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-cover" />
-                    ) : (
-                      <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
-                        {companyProfile.name.substring(0, 2).toUpperCase()}
+              return (
+                <div className="max-w-200 mx-auto">
+                  <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                    <div className="flex items-center gap-4">
+                      {companyProfile.logoUrl ? (
+                        <img src={companyProfile.logoUrl} alt="Logo" className="w-16 h-16 object-cover" />
+                      ) : (
+                        <div className="w-16 h-16 bg-slate-900 flex items-center justify-center text-white font-black text-2xl tracking-tighter">
+                          {companyProfile.name.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h1 className="text-2xl font-black tracking-tight">{companyProfile.name.toUpperCase()}</h1>
+                        <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
+                        <p className="text-[11px] mt-1">{formatAddressForPrint(companyProfile.address)}</p>
+                        <p className="text-[10px] mt-0.5">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
                       </div>
-                    )}
-                    <div>
-                      <h1 className="text-2xl font-black tracking-tight">{companyProfile.name.toUpperCase()}</h1>
-                      <p className="font-bold text-xs">General Contractor & Supplier Material Alam</p>
-                      <p className="text-[11px] mt-1">{formatAddressForPrint(companyProfile.address)}</p>
-                      <p className="text-[10px] mt-0.5">Telp: {companyProfile.phone} | Email: {companyProfile.email}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
+                      <p className="font-mono font-bold mt-2 text-lg">{docNumber}</p>
+                      {!isQuotation && (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) && (
+                        <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</p>
+                      )}
+                      <p className="text-sm">{docDateLabel}: {isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</p>
+                      {isQuotation && <p className="text-sm">Berlaku Hingga: {formatDate(selectedDoc.validUntil)}</p>}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="border px-4 py-1 font-black tracking-[0.2em] text-slate-500 text-lg">{docTitle}</div>
-                    <p className="font-mono font-bold mt-2 text-lg">{docNumber}</p>
-                    {!isQuotation && (selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber) && (
-                      <p className="text-sm font-bold text-slate-600">Ref Quotation: {selectedDoc.quotationNumber || selectedDoc.quotation?.quotationNumber}</p>
-                    )}
-                    <p className="text-sm">{docDateLabel}: {isQuotation ? formatDate(selectedDoc.quotationDate) : formatDate(selectedDoc.orderDate)}</p>
-                    {isQuotation && <p className="text-sm">Berlaku Hingga: {formatDate(selectedDoc.validUntil)}</p>}
+
+                  <div className="border border-black rounded-md p-4 w-[45%] mb-6">
+                    <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">KEPADA YTH. (CUSTOMER)</p>
+                    <p className="font-bold text-lg mt-1">{selectedDoc.customerName}</p>
                   </div>
-                </div>
 
-                <div className="border border-black rounded-md p-4 w-[45%] mb-6">
-                  <p className="text-[10px] font-mono font-bold text-slate-500 tracking-widest">KEPADA YTH. (CUSTOMER)</p>
-                  <p className="font-bold text-lg mt-1">{selectedDoc.customerName}</p>
-                </div>
-
-                <table className="w-full border-collapse border border-black text-xs">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-black p-2 w-10">NO</th>
-                      <th className="border border-black p-2 text-left">NAMA PRODUK / PEKERJAAN</th>
-                      <th className="border border-black p-2 w-20 text-right">QTY</th>
-                      <th className="border border-black p-2 w-32 text-right">HARGA SATUAN</th>
-                      <th className="border border-black p-2 w-32 text-right">JUMLAH</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedDoc.items?.map((item: any, idx: number) => {
-                      const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
-                      const itemSubtotal = (item.quantity * itemUnitPrice) - (item.discountAmount || 0);
-
-                      return (
-                        <tr key={`${item.product?.name || item.productName || 'item'}-${idx}`}>
-                          <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
-                          <td className="border border-black p-2 align-top">
-                            <span className="font-bold block">{item.product?.name || item.productName || 'Unknown Product'}</span>
-                            {item.pieceCount && item.length && (
-                              <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
-                            )}
-                            {item.description && (
-                              <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
-                            )}
-                          </td>
-                          <td className="border border-black p-2 text-right font-mono align-top">
-                            {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
-                          </td>
-                          <td className="border border-black p-2 text-right font-mono align-top">
-                            {formatIDR(itemUnitPrice)}
-                            {item.discountAmount ? <div className="text-[9px] text-rose-600 mt-1">- Diskon: {formatIDR(item.discountAmount)}</div> : null}
-                          </td>
-                          <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(itemSubtotal)}</td>
-                        </tr>
-                      );
-                    })}
-                    {!selectedDoc.items?.length && (
-                      <tr>
-                        <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>Tidak ada item.</td>
+                  <table className="w-full border-collapse border border-black text-xs">
+                    <thead>
+                      <tr className="bg-slate-100">
+                        <th className="border border-black p-2 w-10">NO</th>
+                        <th className="border border-black p-2 text-left">NAMA PRODUK / PEKERJAAN</th>
+                        <th className="border border-black p-2 w-20 text-right">QTY</th>
+                        <th className="border border-black p-2 w-32 text-right">HARGA SATUAN</th>
+                        <th className="border border-black p-2 w-32 text-right">JUMLAH</th>
                       </tr>
-                    )}
-                    {selectedDoc.globalDiscountAmount > 0 && (
-                      <>
-                        <tr className="bg-slate-50">
-                          <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">SUBTOTAL</td>
-                          <td className="border border-black p-2 text-right font-mono text-sm">{formatIDR(selectedDoc.total + selectedDoc.globalDiscountAmount)}</td>
+                    </thead>
+                    <tbody>
+                      {selectedDoc.items?.map((item: any, idx: number) => {
+                        const itemUnitPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? 0);
+                        const itemSubtotal = (item.quantity * itemUnitPrice) - (item.discountAmount || 0);
+
+                        return (
+                          <tr key={`${item.product?.name || item.productName || 'item'}-${idx}`}>
+                            <td className="border border-black p-2 text-center align-top">{idx + 1}</td>
+                            <td className="border border-black p-2 align-top">
+                              <span className="font-bold block">{item.product?.name || item.productName || 'Unknown Product'}</span>
+                              {item.pieceCount && item.length && (
+                                <div className="text-[10px] text-slate-800 font-bold mt-1">Ukuran Custom: {item.pieceCount} Fisik x {item.length} {item.unit || 'M'}</div>
+                              )}
+                              {item.description && (
+                                <div className="text-[10px] text-slate-600 mt-1 italic">{item.description}</div>
+                              )}
+                            </td>
+                            <td className="border border-black p-2 text-right font-mono align-top">
+                              {item.quantity} <span className="text-[10px] ml-1 font-sans font-normal uppercase">{item.unit || ''}</span>
+                            </td>
+                            <td className="border border-black p-2 text-right font-mono align-top">
+                              {formatIDR(itemUnitPrice)}
+                              {item.discountAmount ? <div className="text-[9px] text-rose-600 mt-1">- Diskon: {formatIDR(item.discountAmount)}</div> : null}
+                            </td>
+                            <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(itemSubtotal)}</td>
+                          </tr>
+                        );
+                      })}
+                      {!selectedDoc.items?.length && (
+                        <tr>
+                          <td className="border border-black p-4 text-center text-slate-500" colSpan={5}>Tidak ada item.</td>
                         </tr>
-                        <tr className="bg-rose-50 text-rose-700">
-                          <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
-                            DISKON TRANSAKSI {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? `(${selectedDoc.globalDiscountValue}%)` : ''}
-                          </td>
-                          <td className="border border-black p-2 text-right font-mono text-sm">- {formatIDR(selectedDoc.globalDiscountAmount)}</td>
-                        </tr>
-                      </>
-                    )}
-                    <tr className="bg-slate-100">
-                      <td colSpan={4} className="border border-black p-3 text-right font-black">TOTAL KESELURUHAN</td>
-                      <td className="border border-black p-3 text-right font-black font-mono text-base">{formatIDR(selectedDoc.total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                      )}
+                      {selectedDoc.globalDiscountAmount > 0 && (
+                        <>
+                          <tr className="bg-slate-50">
+                            <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">SUBTOTAL</td>
+                            <td className="border border-black p-2 text-right font-mono text-sm">{formatIDR(selectedDoc.total + selectedDoc.globalDiscountAmount)}</td>
+                          </tr>
+                          <tr className="bg-rose-50 text-rose-700">
+                            <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
+                              DISKON TRANSAKSI {selectedDoc.globalDiscountType === 'percentage' && selectedDoc.globalDiscountValue ? `(${selectedDoc.globalDiscountValue}%)` : ''}
+                            </td>
+                            <td className="border border-black p-2 text-right font-mono text-sm">- {formatIDR(selectedDoc.globalDiscountAmount)}</td>
+                          </tr>
+                        </>
+                      )}
+                      <tr className="bg-slate-100">
+                        <td colSpan={4} className="border border-black p-3 text-right font-black">TOTAL KESELURUHAN</td>
+                        <td className="border border-black p-3 text-right font-black font-mono text-base">{formatIDR(selectedDoc.total)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
 
-                <p className="text-[11px] mt-6">
-                  <strong>Catatan:</strong> {selectedDoc.notes || 'Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.'}
-                </p>
+                  {/* Rincian Invoice & Kuitansi Pembayaran (Hanya untuk Sales Order) */}
+                  {!isQuotation && (() => {
+                    const docPrintInfo = mapSalesOrderToPrintInfo(selectedDoc);
+                    const netTotalDoc = Number(selectedDoc.total || 0);
 
-                <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
-                  <div>
-                    <p>Dibuat Oleh,</p>
-                    <div className="h-20"></div>
-                    <p className="border-t border-black pt-2 font-bold">SALES DEPT.</p>
-                    <p>{companyProfile.name}</p>
-                  </div>
-                  <div>
-                    <p>{signatureTitle}</p>
-                    <div className="h-20"></div>
-                    <p className="border-t border-black pt-2 font-bold">{selectedDoc.customerName}</p>
-                  </div>
-                  <div>
-                    <p>Mengetahui,</p>
-                    <div className="h-20"></div>
-                    <p className="border-t border-black pt-2 font-bold">DIREKTUR UTAMA</p>
-                    <p>{companyProfile.name}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
+                    return (
+                      <div className="mt-6 mb-6 border border-black rounded-sm overflow-hidden">
+                        <div className="bg-slate-800 text-white p-2 font-bold text-xs uppercase tracking-wider flex justify-between items-center">
+                          <span>RINCIAN INVOICE & KUITANSI TANDA TERIMA PEMBAYARAN</span>
+                          <span className="text-[10px] font-mono normal-case tracking-normal bg-slate-700 px-2 py-0.5 rounded">
+                            Status: {docPrintInfo.paymentStatus}
+                          </span>
+                        </div>
 
-      {/* 5. Create Draft Modal Form */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="px-5 py-4 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
-              <div className="flex items-center gap-2">
-                <Receipt size={18} className="text-sky-100" />
-                <h3 className="font-bold text-sm">
-                  {editingQuotation
-                    ? `Edit Penawaran (${editingQuotation.quoteNumber || editingQuotation.quotationNumber})`
-                    : isQuotation
-                      ? 'Entri Penawaran Baru'
-                      : 'Entri Sales Order Baru'}
-                </h3>
-              </div>
-              <button onClick={handleCloseForm} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateDocument} className="flex flex-col flex-1 overflow-hidden">
-              <div className="flex flex-row flex-1 overflow-hidden">
-                <div className="w-1/3 p-5 space-y-4 border-r border-slate-200 overflow-y-auto">
-                  {!isQuotation && (
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
-                      <SearchableSelect
-                        value={quotationId}
-                        onChange={(qId) => applyQuotationToForm(qId)}
-                        options={[
-                          { value: "", label: "-- Tanpa Referensi Quotation --" },
-                          ...quotations
-                            .filter(q => q.status !== 'Dibatalkan' && q.status !== 'cancelled' && q.status !== 'Ditolak')
-                            .map(q => {
-                              const qNum = q.quoteNumber || q.quotationNumber || 'Tanpa No';
-                              const statusSuffix = q.status !== 'Disetujui' ? ` [${q.status}]` : '';
-                              return {
-                                value: q.id,
-                                label: `${qNum} - ${q.customerName} - ${formatIDR(q.total)}${statusSuffix}`
-                              };
-                            })
-                        ]}
-                        placeholder="Pilih Referensi Quotation..."
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
-                      <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
-                        <Plus size={10} /> Tambah Baru
-                      </button>
-                    </div>
-                    {customers.length > 0 ? (
-                      <SearchableSelect
-                        value={custId}
-                        onChange={(val) => setCustId(val)}
-                        options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-                        placeholder="Pilih Customer..."
-                      />
-                    ) : (
-                      <SearchableSelect
-                        value=""
-                        onChange={() => { }}
-                        options={[]}
-                        placeholder="Memuat Customer..."
-                        disabled
-                      />
-                    )}
-                  </div>
-
-                  {isQuotation && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600 uppercase">Tgl Penawaran</label>
-                        <input
-                          type="date"
-                          value={docDate}
-                          onChange={(e) => setDocDate(e.target.value)}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-slate-600 uppercase">Berlaku Hingga</label>
-                        <input
-                          type="date"
-                          value={docValidUntil}
-                          onChange={(e) => setDocValidUntil(e.target.value)}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">
-                      Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
-                    </label>
-                    <textarea
-                      value={documentNotes}
-                      onChange={(e) => setDocumentNotes(e.target.value)}
-                      rows={4}
-                      placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="w-2/3 p-5 space-y-4 overflow-y-auto flex flex-col">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
-                      <button
-                        type="button"
-                        onClick={addFormItem}
-                        className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Plus size={10} /> Tambah Baris
-                      </button>
-                    </div>
-
-                    <div className="space-y-3 pr-1">
-                      {formItems.map((item, index) => (
-                        <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Baris {index + 1}</span>
-                            <div className="flex-1 min-w-0">
-                              <ProductPicker
-                                value={item.productId}
-                                showCategoryFilter
-                                onChange={(product) => {
-                                  updateFormItem(index, {
-                                    productId: product.id,
-                                    unitPrice: product.sellingPrice || 0,
-                                    quantity: item.quantity > 0 ? item.quantity : 1,
-                                    unit: product.unit,
-                                    stock: product.stock,
-                                    isCustomizable: product.isCustomizable,
-                                    pricingMethod: product.pricingMethod,
-                                  });
-                                }}
-                                placeholder="Pilih Produk..."
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeFormItem(index)}
-                              disabled={formItems.length === 1}
-                              className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white shrink-0"
-                              title="Hapus baris"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                        {docPrintInfo.invoices && docPrintInfo.invoices.length > 0 ? (
+                          <table className="w-full border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-slate-100 border-b border-black">
+                                <th className="p-2 border-r border-black w-8 text-center">NO</th>
+                                <th className="p-2 border-r border-black text-left">NO. INVOICE</th>
+                                <th className="p-2 border-r border-black w-24 text-center">TGL INVOICE</th>
+                                <th className="p-2 border-r border-black text-right w-28">NILAI FAKTUR</th>
+                                <th className="p-2 border-r border-black text-left">RINCIAN KUITANSI (TANDA TERIMA)</th>
+                                <th className="p-2 text-right w-28">TOTAL TERBAYAR</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {docPrintInfo.invoices.map((inv, idx) => (
+                                <tr key={idx} className="border-b border-black">
+                                  <td className="p-2 border-r border-black text-center align-top">{idx + 1}</td>
+                                  <td className="p-2 border-r border-black font-mono font-bold align-top">
+                                    {inv.invoiceNumber}
+                                    <div className="text-[10px] font-sans font-normal text-slate-600">Status: {inv.status}</div>
+                                  </td>
+                                  <td className="p-2 border-r border-black text-center align-top">{inv.issueDate || '-'}</td>
+                                  <td className="p-2 border-r border-black text-right font-mono align-top">{formatIDR(inv.totalAmount)}</td>
+                                  <td className="p-2 border-r border-black align-top">
+                                    {inv.payments && inv.payments.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {inv.payments.map((p, pIdx) => (
+                                          <div key={pIdx} className="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200 text-[11px]">
+                                            <div>
+                                              <span className="font-mono font-bold text-sky-900">{p.paymentNumber}</span>
+                                              <span className="text-slate-500 ml-1.5 font-sans">({p.method}{p.paymentDate ? ` • ${p.paymentDate}` : ''})</span>
+                                            </div>
+                                            <span className="font-mono font-bold">{formatIDR(p.amount)}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-500 italic text-[11px]">(Belum ada kuitansi pembayaran)</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-right font-mono font-bold align-top text-emerald-800">
+                                    {formatIDR(inv.paidAmount)}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="bg-slate-50 font-bold border-t border-black">
+                                <td colSpan={5} className="p-2 text-right border-r border-black">TOTAL SUDAH TERBAYAR (KUITANSI):</td>
+                                <td className="p-2 text-right font-mono text-emerald-800">{formatIDR(docPrintInfo.totalPaid || 0)}</td>
+                              </tr>
+                              <tr className="bg-slate-100 font-bold">
+                                <td colSpan={5} className="p-2 text-right border-r border-black text-rose-800">SISA TAGIHAN (OUTSTANDING):</td>
+                                <td className="p-2 text-right font-mono text-rose-800">{formatIDR(docPrintInfo.totalRemaining || 0)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="p-4 text-center text-slate-600 bg-slate-50 space-y-1">
+                            <p className="font-semibold">Belum ada faktur (invoice) atau kuitansi tanda terima yang diterbitkan untuk Sales Order ini.</p>
+                            <p className="text-[11px]">Total tagihan terutang: <strong className="font-mono text-black">{formatIDR(netTotalDoc)}</strong></p>
                           </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                          <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3">
-                            {item.isCustomizable ? (
-                              <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
-                                <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                  Detail Dimensi Custom
-                                </h4>
+                  <p className="text-[11px] mt-6">
+                    <strong>Catatan:</strong> {selectedDoc.notes || 'Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.'}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
+                    <div>
+                      <p>Dibuat Oleh,</p>
+                      <div className="h-20"></div>
+                      <p className="border-t border-black pt-2 font-bold">SALES DEPT.</p>
+                      <p>{companyProfile.name}</p>
+                    </div>
+                    <div>
+                      <p>{signatureTitle}</p>
+                      <div className="h-20"></div>
+                      <p className="border-t border-black pt-2 font-bold">{selectedDoc.customerName}</p>
+                    </div>
+                    <div>
+                      <p>Mengetahui,</p>
+                      <div className="h-20"></div>
+                      <p className="border-t border-black pt-2 font-bold">DIREKTUR UTAMA</p>
+                      <p>{companyProfile.name}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* 5. Create Draft Modal Form */}
+        {showAddForm && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans text-xs">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
+              <div className="px-5 py-4 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Receipt size={18} className="text-sky-100" />
+                  <h3 className="font-bold text-sm">
+                    {editingQuotation
+                      ? `Edit Penawaran (${editingQuotation.quoteNumber || editingQuotation.quotationNumber})`
+                      : isQuotation
+                        ? 'Entri Penawaran Baru'
+                        : 'Entri Sales Order Baru'}
+                  </h3>
+                </div>
+                <button onClick={handleCloseForm} className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateDocument} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex flex-row flex-1 overflow-hidden">
+                  <div className="w-1/3 p-5 space-y-4 border-r border-slate-200 overflow-y-auto">
+                    {!isQuotation && (
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Referensi Quotation</label>
+                        <SearchableSelect
+                          value={quotationId}
+                          onChange={(qId) => applyQuotationToForm(qId)}
+                          options={[
+                            { value: "", label: "-- Tanpa Referensi Quotation --" },
+                            ...quotations
+                              .filter(q => q.status !== 'Dibatalkan' && q.status !== 'cancelled' && q.status !== 'Ditolak')
+                              .map(q => {
+                                const qNum = q.quoteNumber || q.quotationNumber || 'Tanpa No';
+                                const statusSuffix = q.status !== 'Disetujui' ? ` [${q.status}]` : '';
+                                return {
+                                  value: q.id,
+                                  label: `${qNum} - ${q.customerName} - ${formatIDR(q.total)}${statusSuffix}`
+                                };
+                              })
+                          ]}
+                          placeholder="Pilih Referensi Quotation..."
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Pilih Relasi Pelanggan</label>
+                        <button type="button" onClick={() => setShowAddCustomer(true)} className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+                          <Plus size={10} /> Tambah Baru
+                        </button>
+                      </div>
+                      {customers.length > 0 ? (
+                        <SearchableSelect
+                          value={custId}
+                          onChange={(val) => setCustId(val)}
+                          options={customers.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
+                          placeholder="Pilih Customer..."
+                        />
+                      ) : (
+                        <SearchableSelect
+                          value=""
+                          onChange={() => { }}
+                          options={[]}
+                          placeholder="Memuat Customer..."
+                          disabled
+                        />
+                      )}
+                    </div>
+
+                    {isQuotation && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-600 uppercase">Tgl Penawaran</label>
+                          <input
+                            type="date"
+                            value={docDate}
+                            onChange={(e) => setDocDate(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-600 uppercase">Berlaku Hingga</label>
+                          <input
+                            type="date"
+                            value={docValidUntil}
+                            onChange={(e) => setDocValidUntil(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 uppercase">
+                        Catatan {isQuotation ? 'Quotation' : 'Sales Order'}
+                      </label>
+                      <textarea
+                        value={documentNotes}
+                        onChange={(e) => setDocumentNotes(e.target.value)}
+                        rows={4}
+                        placeholder="Tambahkan catatan transaksi, instruksi khusus, atau keterangan pembayaran..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="w-2/3 p-5 space-y-4 overflow-y-auto flex flex-col">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Item Produk</label>
+                        <button
+                          type="button"
+                          onClick={addFormItem}
+                          className="text-[10px] text-indigo-600 font-bold hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus size={10} /> Tambah Baris
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 pr-1">
+                        {formItems.map((item, index) => (
+                          <div key={index} className="p-3 border border-slate-200 rounded-xl bg-slate-50/70 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Baris {index + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <ProductPicker
+                                  value={item.productId}
+                                  showCategoryFilter
+                                  onChange={(product) => {
+                                    updateFormItem(index, {
+                                      productId: product.id,
+                                      unitPrice: product.sellingPrice || 0,
+                                      quantity: item.quantity > 0 ? item.quantity : 1,
+                                      unit: product.unit,
+                                      stock: product.stock,
+                                      isCustomizable: product.isCustomizable,
+                                      pricingMethod: product.pricingMethod,
+                                    });
+                                  }}
+                                  placeholder="Pilih Produk..."
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeFormItem(index)}
+                                disabled={formItems.length === 1}
+                                className="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-white shrink-0"
+                                title="Hapus baris"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+
+                            <div className="bg-slate-100/50 border border-slate-200 rounded-lg p-3 space-y-3">
+                              {item.isCustomizable ? (
+                                <div className="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
+                                  <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    Detail Dimensi Custom
+                                  </h4>
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[11px] font-bold text-slate-600">Jml Fisik (Batang/Pcs)</label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={item.pieceCount || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value ? Number(e.target.value) : undefined;
+                                          const l = item.length || 1;
+                                          const p = val || 1;
+                                          updateFormItem(index, {
+                                            pieceCount: val,
+                                            quantity: parseFloat((p * l).toFixed(2))
+                                          });
+                                        }}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                        placeholder="Jml"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[11px] font-bold text-slate-600">Ukuran per Fisik ({item.unit || 'M'})</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.length || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value ? Number(e.target.value) : undefined;
+                                          const p = item.pieceCount || 1;
+                                          const l = val || 1;
+                                          updateFormItem(index, {
+                                            length: val,
+                                            quantity: parseFloat((p * l).toFixed(2))
+                                          });
+                                        }}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
+                                        placeholder="Ukuran"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.unit || 'Item'})</label>
+                                      <input
+                                        type="number"
+                                        required
+                                        min="0.01"
+                                        step="0.01"
+                                        value={item.quantity || ''}
+                                        readOnly={true}
+                                        className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50 border-indigo-200 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
                                 <div className="grid grid-cols-3 gap-3">
                                   <div className="space-y-1">
-                                    <label className="text-[11px] font-bold text-slate-600">Jml Fisik (Batang/Pcs)</label>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      value={item.pieceCount || ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value ? Number(e.target.value) : undefined;
-                                        const l = item.length || 1;
-                                        const p = val || 1;
-                                        updateFormItem(index, {
-                                          pieceCount: val,
-                                          quantity: parseFloat((p * l).toFixed(2))
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
-                                      placeholder="Jml"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[11px] font-bold text-slate-600">Ukuran per Fisik ({item.unit || 'M'})</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      value={item.length || ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value ? Number(e.target.value) : undefined;
-                                        const p = item.pieceCount || 1;
-                                        const l = val || 1;
-                                        updateFormItem(index, {
-                                          length: val,
-                                          quantity: parseFloat((p * l).toFixed(2))
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-xs"
-                                      placeholder="Ukuran"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[11px] font-bold text-indigo-700">Total Tagihan ({item.unit || 'Item'})</label>
+                                    <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
                                     <input
                                       type="number"
                                       required
                                       min="0.01"
                                       step="0.01"
                                       value={item.quantity || ''}
-                                      readOnly={true}
-                                      className="w-full px-3 py-2 border rounded-lg text-xs font-mono bg-indigo-50 border-indigo-200 text-indigo-700 cursor-not-allowed font-bold focus:outline-none"
+                                      onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                      placeholder="Misal: 10"
+                                    />
+                                    {typeof item.stock === 'number' && (
+                                      <p className="text-[10px] text-slate-400 mt-1">
+                                        Stok: {item.stock} {item.unit || 'unit'}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">
+                                      Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                    </label>
+                                    <CurrencyInput
+                                      required
+                                      value={item.unitPrice || ''}
+                                      onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">
+                                      Diskon Item (Rp)
+                                    </label>
+                                    <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
+                                      <span>Rp</span>
+                                      <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {item.isCustomizable && (
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">
+                                      Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
+                                    </label>
+                                    <CurrencyInput
+                                      required
+                                      value={item.unitPrice || ''}
+                                      onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">
+                                      Diskon Item (Rp)
+                                    </label>
+                                    <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
+                                      <span>Rp</span>
+                                      <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-600">Keterangan</label>
+                                    <input
+                                      type="text"
+                                      value={item.description || ''}
+                                      onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                      placeholder="Opsional"
                                     />
                                   </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">Total {item.unit || 'Qty'}</label>
-                                  <input
-                                    type="number"
-                                    required
-                                    min="0.01"
-                                    step="0.01"
-                                    value={item.quantity || ''}
-                                    onChange={(e) => updateFormItem(index, { quantity: Number(e.target.value) })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                    placeholder="Misal: 10"
-                                  />
-                                  {typeof item.stock === 'number' && (
-                                    <p className="text-[10px] text-slate-400 mt-1">
-                                      Stok: {item.stock} {item.unit || 'unit'}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">
-                                    Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                                  </label>
-                                  <CurrencyInput
-                                    required
-                                    value={item.unitPrice || ''}
-                                    onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">
-                                    Diskon Item (Rp)
-                                  </label>
-                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
-                                    <span>Rp</span>
-                                    <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
 
-                            {item.isCustomizable && (
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">
-                                    Harga Satuan {item.unit ? `(Rp / ${item.unit})` : '(Rp)'}
-                                  </label>
-                                  <CurrencyInput
-                                    required
-                                    value={item.unitPrice || ''}
-                                    onValueChange={(val) => updateFormItem(index, { unitPrice: Number(val) })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-mono"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">
-                                    Diskon Item (Rp)
-                                  </label>
-                                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-xs font-mono text-slate-600 flex justify-between items-center h-8.5">
-                                    <span>Rp</span>
-                                    <span>{item.discountAmount ? formatIDR(item.discountAmount).replace('Rp', '').trim() : '0'}</span>
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-bold text-slate-600">Keterangan</label>
-                                  <input
-                                    type="text"
-                                    value={item.description || ''}
-                                    onChange={(e) => updateFormItem(index, { description: e.target.value })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                    placeholder="Opsional"
-                                  />
-                                </div>
+                            {!item.isCustomizable && (
+                              <div className="space-y-1 mt-2">
+                                <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
+                                <input
+                                  type="text"
+                                  value={item.description || ''}
+                                  onChange={(e) => updateFormItem(index, { description: e.target.value })}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
+                                  placeholder="Opsional (catatan khusus...)"
+                                />
                               </div>
                             )}
                           </div>
+                        ))}
+                      </div>
+                    </div>
 
-                          {!item.isCustomizable && (
-                            <div className="space-y-1 mt-2">
-                              <label className="text-[11px] font-bold text-slate-600">Keterangan Tambahan</label>
-                              <input
-                                type="text"
-                                value={item.description || ''}
-                                onChange={(e) => updateFormItem(index, { description: e.target.value })}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white placeholder:text-slate-300 text-xs"
-                                placeholder="Opsional (catatan khusus...)"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                  </div>
+                </div>
+                <div className="p-4 border-t bg-slate-50 flex justify-between items-end shrink-0">
+                  <div className="flex flex-col gap-2 w-1/2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Subtotal</span>
+                      <span className="text-xs font-mono font-bold text-slate-700">{formatIDR(formTotal)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Diskon Transaksi</span>
+                      <div className="flex flex-1 items-center bg-white rounded-lg border border-slate-200 overflow-hidden h-8">
+                        <select
+                          value={globalDiscountType}
+                          onChange={(e) => {
+                            setGlobalDiscountType(e.target.value as 'percentage' | 'nominal');
+                            setGlobalDiscountValue('');
+                          }}
+                          className="bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 border-r border-slate-200 outline-none w-14 cursor-pointer h-full"
+                        >
+                          <option value="nominal">Rp</option>
+                          <option value="percentage">%</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={globalDiscountValue}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/[^0-9.]/g, '');
+                            if (globalDiscountType === 'percentage' && parseFloat(val) > 100) val = '100';
+                            if (globalDiscountType === 'nominal' && parseFloat(val) > formTotal) val = formTotal.toString();
+                            setGlobalDiscountValue(val);
+                          }}
+                          placeholder="0"
+                          className="w-full px-2 py-1 text-xs font-mono font-bold text-slate-700 outline-none h-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200 mt-1">
+                      <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400 w-24">Grand Total</span>
+                      <p className="text-sm font-black text-indigo-750 font-mono leading-none mt-0.5">{formatIDR(grandTotal)}</p>
                     </div>
                   </div>
-
-                </div>
-              </div>
-              <div className="p-4 border-t bg-slate-50 flex justify-between items-end shrink-0">
-                <div className="flex flex-col gap-2 w-1/2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Subtotal</span>
-                    <span className="text-xs font-mono font-bold text-slate-700">{formatIDR(formTotal)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 w-24">Diskon Transaksi</span>
-                    <div className="flex flex-1 items-center bg-white rounded-lg border border-slate-200 overflow-hidden h-8">
-                      <select
-                        value={globalDiscountType}
-                        onChange={(e) => {
-                          setGlobalDiscountType(e.target.value as 'percentage' | 'nominal');
-                          setGlobalDiscountValue('');
-                        }}
-                        className="bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 border-r border-slate-200 outline-none w-14 cursor-pointer h-full"
-                      >
-                        <option value="nominal">Rp</option>
-                        <option value="percentage">%</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={globalDiscountValue}
-                        onChange={(e) => {
-                          let val = e.target.value.replace(/[^0-9.]/g, '');
-                          if (globalDiscountType === 'percentage' && parseFloat(val) > 100) val = '100';
-                          if (globalDiscountType === 'nominal' && parseFloat(val) > formTotal) val = formTotal.toString();
-                          setGlobalDiscountValue(val);
-                        }}
-                        placeholder="0"
-                        className="w-full px-2 py-1 text-xs font-mono font-bold text-slate-700 outline-none h-full"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200 mt-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wider font-mono text-slate-400 w-24">Grand Total</span>
-                    <p className="text-sm font-black text-indigo-750 font-mono leading-none mt-0.5">{formatIDR(grandTotal)}</p>
+                  <div className="flex gap-2 text-xs font-bold mb-1">
+                    <button type="button" onClick={handleCloseForm} className="btn btn-secondary btn-md">Batal</button>
+                    <button type="submit" className="btn btn-primary btn-md">
+                      {editingQuotation ? 'Simpan Perubahan' : 'Penerbitan Draft'}
+                    </button>
                   </div>
                 </div>
-                <div className="flex gap-2 text-xs font-bold mb-1">
-                  <button type="button" onClick={handleCloseForm} className="btn btn-secondary btn-md">Batal</button>
-                  <button type="submit" className="btn btn-primary btn-md">
-                    {editingQuotation ? 'Simpan Perubahan' : 'Penerbitan Draft'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Quick Add Customer Modal */}
-      {showAddCustomer && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-sky-100 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-4 py-3 bg-sky-50 border-b border-sky-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-sky-600" />
-                <h3 className="font-bold text-sky-900 text-sm">Tambah Customer Baru</h3>
-              </div>
-              <button onClick={() => setShowAddCustomer(false)} className="text-sky-400 hover:text-sky-700 p-1 rounded-lg">
-                <X size={16} />
-              </button>
+              </form>
             </div>
-            <form onSubmit={handleQuickAddCustomer} className="p-4 space-y-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Nama Customer *</label>
-                <input required type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
-                <input type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Kota</label>
-                <input type="text" value={newCustCity} onChange={e => setNewCustCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
-                <textarea rows={2} value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none resize-none" />
-              </div>
-              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold mt-2">
-                <button type="button" onClick={() => setShowAddCustomer(false)} className="btn btn-secondary btn-sm">Batal</button>
-                <button type="submit" className="btn btn-primary btn-sm">Simpan Customer</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 7. Thermal Print Modal (Sales Order) */}
-      {thermalModalDoc && (() => {
-        const info = mapSalesOrderToPrintInfo(thermalModalDoc);
-        const thermalHtml = buildSalesOrderThermalHTML(info, companyProfile, false);
-
-        return (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans text-xs">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
-              <div className="px-5 py-3.5 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
+        {/* 6. Quick Add Customer Modal */}
+        {showAddCustomer && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
+            <div className="bg-white rounded-xl shadow-2xl border border-sky-100 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-4 py-3 bg-sky-50 border-b border-sky-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Receipt size={18} className="text-sky-100" />
-                  <div>
-                    <h3 className="font-bold text-sm">Cetak Thermal Sales Order</h3>
-                    <p className="text-[10px] text-sky-100/80">{info.orderNumber} - Format roll 80mm tanpa tanda tangan</p>
-                  </div>
+                  <Building2 size={16} className="text-sky-600" />
+                  <h3 className="font-bold text-sky-900 text-sm">Tambah Customer Baru</h3>
                 </div>
-                <button
-                  onClick={() => setThermalModalDoc(null)}
-                  className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
-                >
-                  <X size={18} />
+                <button onClick={() => setShowAddCustomer(false)} className="text-sky-400 hover:text-sky-700 p-1 rounded-lg">
+                  <X size={16} />
                 </button>
               </div>
-
-              {/* Thermal Live Preview */}
-              <div className="p-4 bg-slate-100 flex-1 overflow-y-auto">
-                <div className="bg-white p-4 shadow-sm border border-slate-200 rounded-lg mx-auto max-w-[76mm]">
-                  <div
-                    className="font-mono text-[11px] text-black"
-                    dangerouslySetInnerHTML={{ __html: thermalHtml }}
-                  />
+              <form onSubmit={handleQuickAddCustomer} className="p-4 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600">Nama Customer *</label>
+                  <input required type="text" value={newCustName} onChange={e => setNewCustName(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="p-4 bg-white border-t border-slate-100 flex flex-col gap-2 shrink-0">
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => handleThermalPrintWindow(thermalModalDoc)}
-                    className="btn btn-success btn-md text-[11px]"
-                    title="Cetak langsung lewat dialog print browser / USB printer"
-                  >
-                    <Printer size={14} />
-                    <span>Cetak Struk</span>
-                  </button>
-                  <button
-                    onClick={() => handleThermalPrintBluetooth(thermalModalDoc)}
-                    className="btn btn-primary btn-md text-[11px]"
-                    title="Cetak via Bluetooth ESC/POS"
-                  >
-                    <Bluetooth size={14} />
-                    <span>Bluetooth</span>
-                  </button>
-                  <button
-                    onClick={() => handleThermalDownloadPdf(thermalModalDoc)}
-                    className="btn btn-secondary btn-md text-[11px]"
-                    title="Unduh file PDF roll 80mm"
-                  >
-                    <Download size={14} />
-                    <span>Unduh PDF</span>
-                  </button>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600">No. Telepon / WhatsApp</label>
+                  <input type="text" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
                 </div>
-                <button
-                  onClick={() => setThermalModalDoc(null)}
-                  className="btn btn-secondary btn-md text-[11px] w-full"
-                >
-                  Tutup
-                </button>
-              </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600">Kota</label>
+                  <input type="text" value={newCustCity} onChange={e => setNewCustCity(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600">Alamat Lengkap</label>
+                  <textarea rows={2} value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-sky-500 focus:outline-none resize-none" />
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold mt-2">
+                  <button type="button" onClick={() => setShowAddCustomer(false)} className="btn btn-secondary btn-sm">Batal</button>
+                  <button type="submit" className="btn btn-primary btn-sm">Simpan Customer</button>
+                </div>
+              </form>
             </div>
           </div>
-        );
-      })()}
-    </div>
-  );
+        )}
+
+        {/* 7. Thermal Print Modal (Sales Order) */}
+        {thermalModalDoc && (() => {
+          const info = mapSalesOrderToPrintInfo(thermalModalDoc);
+          const thermalHtml = buildSalesOrderThermalHTML(info, companyProfile, false);
+
+          return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans text-xs">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-50 zoom-in-95 duration-150">
+                <div className="px-5 py-3.5 soft-blue-header text-white flex items-center justify-between shrink-0 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <Receipt size={18} className="text-sky-100" />
+                    <div>
+                      <h3 className="font-bold text-sm">Cetak Thermal Sales Order</h3>
+                      <p className="text-[10px] text-sky-100/80">{info.orderNumber} - Format roll 80mm tanpa tanda tangan</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setThermalModalDoc(null)}
+                    className="text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Thermal Live Preview */}
+                <div className="p-4 bg-slate-100 flex-1 overflow-y-auto">
+                  <div className="bg-white p-4 shadow-sm border border-slate-200 rounded-lg mx-auto max-w-[76mm]">
+                    <div
+                      className="font-mono text-[11px] text-black"
+                      dangerouslySetInnerHTML={{ __html: thermalHtml }}
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="p-4 bg-white border-t border-slate-100 flex flex-col gap-2 shrink-0">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => handleThermalPrintWindow(thermalModalDoc)}
+                      className="btn btn-success btn-md text-[11px]"
+                      title="Cetak langsung lewat dialog print browser / USB printer"
+                    >
+                      <Printer size={14} />
+                      <span>Cetak Struk</span>
+                    </button>
+                    <button
+                      onClick={() => handleThermalPrintBluetooth(thermalModalDoc)}
+                      className="btn btn-primary btn-md text-[11px]"
+                      title="Cetak via Bluetooth ESC/POS"
+                    >
+                      <Bluetooth size={14} />
+                      <span>Bluetooth</span>
+                    </button>
+                    <button
+                      onClick={() => handleThermalDownloadPdf(thermalModalDoc)}
+                      className="btn btn-secondary btn-md text-[11px]"
+                      title="Unduh file PDF roll 80mm"
+                    >
+                      <Download size={14} />
+                      <span>Unduh PDF</span>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setThermalModalDoc(null)}
+                    className="btn btn-secondary btn-md text-[11px] w-full"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
 }

@@ -43,6 +43,13 @@ export const salesApi = {
     return response.data.map(mapSalesOrderFromDto);
   },
 
+  async getSalesOrder(id: string): Promise<SalesOrder> {
+    const response = await apiClient.get<{ data: SalesOrderDto }>(
+      `/sales/sales-orders/${id}?include=customer,quotation,items.product.unit,deliveryOrders.items.product,invoices.payments,productionWorkOrders.product,productionWorkOrders.tasks,purchaseOrders.items.product,purchaseOrders.supplier`
+    );
+    return mapSalesOrderFromDto(response.data);
+  },
+
   async createSalesOrder(data: CreateSalesOrderDto): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>('/sales/sales-orders', data);
     return mapSalesOrderFromDto(response.data);

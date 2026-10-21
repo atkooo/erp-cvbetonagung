@@ -13,6 +13,9 @@ export interface SalesOrder {
   items: {
     id?: string;
     productId: string;
+    productName?: string;
+    unit?: string;
+    price?: number;
     description?: string | null;
     pieceCount?: number | null;
     length?: number | null;
@@ -39,6 +42,9 @@ export interface SalesOrder {
   customer?: {
     id: string;
     name: string;
+    phone?: string;
+    address?: string;
+    city?: string;
   };
   customerName?: string;
   hasInvoice?: boolean;
@@ -50,9 +56,23 @@ export interface SalesOrder {
   };
   invoices?: {
     id: string;
+    invoiceNumber?: string;
+    invoiceDate?: string;
+    dueDate?: string;
     paidAmount: number;
     total?: number;
+    subtotal?: number;
     status?: string;
+    createdAt?: string;
+    payments?: {
+      id: string;
+      paymentNumber?: string;
+      paymentDate?: string;
+      method?: string;
+      amount: number;
+      status?: string;
+      notes?: string | null;
+    }[];
   }[];
   deliveryOrders?: DeliveryOrder[];
   productionWorkOrders?: {
@@ -61,6 +81,28 @@ export interface SalesOrder {
     stage?: string;
     productId?: string;
     salesOrderItemId?: string | null;
+    targetQty?: number;
+    completedQty?: number;
+    progress?: number;
+    dueDate?: string | null;
+    product?: {
+      id: string;
+      sku: string;
+      name: string;
+      unit?: {
+        code: string;
+        name: string;
+      };
+    };
+    tasks?: {
+      id: string;
+      taskCode: string;
+      taskName: string;
+      status: string;
+      sequence: number;
+      targetQty: number;
+      completedQty?: number;
+    }[];
   }[];
   hasActiveWorkOrder?: boolean;
   purchaseOrders?: {
@@ -68,11 +110,27 @@ export interface SalesOrder {
     poNumber?: string;
     status?: string;
     supplierId?: string;
+    supplierName?: string;
+    supplier?: {
+      id: string;
+      name: string;
+      phone?: string;
+    };
     items?: {
       id: string;
       productId: string;
+      productName?: string;
       quantity: number;
       receivedQty: number;
+      product?: {
+        id: string;
+        sku: string;
+        name: string;
+        unit?: {
+          code: string;
+          name: string;
+        };
+      };
     }[];
   }[];
 }
