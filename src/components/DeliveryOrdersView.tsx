@@ -158,7 +158,7 @@ export default function DeliveryOrdersView({
     // Generate auto DO number
     const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    setDeliveryNumber(`DO-${dateStr}-${randomSuffix}`);
+    setDeliveryNumber(`DO${dateStr}${randomSuffix}`);
     setSelectedSalesOrderId("");
     setDeliveryDate(new Date().toISOString().split("T")[0]);
     setNotes("");

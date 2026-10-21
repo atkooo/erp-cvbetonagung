@@ -108,7 +108,7 @@ export default function ProjectsView({
     setIsSaving(true);
     try {
       const generatedCode =
-        projCode || `PRJ-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+        projCode || "AUTO GENERATED";
       const created = await projectsApi.createProject({
         project_name: projName,
         customer_id: custId,

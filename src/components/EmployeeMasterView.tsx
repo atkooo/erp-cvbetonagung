@@ -96,7 +96,7 @@ export default function EmployeeMasterView({
   const handleOpenAddModal = () => {
     setEditingEmployee(null);
     setBusinessUnit("Head Office");
-    setEmployeeNumber(`EMP-${Date.now().toString().slice(-6)}`);
+    setEmployeeNumber(`EMP${Date.now().toString().slice(-6)}`);
     setName("");
     setRoleName("");
     setDepartment("");

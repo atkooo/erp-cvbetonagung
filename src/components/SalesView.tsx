@@ -643,7 +643,7 @@ export default function SalesView({
     if (!newCustName) return;
 
     try {
-      const code = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+      const code = 'AUTO GENERATED';
       const newCustomer = await customersApi.createCustomer({
         code,
         name: newCustName,

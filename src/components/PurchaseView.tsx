@@ -258,7 +258,7 @@ export default function PurchaseView({
     if (!newSupName) return;
 
     try {
-      const code = `SUP-${Math.floor(1000 + Math.random() * 9000)}`;
+      const code = 'AUTO GENERATED';
       const newSupplier = await suppliersApi.createSupplier({
         code,
         name: newSupName,

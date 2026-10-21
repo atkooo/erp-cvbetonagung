@@ -130,7 +130,7 @@ export const purchasingApi = {
   },
 
   async createReturn(data: CreateReturnDto): Promise<Return> {
-    const payload = { ...data, return_number: `RTN-${Date.now()}` };
+    const payload = { ...data, return_number: data.return_number || 'AUTO GENERATED' };
     const response = await apiClient.post<{ data: ReturnDto }>('/returns', payload);
     const returnId = response.data.id;
 
@@ -162,7 +162,7 @@ export const purchasingApi = {
 
   async createRfq(data: any): Promise<any> {
     const payload = {
-      rfq_number: `RFQ-${Date.now()}`,
+      rfq_number: data.rfq_number || 'AUTO GENERATED',
       purchase_request_id: data.purchase_request_id || null,
       supplier_id: data.supplier_id,
       rfq_date: data.rfq_date,

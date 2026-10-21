@@ -53,7 +53,7 @@ export const FinanceAccountsView: React.FC = () => {
     } else {
       setEditingId(null);
       setFormData({
-        code: `ACC-${Date.now().toString().slice(-4)}`,
+        code: `ACC${Date.now().toString().slice(-6)}`,
         name: '',
         type: 'cash',
         currency: 'IDR',

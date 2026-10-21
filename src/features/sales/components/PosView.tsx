@@ -278,7 +278,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     }
     setIsAddingCustomer(true);
     try {
-      const code = `CUST-POS-${Date.now().toString().slice(-6)}`;
+      const code = 'AUTO GENERATED';
       const newCustomer = await customersApi.createCustomer({
         code,
         name: newCustomerName,
