@@ -55,22 +55,43 @@ export const hasViewAccess = (
       ? ['edit', 'full']
       : ['read', 'edit', 'full'];
 
-  // 6. Check if user has view permission for the required module (strict 1-to-1 matching or wildcard '*')
-  return userPermissions.some((p: any) => {
-    // Check module match: exact module match or wildcard '*'
-    const moduleMatch = p.module === requiredModule || p.module === '*';
-    if (!moduleMatch) return false;
+  // 6. Find all permissions for the required module (exact match or wildcard '*')
+  const modulePerms = userPermissions.filter(
+    (p: any) => p.module === requiredModule || p.module === '*'
+  );
 
-    // Check action match: must have 'view' permission, or wildcard / all
-    const actionMatch = !p.action || p.action === 'view' || p.action === '*' || p.action === 'all';
-    if (!actionMatch) return false;
+  if (modulePerms.length === 0) {
+    return false;
+  }
 
-    // Check access level against minimum required level
-    const level = p.pivot?.access_level ?? p.accessLevel ?? p.access_level;
-    if (level !== undefined && level !== null && level !== '') {
-      return allowedLevels.includes(level);
-    }
-
+  // If user has wildcard module permission ('*'), allow
+  if (modulePerms.some((p: any) => p.module === '*')) {
     return true;
-  });
+  }
+
+  // Check if user has wildcard action ('*' or 'all' or missing action)
+  const wildcardPerm = modulePerms.find((p: any) => !p.action || p.action === '*' || p.action === 'all');
+  if (wildcardPerm) {
+    const coarseLevel = wildcardPerm.pivot?.access_level ?? (wildcardPerm as any).accessLevel ?? (wildcardPerm as any).access_level;
+    if (coarseLevel !== undefined && coarseLevel !== null && coarseLevel !== '') {
+      return allowedLevels.includes(coarseLevel);
+    }
+    return true;
+  }
+
+  // For granular permissions (action: 'view', 'create', 'update', 'delete', 'approve'):
+  const actions = new Set(modulePerms.map((p: any) => p.action));
+
+  if (minAccessLevel === 'full') {
+    // Requires delete or approve action
+    return actions.has('delete') || actions.has('approve');
+  }
+
+  if (minAccessLevel === 'edit') {
+    // Requires create, update, delete, or approve action (having ONLY 'view' is read-only)
+    return actions.has('create') || actions.has('update') || actions.has('delete') || actions.has('approve');
+  }
+
+  // minAccessLevel === 'read': having any action (including 'view') is sufficient
+  return actions.has('view') || actions.has('create') || actions.has('update') || actions.has('delete') || actions.has('approve');
 };

@@ -178,6 +178,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Kas & Bank",
         icon: WalletCards,
         requiredModule: "accounts",
+        minAccessLevel: "edit",
       },
       {
         view: "cash-expense",
@@ -343,6 +344,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Kategori Cuti",
         icon: Tag,
         requiredModule: "leave_types",
+        minAccessLevel: "edit",
       },
       {
         view: "payroll-management",
@@ -405,6 +407,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Lokasi Gudang",
         icon: Warehouse,
         requiredModule: "storage_locations",
+        minAccessLevel: "edit",
       },
     ],
   },

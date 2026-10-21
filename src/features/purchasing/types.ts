@@ -201,6 +201,7 @@ export interface ReturnDto {
 }
 
 export interface CreateReturnDto {
+  return_number?: string;
   type: 'customer' | 'supplier';
   customer_id?: string | null;
   supplier_id?: string | null;

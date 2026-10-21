@@ -174,14 +174,17 @@ export default function SalesOrderDetailView({
     }
   };
 
-  // Check if order has manufacturing items
-  const hasManufactureItems = (order.items || []).some(item => {
-    const prod = item.product;
+  // Helper to check if a product is manufactured in-house vs purchased
+  const isManufactureProduct = (prod: any) => {
     if (!prod) return false;
     if (prod.type === 'raw_material' || prod.type === 'service') return false;
-    if (prod.procurementType === 'purchase') return false;
-    return prod.procurementType === 'manufacture' || prod.type === 'finished_good';
-  });
+    const procurementType = prod.procurementType || prod.procurement_type;
+    if (procurementType === 'purchase') return false;
+    return procurementType === 'manufacture' || prod.type === 'finished_good';
+  };
+
+  // Check if order has manufacturing items
+  const hasManufactureItems = (order.items || []).some(item => isManufactureProduct(item.product));
 
   const activeWorkOrders = (order.productionWorkOrders || []).filter(
     wo => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
@@ -719,7 +722,7 @@ export default function SalesOrderDetailView({
                           {item.description && <div className="text-[10px] text-slate-500 italic mt-0.5">{item.description}</div>}
                         </td>
                         <td className="p-3.5">
-                          {item.product?.procurementType === 'manufacture' || item.product?.type === 'finished_good' ? (
+                          {isManufactureProduct(item.product) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                               <Factory size={10} /> Pabrikasi
                             </span>

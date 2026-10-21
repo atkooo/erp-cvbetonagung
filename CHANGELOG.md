@@ -6,7 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- **Perbaikan Filter Hak Akses Granular pada Sidebar (`permissions.ts` & `navigation.tsx`)**:
+  - Memperbaiki logika evaluasi hak akses `hasViewAccess` untuk sistem perizinan berbasis aksi granular (`view`, `create`, `update`, `delete`). Sebelumnya hak akses `minAccessLevel: "edit"` masih meloloskan pengguna yang hanya memiliki izin `view` (Lihat Saja).
+  - Kini menu yang membutuhkan `minAccessLevel: "edit"` (seperti Lokasi Gudang, Master Produk, Pelanggan, Kas & Bank) secara akurat **disembunyikan dari sidebar** jika role pengguna hanya memiliki izin baca `view` (tanpa `create`/`update`/`delete`), sementara pemanggilan API data pendukung di latar belakang (mis. untuk pilihan gudang/produk di POS/Sales Order) tetap berjalan lancar.
+  - Menambahkan aturan `minAccessLevel: "edit"` pada menu **Lokasi Gudang** (`storage_locations`) dan **Kategori Cuti** (`leave_types`).
+- **Perbaikan Label Status Pengadaan Item di Halaman Detail Sales Order (`SalesOrderDetailView.tsx`)**:
+  - Memperbaiki logika deteksi tipe pengadaan (`isManufactureProduct`) pada kolom tabel daftar item. Sebelumnya, seluruh item dengan tipe produk `finished_good` otomatis dilabeli sebagai **Pabrikasi** tanpa memeriksa atribut `procurementType === 'purchase'`.
+  - Kini item barang jadi yang metode pengadaannya adalah beli-jadi/supplier secara akurat dilabeli sebagai **Pembelian / Stok**, selaras dengan alur dokumen Purchase Order (PO) dan indikator Work Order (WO).
+
 ### Added
+- **Kolom & Pencarian Berdasarkan Sales Order pada Daftar E-Faktur / Invoice Penjualan (`InvoicesView.tsx`)**:
+  - Menambahkan kolom **Sales Order** pada tabel utama daftar E-Faktur yang menampilkan nomor pesanan terkait (`SO...`) dengan badge rapi.
+  - Memperluas input pencarian cepat (*search filter*) sehingga pengguna dapat mencari faktur langsung berdasarkan nomor Sales Order, di samping nomor invoice dan nama pelanggan.
+  - Memperbarui kapasitas kolom tabel dan skeleton loader menjadi 9 kolom.
+- **Proteksi Hak Akses Navigasi Menu Kas & Bank (`navigation.tsx`)**:
+  - Menetapkan `minAccessLevel: "edit"` pada item menu navigasi Kas & Bank (`accounts`).
+  - Pengguna dengan hak baca-saja (*read-only*) seperti kasir dan sales yang hanya membutuhkan data kas/bank untuk pilihan pembayaran di POS tidak akan melihat menu Kas & Bank di sidebar navigasi mereka.
 - **Lampiran Rincian Informasi Invoice & Kuitansi Pembayaran pada Cetakan Thermal Printer (80mm) & PDF Printer (A4)**:
   - **Thermal Printer (80mm Roll & Web Bluetooth ESC/POS)**: Menambahkan seksi status pembayaran, rincian nomor invoice, total tagihan faktur, tanggal, nomor kuitansi pembayaran (kode `PAY-...`), metode pelunasan, nominal pembayaran, total terbayar, dan sisa tagihan (*outstanding*).
   - **PDF Printer (A4 Dokumen Resmi)**: Menambahkan tabel resmi terstandarisasi *Rincian Invoice & Kuitansi Tanda Terima Pembayaran* yang memuat nomor invoice, tanggal terbit, nilai faktur, rincian kuitansi pelunasan lengkap (nomor kuitansi, tanggal bayar, metode, nominal), total yang telah terbayar, dan sisa tagihan terutang.

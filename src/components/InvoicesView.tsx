@@ -193,9 +193,12 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
   const filteredInvoices = invoices.filter((inv) => {
     if (inv.status === 'cancelled' || inv.status === 'Dibatalkan') return false;
+    const query = search.toLowerCase().trim();
     const matchesSearch =
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      inv.customerName.toLowerCase().includes(search.toLowerCase());
+      !query ||
+      inv.invoiceNumber.toLowerCase().includes(query) ||
+      (inv.customerName || '').toLowerCase().includes(query) ||
+      (inv.salesOrder?.orderNumber || '').toLowerCase().includes(query);
     const matchesStatus = statusFilter === 'All' || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -245,7 +248,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari invoice atau nama pembeli..."
+            placeholder="Cari nomor invoice, customer, atau sales order..."
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs"
           />
         </div>
@@ -268,7 +271,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
 
       {/* Main invoices grid table */}
       {isLoading ? (
-        <SkeletonTable rows={5} cols={8} />
+        <SkeletonTable rows={5} cols={9} />
       ) : errorMessage ? (
         <ErrorCard message={errorMessage} onRetry={loadData} />
       ) : (
@@ -278,6 +281,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               <thead>
                 <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
                   <th className="p-3.5 pl-5">Nomor invoice</th>
+                  <th className="p-3.5">Sales Order</th>
                   <th className="p-3.5">Nama Customer</th>
                   <th className="p-3.5">Tanggal Terbit</th>
                   <th className="p-3.5">Jatuh Tempo</th>
@@ -290,7 +294,7 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
               <tbody className="divide-y divide-slate-100">
                 {paginatedInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-slate-400">
+                    <td colSpan={9} className="text-center py-12 text-slate-400">
                       Tidak ditemukan kecocokan dokumen invoice.
                     </td>
                   </tr>
@@ -308,6 +312,15 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                         <td className="p-3.5 pl-5 font-mono font-bold text-slate-800 flex items-center gap-1.5">
                           <Receipt size={13} className="text-slate-400" />
                           <span>{inv.invoiceNumber}</span>
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-600">
+                          {inv.salesOrder?.orderNumber ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 text-[10px]">
+                              {inv.salesOrder.orderNumber}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[10px]">-</span>
+                          )}
                         </td>
                         <td className="p-3.5 font-bold text-slate-700">{inv.customerName}</td>
                         <td className="p-3.5 font-mono text-slate-500">{formatDate(inv.date)}</td>
