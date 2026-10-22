@@ -778,16 +778,8 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleOpenSprModal}
-            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg shadow-sm flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer text-xs"
-            title="Buat Permintaan Produksi Stok Gudang (SPR)"
-          >
-            <Warehouse size={14} />
-            <span>Permintaan Stok (SPR)</span>
-          </button>
-          <button
             onClick={handleOpenCreateModal}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer text-xs"
+            className="px-4 py-2 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white font-semibold rounded-xl shadow-xs shadow-sky-500/20 flex items-center justify-center gap-2 shrink-0 transition-all duration-150 active:scale-[0.98] cursor-pointer text-xs"
           >
             <Plus size={14} />
             <span>Keluarkan Work Order</span>

@@ -19,8 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Struk Kasir:** Pembaruan format struk thermal dan PDF untuk mencetak rincian kuantitas yang dibawa langsung (*Ambil*) dan kuantitas yang masih inden/dalam pengiriman (*Inden/Kirim*).
 - **Tampilan Rincian Alokasi Pengambilan Barang di Detail Sales Order (`SalesOrderDetailView.tsx`)**:
   - Menampilkan breakdown unit yang telah diambil langsung (*take away*) dan unit sisa yang masih inden/dalam pengiriman di bawah kolom kuantitas item Sales Order.
+### Removed
+- **Tombol Permintaan Stok (SPR) pada Toolbar Work Order (`ProductionWorkOrderView.tsx`)**:
+  - Menghapus tombol *Permintaan Stok (SPR)* dari header antarmuka Work Order Cetak agar antarmuka lebih bersih dan fokus pada aksi operasional.
+  - Memperbarui gaya tombol *Keluarkan Work Order* mengikuti standar Primary Button design system Soft Sky Blue (`bg-gradient-to-r from-sky-600 to-sky-700`).
 
 ### Fixed
+- **Perbaikan Tooltip Dependensi & Dropdown Preset Hak Akses (`RolePermissionView.tsx`)**:
+  - Mengisolasi rendering popover tooltip data pendukung otomatis (`DependencyHint`) dan menu aksi cepat (`BulkActionDropdown`) ke tingkat `document.body` menggunakan **React Portal (`createPortal`)** dengan `position: fixed`.
+  - Mencegah popover merusak tata letak baris tabel (*table cell layout shift*), menghilangkan kemunculan scrollbar semu pada kontainer tabel yang menggeser kolom, serta menjaga posisi baris dan checkbox di sekitarnya agar tidak bergerak saat popover dibuka atau ditutup.
+  - Menambahkan deteksi batas layar (*smart viewport collision detection*): popover dan menu dropdown secara otomatis membalik ke atas (*flip upwards*) jika berada di dekat batas bawah viewport, serta menutup otomatis saat tombol Escape ditekan atau pengguna mengklik di luar area.
+  - Memperbarui visual tooltip sesuai tema Soft Sky Blue & Slate yang rapi dan elegan, lengkap dengan tombol penutup (X) dan penanda izin otomatis.
 - **Perbaikan Filter Hak Akses Granular pada Sidebar (`permissions.ts` & `navigation.tsx`)**:
   - Memperbaiki logika evaluasi hak akses `hasViewAccess` untuk sistem perizinan berbasis aksi granular (`view`, `create`, `update`, `delete`). Sebelumnya hak akses `minAccessLevel: "edit"` masih meloloskan pengguna yang hanya memiliki izin `view` (Lihat Saja).
   - Kini menu yang membutuhkan `minAccessLevel: "edit"` (seperti Lokasi Gudang, Master Produk, Pelanggan, Kas & Bank) secara akurat **disembunyikan dari sidebar** jika role pengguna hanya memiliki izin baca `view` (tanpa `create`/`update`/`delete`), sementara pemanggilan API data pendukung di latar belakang (mis. untuk pilihan gudang/produk di POS/Sales Order) tetap berjalan lancar.

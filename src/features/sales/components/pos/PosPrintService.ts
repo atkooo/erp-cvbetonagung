@@ -52,6 +52,7 @@ const escapeHtml = (unsafe: string | null | undefined): string => {
 
 const normalizeReceiptItems = (items: any[], stocks: StockItem[], isHistory: boolean = false): NormalizedItem[] => {
   return (items || []).map((item: any) => {
+    const isCustom = Boolean(item.is_custom || item.product?.is_custom);
     const price = parseFloat(item.product?.sellingPrice?.toString() || item.product?.selling_price?.toString() || '0');
     const discountAmount = Number(item.discount_amount) || 0;
     const qty = Number(item.quantity) || 0;

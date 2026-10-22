@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2, Check, Info
+  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2, Check, Info, X
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { identityApi } from '../features/identity/api';
@@ -120,43 +121,137 @@ const DependencyHint = ({ module }: { module: string }) => {
   if (!deps || deps.length === 0) return null;
 
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; placeTop: boolean } | null>(null);
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const popupWidth = 280;
+    const estimatedHeight = 160;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeTop = spaceBelow < estimatedHeight + 10 && rect.top > estimatedHeight + 10;
+
+    const top = placeTop ? rect.top - 6 : rect.bottom + 6;
+    const left = Math.max(12, Math.min(rect.left - 4, window.innerWidth - popupWidth - 12));
+
+    setCoords({ top, left, placeTop });
+  };
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    updatePosition();
+
+    const handleOutside = (e: MouseEvent) => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node) &&
+        popupRef.current &&
+        !popupRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+
+    const handleScroll = () => {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        setOpen(false);
+      } else {
+        updatePosition();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', updatePosition);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', updatePosition);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [open]);
 
   return (
-    <div className="relative inline-flex" ref={ref}>
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="ml-1 p-0.5 rounded text-sky-400 hover:text-sky-600 hover:bg-sky-50 transition-colors"
-        title="Lihat dependensi modul"
+        className={`inline-flex items-center justify-center w-4 h-4 rounded-full transition-all shrink-0 cursor-pointer ${
+          open
+            ? 'bg-sky-600 text-white shadow-xs'
+            : 'text-sky-500 bg-sky-50 hover:bg-sky-100 hover:text-sky-700'
+        }`}
+        title="Lihat izin baca otomatis modul ini"
       >
-        <Info size={11} />
+        <Info size={10} strokeWidth={2.5} />
       </button>
-      {open && (
-        <div className="absolute left-0 top-6 z-50 w-64 bg-white border border-sky-100 rounded-xl shadow-lg p-3 space-y-2">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data pendukung otomatis</p>
-          <p className="text-[10px] text-slate-500 leading-relaxed">
-            Modul ini otomatis bisa membaca data berikut tanpa perlu izin terpisah:
+
+      {open && coords && createPortal(
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            transform: coords.placeTop ? 'translateY(-100%)' : 'none',
+            zIndex: 9999,
+            width: '280px',
+          }}
+          className="bg-white/98 backdrop-blur-md border border-sky-100 rounded-xl shadow-[0_12px_30px_-6px_rgba(2,132,199,0.18),0_4px_12px_-2px_rgba(0,0,0,0.08)] p-3.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-100 text-left select-none"
+        >
+          <div className="flex items-center justify-between border-b border-sky-100/80 pb-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                <Info size={12} strokeWidth={2.5} />
+              </div>
+              <p className="text-[11px] font-bold text-slate-800">
+                Data Pendukung Otomatis
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-5 h-5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          </div>
+
+          <p className="text-[10px] text-slate-600 leading-relaxed">
+            Modul ini otomatis bisa membaca (GET) data pendukung berikut tanpa perlu izin terpisah:
           </p>
-          <div className="flex flex-wrap gap-1">
+
+          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
             {deps.map(dep => (
-              <span key={dep} className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-semibold">
+              <span
+                key={dep}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50/80 text-sky-700 border border-sky-200/70 text-[10px] font-semibold"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />
                 {DEP_MODULE_LABELS[dep] ?? dep}
               </span>
             ))}
           </div>
-        </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[9px] text-emerald-700 bg-emerald-50/60 px-2 py-1 rounded-md">
+            <Check size={11} strokeWidth={2.5} className="shrink-0 text-emerald-600" />
+            <span>Otorisasi otomatis aktif di backend</span>
+          </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
@@ -335,67 +430,153 @@ const HIDDEN_LEGACY_MODULES = new Set([
   const getModuleLabel = (module: string) => MODULE_LABELS[module] || module;
   const getActionLabel = (action: string) => ACTION_LABELS[action] || action;
 
-  const BulkActionDropdown = ({ onSelect, disabled }: { onSelect: (level: 'none' | 'read' | 'edit' | 'full') => void, disabled: boolean }) => {
+  const BulkActionDropdown = ({
+    onSelect,
+    disabled
+  }: {
+    onSelect: (level: 'none' | 'read' | 'edit' | 'full') => void;
+    disabled: boolean;
+  }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const containerRef = React.useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const popupRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState<{ top: number; right: number; placeTop: boolean } | null>(null);
+
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const estimatedHeight = 155;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placeTop = spaceBelow < estimatedHeight + 10 && rect.top > estimatedHeight + 10;
+
+      const top = placeTop ? rect.top - 6 : rect.bottom + 6;
+      const right = Math.max(12, window.innerWidth - rect.right);
+
+      setCoords({ top, right, placeTop });
+    };
 
     useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (!isOpen) return;
+      updatePosition();
+
+      const handleOutside = (e: MouseEvent) => {
+        if (
+          triggerRef.current &&
+          !triggerRef.current.contains(e.target as Node) &&
+          popupRef.current &&
+          !popupRef.current.contains(e.target as Node)
+        ) {
           setIsOpen(false);
         }
       };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+
+      const handleScroll = () => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > window.innerHeight) {
+          setIsOpen(false);
+        } else {
+          updatePosition();
+        }
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setIsOpen(false);
+      };
+
+      document.addEventListener('mousedown', handleOutside);
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', updatePosition);
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.removeEventListener('mousedown', handleOutside);
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', updatePosition);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [isOpen]);
 
     return (
-      <div className="relative inline-block text-left" ref={containerRef}>
+      <>
         <button
+          ref={triggerRef}
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setIsOpen(v => !v)}
           disabled={disabled}
-          className={`p-1.5 rounded-md focus:outline-none transition-colors ${isOpen ? 'bg-cyan-50 text-cyan-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
-          title="Opsi Massal"
+          className={`p-1.5 rounded-lg focus:outline-none transition-all cursor-pointer active:scale-95 ${
+            isOpen
+              ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200'
+              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+          }`}
+          title="Opsi Massal (Set Akses Cepat)"
         >
           <MoreVertical size={16} />
         </button>
-        {isOpen && !disabled && (
-          <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-slate-100 z-50 overflow-hidden py-1">
+
+        {isOpen && !disabled && coords && createPortal(
+          <div
+            ref={popupRef}
+            style={{
+              position: 'fixed',
+              top: coords.top,
+              right: coords.right,
+              transform: coords.placeTop ? 'translateY(-100%)' : 'none',
+              zIndex: 9999,
+              width: '144px',
+            }}
+            className="bg-white/98 backdrop-blur-md rounded-xl shadow-[0_12px_28px_-6px_rgba(0,0,0,0.15),0_4px_10px_-2px_rgba(0,0,0,0.06)] border border-slate-200/90 py-1.5 animate-in fade-in zoom-in-95 duration-100 text-left select-none"
+          >
+            <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+              Preset Akses
+            </div>
             <button
+              type="button"
               onClick={() => { onSelect('full'); setIsOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 transition-colors cursor-pointer"
             >
-              <Shield size={13} className="opacity-70" />
-              Full
+              <div className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Shield size={12} />
+              </div>
+              <span>Full</span>
             </button>
             <button
+              type="button"
               onClick={() => { onSelect('edit'); setIsOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 transition-colors cursor-pointer"
             >
-              <Edit2 size={13} className="opacity-70" />
-              Edit
+              <div className="w-5 h-5 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Edit2 size={12} />
+              </div>
+              <span>Edit</span>
             </button>
             <button
+              type="button"
               onClick={() => { onSelect('read'); setIsOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-sky-700 hover:bg-sky-50/80 transition-colors cursor-pointer"
             >
-              <Eye size={13} className="opacity-70" />
-              Read
+              <div className="w-5 h-5 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                <Eye size={12} />
+              </div>
+              <span>Read</span>
             </button>
-            <div className="my-1 border-t border-slate-100"></div>
+            <div className="my-1 border-t border-slate-100" />
             <button
+              type="button"
               onClick={() => { onSelect('none'); setIsOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-rose-700 hover:bg-rose-50/80 transition-colors cursor-pointer"
             >
-              <Trash2 size={13} className="opacity-70" />
-              Reset
+              <div className="w-5 h-5 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 size={12} />
+              </div>
+              <span>Reset</span>
             </button>
-          </div>
+          </div>,
+          document.body
         )}
-      </div>
+      </>
     );
-};
+  };
 
 export default function RolePermissionView({ onTriggerNotification }: RolePermissionViewProps) {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -773,7 +954,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                         <tr key={row.module} className="hover:bg-slate-50/40 transition-colors">
                           <td className="p-3.5 pl-5">
                             <div className="flex items-center gap-2">
-                              <Lock size={12} className="text-slate-400" />
+                              <Lock size={12} className="text-slate-400 shrink-0" />
                               <span className="font-bold text-slate-700 text-xs">{row.label}</span>
                               <DependencyHint module={row.module} />
                             </div>
