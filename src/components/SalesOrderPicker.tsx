@@ -20,6 +20,7 @@ interface SalesOrderPickerProps {
   onChange: (so: SalesOrder) => void;
   onClear?: () => void;
   statusFilter?: string; // e.g. "Disetujui"
+  excludedSalesOrderIds?: string[];
   placeholder?: string;
   className?: string;
 }
@@ -29,6 +30,7 @@ export default function SalesOrderPicker({
   onChange,
   onClear,
   statusFilter = "",
+  excludedSalesOrderIds,
   placeholder = "Pilih Referensi Sales Order...",
   className = "",
 }: SalesOrderPickerProps) {
@@ -43,10 +45,10 @@ export default function SalesOrderPicker({
   );
 
   useEffect(() => {
-    if ((isOpen || value) && salesOrders.length === 0) {
+    if (isOpen || value) {
       loadData();
     }
-  }, [isOpen, value, salesOrders.length]);
+  }, [isOpen, value]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -54,11 +56,36 @@ export default function SalesOrderPicker({
       // Remove 'erp' filter to allow picking PO-generating Sales Orders from POS
       const data = await salesApi.getSalesOrders();
 
-      // Only show open transactions (exclude completed and cancelled)
-      let filtered = data.filter((so) => so.status !== 'Selesai' && so.status !== 'Dibatalkan' && so.status !== 'cancelled');
+      // Only show open, approved transactions that do NOT already have a Purchase Order
+      let filtered = data.filter((so) => {
+        const s = (so.status || '').toLowerCase();
+        // Jangan munculkan jika masih draft, dibatalkan, atau selesai
+        if (s === 'draft' || s === 'dibatalkan' || s === 'cancelled' || s === 'selesai' || s === 'completed') {
+          return false;
+        }
+
+        // Wajib sudah approve / disetujui
+        const isApproved = s === 'approved' || s === 'disetujui' || s === 'diproses' || s === 'processing';
+        if (!isApproved) {
+          return false;
+        }
+
+        // Apabila sudah dibuatkan Purchase Order (PO), hilangkan dari list
+        const hasActivePo = (so.purchaseOrders && so.purchaseOrders.some(po => !['cancelled', 'dibatalkan'].includes(String(po.status || '').toLowerCase())))
+          || Boolean(so.hasActivePurchaseOrder);
+        if (hasActivePo) {
+          return false;
+        }
+
+        if (excludedSalesOrderIds && excludedSalesOrderIds.includes(so.id)) {
+          return false;
+        }
+
+        return true;
+      });
 
       if (statusFilter) {
-        filtered = filtered.filter((so) => so.status === statusFilter);
+        filtered = filtered.filter((so) => so.status.toLowerCase() === statusFilter.toLowerCase());
       }
 
       setSalesOrders(filtered);

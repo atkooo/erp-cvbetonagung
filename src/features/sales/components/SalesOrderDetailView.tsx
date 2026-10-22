@@ -133,18 +133,24 @@ export default function SalesOrderDetailView({
     if (so.status === 'Draft' || so.status === 'draft') return 'Draft';
     if (so.status === 'Selesai' || so.status === 'completed') return 'Selesai';
 
-    const hasDO = (so.deliveryOrders || []).length > 0;
-    const hasActiveDO = (so.deliveryOrders || []).some((d: any) =>
+    const dos = so.deliveryOrders || [];
+    const hasActiveDO = dos.some((d: any) =>
       ['shipped', 'dikirim', 'received', 'selesai'].includes(String(d.status || '').toLowerCase())
     );
 
     if (hasActiveDO) return 'Proses Pengiriman';
-    if (hasDO) return 'Menunggu Pengiriman';
 
     const hasActiveWO = (so.productionWorkOrders || []).some(
       (wo: any) => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
     );
     if (hasActiveWO) return 'Sedang Diproduksi';
+
+    const hasActivePO = (so.purchaseOrders || []).some(
+      (po: any) => !['cancelled', 'dibatalkan', 'fully_received', 'diterima penuh'].includes(String(po.status || '').toLowerCase())
+    );
+    if (hasActivePO) return 'Pengadaan Supplier';
+
+    if (dos.length > 0) return 'Menunggu Pengiriman';
 
     if (so.status === 'Disetujui' || so.status === 'approved') return 'Disetujui';
     return so.status || 'Diproses';

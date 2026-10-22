@@ -165,10 +165,35 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
   const activeSalesOrders = React.useMemo(() => {
     return salesOrders.filter(so => {
       if (!so.items || so.items.length === 0) return false;
-      if (so.status === 'Dibatalkan' || so.status === 'Selesai' || so.status === 'Draft') return false;
+
+      const s = (so.status || '').toLowerCase();
+      // Jangan munculkan jika masih draft, dibatalkan, atau selesai
+      if (s === 'draft' || s === 'dibatalkan' || s === 'cancelled' || s === 'selesai' || s === 'completed') {
+        return false;
+      }
+
+      // Wajib sudah disetujui / diproses (bukan belum approve)
+      const isApproved = s === 'approved' || s === 'disetujui' || s === 'diproses' || s === 'processing';
+      if (!isApproved) {
+        return false;
+      }
+
+      // Hilangkan pada list apabila sudah dibuatkan Work Order
+      const hasWoInState = workOrders.some(
+        wo => wo.salesOrderId === so.id && !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
+      );
+      const hasWoInDto = Boolean(so.hasActiveWorkOrder) || (
+        so.productionWorkOrders && so.productionWorkOrders.some(
+          wo => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
+        )
+      );
+      if (hasWoInState || hasWoInDto) {
+        return false;
+      }
+
       return so.items.some(item => getItemOutstandingQty(so.id, item) > 0);
     });
-  }, [salesOrders, getItemOutstandingQty]);
+  }, [salesOrders, workOrders, getItemOutstandingQty]);
 
   const applySalesOrderItemToForm = (salesOrder: SalesOrder, itemIndex: number) => {
     const item = salesOrder.items?.[itemIndex];
@@ -329,11 +354,14 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
       const created = await productionApi.createWorkOrder(payload);
       setWorkOrders(prev => [created, ...prev]);
       setSelectedWoId(created.id);
+      if (createRefType === 'sales_order' && selectedSalesOrderId) {
+        setSalesOrders(prev => prev.map(s => s.id === selectedSalesOrderId ? { ...s, hasActiveWorkOrder: true } : s));
+      }
       onTriggerNotification(`Work Order ${newWoNumber} berhasil dibuat dengan referensi sah.`);
       setIsCreateModalOpen(false);
     } catch (err) {
       console.error('Failed to create Work Order', err);
-      onTriggerNotification('Gagal membuat Work Order baru.');
+      onTriggerNotification(err instanceof Error ? err.message : 'Gagal membuat Work Order baru.');
     }
   };
 

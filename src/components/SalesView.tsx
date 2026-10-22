@@ -491,8 +491,13 @@ export default function SalesView({
     if (isQuotation) return doc.status;
 
     const baseStatus = doc.status;
-    if (['Draft', 'Dibatalkan', 'Ditolak'].includes(baseStatus)) {
-      return baseStatus;
+    if (['Draft', 'Dibatalkan', 'Ditolak', 'Selesai'].includes(baseStatus) || baseStatus === 'completed') {
+      return (baseStatus === 'completed' || baseStatus === 'Selesai') ? 'Selesai' : baseStatus;
+    }
+
+    // Jika transaksi POS berstatus Selesai/completed atau ambil sendiri
+    if (doc.source === 'pos' && (baseStatus === 'Selesai' || baseStatus === 'completed')) {
+      return 'Selesai';
     }
 
     const dos = doc.deliveryOrders || [];
@@ -509,7 +514,11 @@ export default function SalesView({
 
     let totalDelivered = 0;
     let totalItems = 0;
-    doc.items?.forEach((item: any) => { totalItems += Number(item.quantity || 0); });
+    doc.items?.forEach((item: any) => {
+      totalItems += Number(item.quantity || 0);
+      totalDelivered += Number(item.fulfilledQuantity || item.fulfilled_quantity || 0);
+    });
+
     dos.forEach((d: any) => {
       if (d.status === 'shipped' || d.status === 'received') {
         d.items?.forEach((di: any) => { totalDelivered += Number(di.quantity || 0); });
@@ -519,7 +528,23 @@ export default function SalesView({
     const isFullyDelivered = totalDelivered >= totalItems && totalItems > 0;
     const isPartiallyDelivered = totalDelivered > 0 && totalDelivered < totalItems;
 
-    if (isFullyDelivered && isFullyPaid) return 'Selesai';
+    if (isFullyDelivered && (isFullyPaid || doc.source === 'pos')) return 'Selesai';
+
+    // Cek apakah ada pengiriman yang sedang berjalan di jalan
+    const hasShippedDO = dos.some((d: any) => ['shipped', 'dikirim'].includes(String(d.status || '').toLowerCase()));
+    if (hasShippedDO) return 'Proses Pengiriman';
+
+    // Cek apakah masih dalam proses produksi pabrik
+    const hasActiveWO = (doc.productionWorkOrders || []).some(
+      (wo: any) => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
+    );
+    if (hasActiveWO) return 'Sedang Diproduksi';
+
+    // Cek apakah masih menunggu pengadaan supplier (PO)
+    const hasActivePO = (doc.purchaseOrders || []).some(
+      (po: any) => !['cancelled', 'dibatalkan', 'fully_received', 'diterima penuh'].includes(String(po.status || '').toLowerCase())
+    );
+    if (hasActivePO) return 'Pengadaan Supplier';
 
     if (paidAmount === 0) {
       if (isFullyDelivered) return 'Menunggu Pembayaran';
@@ -528,15 +553,21 @@ export default function SalesView({
 
     if (isPartiallyPaid) {
       if (isFullyDelivered) return 'Menunggu Pelunasan';
-      if (isPartiallyDelivered || dos.length > 0) return 'Proses Pengiriman';
+      if (isPartiallyDelivered) return 'Proses Pengiriman';
       return 'Menunggu Pengiriman';
     }
 
     if (isFullyPaid) {
-      if (!isFullyDelivered) return (isPartiallyDelivered || dos.length > 0) ? 'Proses Pengiriman' : 'Menunggu Pengiriman';
+      if (!isFullyDelivered) {
+        if (dos.length > 0) {
+          const hasReadyDO = dos.some((d: any) => ['ready_to_load', 'siap_muat', 'siap muat'].includes(String(d.status || '').toLowerCase()));
+          return hasReadyDO ? 'Menunggu Pengiriman' : 'Diproses';
+        }
+        return 'Diproses';
+      }
     }
 
-    return 'Menunggu Pengiriman';
+    return 'Diproses';
   };
 
   // Filter logic

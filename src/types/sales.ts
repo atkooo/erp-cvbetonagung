@@ -106,6 +106,7 @@ export interface SalesOrder {
     }[];
   }[];
   hasActiveWorkOrder?: boolean;
+  hasActivePurchaseOrder?: boolean;
   purchaseOrders?: {
     id: string;
     poNumber?: string;

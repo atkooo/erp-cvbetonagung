@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2, Check
+  ShieldCheck, UserCog, RefreshCw, Key, ShieldAlert, Lock, Search, ShieldCheck as ShieldIcon, MoreVertical, Eye, Edit2, Shield, Trash2, Check, Info
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { identityApi } from '../features/identity/api';
@@ -55,6 +55,108 @@ const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; t
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}>
       {children}
     </span>
+  );
+};
+
+/**
+ * Modul-modul pendukung yang secara otomatis bisa di-READ oleh user
+ * yang memiliki akses ke modul transaksi tertentu (via contextual fallback di backend).
+ * Tampilkan ini sebagai hint di UI agar admin tidak bingung.
+ */
+const MODULE_DEPENDENCIES: Record<string, string[]> = {
+  production_work_orders: ['products', 'employees', 'projects', 'sales_orders', 'storage_locations', 'bom_costing'],
+  bom_costing: ['products', 'units'],
+  projects: ['employees', 'customers', 'storage_locations'],
+  project_budgeting: ['projects', 'employees'],
+  sales_orders: ['products', 'customers', 'warehouses', 'storage_locations', 'discounts'],
+  quotations: ['products', 'customers', 'discounts'],
+  pos: ['products', 'customers', 'discounts', 'storage_locations'],
+  delivery_orders: ['products', 'customers', 'warehouses', 'storage_locations'],
+  invoices: ['customers', 'sales_orders'],
+  payments: ['customers', 'invoices'],
+  purchase_requests: ['products', 'suppliers', 'units', 'warehouses'],
+  rfqs: ['products', 'suppliers', 'purchase_requests'],
+  purchase_orders: ['products', 'suppliers', 'units', 'warehouses'],
+  goods_receipts: ['products', 'suppliers', 'warehouses', 'storage_locations'],
+  purchase_returns: ['products', 'suppliers', 'warehouses'],
+  inventory_stocks: ['products', 'warehouses', 'storage_locations'],
+  incoming_goods: ['products', 'warehouses', 'storage_locations'],
+  outgoing_goods: ['products', 'warehouses', 'storage_locations'],
+  stock_movements: ['products', 'warehouses', 'storage_locations'],
+  berita_acara_gudang: ['products', 'warehouses', 'storage_locations', 'employees'],
+  stock_opname: ['products', 'warehouses', 'storage_locations'],
+  payroll: ['employees'],
+  attendance: ['employees'],
+  leave: ['employees'],
+  leave_types: ['employees'],
+  employee_loans: ['employees'],
+  accounts: ['customers', 'suppliers'],
+  accounts_receivable: ['customers', 'invoices'],
+  accounts_payable: ['suppliers'],
+  cash_expense: ['accounts'],
+  reports: ['products', 'customers', 'suppliers'],
+  finance_reports: ['invoices', 'payments'],
+};
+
+const DEP_MODULE_LABELS: Record<string, string> = {
+  products: 'Produk',
+  employees: 'Karyawan',
+  projects: 'Proyek',
+  sales_orders: 'Sales Order',
+  storage_locations: 'Lokasi Gudang',
+  bom_costing: 'BOM',
+  units: 'Satuan (UoM)',
+  customers: 'Pelanggan',
+  suppliers: 'Pemasok',
+  warehouses: 'Master Gudang',
+  discounts: 'Diskon',
+  purchase_requests: 'Permintaan Pembelian',
+  invoices: 'Faktur',
+  accounts: 'Kas & Bank',
+};
+
+const DependencyHint = ({ module }: { module: string }) => {
+  const deps = MODULE_DEPENDENCIES[module];
+  if (!deps || deps.length === 0) return null;
+
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="ml-1 p-0.5 rounded text-sky-400 hover:text-sky-600 hover:bg-sky-50 transition-colors"
+        title="Lihat dependensi modul"
+      >
+        <Info size={11} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-6 z-50 w-64 bg-white border border-sky-100 rounded-xl shadow-lg p-3 space-y-2">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data pendukung otomatis</p>
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            Modul ini otomatis bisa membaca data berikut tanpa perlu izin terpisah:
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {deps.map(dep => (
+              <span key={dep} className="inline-flex items-center px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-semibold">
+                {DEP_MODULE_LABELS[dep] ?? dep}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -673,6 +775,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                             <div className="flex items-center gap-2">
                               <Lock size={12} className="text-slate-400" />
                               <span className="font-bold text-slate-700 text-xs">{row.label}</span>
+                              <DependencyHint module={row.module} />
                             </div>
                           </td>
                           <td className="p-3.5 font-mono text-[10px] text-slate-500 uppercase">{row.module}</td>

@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Search, Filter, Check, ShieldCheck, HelpCircle, XCircle, DollarSign, X } from '@/src/components/icons';
+import { Building2, Banknote, QrCode } from 'lucide-react';
+import { Button } from '@/src/components/ui/Button';
 import { Invoice, Payment } from '../types';
 import { authStorage } from '../services/api';
 import { financeApi } from '../features/finance/api';
@@ -28,6 +30,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'qris'>('cash');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [autoVerify, setAutoVerify] = useState(true);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
 
   // API states
@@ -189,6 +192,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
         method: paymentMethod,
         amount: paymentAmount,
         notes: paymentNotes,
+        auto_verify: autoVerify,
       });
       onTriggerNotification(`Kasir berhasil mencatat penerimaan untuk ${selectedInvoice.invoiceNumber}`);
       setShowReceiveModal(false);
@@ -373,24 +377,26 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                         </span>
                       </td>
                       <td className="p-3.5 pr-5 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           {pay.status === 'Pending' && (
-                            <button
+                            <Button
+                              variant="primary"
+                              size="xs"
+                              icon={<Check size={11} />}
                               onClick={() => handleVerify(pay.id, pay.paymentNumber, pay.customerName, pay.amount)}
-                              className="px-2.5 py-1 text-[10px] bg-slate-900 hover:bg-slate-800 text-white font-bold rounded flex items-center gap-1"
                             >
-                              <Check size={11} />
-                              <span>Verifikasi</span>
-                            </button>
+                              Verifikasi
+                            </Button>
                           )}
                           {(pay.status === 'Pending' || pay.status === 'Verified') && (
-                            <button
+                            <Button
+                              variant="danger"
+                              size="xs"
+                              icon={<XCircle size={11} />}
                               onClick={() => handleCancelPayment(pay.id, pay.paymentNumber)}
-                              className="px-2.5 py-1 text-[10px] bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded flex items-center gap-1"
                             >
-                              <XCircle size={11} />
-                              <span>Batal</span>
-                            </button>
+                              Batal
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -474,9 +480,48 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                     </div>
                   )}
 
+                  {/* Payment Method Selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                      Metode Pembayaran Pelanggan <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'transfer' as const, label: 'Transfer Bank', icon: <Building2 size={15} /> },
+                        { id: 'cash' as const, label: 'Kas Tunai', icon: <Banknote size={15} /> },
+                        { id: 'qris' as const, label: 'QRIS / E-Wallet', icon: <QrCode size={15} /> },
+                      ].map((m) => {
+                        const isSelected = paymentMethod === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setPaymentMethod(m.id)}
+                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                              isSelected
+                                ? 'bg-sky-50/90 border-sky-500 ring-2 ring-sky-500/20 text-sky-900 shadow-xs'
+                                : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className={`p-1 rounded-lg ${isSelected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                              {m.icon}
+                            </span>
+                            <span className="font-bold text-xs">{m.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-600 uppercase">Akun Penerima</label>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[11px] font-bold text-slate-600 uppercase">Akun Penerima</label>
+                        {selectedAccountId && (() => {
+                          const acc = accounts.find(a => a.id === selectedAccountId);
+                          return acc ? <span className="text-[10px] text-slate-400 font-mono">Saldo: {formatIDR(Number(acc.balance || 0))}</span> : null;
+                        })()}
+                      </div>
                       <select
                         value={selectedAccountId}
                         onChange={(e) => {
@@ -484,15 +529,16 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                           setSelectedAccountId(accId);
                           const acc = accounts.find(a => a.id === accId);
                           if (acc) {
-                            if (acc.type === 'bank') setPaymentMethod('transfer');
-                            else if (acc.type === 'cash') setPaymentMethod('cash');
-                            else if (acc.type === 'ewallet') setPaymentMethod('qris');
+                            const t = (acc.type || '').toLowerCase();
+                            if (t.includes('bank')) setPaymentMethod('transfer');
+                            else if (t.includes('cash') || t.includes('kas')) setPaymentMethod('cash');
+                            else if (t.includes('wallet') || t.includes('qris')) setPaymentMethod('qris');
                           }
                         }}
-                        className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded"
+                        className="w-full px-3 py-2 border border-slate-200 focus:bg-white bg-slate-50 rounded-lg text-slate-700"
                       >
                         {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.name} ({acc.code})</option>
+                          <option key={acc.id} value={acc.id}>[{acc.type?.toUpperCase() || 'KAS'}] {acc.name} - Saldo: {formatIDR(Number(acc.balance || 0))}</option>
                         ))}
                       </select>
                     </div>
@@ -504,7 +550,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                         min={1}
                         max={100}
                         placeholder="Contoh: 50"
-                        className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded placeholder:text-slate-300"
+                        className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded-lg placeholder:text-slate-300"
                         onChange={(e) => {
                           const pct = Number(e.target.value);
                           if (pct > 0 && selectedInvoice) {
@@ -521,7 +567,7 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                         required
                         value={paymentAmount || ''}
                         onValueChange={(val) => setPaymentAmount(Number(val))}
-                        className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded"
+                        className="w-full px-3 py-2 border border-slate-200 focus:outline-none rounded-lg font-bold"
                       />
                     </div>
                   </div>
@@ -532,16 +578,44 @@ export default function PaymentsView({ onTriggerNotification }: PaymentsViewProp
                       value={paymentNotes}
                       onChange={(e) => setPaymentNotes(e.target.value)}
                       placeholder="Keterangan transfer, nomor referensi, atau catatan kasir..."
-                      className="w-full px-3 py-2 border border-slate-200 focus:outline-none h-16 resize-none rounded"
+                      className="w-full px-3 py-2 border border-slate-200 focus:outline-none h-16 resize-none rounded-lg"
                     />
+                  </div>
+
+                  {/* Auto-verify Toggle */}
+                  <div className="flex items-center gap-2 p-2.5 bg-emerald-50/60 border border-emerald-200/70 rounded-xl text-emerald-800">
+                    <input
+                      type="checkbox"
+                      id="posAutoVerify"
+                      checked={autoVerify}
+                      onChange={(e) => setAutoVerify(e.target.checked)}
+                      className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer"
+                    />
+                    <label htmlFor="posAutoVerify" className="text-[11px] font-medium cursor-pointer">
+                      <strong>Verifikasi Otomatis:</strong> Langsung membukukan transaksi kas masuk dan memotong sisa piutang faktur.
+                    </label>
                   </div>
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold shrink-0">
-                  <button type="button" onClick={() => setShowReceiveModal(false)} className="px-3 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Batal</button>
-                  <button type="submit" disabled={isSavingPayment || !selectedInvoice} className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg disabled:opacity-50">
-                    {isSavingPayment ? 'Menyimpan...' : 'Simpan Penerimaan'}
-                  </button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setShowReceiveModal(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    disabled={!selectedInvoice}
+                    isLoading={isSavingPayment}
+                    icon={<DollarSign size={14} />}
+                  >
+                    Simpan Penerimaan
+                  </Button>
                 </div>
               </form>
             </div>

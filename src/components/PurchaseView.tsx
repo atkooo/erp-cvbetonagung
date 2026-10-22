@@ -879,6 +879,10 @@ export default function PurchaseView({
                   </label>
                   <SalesOrderPicker
                     value={salesOrderNumberDisplay || salesOrderId}
+                    excludedSalesOrderIds={purchaseOrders
+                      .filter(p => !['cancelled', 'dibatalkan'].includes((p.status || '').toLowerCase()))
+                      .map(p => p.salesOrderId)
+                      .filter(Boolean) as string[]}
                     onChange={(so) => {
                       setSalesOrderId(so.id);
                       setSalesOrderNumberDisplay(so.orderNumber);

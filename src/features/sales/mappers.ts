@@ -154,6 +154,9 @@ export const mapSalesOrderFromDto = (dto: SalesOrderDto): SalesOrder => ({
   hasActiveWorkOrder: (dto.productionWorkOrders || (dto as any).production_work_orders || []).some(
     (wo: any) => !['cancelled', 'dibatalkan'].includes(String(wo.stage || '').toLowerCase())
   ),
+  hasActivePurchaseOrder: (dto.purchaseOrders || (dto as any).purchase_orders || []).some(
+    (po: any) => !['cancelled', 'dibatalkan'].includes(String(po.status || '').toLowerCase())
+  ),
   productionWorkOrders: (dto.productionWorkOrders || (dto as any).production_work_orders || []).map((wo: any) => ({
     id: wo.id,
     workOrderNumber: wo.work_order_number || wo.workOrderNumber,

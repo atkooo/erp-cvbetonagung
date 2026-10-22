@@ -14,7 +14,7 @@ export const financeApi = {
     return mapInvoiceFromDto(response.data);
   },
 
-  async createPayment(data: { invoice_id: string; account_id: string; payment_date: string; method: 'cash' | 'transfer' | 'qris'; amount: number; notes?: string }): Promise<Payment> {
+  async createPayment(data: { invoice_id: string; account_id: string; payment_date: string; method: 'cash' | 'transfer' | 'qris'; amount: number; notes?: string; auto_verify?: boolean }): Promise<Payment> {
     const response = await apiClient.post<{ data: PaymentDto }>('/finance/payments', data);
     return mapPaymentFromDto(response.data);
   },
@@ -37,7 +37,7 @@ export const financeApi = {
     return response.data.map(mapSupplierPayableFromDto);
   },
 
-  async paySupplierPayable(id: string, data: { account_id: string; amount: number; method?: 'cash' | 'transfer' | 'qris'; notes?: string }): Promise<SupplierPayable> {
+  async paySupplierPayable(id: string, data: { account_id: string; amount: number; method?: 'cash' | 'transfer' | 'qris'; notes?: string; paid_at?: string }): Promise<SupplierPayable> {
     const response = await apiClient.post<{ data: SupplierPayableDto }>(`/finance/supplier-payables/${id}/pay`, data);
     return mapSupplierPayableFromDto(response.data);
   },
