@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Memperbarui gaya tombol *Keluarkan Work Order* mengikuti standar Primary Button design system Soft Sky Blue (`bg-gradient-to-r from-sky-600 to-sky-700`).
 
 ### Fixed
+- **Standarisasi Tombol & Palet Warna Antarmuka Sesuai Design System Soft Sky Blue & Slate (`ProductionWorkOrderView.tsx`, `RolePermissionView.tsx`)**:
+  - Mengganti seluruh tombol ad-hoc (`bg-slate-900`, `bg-indigo-600`, `bg-emerald-700`, `bg-slate-100`) dengan kelas utilitas baku (`btn btn-primary`, `btn btn-secondary`, `btn btn-success`, `btn btn-danger`, `btn btn-ghost`).
+  - Menstandarkan border-radius seluruh tombol menjadi `rounded-xl` (12px) untuk md/lg dan `rounded-lg` (8px) untuk sm/xs, lengkap dengan efek interaksi `active:scale-[0.98]`.
+  - Menyelaraskan aksen warna cyan lama pada `RolePermissionView.tsx` (item role aktif, checkbox hak akses, tab kategori modul, dan pagination) ke palet tunggal Soft Sky Blue (`sky-600` / `sky-50`).
 - **Perbaikan Tooltip Dependensi & Dropdown Preset Hak Akses (`RolePermissionView.tsx`)**:
   - Mengisolasi rendering popover tooltip data pendukung otomatis (`DependencyHint`) dan menu aksi cepat (`BulkActionDropdown`) ke tingkat `document.body` menggunakan **React Portal (`createPortal`)** dengan `position: fixed`.
   - Mencegah popover merusak tata letak baris tabel (*table cell layout shift*), menghilangkan kemunculan scrollbar semu pada kontainer tabel yang menggeser kolom, serta menjaga posisi baris dan checkbox di sekitarnya agar tidak bergerak saat popover dibuka atau ditutup.

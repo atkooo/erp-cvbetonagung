@@ -978,7 +978,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     <button
                       onClick={() => setSidebarPage((p) => Math.max(1, p - 1))}
                       disabled={safeSidebarPage <= 1}
-                      className="p-1 px-1.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                      className="btn btn-secondary btn-sm p-1.5"
                       title="Halaman Sebelumnya"
                     >
                       <ChevronLeft size={12} />
@@ -989,7 +989,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                     <button
                       onClick={() => setSidebarPage((p) => Math.min(totalSidebarPages, p + 1))}
                       disabled={safeSidebarPage >= totalSidebarPages}
-                      className="p-1 px-1.5 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-600 transition-colors cursor-pointer"
+                      className="btn btn-secondary btn-sm p-1.5"
                       title="Halaman Selanjutnya"
                     >
                       <ChevronRight size={12} />
@@ -1027,7 +1027,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           {selectedWo.projectId && (
                             <button
                               onClick={() => onNavigateToProject && onNavigateToProject(selectedWo.projectId!)}
-                              className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              className="btn btn-secondary btn-xs gap-1 text-sky-700 hover:text-sky-800"
                               title="Buka Detail Proyek Induk"
                             >
                               <CheckCircle2 size={10} />
@@ -1075,11 +1075,11 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         {selectedWo.stage === 'Draft' && (
                           <button
                             onClick={() => handleStartProduction(selectedWo)}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            className="btn btn-primary btn-sm gap-1.5"
                           >
                             <Factory size={13} />
                             <span>Mulai Produksi</span>
@@ -1096,7 +1096,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                               onClick={handleOpenReceiveModal}
                               disabled={!isReadyForWarehouse}
                               title={!isReadyForWarehouse ? 'Tidak ada barang yang siap dimasukkan ke gudang (Harus lolos QC terlebih dahulu)' : ''}
-                              className={`px-3 py-1.5 font-bold rounded-lg transition-all ${isReadyForWarehouse ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                              className={`btn btn-sm ${isReadyForWarehouse ? 'btn-success' : 'btn-secondary opacity-50 cursor-not-allowed'}`}
                             >
                               Terima Stok ({unreceivedQty > 0 ? unreceivedQty : 0} pcs)
                             </button>
@@ -1105,7 +1105,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                         {selectedWo.stage !== 'cancelled' && (
                           <button
                             onClick={() => handleCancelWorkOrder(selectedWo.id, selectedWo.workOrderNumber)}
-                            className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-lg font-bold transition-all text-xs"
+                            className="btn btn-danger btn-sm"
                           >
                             Batal
                           </button>
@@ -1180,7 +1180,12 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                                       (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty)
                                     }
                                     title={(task.completedQty + task.rejectQty) >= task.targetQty ? 'Tahap ini sudah memenuhi target (Termasuk Reject).' : index > 0 && selectedWo.tasks![index - 1].completedQty === 0 ? 'Tunggu tahap sebelumnya menghasilkan barang.' : index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty ? 'Seluruh hasil dari tahap sebelumnya sudah diproses di tahap ini.' : ''}
-                                    className={`px-3 py-1.5 text-[10px] font-bold rounded border transition-colors ${(task.completedQty + task.rejectQty) >= task.targetQty || (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty) ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                                    className={`btn btn-sm ${
+                                      (task.completedQty + task.rejectQty) >= task.targetQty ||
+                                      (index > 0 && (task.completedQty + task.rejectQty) >= selectedWo.tasks![index - 1].completedQty)
+                                        ? 'btn-secondary opacity-50 cursor-not-allowed'
+                                        : 'btn-primary'
+                                    }`}
                                   >
                                     Input Hasil
                                   </button>
@@ -1588,13 +1593,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200 cursor-pointer text-xs"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer text-xs"
+                  className="btn btn-primary btn-md"
                 >
                   Keluarkan Work Order
                 </button>
@@ -1667,7 +1672,7 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                   <button
                     type="button"
                     onClick={() => setSprItems(prev => [...prev, { product_id: '', target_qty: 100, notes: '' }])}
-                    className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[11px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+                    className="btn btn-secondary btn-sm text-sky-700 hover:text-sky-800"
                   >
                     + Tambah Produk
                   </button>
@@ -1727,13 +1732,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 <button
                   type="button"
                   onClick={() => setIsSprModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all border border-slate-200 cursor-pointer text-xs"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer text-xs"
+                  className="btn btn-primary btn-md"
                 >
                   Simpan Permintaan Stok
                 </button>
@@ -1859,13 +1864,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 <button
                   type="button"
                   onClick={() => setIsLogModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="btn btn-primary btn-md"
                 >
                   Simpan Laporan
                 </button>
@@ -1923,13 +1928,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 <button
                   type="button"
                   onClick={() => setIsUpdateStageModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="btn btn-primary btn-md"
                 >
                   Ubah Tahap
                 </button>
@@ -2018,13 +2023,13 @@ export default function ProductionWorkOrderView({ initialWoId, onNavigateToProje
                 <button
                   type="button"
                   onClick={() => setIsReceiveModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-655 rounded-lg font-bold transition-all border border-slate-200/50 cursor-pointer"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 cursor-pointer"
+                  className="btn btn-success btn-md"
                 >
                   Konfirmasi Penerimaan
                 </button>

@@ -33,7 +33,7 @@ const Header = ({
 }) => (
   <Panel className="p-5">
     <div className="flex items-center gap-3">
-      <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">{icon}</div>
+      <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl">{icon}</div>
       <div>
         <h3 className="font-sans font-bold text-sm text-slate-800">{title}</h3>
         <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
@@ -827,15 +827,15 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                       key={role.id}
                       type="button"
                       onClick={() => setSelectedRoleId(role.id)}
-                      className={`text-left p-4 border-b border-slate-100 last:border-b-0 transition-all ${selectedRole?.id === role.id
-                        ? 'bg-cyan-50/50 border-l-4 border-l-cyan-500'
+                      className={`text-left p-4 border-b border-slate-100 last:border-b-0 transition-all cursor-pointer ${selectedRole?.id === role.id
+                        ? 'bg-sky-50/50 border-l-4 border-l-sky-600'
                         : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <UserCog size={14} className={selectedRole?.id === role.id ? "text-cyan-600" : "text-slate-400"} />
-                          <h4 className={`font-bold ${selectedRole?.id === role.id ? 'text-cyan-800' : 'text-slate-700'}`}>
+                          <UserCog size={14} className={selectedRole?.id === role.id ? "text-sky-600" : "text-slate-400"} />
+                          <h4 className={`font-bold ${selectedRole?.id === role.id ? 'text-sky-800' : 'text-slate-700'}`}>
                             {role.name}
                           </h4>
                         </div>
@@ -844,7 +844,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                         {role.description || 'Tidak ada deskripsi.'}
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${selectedRole?.id === role.id ? 'text-cyan-600 bg-white border-cyan-200' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
+                        <span className={`font-mono text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${selectedRole?.id === role.id ? 'text-sky-600 bg-white border-sky-200' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
                           {role.code}
                         </span>
                         <span className="text-[9px] font-mono text-slate-400">
@@ -892,10 +892,10 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                   <button
                     type="button"
                     onClick={fetchData}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+                    className="btn btn-secondary btn-sm p-1.5 shrink-0"
                     title="Muat Ulang"
                   >
-                    <RefreshCw size={13} className={isLoading ? 'animate-spin text-cyan-600' : ''} />
+                    <RefreshCw size={13} className={isLoading ? 'animate-spin text-sky-600' : ''} />
                   </button>
                 </div>
               </div>
@@ -909,9 +909,9 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                       key={cat.id}
                       type="button"
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-3 py-1 rounded-md text-[11px] transition-colors whitespace-nowrap ${isSelected
-                        ? 'bg-cyan-600 text-white font-bold shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white border border-slate-200'
+                      className={`px-3 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${isSelected
+                        ? 'bg-sky-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-sky-50 bg-white border border-slate-200'
                         }`}
                     >
                       {cat.label}
@@ -978,7 +978,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                               <td key={action} className="p-2.5 text-center relative">
                                 {isCellUpdating && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded z-10">
-                                    <RefreshCw size={12} className="animate-spin text-cyan-600" />
+                                    <RefreshCw size={12} className="animate-spin text-sky-600" />
                                   </div>
                                 )}
                                 <label
@@ -993,7 +993,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                                     className="sr-only peer"
                                   />
                                   <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isChecked
-                                    ? 'bg-cyan-600 border-cyan-600 text-white shadow-xs group-hover:bg-cyan-700 group-hover:border-cyan-700'
+                                    ? 'bg-sky-600 border-sky-600 text-white shadow-xs group-hover:bg-sky-700 group-hover:border-sky-700'
                                     : 'bg-white border-slate-300 text-transparent group-hover:border-slate-400 hover:bg-slate-50'
                                     } peer-disabled:opacity-40 peer-disabled:cursor-not-allowed`}>
                                     <Check size={13} strokeWidth={3} className={isChecked ? 'block' : 'hidden'} />
@@ -1005,7 +1005,7 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                           <td className="p-3 pr-5 text-right relative">
                             {isUpdating === `${selectedRole.id}-${row.module}-bulk` && (
                               <div className="absolute inset-0 flex items-center justify-end pr-8 bg-white/50 rounded z-10">
-                                <RefreshCw size={12} className="animate-spin text-cyan-600" />
+                                <RefreshCw size={12} className="animate-spin text-sky-600" />
                               </div>
                             )}
                             <BulkActionDropdown
@@ -1026,17 +1026,17 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
                         <button
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage === 1}
-                          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                          className="btn btn-secondary btn-sm"
                         >
                           Prev
                         </button>
-                        <span className="text-slate-500 px-2">
+                        <span className="text-slate-500 px-2 font-mono text-xs">
                           Page {currentPage} of {totalPages}
                         </span>
                         <button
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages}
-                          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                          className="btn btn-secondary btn-sm"
                         >
                           Next
                         </button>
