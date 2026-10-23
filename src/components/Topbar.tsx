@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { viewFromPath, pathForView } from '../routes';
 import { NotificationBell } from './NotificationBell';
-import { getTimezoneAbbr } from '../utils/date';
+import { API_BASE_URL } from '../services/api';
 
 export default function Topbar() {
   const { userRoleName, authUser, userEmail, handleLogout } = useAuth();
@@ -19,19 +19,72 @@ export default function Topbar() {
   const navigate = useNavigate();
   const currentView = viewFromPath(location.pathname) || 'dashboard';
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [activeTz, setActiveTz] = useState<string>(() => getTimezoneAbbr());
+
+  // Server Time Tracking (WIB - UTC+7 / Asia/Jakarta)
+  const [serverOffset, setServerOffset] = useState<number>(0);
+  const [now, setNow] = useState<Date>(() => new Date());
 
   useEffect(() => {
-    const handleTzUpdate = () => {
-      setActiveTz(getTimezoneAbbr());
+    let isMounted = true;
+
+    const syncServerTime = async () => {
+      try {
+        const start = Date.now();
+        const res = await fetch(`${API_BASE_URL}/system/time`);
+        if (res.ok) {
+          const data = await res.json();
+          const end = Date.now();
+          const latency = (end - start) / 2;
+          const serverMs = (data.timestamp_ms || new Date(data.server_time).getTime()) + latency;
+          if (isMounted) {
+            setServerOffset(serverMs - end);
+          }
+        }
+      } catch {
+        // Fallback: continue with current offset
+      }
     };
-    window.addEventListener('erp_timezone_changed', handleTzUpdate);
-    window.addEventListener('erp_company_profile_updated', handleTzUpdate);
+
+    syncServerTime();
+
+    // Re-sync with server periodically (every 5 minutes) to prevent drift
+    const syncInterval = setInterval(syncServerTime, 5 * 60 * 1000);
+
     return () => {
-      window.removeEventListener('erp_timezone_changed', handleTzUpdate);
-      window.removeEventListener('erp_company_profile_updated', handleTzUpdate);
+      isMounted = false;
+      clearInterval(syncInterval);
     };
   }, []);
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date(Date.now() + serverOffset));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [serverOffset]);
+
+  // Formatters with strict WIB (Asia/Jakarta) timezone
+  const dayName = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'long',
+  }).format(now);
+
+  const dateFormatted = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(now);
+
+  const timeFormatted = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(now).replace(/\./g, ':');
 
   const appName = import.meta.env.VITE_APP_NAME || 'Lintara Digital';
 
@@ -46,14 +99,26 @@ export default function Topbar() {
 
       {/* Utilities */}
       <div className="flex items-center gap-4">
-        {/* Timezone display */}
+        {/* Server Time (WIB) Display: Hari, Tanggal, Jam hingga Detik Server */}
         <div 
-          onClick={() => navigate(pathForView('settings'))}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-50/70 hover:bg-sky-100/70 text-sky-900 rounded-lg border border-sky-200/70 cursor-pointer transition select-none text-xs font-mono font-bold shadow-2xs"
-          title={`Zona Waktu: ${activeTz} (Klik untuk membuka Pengaturan)`}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-sky-50/80 text-slate-700 rounded-xl border border-sky-100 shadow-2xs select-none"
+          title={`Waktu Server (WIB): ${dayName}, ${dateFormatted} ${timeFormatted} WIB`}
         >
-          <Clock size={13} className="text-sky-600" />
-          <span>{activeTz}</span>
+          <div className="w-6 h-6 rounded-lg bg-white border border-sky-200/70 flex items-center justify-center text-sky-600 shrink-0">
+            <Clock size={13} />
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="font-semibold text-slate-700 hidden md:inline">
+              {dayName}, {dateFormatted}
+            </span>
+            <span className="text-slate-300 hidden md:inline">•</span>
+            <span className="font-mono font-bold text-sky-900 tracking-wider">
+              {timeFormatted}
+            </span>
+            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-md bg-sky-600 text-white shadow-2xs">
+              WIB
+            </span>
+          </div>
         </div>
 
         {/* Role display */}

@@ -256,7 +256,6 @@ const DependencyHint = ({ module }: { module: string }) => {
 };
 
 const HIDDEN_LEGACY_MODULES = new Set([
-  'approvals',
   'sales',
   'purchasing',
   'inventory',
@@ -333,6 +332,7 @@ const HIDDEN_LEGACY_MODULES = new Set([
     employee_loans: 'Pinjaman Karyawan',
 
     // Granular Control
+    approvals: 'Alur Persetujuan (Approvals)',
     audit_logs: 'Audit Log',
     reminders: 'Pengingat Sistem',
   };
@@ -404,6 +404,7 @@ const HIDDEN_LEGACY_MODULES = new Set([
     warehouses: 'master_system',
     reports: 'master_system',
     settings: 'master_system',
+    approvals: 'master_system',
     audit_logs: 'master_system',
     reminders: 'master_system',
   };
@@ -625,9 +626,18 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
       return actionOrder.indexOf(a.action) - actionOrder.indexOf(b.action);
     });
 
+    const ACTION_ALLOWED_LEVELS: Record<string, string[]> = {
+      view: ['read', 'edit', 'full'],
+      create: ['edit', 'full'],
+      update: ['edit', 'full'],
+      delete: ['full'],
+      approve: ['full'],
+    };
+
     const isPermissionChecked = (role: Role, perm: Permission): boolean => {
+      const allowedLevels = ACTION_ALLOWED_LEVELS[perm.action] || ['full'];
       return role.permissions.some(
-        p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action)) && p.accessLevel !== 'none'
+        p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action)) && allowedLevels.includes(p.accessLevel)
       );
     };
 
@@ -707,19 +717,23 @@ export default function RolePermissionView({ onTriggerNotification }: RolePermis
           const perm = row.permissions[action] as Permission | undefined;
           if (!perm) continue;
 
-          const isCurrentlyActive = role.permissions.some(
-            p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action)) && p.accessLevel !== 'none'
+          const existingPerm = role.permissions.find(
+            p => (p.id === perm.id || (p.module === perm.module && p.action === perm.action))
           );
+          const isCurrentlyActive = existingPerm && existingPerm.accessLevel !== 'none';
           const shouldBeActive = allowedActions.includes(action);
 
-          if (shouldBeActive && !isCurrentlyActive) {
-            promises.push(
-              identityApi.syncRolePermission({
-                role_id: role.id,
-                permission_id: perm.id,
-                access_level: 'full',
-              })
-            );
+          if (shouldBeActive) {
+            // If action should be active, ensure access_level is 'full' (or update if previously 'read'/'edit')
+            if (!existingPerm || existingPerm.accessLevel !== 'full') {
+              promises.push(
+                identityApi.syncRolePermission({
+                  role_id: role.id,
+                  permission_id: perm.id,
+                  access_level: 'full',
+                })
+              );
+            }
           } else if (!shouldBeActive && isCurrentlyActive) {
             promises.push(
               identityApi.deleteRolePermission(role.id, perm.id).catch(() => { })

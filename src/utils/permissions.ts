@@ -80,18 +80,33 @@ export const hasViewAccess = (
   }
 
   // For granular permissions (action: 'view', 'create', 'update', 'delete', 'approve'):
-  const actions = new Set(modulePerms.map((p: any) => p.action));
+  // An action is only valid if its access_level satisfies backend requirements:
+  // 'view' -> ['read', 'edit', 'full']
+  // 'create'/'update' -> ['edit', 'full']
+  // 'delete'/'approve' -> ['full']
+  const validActions = new Set(
+    modulePerms
+      .filter((p: any) => {
+        const lvl = p.pivot?.access_level ?? p.accessLevel ?? p.access_level;
+        if (!lvl || lvl === 'none') return false;
+        if (p.action === 'view') return ['read', 'edit', 'full'].includes(lvl);
+        if (p.action === 'create' || p.action === 'update') return ['edit', 'full'].includes(lvl);
+        if (p.action === 'delete' || p.action === 'approve') return lvl === 'full';
+        return true;
+      })
+      .map((p: any) => p.action)
+  );
 
   if (minAccessLevel === 'full') {
-    // Requires delete or approve action
-    return actions.has('delete') || actions.has('approve');
+    // Requires valid delete or approve action
+    return validActions.has('delete') || validActions.has('approve');
   }
 
   if (minAccessLevel === 'edit') {
-    // Requires create, update, delete, or approve action (having ONLY 'view' is read-only)
-    return actions.has('create') || actions.has('update') || actions.has('delete') || actions.has('approve');
+    // Requires valid create, update, delete, or approve action
+    return validActions.has('create') || validActions.has('update') || validActions.has('delete') || validActions.has('approve');
   }
 
-  // minAccessLevel === 'read': having any action (including 'view') is sufficient
-  return actions.has('view') || actions.has('create') || actions.has('update') || actions.has('delete') || actions.has('approve');
+  // minAccessLevel === 'read': having any valid action is sufficient
+  return validActions.size > 0;
 };
