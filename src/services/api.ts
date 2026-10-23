@@ -4,6 +4,7 @@ import type { SystemNotification } from '../types/system';
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const TOKEN_STORAGE_KEY = 'cvba_api_token';
 const USER_STORAGE_KEY = 'cvba_api_user';
+const REMEMBER_STORAGE_KEY = 'cvba_remember_me';
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -89,11 +90,19 @@ const readErrorMessage = async (response: Response) => {
 };
 
 export const authStorage = {
-  getToken() {
-    return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+  isRemembered(): boolean {
+    return window.localStorage.getItem(REMEMBER_STORAGE_KEY) === 'true';
   },
-  getUser() {
-    const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+  getToken(): string | null {
+    return (
+      window.localStorage.getItem(TOKEN_STORAGE_KEY) ||
+      window.sessionStorage.getItem(TOKEN_STORAGE_KEY)
+    );
+  },
+  getUser(): AuthUser | null {
+    const raw =
+      window.localStorage.getItem(USER_STORAGE_KEY) ||
+      window.sessionStorage.getItem(USER_STORAGE_KEY);
 
     if (!raw) {
       return null;
@@ -105,13 +114,32 @@ export const authStorage = {
       return null;
     }
   },
-  setSession(session: AuthSession) {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+  setSession(session: AuthSession, rememberMe?: boolean) {
+    const isPersistent = rememberMe !== undefined ? rememberMe : this.isRemembered();
+
+    if (isPersistent) {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+      window.localStorage.setItem(REMEMBER_STORAGE_KEY, 'true');
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.sessionStorage.removeItem(USER_STORAGE_KEY);
+      window.sessionStorage.removeItem(REMEMBER_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+      window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+      window.sessionStorage.setItem(REMEMBER_STORAGE_KEY, 'false');
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+      window.localStorage.removeItem(REMEMBER_STORAGE_KEY);
+    }
   },
   clear() {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     window.localStorage.removeItem(USER_STORAGE_KEY);
+    window.localStorage.removeItem(REMEMBER_STORAGE_KEY);
+    window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.sessionStorage.removeItem(USER_STORAGE_KEY);
+    window.sessionStorage.removeItem(REMEMBER_STORAGE_KEY);
   },
 };
 
@@ -189,8 +217,10 @@ export const apiClient = {
 };
 
 export const authApi = {
-  async login(email: string, password: string, otp?: string): Promise<AuthSession> {
-    const payload = otp ? { otp } : { email, password };
+  async login(email: string, password: string, otp?: string, rememberMe: boolean = false): Promise<AuthSession> {
+    const payload = otp
+      ? { otp, remember_me: rememberMe }
+      : { email, password, remember_me: rememberMe };
     const response = await apiClient.request<ApiEnvelope<LoginResponse>>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -200,13 +230,16 @@ export const authApi = {
       user: response.data.user,
     };
 
-    authStorage.setSession(session);
+    authStorage.setSession(session, rememberMe);
 
     return session;
   },
   async me() {
     const response = await apiClient.request<ApiEnvelope<AuthUser>>('/auth/me');
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data));
+    authStorage.setSession({
+      token: authStorage.getToken() || '',
+      user: response.data,
+    });
 
     return response.data;
   },

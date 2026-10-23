@@ -17,6 +17,7 @@ import {
 } from '../features/inventory/types';
 import { Product } from '../types';
 import ProductPicker from './ProductPicker';
+import { useAuth } from '../contexts/AuthContext';
 
 interface StockOpnameViewProps {
   onTriggerNotification: (message: string) => void;
@@ -39,7 +40,7 @@ const Header = ({
 }) => (
   <Panel className="p-5">
     <div className="flex items-center gap-3">
-      <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">{icon}</div>
+      <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl">{icon}</div>
       <div>
         <h3 className="font-sans font-bold text-sm text-slate-800">{title}</h3>
         <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
@@ -66,6 +67,7 @@ const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; t
 };
 
 export default function StockOpnameView({ onTriggerNotification }: StockOpnameViewProps) {
+  const { authUser, userRoleCode } = useAuth();
   const [sessions, setSessions] = useState<StockOpnameSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<StockOpnameSession | null>(null);
   const [sessionItems, setSessionItems] = useState<StockOpnameItem[]>([]);
@@ -100,6 +102,28 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
 
+  const canApprove = () => {
+    if (!authUser) return true;
+    const code = (userRoleCode || authUser.role?.code || '').toLowerCase();
+    if (['admin', 'superadmin', 'super_admin', 'owner', 'manager', 'head_of_warehouse'].includes(code)) {
+      return true;
+    }
+    const permissions = authUser.role?.permissions || [];
+    const opnamePerm = permissions.find(p => (p.module === 'stock_opname' || p.module === 'inventory') && (p.action === 'approve' || p.action === 'all'));
+    if (opnamePerm && opnamePerm.pivot?.access_level === 'full') {
+      return true;
+    }
+    return permissions.some(p => (p.module === 'stock_opname' || p.module === 'inventory' || p.module === 'approvals') && p.pivot?.access_level === 'full');
+  };
+
+  const isItemSelectable = (item: StockOpnameItem) => {
+    if (selectedSession?.status !== 'in_progress') return false;
+    if (item.differenceQty !== 0 && (!item.approvalRequestId || item.approvalStatus === 'rejected')) return true;
+    if (item.approvalStatus === 'pending') return true;
+    if (item.approvalStatus === 'approved' && !item.isAdjusted) return true;
+    return false;
+  };
+
   const availableItemLocations = selectedSession
     ? locations.filter((location) => location.warehouse_id === selectedSession.warehouseId)
     : [];
@@ -123,11 +147,11 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
       (item.approvalStatus || '').toLowerCase().includes(normalizedItemSearch)
     );
   }).sort((a, b) => {
-    const aNeedsApproval = a.differenceQty !== 0 && !a.approvalRequestId ? 1 : 0;
-    const bNeedsApproval = b.differenceQty !== 0 && !b.approvalRequestId ? 1 : 0;
+    const aPriority = a.approvalStatus === 'pending' ? 3 : (a.differenceQty !== 0 && (!a.approvalRequestId || a.approvalStatus === 'rejected') ? 2 : (a.approvalStatus === 'approved' && !a.isAdjusted ? 1 : 0));
+    const bPriority = b.approvalStatus === 'pending' ? 3 : (b.differenceQty !== 0 && (!b.approvalRequestId || b.approvalStatus === 'rejected') ? 2 : (b.approvalStatus === 'approved' && !b.isAdjusted ? 1 : 0));
 
-    if (aNeedsApproval !== bNeedsApproval) {
-      return bNeedsApproval - aNeedsApproval;
+    if (aPriority !== bPriority) {
+      return bPriority - aPriority;
     }
 
     return 0;
@@ -406,7 +430,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const handleBulkRequestApproval = async () => {
     if (!selectedSession || selectedItemIds.length === 0) return;
 
-    const itemsToApprove = sessionItems.filter(i => selectedItemIds.includes(i.id));
+    const itemsToApprove = sessionItems.filter(
+      i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && (!i.approvalRequestId || i.approvalStatus === 'rejected')
+    );
+    if (itemsToApprove.length === 0) return;
 
     const result = await Swal.fire({
       title: 'Ajukan Approval Massal?',
@@ -439,7 +466,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
 
         Swal.fire('Sukses', `${successCount} permintaan approval berhasil diajukan.`, 'success');
         onTriggerNotification(`${successCount} permintaan approval diajukan.`);
-        setSelectedItemIds([]);
+        setSelectedItemIds(prev => prev.filter(id => !itemsToApprove.some(item => item.id === id)));
         fetchSessionItems(selectedSession.id);
       } catch (error) {
         console.error('Error submitting bulk approval:', error);
@@ -448,6 +475,133 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
       } finally {
         setIsSubmittingBulk(false);
       }
+    }
+  };
+
+  const handleApproveItem = async (item: StockOpnameItem) => {
+    if (!selectedSession) return;
+    const diffText = item.differenceQty > 0 ? `+${item.differenceQty}` : `${item.differenceQty}`;
+    const result = await Swal.fire({
+      title: 'Setujui Penyesuaian?',
+      text: `Setujui penyesuaian selisih ${diffText} pcs untuk ${item.productName}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Setujui',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await inventoryApi.approveStockOpnameItem(item.id);
+      Swal.fire('Disetujui', `Penyesuaian stok ${item.productName} berhasil disetujui.`, 'success');
+      onTriggerNotification(`Penyesuaian stok ${item.sku} disetujui.`);
+      fetchSessionItems(selectedSession.id);
+    } catch (error: any) {
+      console.error('Error approving item:', error);
+      Swal.fire('Gagal', error?.response?.data?.message || 'Gagal menyetujui penyesuaian stok.', 'error');
+    }
+  };
+
+  const handleRejectItem = async (item: StockOpnameItem) => {
+    if (!selectedSession) return;
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Tolak Penyesuaian?',
+      input: 'textarea',
+      inputPlaceholder: 'Masukkan catatan penolakan...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Tolak',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      await inventoryApi.rejectStockOpnameItem(item.id, notes);
+      Swal.fire('Ditolak', `Penyesuaian stok ${item.productName} telah ditolak.`, 'info');
+      onTriggerNotification(`Penyesuaian stok ${item.sku} ditolak.`);
+      fetchSessionItems(selectedSession.id);
+    } catch (error: any) {
+      console.error('Error rejecting item:', error);
+      Swal.fire('Gagal', error?.response?.data?.message || 'Gagal menolak penyesuaian stok.', 'error');
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (!selectedSession || selectedItemIds.length === 0) return;
+    const itemsToApprove = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'pending');
+    if (itemsToApprove.length === 0) return;
+
+    const result = await Swal.fire({
+      title: 'Setujui Massal?',
+      text: `Setujui penyesuaian untuk ${itemsToApprove.length} item terpilih?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Setujui Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsSubmittingBulk(true);
+    let successCount = 0;
+    try {
+      for (const item of itemsToApprove) {
+        await inventoryApi.approveStockOpnameItem(item.id);
+        successCount++;
+      }
+      Swal.fire('Sukses', `${successCount} penyesuaian berhasil disetujui.`, 'success');
+      onTriggerNotification(`${successCount} penyesuaian disetujui.`);
+      setSelectedItemIds(prev => prev.filter(id => !itemsToApprove.some(item => item.id === id)));
+      fetchSessionItems(selectedSession.id);
+    } catch (error: any) {
+      console.error('Error bulk approving:', error);
+      Swal.fire('Info', `Hanya ${successCount} dari ${itemsToApprove.length} yang berhasil disetujui.`, 'warning');
+      fetchSessionItems(selectedSession.id);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (!selectedSession || selectedItemIds.length === 0) return;
+    const itemsToReject = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'pending');
+    if (itemsToReject.length === 0) return;
+
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Tolak Massal?',
+      input: 'textarea',
+      inputPlaceholder: 'Masukkan catatan penolakan...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Tolak Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    });
+
+    if (!isConfirmed) return;
+
+    setIsSubmittingBulk(true);
+    let successCount = 0;
+    try {
+      for (const item of itemsToReject) {
+        await inventoryApi.rejectStockOpnameItem(item.id, notes);
+        successCount++;
+      }
+      Swal.fire('Ditolak', `${successCount} penyesuaian telah ditolak.`, 'info');
+      onTriggerNotification(`${successCount} penyesuaian ditolak.`);
+      setSelectedItemIds(prev => prev.filter(id => !itemsToReject.some(item => item.id === id)));
+      fetchSessionItems(selectedSession.id);
+    } catch (error: any) {
+      console.error('Error bulk rejecting:', error);
+      Swal.fire('Info', `Hanya ${successCount} dari ${itemsToReject.length} yang berhasil ditolak.`, 'warning');
+      fetchSessionItems(selectedSession.id);
+    } finally {
+      setIsSubmittingBulk(false);
     }
   };
 
@@ -550,9 +704,9 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
               <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Sesi Stock Opname</h4>
               <button
                 onClick={() => setShowNewSessionModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition cursor-pointer shadow-xs shadow-sky-500/20"
               >
-                <Plus size={12} />
+                <Plus size={13} />
                 <span>Buat Sesi</span>
               </button>
             </div>
@@ -570,7 +724,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     key={session.id}
                     onClick={() => setSelectedSession(session)}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedSession?.id === session.id
-                      ? 'border-cyan-500 bg-cyan-50/30'
+                      ? 'border-sky-500 bg-sky-50/40 ring-1 ring-sky-500/20'
                       : 'border-slate-100 bg-slate-50/50 hover:bg-slate-50'
                       }`}
                   >
@@ -618,19 +772,19 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                           setNewItemLocationId('');
                           setShowAddItemModal(true);
                         }}
-                        className="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition cursor-pointer"
+                        className="px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition cursor-pointer shadow-xs shadow-sky-500/20"
                       >
                         Tambah Item
                       </button>
                       <button
                         onClick={() => handleStatusChange('in_progress')}
-                        className="px-3 py-1.5 border bg-white text-cyan-600 hover:bg-cyan-50/50 border-cyan-200 rounded-lg font-bold transition cursor-pointer"
+                        className="px-3 py-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-sky-50 hover:text-sky-700 rounded-xl font-semibold transition cursor-pointer"
                       >
                         Mulai Audit
                       </button>
                       <button
                         onClick={() => handleStatusChange('cancelled')}
-                        className="px-3 py-1.5 border bg-white text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold transition cursor-pointer"
+                        className="px-3 py-1.5 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold transition cursor-pointer"
                       >
                         Batalkan Sesi
                       </button>
@@ -641,13 +795,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                     <>
                       <button
                         onClick={() => handleStatusChange('closed')}
-                        className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition"
+                        className="px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition cursor-pointer shadow-xs shadow-sky-500/20"
                       >
                         Tutup Sesi
                       </button>
                       <button
                         onClick={() => handleStatusChange('cancelled')}
-                        className="px-3 py-1.5 border bg-white text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold transition"
+                        className="px-3 py-1.5 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl font-semibold transition cursor-pointer"
                       >
                         Batalkan Sesi
                       </button>
@@ -710,28 +864,55 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                       </select>
                     </div>
                     {(() => {
-                      const selectedApprovable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && !i.approvalRequestId);
-                      const selectedAdjustable = sessionItems.filter(i => selectedItemIds.includes(i.id) && i.approvalStatus === 'approved' && !i.isAdjusted);
+                      const selectedApprovable = sessionItems.filter(
+                        i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && (!i.approvalRequestId || i.approvalStatus === 'rejected')
+                      );
+                      const selectedPending = sessionItems.filter(
+                        i => selectedItemIds.includes(i.id) && i.approvalStatus === 'pending'
+                      );
+                      const selectedAdjustable = sessionItems.filter(
+                        i => selectedItemIds.includes(i.id) && i.approvalStatus === 'approved' && !i.isAdjusted
+                      );
 
-                      return (selectedApprovable.length > 0 || selectedAdjustable.length > 0) && selectedSession?.status === 'in_progress' ? (
-                        <div className="flex gap-2">
+                      return (selectedApprovable.length > 0 || selectedPending.length > 0 || selectedAdjustable.length > 0) && selectedSession?.status === 'in_progress' ? (
+                        <div className="flex items-center gap-2 flex-wrap">
                           {selectedApprovable.length > 0 && (
                             <button
                               onClick={handleBulkRequestApproval}
                               disabled={isSubmittingBulk}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 transition disabled:opacity-50 whitespace-nowrap"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-2xs cursor-pointer"
                             >
-                              <Send size={14} />
+                              <Send size={13} />
                               <span>Ajukan Approval ({selectedApprovable.length})</span>
                             </button>
+                          )}
+                          {selectedPending.length > 0 && canApprove() && (
+                            <>
+                              <button
+                                onClick={handleBulkApprove}
+                                disabled={isSubmittingBulk}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-xs shadow-sky-500/20 cursor-pointer"
+                              >
+                                <Check size={13} />
+                                <span>Setujui ({selectedPending.length})</span>
+                              </button>
+                              <button
+                                onClick={handleBulkReject}
+                                disabled={isSubmittingBulk}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs cursor-pointer"
+                              >
+                                <X size={13} />
+                                <span>Tolak ({selectedPending.length})</span>
+                              </button>
+                            </>
                           )}
                           {selectedAdjustable.length > 0 && (
                             <button
                               onClick={handleBulkAdjustStock}
                               disabled={isSubmittingBulk}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-600 text-white rounded-lg font-bold hover:bg-cyan-700 transition disabled:opacity-50 whitespace-nowrap"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-xs shadow-sky-500/20 cursor-pointer"
                             >
-                              <RefreshCw size={14} />
+                              <RefreshCw size={13} />
                               <span>Sesuaikan Stok ({selectedAdjustable.length})</span>
                             </button>
                           )}
@@ -766,15 +947,15 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                               <th className="p-3.5 pl-5 w-10">
                                 <input
                                   type="checkbox"
-                                  className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
                                   checked={
                                     selectedItemIds.length > 0 &&
-                                    filteredSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).length > 0 &&
-                                    filteredSessionItems.filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted)).every(i => selectedItemIds.includes(i.id))
+                                    filteredSessionItems.filter(isItemSelectable).length > 0 &&
+                                    filteredSessionItems.filter(isItemSelectable).every(i => selectedItemIds.includes(i.id))
                                   }
                                   onChange={(e) => {
                                     const availableIds = filteredSessionItems
-                                      .filter(i => (i.differenceQty !== 0 && !i.approvalRequestId) || (i.approvalStatus === 'approved' && !i.isAdjusted))
+                                      .filter(isItemSelectable)
                                       .map(i => i.id);
                                     if (e.target.checked) {
                                       setSelectedItemIds(prev => Array.from(new Set([...prev, ...availableIds])));
@@ -805,10 +986,10 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                               <tr key={item.id} className="hover:bg-slate-50/50">
                                 {selectedSession.status === 'in_progress' && (
                                   <td className="p-3.5 pl-5">
-                                    {((hasDifference && !item.approvalRequestId) || (item.approvalStatus === 'approved' && !item.isAdjusted)) && !isEditing && (
+                                    {isItemSelectable(item) && !isEditing && (
                                       <input
                                         type="checkbox"
-                                        className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                        className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
                                         checked={selectedItemIds.includes(item.id)}
                                         onChange={(e) => {
                                           if (e.target.checked) {
@@ -859,10 +1040,16 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                 <td className="p-3.5">
                                   {item.approvalRequestId ? (
                                     <StatusPill tone={getApprovalTone(item.approvalStatus || 'pending')}>
-                                      {item.approvalStatus || 'pending'}
+                                      {item.approvalStatus === 'pending'
+                                        ? 'Menunggu Approval'
+                                        : item.approvalStatus === 'approved'
+                                          ? 'Disetujui'
+                                          : item.approvalStatus === 'rejected'
+                                            ? 'Ditolak'
+                                            : item.approvalStatus}
                                     </StatusPill>
                                   ) : hasDifference ? (
-                                    <span className="text-amber-500 font-bold">Butuh Approval</span>
+                                    <span className="text-amber-600 font-bold">Butuh Pengajuan</span>
                                   ) : (
                                     <span className="text-slate-400">-</span>
                                   )}
@@ -888,14 +1075,14 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                           <>
                                             <button
                                               onClick={() => handleUpdateItem(item.id)}
-                                              className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                                              className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 cursor-pointer"
                                               title="Simpan"
                                             >
                                               <Check size={12} />
                                             </button>
                                             <button
                                               onClick={() => setEditingItemId(null)}
-                                              className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
+                                              className="p-1.5 bg-slate-300 text-slate-700 rounded hover:bg-slate-400 cursor-pointer"
                                               title="Batal"
                                             >
                                               <X size={12} />
@@ -905,7 +1092,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                           <button
                                             onClick={() => handleStartEditing(item)}
                                             title="Input Fisik"
-                                            className="p-1.5 border rounded bg-white hover:bg-slate-50 text-slate-600 transition"
+                                            className="p-1.5 border rounded bg-white hover:bg-slate-50 text-slate-600 transition cursor-pointer"
                                           >
                                             <Edit2 size={14} />
                                           </button>
@@ -915,29 +1102,48 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
 
                                     {selectedSession.status !== 'draft' && !isEditing && (
                                       <>
-                                        {hasDifference && !item.approvalRequestId && (
+                                        {hasDifference && (!item.approvalRequestId || item.approvalStatus === 'rejected') && (
                                           <button
                                             onClick={() => handleRequestApproval(item)}
-                                            title="Ajukan Approval"
-                                            className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded transition"
+                                            title={item.approvalStatus === 'rejected' ? 'Ajukan Ulang Approval' : 'Ajukan Approval'}
+                                            className="p-1.5 border border-slate-200 bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-lg transition cursor-pointer"
                                           >
-                                            <Send size={14} />
+                                            <Send size={13} />
                                           </button>
+                                        )}
+
+                                        {item.approvalStatus === 'pending' && canApprove() && (
+                                          <>
+                                            <button
+                                              onClick={() => handleApproveItem(item)}
+                                              title="Setujui Penyesuaian"
+                                              className="p-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition cursor-pointer shadow-xs shadow-sky-500/20"
+                                            >
+                                              <Check size={13} />
+                                            </button>
+                                            <button
+                                              onClick={() => handleRejectItem(item)}
+                                              title="Tolak Penyesuaian"
+                                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition cursor-pointer"
+                                            >
+                                              <X size={13} />
+                                            </button>
+                                          </>
                                         )}
 
                                         {item.approvalStatus === 'approved' && !item.isAdjusted && (
                                           <button
                                             onClick={() => handleAdjustStock(item)}
                                             title="Sesuaikan Stok"
-                                            className="p-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded transition"
+                                            className="p-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition cursor-pointer shadow-xs shadow-sky-500/20"
                                           >
-                                            <RefreshCw size={14} />
+                                            <RefreshCw size={13} />
                                           </button>
                                         )}
 
                                         {item.approvalStatus === 'approved' && item.isAdjusted && (
-                                          <span className="text-emerald-600 font-bold flex items-center gap-0.5 ml-2">
-                                            <CheckCircle2 size={12} />
+                                          <span className="text-emerald-600 font-bold flex items-center gap-1 text-[11px] ml-1">
+                                            <CheckCircle2 size={13} />
                                             <span>Selesai</span>
                                           </span>
                                         )}
@@ -1034,13 +1240,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                 <button
                   type="button"
                   onClick={() => setShowNewSessionModal(false)}
-                  className="px-4 py-2 border rounded-lg hover:bg-slate-50 font-bold text-slate-600"
+                  className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 font-semibold text-slate-600 cursor-pointer transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800"
+                  className="px-4 py-2 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold shadow-xs shadow-sky-500/20 cursor-pointer transition"
                 >
                   Mulai Sesi
                 </button>
@@ -1056,7 +1262,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Tambah Item ke Sesi Audit</h4>
-              <button onClick={() => setShowAddItemModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowAddItemModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X size={16} />
               </button>
             </div>
@@ -1075,7 +1281,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block">Pilih Lokasi Penyimpanan (Rak/Titik)</label>
                 <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 text-slate-800"
                   value={newItemLocationId}
                   onChange={(e) => setNewItemLocationId(e.target.value)}
                   required
@@ -1096,7 +1302,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                 <label className="font-bold text-slate-700 block">Kuantitas Fisik Awal (Pcs)</label>
                 <input
                   type="number"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 text-slate-800"
                   value={newItemPhysicalQty}
                   onChange={(e) => setNewItemPhysicalQty(Number(e.target.value))}
                   min={0}
@@ -1108,7 +1314,7 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                 <label className="font-bold text-slate-700 block">Catatan Awal</label>
                 <input
                   type="text"
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 text-slate-800"
                   value={newItemNotes}
                   onChange={(e) => setNewItemNotes(e.target.value)}
                   placeholder="Contoh: Kondisi retak/rusak, dsb."
@@ -1119,13 +1325,13 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                 <button
                   type="button"
                   onClick={() => setShowAddItemModal(false)}
-                  className="px-4 py-2 border rounded-lg hover:bg-slate-50 font-bold text-slate-600"
+                  className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 font-semibold text-slate-600 cursor-pointer transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800"
+                  className="px-4 py-2 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold shadow-xs shadow-sky-500/20 cursor-pointer transition"
                 >
                   Tambahkan
                 </button>

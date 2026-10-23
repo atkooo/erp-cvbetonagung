@@ -28,6 +28,7 @@ export default function LoginView({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
   const [showOtpField, setShowOtpField] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +90,7 @@ export default function LoginView({
         email,
         password,
         showOtpField ? otp : undefined,
+        rememberMe,
       );
       onLoginSuccess(session);
       onTriggerNotification(`Selamat datang kembali, ${session.user.name}!`);
@@ -206,6 +208,20 @@ export default function LoginView({
                         className="w-full bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 rounded-xl py-2 pl-9 pr-3 text-slate-900 outline-none transition-all text-xs"
                       />
                     </div>
+                  </div>
+
+                  <div className="flex items-center pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500/20 focus:ring-2 cursor-pointer transition-colors accent-sky-600"
+                      />
+                      <span className="text-[11px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                        Ingat Saya
+                      </span>
+                    </label>
                   </div>
                 </>
               )}

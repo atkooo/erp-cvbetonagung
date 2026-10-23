@@ -238,6 +238,21 @@ export const inventoryApi = {
     return mapStockOpnameItemFromDto(response.data);
   },
 
+  async approveStockOpnameItem(id: string, notes?: string, autoAdjust: boolean = false): Promise<StockOpnameItem> {
+    const response = await apiClient.post<{ data: StockOpnameItemDto }>(`/inventory/stock-opname-items/${id}/approve`, {
+      notes,
+      auto_adjust: autoAdjust,
+    });
+    return mapStockOpnameItemFromDto(response.data);
+  },
+
+  async rejectStockOpnameItem(id: string, notes?: string): Promise<StockOpnameItem> {
+    const response = await apiClient.post<{ data: StockOpnameItemDto }>(`/inventory/stock-opname-items/${id}/reject`, {
+      notes,
+    });
+    return mapStockOpnameItemFromDto(response.data);
+  },
+
   // Approval Requests
   async getApprovalRequests(): Promise<ApprovalRequest[]> {
     const firstParams = new URLSearchParams({

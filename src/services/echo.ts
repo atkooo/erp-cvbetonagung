@@ -1,6 +1,6 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
-import { API_BASE_URL } from './api';
+import { API_BASE_URL, authStorage } from './api';
 
 // Setup Pusher on window object (required by laravel-echo)
 (window as any).Pusher = Pusher;
@@ -23,7 +23,7 @@ const echo: Echo<'reverb'> | null = (REVERB_APP_KEY && REVERB_HOST)
         authorizer: (channel: any) => {
             return {
                 authorize: (socketId: any, callback: any) => {
-                    const token = localStorage.getItem('cvba_api_token');
+                    const token = authStorage.getToken();
                     fetch(`${API_BASE_URL}/broadcasting/auth`, {
                         method: 'POST',
                         headers: {

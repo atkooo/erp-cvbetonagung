@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Fitur "Remember Me" (Ingat Saya) & Otomatisasi Idle Logout 30 Menit (`LoginView.tsx`, `api.ts`, `AuthContext.tsx`, `echo.ts`)**:
+  - Menambahkan checkbox "Ingat Saya" pada halaman login ([LoginView.tsx](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/LoginView.tsx)) dengan palet Soft Sky Blue & Slate (`accent-sky-600`) dan indikator status interaktif (*Tetap Masuk* vs *Maks. 30 mnt idle*).
+  - **Sesi Non-Remember Me:** Sesi dan token kini disimpan di `sessionStorage` sehingga saat tab atau jendela browser ditutup, sesi login otomatis terhapus.
+  - **Sesi Remember Me:** Kredensial dan token disimpan di `localStorage` sehingga user tetap masuk saat membuka kembali browser di kemudian hari.
+  - **Auto-Logout saat Idle:** Mengimplementasikan pendeteksi aktivitas user ter-throttle pada [`AuthContext.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/contexts/AuthContext.tsx). Jika opsi Remember Me tidak dicentang dan tidak ada aktivitas selama 30 menit (atau setelah tab di-background/laptop dibuka kembali), user otomatis logout dengan pesan modal notifikasi informatif.
+  - Memperbarui authorizer WebSocket pada [`echo.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/echo.ts) agar mendukung token dari `sessionStorage` maupun `localStorage`.
 - **Integrasi Transaksi Kasir POS ke Sales Order (Opsi A) dengan Filter Tab Sumber & Badge (`SalesView.tsx`, `salesApi.ts`)**:
   - Menambahkan segmented control tab filter di atas daftar pesanan Sales Order: `Semua Pesanan`, `Sales Order (ERP)`, dan `Kasir (POS)` lengkap dengan penghitung jumlah pesanan secara real-time.
   - Menampilkan badge sumber pesanan yang bersih (`ERP` vs `POS`) di sebelah nomor dokumen pada baris tabel Sales Order.

@@ -4,10 +4,13 @@ Panduan berikut WAJIB diikuti dalam setiap pengembangan atau modifikasi fitur fr
 
 ---
 
-## 1. UI Cleanliness & Naming Rules (Mandatory)
+## 1. UI Cleanliness, Anti-Overdetailing & Naming Rules (Mandatory)
+- **Dilarang Menambahkan Teks Detail / Micro-Labels / Badge Penjelas yang Tidak Diminta (Strict No Unsolicited Micro-Details):** Dilarang keras menambahkan label penjelas, badge keterangan teknis, helper badge, atau status teks inline di samping komponen UI (contoh buruk yang dilarang: menambahkan `Maks. 30 mnt idle` / `Tetap Masuk` pada checkbox Remember Me, badge status `Auto-sync active`, keterangan durasi/internal logic, atau caption detail teknis lainnya) kecuali USER secara eksplisit memintanya.
+- **Prinsip Minimalis & Langsung pada Fungsinya (Straight to the Point):** Buat antarmuka sesederhana, sebersih, dan seringkas mungkin. Tampilkan hanya elemen dan label dasar yang diperlukan (contoh: cukup checkbox dengan label `Ingat Saya`, tanpa teks status/badge pendamping).
+- **Hindari Over-Engineering Teks & UI Clutter:** Jangan pernah berinisiatif menambahkan micro-copy penjelas, badge dekoratif, atau penjelasan operasional tambahan yang membuat UI berisik (*cluttered*) dan terkesan *over-explained*.
 - **Dilarang Menambahkan Teks Fluff / Gimmick di UI Header/Title:** Dilarang keras menambahkan frasa gimmick seperti `— Enterprise Edition`, `Pro Version`, `V2`, `Ultimate`, atau gimmick sejenis pada judul header, modal, card, atau label UI.
-- Gunakan nama yang bersih, baku, profesional, dan langsung pada fungsinya (contoh: `Berita Acara Gudang (BAG)`).
-- Jaga kebersihan antarmuka dari teks tambahan yang tidak diminta oleh USER.
+- **Nama Bersih & Baku:** Gunakan nama yang bersih, baku, profesional, dan langsung pada fungsinya (contoh: `Berita Acara Gudang (BAG)`).
+- **Jaga Kebersihan Antarmuka:** Bersihkan dan lindungi antarmuka dari teks tambahan, sub-label, atau elemen dekoratif yang tidak diminta oleh USER.
 
 ---
 
