@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Package,
   Search,
@@ -78,7 +78,22 @@ export default function ProductsView({
   const [isImageDeleted, setIsImageDeleted] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [previewProductImage, setPreviewProductImage] = useState<{
+    url: string;
+    name: string;
+    sku?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && previewProductImage) {
+        setPreviewProductImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewProductImage]);
 
   const visibleUnits = units.length > 0 ? units : DEFAULT_UNITS;
   const filteredUnits = visibleUnits.filter(
@@ -529,15 +544,31 @@ export default function ProductsView({
                     >
                       <td className="p-3.5 pl-5">
                         {p.imageUrl ? (
-                          <img
-                            src={p.imageUrl}
-                            alt={p.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                            }}
-                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewProductImage({
+                                url: p.imageUrl!,
+                                name: p.name,
+                                sku: p.sku,
+                              })
+                            }
+                            className="group relative cursor-pointer block rounded-lg overflow-hidden border border-slate-200 hover:border-sky-400 hover:ring-2 hover:ring-sky-200 transition-all focus:outline-hidden"
+                            title="Klik untuk melihat foto"
+                          >
+                            <img
+                              src={p.imageUrl}
+                              alt={p.name}
+                              className="w-10 h-10 object-cover group-hover:scale-110 transition-transform duration-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-sky-950/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Search size={14} className="text-white drop-shadow-sm" />
+                            </div>
+                          </button>
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center">
                             <ImageOff size={14} className="text-slate-300" />
@@ -1064,6 +1095,57 @@ export default function ProductsView({
           setImagePreview(URL.createObjectURL(file));
         }}
       />
+
+      {/* Product Image Preview Modal */}
+      {previewProductImage && (
+        <div
+          className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewProductImage(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-xl w-full flex flex-col border border-slate-100 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+              <div className="min-w-0 pr-4">
+                <h3 className="font-bold text-sm truncate text-white">
+                  {previewProductImage.name}
+                </h3>
+                {previewProductImage.sku && (
+                  <p className="text-xs font-mono text-sky-400 mt-0.5">
+                    SKU: {previewProductImage.sku}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewProductImage(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-950 flex items-center justify-center min-h-[300px] max-h-[75vh] overflow-hidden">
+              <img
+                src={previewProductImage.url}
+                alt={previewProductImage.name}
+                className="max-h-[70vh] w-auto max-w-full object-contain rounded-lg"
+              />
+            </div>
+
+            <div className="px-5 py-3 bg-white border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewProductImage(null)}
+                className="btn btn-secondary btn-md"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
