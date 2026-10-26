@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Standarisasi Alur Persetujuan Mandiri Dokumen Berita Acara Gudang (BAG) Langsung di Menu (`BagView.tsx`)**:
+  - Mengeliminasi ketergantungan pada Approval Center (AC) dengan menghadirkan tombol aksi persetujuan cepat (*Direct Inline Approval*) berupa tombol "Setujui Langsung" dan "Tolak" langsung pada setiap kartu dokumen BAG yang berstatus `pending_approval`.
+  - Menghadirkan fitur seleksi multi-dokumen (*checkbox*) dan persetujuan massal (*Bulk Approval & Bulk Rejection*) lengkap dengan penghitung dokumen terpilih dan dialog konfirmasi terstandarisasi.
+  - Memperbaiki evaluasi hak akses `canApprove()` agar mengenali permission granular `berita_acara_gudang` dan role `inventory`, sehingga staf dan kepala gudang berhak dapat langsung menyetujui dokumen tanpa terhalang guard palsu.
+  - Menambahkan opsi *Persetujuan Langsung (Direct Approval)* pada modal pembuatan BAG baru (`auto_approve`), memungkinkan pembuat dokumen yang berwenang untuk langsung menyetujui dan menyelaraskan saldo stok gudang dalam 1 kali simpan.
+  - Menyelaraskan seluruh antarmuka komponen [`BagView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/inventory/components/BagView.tsx) dengan Design System Soft Sky Blue & Slate (`sky-600`, `sky-50`, `border-slate-200`, `rounded-xl`, tombol standar `active:scale-[0.98]`).
+- **Opsi Cetak / Download JPEG & Perbaikan Render Barcode Single Produk (`QrView.tsx`)**:
+  - Menambahkan tombol aksi `Download JPEG` untuk mengekspor stiker barcode produk ke format gambar JPEG beresolusi tinggi (3x pixel ratio, latar putih murni) yang presisi dan kompatibel untuk thermal label printer maupun penyimpanan arsip.
+  - Memperbaiki masalah cetak dan download PDF kosong/blank pada stiker barcode single produk dengan memindahkan target render ekspor dari `display: none` (`.hidden`) dan luar efek `backdrop-blur` / `overflow: auto` modal ke off-screen layout container yang sinkron dengan state modal.
+  - Mengoptimalkan ukuran halaman PDF untuk ukuran kertas thermal roll (58mm dan 80mm) agar pas 1:1 tanpa margin A4 berlebih yang menyebabkan hasil cetak mengecil.
+  - Mengimplementasikan pencetakan langsung stiker single via image pipeline beresolusi tinggi agar bebas dari distorsi CSS print browser dan memastikan isi barcode tercetak jelas.
+  - Menghubungkan layout lembar stiker (Single, 2x2, 3x3, 4x4, custom) dengan jumlah stiker produk (`copies`) pada preview modal dan output cetak/download.
+  - Standarisasi tombol footer modal sesuai Design System Soft Sky Blue & Slate (`Download JPEG`, `Download PDF`, `Print Stiker`).
+- **Pagination, Pencarian, & Filter Tipe Transaksi pada Beban Operasional (`CashExpenseView.tsx`)**:
+  - Menambahkan kontrol pagination tabel histori transaksi beban operasional dengan konfigurasi jumlah baris per halaman (10, 25, 50), tombol navigasi Halaman Sebelumnya/Berikutnya, dan ringkasan info data.
+  - Menambahkan fitur pencarian real-time (nomor transaksi, kategori, keterangan, akun kas/bank) dan filter jenis transaksi (`Semua Jenis`, `Pengeluaran (Beban)`, `Pemasukan (Kas Masuk)`).
+  - Standarisasi antarmuka dan tombol sesuai Design System Soft Sky Blue & Slate (`Button.tsx`, gradien `sky-600` to `sky-700`, border `sky-100`/`sky-200`).
 - **Fitur "Remember Me" (Ingat Saya) & Otomatisasi Idle Logout 30 Menit (`LoginView.tsx`, `api.ts`, `AuthContext.tsx`, `echo.ts`)**:
   - Menambahkan checkbox "Ingat Saya" pada halaman login ([LoginView.tsx](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/LoginView.tsx)) dengan palet Soft Sky Blue & Slate (`accent-sky-600`) dan indikator status interaktif (*Tetap Masuk* vs *Maks. 30 mnt idle*).
   - **Sesi Non-Remember Me:** Sesi dan token kini disimpan di `sessionStorage` sehingga saat tab atau jendela browser ditutup, sesi login otomatis terhapus.

@@ -6,7 +6,6 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  ShieldAlert,
   ArrowRight,
   Search,
   ChevronLeft,
@@ -14,10 +13,11 @@ import {
   TrendingUp,
   TrendingDown,
   Layers,
-  Info,
   Calendar,
   Tag,
   AlertTriangle,
+  Check,
+  X,
 } from '@/src/components/icons';
 import Swal from 'sweetalert2';
 import { apiClient } from '../../../services/api';
@@ -40,7 +40,7 @@ const REASON_CODES: Record<string, string> = {
 };
 
 const Panel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>
+  <div className={`bg-white rounded-xl border border-slate-200 shadow-xs ${className}`}>
     {children}
   </div>
 );
@@ -48,7 +48,7 @@ const Panel = ({ children, className = '' }: { children: React.ReactNode; classN
 const Header = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
   <Panel className="p-5">
     <div className="flex items-center gap-3">
-      <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">{icon}</div>
+      <div className="p-2.5 bg-sky-50 text-sky-600 rounded-xl">{icon}</div>
       <div>
         <h3 className="font-sans font-bold text-sm text-slate-800">{title}</h3>
         <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
@@ -57,23 +57,23 @@ const Header = ({ icon, title, desc }: { icon: React.ReactNode; title: string; d
   </Panel>
 );
 
-const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'cyan' | 'emerald' | 'amber' | 'rose' }) => {
+const StatusPill = ({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'sky' | 'emerald' | 'amber' | 'rose' }) => {
   const tones: Record<string, string> = {
     slate: 'bg-slate-100 text-slate-600 border-slate-200',
-    cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    sky: 'bg-sky-50 text-sky-700 border-sky-200',
     emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     amber: 'bg-amber-50 text-amber-700 border-amber-200',
     rose: 'bg-rose-50 text-rose-700 border-rose-200',
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${tones[tone]}`}>
       {children}
     </span>
   );
 };
 
 export default function BagView({ onTriggerNotification }: BagViewProps) {
-  const { authUser } = useAuth();
+  const { authUser, userRoleCode } = useAuth();
   const [bags, setBags] = useState<Bag[]>([]);
   const [selectedBag, setSelectedBag] = useState<Bag | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -83,6 +83,10 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending_approval' | 'approved' | 'rejected'>('all');
+
+  // Multi-select & Bulk Action State
+  const [selectedBagIds, setSelectedBagIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
 
   // Pagination for BAG List (Left Panel)
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,6 +98,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
 
   // New BAG Form State
   const [showNewModal, setShowNewModal] = useState(false);
+  const [autoApproveOnCreate, setAutoApproveOnCreate] = useState(true);
   const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string; warehouse_id: string }[]>([]);
 
@@ -189,17 +194,45 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
   );
 
   const canApprove = () => {
-    if (!authUser || !authUser.role) return true;
-    const roleCode = authUser.role.code?.toLowerCase() || '';
-    if (['admin', 'superadmin', 'owner', 'manager', 'head_of_warehouse'].includes(roleCode)) {
+    if (!authUser) return true;
+    const code = (userRoleCode || authUser.role?.code || '').toLowerCase();
+    if (['admin', 'superadmin', 'super_admin', 'owner', 'manager', 'head_of_warehouse', 'inventory'].includes(code)) {
       return true;
     }
-    const permissions = authUser.role.permissions || [];
-    const invPerm = permissions.find(p => p.module === 'inventory' && (p.action === 'approve' || p.action === 'all'));
-    if (invPerm && invPerm.pivot?.access_level === 'full') {
+    const permissions = authUser.role?.permissions || [];
+    const bagPerm = permissions.find(
+      p => (p.module === 'berita_acara_gudang' || p.module === 'inventory' || p.module === 'approvals' || p.module === 'stock_opname') &&
+           (p.action === 'approve' || p.action === 'all')
+    );
+    if (bagPerm && bagPerm.pivot?.access_level === 'full') {
       return true;
     }
-    return permissions.some(p => (p.module === 'inventory' || p.module === 'approvals') && p.pivot?.access_level === 'full');
+    return permissions.some(
+      p => (p.module === 'berita_acara_gudang' || p.module === 'inventory' || p.module === 'approvals') &&
+           p.pivot?.access_level === 'full'
+    );
+  };
+
+  // Multi-select for bulk approval/rejection
+  const pendingSelectedBags = useMemo(() => {
+    return bags.filter(b => selectedBagIds.includes(b.id) && b.status === 'pending_approval');
+  }, [bags, selectedBagIds]);
+
+  const handleSelectAllPending = () => {
+    const currentPendingIds = paginatedBags.filter(b => b.status === 'pending_approval').map(b => b.id);
+    const allSelected = currentPendingIds.every(id => selectedBagIds.includes(id));
+    if (allSelected) {
+      setSelectedBagIds(prev => prev.filter(id => !currentPendingIds.includes(id)));
+    } else {
+      setSelectedBagIds(prev => Array.from(new Set([...prev, ...currentPendingIds])));
+    }
+  };
+
+  const handleToggleSelectBag = (e: React.MouseEvent, bagId: string) => {
+    e.stopPropagation();
+    setSelectedBagIds(prev =>
+      prev.includes(bagId) ? prev.filter(id => id !== bagId) : [...prev, bagId]
+    );
   };
 
   const handleAddItem = () => {
@@ -230,6 +263,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     }
 
     setIsSubmitting(true);
+    const willAutoApprove = autoApproveOnCreate && canApprove();
     try {
       const payload = {
         date: newBagDate,
@@ -238,11 +272,19 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
         type: newBagType,
         reason_code: newBagReasonCode,
         notes: newBagNotes,
+        auto_approve: willAutoApprove,
         items: newBagItems,
       };
       await apiClient.post('/inventory/bags', payload);
 
-      Swal.fire('Pengajuan Terkirim', 'Berita Acara Gudang berhasil diajukan dan menunggu persetujuan (Approval).', 'success');
+      if (willAutoApprove) {
+        Swal.fire('Berhasil Disimpan', 'Berita Acara Gudang berhasil disetujui dan stok fisik langsung diselaraskan.', 'success');
+        onTriggerNotification?.('Berita Acara Gudang disetujui & stok diperbarui.');
+      } else {
+        Swal.fire('Tersimpan', 'Berita Acara Gudang berhasil disimpan. Anda dapat menyetujuinya langsung di menu ini.', 'success');
+        onTriggerNotification?.('Berita Acara Gudang baru berhasil dibuat.');
+      }
+
       setShowNewModal(false);
 
       // Reset form
@@ -270,7 +312,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
       showCancelButton: true,
       confirmButtonText: 'Ya, Setujui & Update Stok',
       cancelButtonText: 'Batal',
-      confirmButtonColor: '#059669',
+      confirmButtonColor: '#0284c7',
     });
 
     if (!result.isConfirmed) return;
@@ -278,7 +320,9 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     setIsActionLoading(true);
     try {
       await apiClient.post(`/inventory/bags/${bagId}/approve`);
-      Swal.fire('Disetujui!', 'Berita Acara Gudang berhasil disetujui dan stok fisik telah diperbarui.', 'success');
+      Swal.fire('Disetujui', 'Berita Acara Gudang berhasil disetujui dan stok fisik telah diperbarui.', 'success');
+      onTriggerNotification?.('Berita Acara Gudang berhasil disetujui.');
+      setSelectedBagIds(prev => prev.filter(id => id !== bagId));
       await fetchBags();
       await loadMasterData();
     } catch (error: any) {
@@ -296,7 +340,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
       inputPlaceholder: 'Masukkan alasan penolakan...',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Ya, Tolak Dokumen',
+      confirmButtonText: 'Tolak Dokumen',
       cancelButtonText: 'Batal',
       confirmButtonColor: '#e11d48',
     });
@@ -307,12 +351,84 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     try {
       await apiClient.post(`/inventory/bags/${bagId}/reject`, { notes });
       Swal.fire('Ditolak', 'Berita Acara Gudang telah ditolak.', 'info');
+      onTriggerNotification?.('Berita Acara Gudang ditolak.');
+      setSelectedBagIds(prev => prev.filter(id => id !== bagId));
       await fetchBags();
     } catch (error: any) {
       console.error('Error rejecting BAG:', error);
       Swal.fire('Gagal', error?.response?.data?.message || 'Gagal menolak Berita Acara Gudang.', 'error');
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (pendingSelectedBags.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Setujui Dokumen Terpilih?',
+      text: `Setujui ${pendingSelectedBags.length} dokumen Berita Acara Gudang sekaligus? Saldo stok fisik di gudang akan langsung diperbarui.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Setujui Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsBulkLoading(true);
+    let successCount = 0;
+    try {
+      for (const bag of pendingSelectedBags) {
+        await apiClient.post(`/inventory/bags/${bag.id}/approve`);
+        successCount++;
+      }
+      Swal.fire('Disetujui', `${successCount} dokumen Berita Acara Gudang berhasil disetujui.`, 'success');
+      onTriggerNotification?.(`${successCount} dokumen BAG disetujui.`);
+      setSelectedBagIds(prev => prev.filter(id => !pendingSelectedBags.some(b => b.id === id)));
+      await fetchBags();
+      await loadMasterData();
+    } catch (error: any) {
+      console.error('Error bulk approving BAGs:', error);
+      Swal.fire('Info', `Hanya ${successCount} dari ${pendingSelectedBags.length} yang berhasil disetujui.`, 'warning');
+      await fetchBags();
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (pendingSelectedBags.length === 0) return;
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Tolak Dokumen Terpilih?',
+      input: 'textarea',
+      inputPlaceholder: 'Masukkan catatan penolakan...',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Tolak Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    });
+
+    if (!isConfirmed) return;
+
+    setIsBulkLoading(true);
+    let successCount = 0;
+    try {
+      for (const bag of pendingSelectedBags) {
+        await apiClient.post(`/inventory/bags/${bag.id}/reject`, { notes });
+        successCount++;
+      }
+      Swal.fire('Ditolak', `${successCount} dokumen Berita Acara Gudang telah ditolak.`, 'info');
+      onTriggerNotification?.(`${successCount} dokumen BAG ditolak.`);
+      setSelectedBagIds(prev => prev.filter(id => !pendingSelectedBags.some(b => b.id === id)));
+      await fetchBags();
+    } catch (error: any) {
+      console.error('Error bulk rejecting BAGs:', error);
+      Swal.fire('Info', `Hanya ${successCount} dari ${pendingSelectedBags.length} yang berhasil ditolak.`, 'warning');
+      await fetchBags();
+    } finally {
+      setIsBulkLoading(false);
     }
   };
 
@@ -385,36 +501,39 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     switch (type) {
       case 'in':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <TrendingUp size={11} /> Masuk (In)
           </span>
         );
       case 'out':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
             <TrendingDown size={11} /> Keluar (Out)
           </span>
         );
       case 'adjustment':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <RefreshCw size={10} /> Penyesuaian (Adjustment)
           </span>
         );
     }
   };
 
+  const pendingInCurrentView = paginatedBags.filter(b => b.status === 'pending_approval');
+  const allCurrentPendingSelected = pendingInCurrentView.length > 0 && pendingInCurrentView.every(b => selectedBagIds.includes(b.id));
+
   return (
     <div className="space-y-6 text-xs font-sans">
       <Header
         icon={<FileCheck size={20} />}
         title="Berita Acara Gudang (BAG)"
-        desc="Dokumen resmi pertanggungjawaban fisik penerimaan, pengeluaran, atau penyesuaian stok gudang dengan dual control approval."
+        desc="Dokumen resmi pertanggungjawaban fisik penerimaan, pengeluaran, atau penyesuaian stok gudang dengan persetujuan langsung di menu."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* PANEL KIRI: DAFTAR DOKUMEN BAG DENGAN FILTER & PAGINATION */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* PANEL KIRI: DAFTAR DOKUMEN BAG DENGAN DIRECT APPROVAL & MULTI-SELECT */}
+        <div className="lg:col-span-5 space-y-4">
           <Panel className="p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
@@ -422,8 +541,9 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                 <p className="text-[10px] text-slate-400 mt-0.5">Total {filteredBags.length} dokumen ditemukan</p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowNewModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition shadow-sm text-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold shadow-xs shadow-sky-500/20 transition text-xs cursor-pointer active:scale-[0.98]"
               >
                 <Plus size={13} />
                 <span>Buat BAG</span>
@@ -431,30 +551,34 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
             </div>
 
             {/* Filter Tabs */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-lg text-[10px] font-bold">
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
               <button
+                type="button"
                 onClick={() => setStatusFilter('all')}
-                className={`py-1 rounded text-center transition ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`py-1 rounded-lg text-center transition cursor-pointer ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 Semua ({bags.length})
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('pending_approval')}
-                className={`py-1 rounded text-center transition ${statusFilter === 'pending_approval' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`py-1 rounded-lg text-center transition cursor-pointer ${statusFilter === 'pending_approval' ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 Pending ({bags.filter(b => b.status === 'pending_approval').length})
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('approved')}
-                className={`py-1 rounded text-center transition ${statusFilter === 'approved' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`py-1 rounded-lg text-center transition cursor-pointer ${statusFilter === 'approved' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                ACC ({bags.filter(b => b.status === 'approved').length})
+                Disetujui ({bags.filter(b => b.status === 'approved').length})
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('rejected')}
-                className={`py-1 rounded text-center transition ${statusFilter === 'rejected' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`py-1 rounded-lg text-center transition cursor-pointer ${statusFilter === 'rejected' ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                Tolak ({bags.filter(b => b.status === 'rejected').length})
+                Ditolak ({bags.filter(b => b.status === 'rejected').length})
               </button>
             </div>
 
@@ -466,51 +590,154 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari No. BAG, Gudang, atau Catatan..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] focus:outline-none focus:border-sky-500 focus:bg-white text-slate-800"
               />
             </div>
 
-            {/* List BAG */}
+            {/* Bulk Action Bar (Direct approval like Stock Opname) */}
+            {canApprove() && pendingSelectedBags.length > 0 && (
+              <div className="flex items-center justify-between p-2.5 bg-sky-50/80 border border-sky-200 rounded-xl text-[11px] animate-in fade-in-50 duration-150">
+                <span className="font-semibold text-sky-900">
+                  {pendingSelectedBags.length} BAG dipilih
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleBulkApprove}
+                    disabled={isBulkLoading}
+                    className="px-2.5 py-1 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white font-semibold rounded-lg text-[10px] shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50 transition active:scale-[0.98]"
+                  >
+                    <Check size={12} />
+                    <span>Setujui ({pendingSelectedBags.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkReject}
+                    disabled={isBulkLoading}
+                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-lg text-[10px] flex items-center gap-1 cursor-pointer disabled:opacity-50 transition active:scale-[0.98]"
+                  >
+                    <X size={12} />
+                    <span>Tolak</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBagIds([])}
+                    className="px-2 py-1 text-slate-500 hover:text-slate-800 rounded-lg text-[10px] font-semibold cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Select All Pending Shortcut */}
+            {canApprove() && pendingInCurrentView.length > 0 && (
+              <div className="flex items-center justify-between px-1 text-[10px] text-slate-500">
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={allCurrentPendingSelected}
+                    onChange={handleSelectAllPending}
+                    className="w-3.5 h-3.5 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer"
+                  />
+                  <span>Pilih Semua Pending di Halaman Ini</span>
+                </label>
+              </div>
+            )}
+
+            {/* List BAG Cards */}
             {isLoading ? (
               <div className="flex justify-center py-10">
                 <RefreshCw className="animate-spin text-slate-400" size={20} />
               </div>
             ) : filteredBags.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+              <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 <FileCheck size={28} className="mx-auto mb-2 text-slate-300" />
                 <p>Tidak ada dokumen BAG yang sesuai filter.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
-                {paginatedBags.map((bag) => (
-                  <div
-                    key={bag.id}
-                    onClick={() => setSelectedBag(bag)}
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedBag?.id === bag.id
-                      ? 'border-cyan-500 bg-cyan-50/40 shadow-sm ring-1 ring-cyan-500'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono font-bold text-slate-800 text-[11px]">{bag.bag_number}</span>
-                      {renderStatusBadge(bag.status)}
+                {paginatedBags.map((bag) => {
+                  const isPending = bag.status === 'pending_approval';
+                  const isSelected = selectedBag?.id === bag.id;
+                  const isChecked = selectedBagIds.includes(bag.id);
+
+                  return (
+                    <div
+                      key={bag.id}
+                      onClick={() => setSelectedBag(bag)}
+                      className={`p-3.5 rounded-xl border text-left cursor-pointer transition relative ${
+                        isSelected
+                          ? 'border-sky-500 bg-sky-50/40 shadow-xs ring-1 ring-sky-500'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {canApprove() && isPending && (
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onClick={(e) => handleToggleSelectBag(e, bag.id)}
+                              onChange={() => {}}
+                              className="w-3.5 h-3.5 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer shrink-0 mt-0.5"
+                            />
+                          )}
+                          <span className="font-mono font-bold text-slate-800 text-[11px]">{bag.bag_number}</span>
+                        </div>
+                        {renderStatusBadge(bag.status)}
+                      </div>
+
+                      <div className="flex items-center justify-between text-slate-600 font-medium mb-1">
+                        <span className="flex items-center gap-1 truncate max-w-[150px]" title={bag.warehouse?.name}>
+                          <Warehouse size={12} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{bag.warehouse?.name}</span>
+                        </span>
+                        {renderTypeBadge(bag.type)}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 border-t pt-1.5 border-slate-100">
+                        <span className="flex items-center gap-1">
+                          <Calendar size={11} className="text-slate-300" />
+                          {bag.date}
+                        </span>
+                        <span className="font-semibold text-slate-500">{bag.items?.length || 0} Item Barang</span>
+                      </div>
+
+                      {/* Direct Inline Action Buttons (Like Stock Opname) */}
+                      {isPending && canApprove() && (
+                        <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApproveBag(bag.id);
+                            }}
+                            disabled={isActionLoading}
+                            title="Setujui Langsung & Update Stok"
+                            className="flex-1 py-1.5 px-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-lg font-semibold text-[11px] flex items-center justify-center gap-1 transition shadow-xs shadow-sky-500/20 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Setujui Langsung</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRejectBag(bag.id);
+                            }}
+                            disabled={isActionLoading}
+                            title="Tolak Dokumen"
+                            className="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-semibold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <XCircle size={13} />
+                            <span>Tolak</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between text-slate-600 font-medium mb-1">
-                      <span className="flex items-center gap-1 truncate max-w-[140px]" title={bag.warehouse?.name}>
-                        <Warehouse size={12} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{bag.warehouse?.name}</span>
-                      </span>
-                      {renderTypeBadge(bag.type)}
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 border-t pt-1.5 border-slate-100">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={11} className="text-slate-300" />
-                        {bag.date}
-                      </span>
-                      <span className="font-semibold text-slate-500">{bag.items?.length || 0} Item Barang</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Pagination Controls */}
                 <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-mono">
@@ -519,15 +746,15 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                   </span>
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage <= 1}
-                      className="p-1 px-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded font-bold cursor-pointer transition"
+                      className="p-1 px-2 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-bold cursor-pointer transition"
                       title="Halaman Sebelumnya"
                     >
                       <ChevronLeft size={12} />
                     </button>
 
-                    {/* Page Numbers */}
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
                       .map((page, idx, arr) => (
@@ -536,10 +763,12 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                             <span className="px-1 text-slate-400">...</span>
                           )}
                           <button
+                            type="button"
                             onClick={() => setCurrentPage(page)}
-                            className={`px-2 py-0.5 rounded font-bold transition ${currentPage === page
-                              ? 'bg-slate-900 text-white'
-                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            className={`px-2 py-0.5 rounded-lg font-bold transition cursor-pointer ${
+                              currentPage === page
+                                ? 'bg-sky-600 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-sky-50'
                             }`}
                           >
                             {page}
@@ -548,9 +777,10 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                       ))}
 
                     <button
+                      type="button"
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage >= totalPages}
-                      className="p-1 px-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded font-bold cursor-pointer transition"
+                      className="p-1 px-2 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-bold cursor-pointer transition"
                       title="Halaman Berikutnya"
                     >
                       <ChevronRight size={12} />
@@ -562,8 +792,8 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
           </Panel>
         </div>
 
-        {/* PANEL KANAN: DETAIL BAG DENGAN KOLOM BEFORE & AFTER DAN PAGINATION ITEM */}
-        <div className="lg:col-span-8">
+        {/* PANEL KANAN: DETAIL BAG DENGAN SIMULASI BEFORE & AFTER SERTA TOMBOL APPROVAL */}
+        <div className="lg:col-span-7">
           {selectedBag ? (
             <Panel className="overflow-hidden">
               {/* Header Detail */}
@@ -575,7 +805,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                       {renderStatusBadge(selectedBag.status)}
                       {renderTypeBadge(selectedBag.type)}
                       {selectedBag.reason_code && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                           <Tag size={10} />
                           {REASON_CODES[selectedBag.reason_code] || selectedBag.reason_code}
                         </span>
@@ -583,26 +813,28 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                     </div>
                     <p className="text-slate-500 font-medium text-[11px]">
                       Gudang: <strong className="text-slate-700">{selectedBag.warehouse?.name}</strong>
-                      {selectedBag.location && <span> | Lokasi Rak: <strong className="text-slate-700">{selectedBag.location.name}</strong></span>}
+                      {selectedBag.location && <span> | Lokasi: <strong className="text-slate-700">{selectedBag.location.name}</strong></span>}
                       <span> | Tanggal: <strong className="text-slate-700">{selectedBag.date}</strong></span>
                     </p>
                   </div>
 
-                  {/* Tombol Approval (Dual Control) */}
+                  {/* Tombol Approval Langsung di Menu (Direct Approval) */}
                   {selectedBag.status === 'pending_approval' && canApprove() && (
                     <div className="flex items-center gap-2 shrink-0">
                       <button
+                        type="button"
                         onClick={() => handleApproveBag(selectedBag.id)}
                         disabled={isActionLoading}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition flex items-center gap-1.5 text-xs shadow-sm disabled:opacity-50 cursor-pointer"
+                        className="px-3.5 py-2 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white font-semibold rounded-xl transition flex items-center gap-1.5 text-xs shadow-xs shadow-sky-500/20 disabled:opacity-50 cursor-pointer active:scale-[0.98]"
                       >
                         <CheckCircle2 size={14} />
                         <span>Setujui & Update Stok</span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleRejectBag(selectedBag.id)}
                         disabled={isActionLoading}
-                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition flex items-center gap-1.5 text-xs shadow-sm disabled:opacity-50 cursor-pointer"
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-xl transition flex items-center gap-1.5 text-xs shadow-xs disabled:opacity-50 cursor-pointer active:scale-[0.98]"
                       >
                         <XCircle size={14} />
                         <span>Tolak</span>
@@ -613,7 +845,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
 
                 {/* Audit Approval Info */}
                 {selectedBag.approvedBy && (
-                  <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center gap-2">
+                  <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 flex items-center gap-2">
                     <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
                     <span>
                       Telah disetujui oleh <strong>{selectedBag.approvedBy.name}</strong> pada {selectedBag.approved_at || '-'}. Saldo stok fisik telah diselaraskan.
@@ -622,32 +854,32 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                 )}
 
                 {selectedBag.notes && (
-                  <p className="text-slate-600 italic bg-white p-2.5 rounded-lg border border-slate-200 text-[11px]">
+                  <p className="text-slate-600 italic bg-white p-2.5 rounded-xl border border-slate-200 text-[11px]">
                     Catatan Dokumen: "{selectedBag.notes}"
                   </p>
                 )}
 
                 {/* 4 Kartu Metrik Ringkasan */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tipe Mutasi</span>
                     <span className="font-bold text-slate-800 text-xs mt-0.5 block">
                       {selectedBag.type === 'in' ? 'Barang Masuk (+)' : selectedBag.type === 'out' ? 'Barang Keluar (-)' : 'Penyesuaian (Set)'}
                     </span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Macam Item</span>
                     <span className="font-bold text-slate-800 text-xs mt-0.5 block font-mono">
                       {detailItems.length} Produk
                     </span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Volume Mutasi</span>
-                    <span className="font-bold text-cyan-700 text-xs mt-0.5 block font-mono">
+                    <span className="font-bold text-sky-700 text-xs mt-0.5 block font-mono">
                       {detailItems.reduce((acc, it) => acc + Number(it.quantity || 0), 0).toLocaleString('id-ID')} unit
                     </span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status Efek Stok</span>
                     <span className={`font-bold text-xs mt-0.5 block ${selectedBag.status === 'approved' ? 'text-emerald-700' : 'text-amber-700'}`}>
                       {selectedBag.status === 'approved' ? 'Telah Diterapkan' : 'Belum Diterapkan'}
@@ -656,7 +888,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                 </div>
               </div>
 
-              {/* Tabel Detail Item dengan BEFORE & AFTER yang Jelas */}
+              {/* Tabel Detail Item dengan BEFORE & AFTER */}
               <div className="p-0 overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
@@ -693,24 +925,24 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
 
                           {/* STOK SEBELUM (BEFORE) */}
                           <td className="p-3 text-right">
-                            <span className="font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px]">
+                            <span className="font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
                               {before.toLocaleString('id-ID')} {unit}
                             </span>
                           </td>
 
                           {/* PERUBAHAN / MUTASI */}
                           <td className="p-3 text-center">
-                            <div className="inline-flex items-center gap-1 font-mono font-bold text-[11px] px-2 py-0.5 rounded border">
+                            <div className="inline-flex items-center gap-1 font-mono font-bold text-[11px]">
                               {change > 0 ? (
-                                <span className="text-emerald-700 bg-emerald-50 border-emerald-200 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                                   <TrendingUp size={11} /> +{change.toLocaleString('id-ID')} {unit}
                                 </span>
                               ) : change < 0 ? (
-                                <span className="text-rose-700 bg-rose-50 border-rose-200 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                                   <TrendingDown size={11} /> {change.toLocaleString('id-ID')} {unit}
                                 </span>
                               ) : (
-                                <span className="text-slate-600 bg-slate-100 border-slate-200 px-2 py-0.5 rounded">
+                                <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                                   0 {unit}
                                 </span>
                               )}
@@ -720,10 +952,10 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                           {/* STOK SESUDAH (AFTER) */}
                           <td className="p-3 text-right">
                             <div className="inline-flex flex-col items-end">
-                              <span className={`font-mono font-black text-[11px] px-2.5 py-0.5 rounded border ${
+                              <span className={`font-mono font-bold text-[11px] px-2.5 py-0.5 rounded-md border ${
                                 isApproved
                                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                                  : 'bg-sky-50 text-sky-800 border-sky-200'
                               }`}>
                                 {after.toLocaleString('id-ID')} {unit}
                               </span>
@@ -752,9 +984,10 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                   </span>
                   <div className="flex items-center gap-1.5">
                     <button
+                      type="button"
                       onClick={() => setItemPage(p => Math.max(1, p - 1))}
                       disabled={itemPage <= 1}
-                      className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded font-bold cursor-pointer"
+                      className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-bold cursor-pointer transition"
                     >
                       Prev
                     </button>
@@ -762,9 +995,10 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                       {itemPage} / {totalItemPages}
                     </span>
                     <button
+                      type="button"
                       onClick={() => setItemPage(p => Math.min(totalItemPages, p + 1))}
                       disabled={itemPage >= totalItemPages}
-                      className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded font-bold cursor-pointer"
+                      className="px-2 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-bold cursor-pointer transition"
                     >
                       Next
                     </button>
@@ -784,24 +1018,47 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
         </div>
       </div>
 
-      {/* MODAL FORM: BUAT BAG BARU DENGAN LIVE BEFORE & AFTER PREVIEW */}
+      {/* MODAL FORM: BUAT BAG BARU DENGAN DIRECT APPROVAL OPTION */}
       {showNewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-            <div className="p-4 px-6 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150 border border-slate-200">
+            <div className="p-4 px-6 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-sky-50 via-white to-sky-50/30">
               <div>
-                <h3 className="font-bold text-sm">Buat Berita Acara Gudang (BAG) Baru</h3>
-                <p className="text-[10px] text-slate-300 mt-0.5">Dokumen akan masuk ke antrian approval sebelum saldo stok diperbarui.</p>
+                <h3 className="font-bold text-sm text-slate-800">Buat Berita Acara Gudang (BAG) Baru</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">Catat perubahan fisik stok masuk, keluar, atau koreksi selisih gudang.</p>
               </div>
-              <button onClick={() => setShowNewModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
-                <Plus size={20} className="rotate-45" />
+              <button
+                type="button"
+                onClick={() => setShowNewModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSubmitBag} className="flex flex-col overflow-hidden flex-1">
-              <div className="p-5 overflow-y-auto space-y-5">
+              <div className="p-5 overflow-y-auto space-y-4">
+                {/* Opsi Persetujuan Langsung (Direct Approval) */}
+                {canApprove() && (
+                  <div className="flex items-center justify-between p-3.5 bg-sky-50/70 rounded-xl border border-sky-100">
+                    <div>
+                      <span className="font-semibold text-xs text-sky-900 block">Persetujuan Langsung (Direct Approval)</span>
+                      <span className="text-[10px] text-sky-700 block">Setujui dokumen dan selaraskan saldo stok fisik seketika saat disimpan.</span>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoApproveOnCreate}
+                        onChange={(e) => setAutoApproveOnCreate(e.target.checked)}
+                        className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-sky-900">Setujui Langsung</span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Form Dokumen Induk */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Tanggal</label>
                     <input
@@ -809,7 +1066,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                       required
                       value={newBagDate}
                       onChange={(e) => setNewBagDate(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800"
                     />
                   </div>
                   <div>
@@ -817,11 +1074,11 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                     <select
                       value={newBagType}
                       onChange={(e) => setNewBagType(e.target.value as any)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500 text-slate-800"
                     >
-                      <option value="in">🟢 Barang Masuk (In) — Tambah Stok</option>
-                      <option value="out">🔴 Barang Keluar (Out) — Kurangi Stok</option>
-                      <option value="adjustment">🟡 Penyesuaian (Adjustment) — Set Stok Fisik</option>
+                      <option value="in">Barang Masuk (In) — Tambah Stok</option>
+                      <option value="out">Barang Keluar (Out) — Kurangi Stok</option>
+                      <option value="adjustment">Penyesuaian (Adjustment) — Set Stok Fisik</option>
                     </select>
                   </div>
                   <div>
@@ -829,7 +1086,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                     <select
                       value={newBagReasonCode}
                       onChange={(e) => setNewBagReasonCode(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800"
                     >
                       {Object.entries(REASON_CODES).map(([code, label]) => (
                         <option key={code} value={code}>{label}</option>
@@ -846,7 +1103,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                         setNewBagWarehouseId(e.target.value);
                         setNewBagLocationId('');
                       }}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800"
                     >
                       <option value="">Pilih Gudang...</option>
                       {warehouses.map(w => (
@@ -859,7 +1116,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                     <select
                       value={newBagLocationId}
                       onChange={(e) => setNewBagLocationId(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800"
                       disabled={!newBagWarehouseId}
                     >
                       <option value="">Pilih Lokasi Rak...</option>
@@ -875,14 +1132,14 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                       value={newBagNotes}
                       onChange={(e) => setNewBagNotes(e.target.value)}
                       placeholder="Misal: Hasil audit mingguan / kerusakan transit"
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-sky-500 text-slate-800"
                     />
                   </div>
                 </div>
 
                 {/* Daftar Item dengan Preview Before & After */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                  <div className="p-3 px-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                  <div className="p-3 px-4 bg-slate-100/70 border-b border-slate-200 flex justify-between items-center">
                     <div>
                       <h4 className="font-bold text-slate-800 text-xs">Rincian Item Barang & Kalkulasi Stok (Before ➔ After)</h4>
                       <p className="text-[10px] text-slate-500">Pilih produk dan masukkan kuantitas untuk melihat simulasi efek ke saldo stok fisik.</p>
@@ -890,16 +1147,17 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-cyan-700 cursor-pointer shadow-sm"
+                      className="px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs shadow-sky-500/20 transition active:scale-[0.98]"
                     >
-                      <Plus size={12} /> Tambah Baris Item
+                      <Plus size={13} />
+                      <span>Tambah Item</span>
                     </button>
                   </div>
 
                   {newBagItems.length === 0 ? (
                     <div className="p-8 text-center text-slate-400 bg-white">
                       <Layers size={24} className="mx-auto mb-2 text-slate-300" />
-                      Silakan klik tombol <strong>Tambah Baris Item</strong> di atas untuk menambahkan barang.
+                      Silakan klik tombol <strong>Tambah Item</strong> di atas untuk menambahkan barang.
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 bg-white">
@@ -910,16 +1168,12 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                         const unit = product?.unit || 'pcs';
 
                         let afterStock = currentStock;
-                        let delta = qty;
                         if (newBagType === 'in') {
                           afterStock = currentStock + qty;
-                          delta = qty;
                         } else if (newBagType === 'out') {
                           afterStock = currentStock - qty;
-                          delta = -qty;
                         } else {
                           afterStock = qty;
-                          delta = qty - currentStock;
                         }
 
                         const isDeficit = newBagType === 'out' && afterStock < 0;
@@ -939,7 +1193,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                                 placeholder="Keterangan item (misal: pecah sudut, cacat cetak)..."
                                 value={item.notes}
                                 onChange={(e) => handleUpdateItem(index, 'notes', e.target.value)}
-                                className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded text-[10px]"
+                                className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] focus:outline-none focus:border-sky-500 text-slate-800"
                               />
                             </div>
 
@@ -957,7 +1211,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                                   placeholder="0.00"
                                   value={item.quantity || ''}
                                   onChange={(e) => handleUpdateItem(index, 'quantity', Number(e.target.value))}
-                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-sky-500 text-slate-800"
                                 />
                                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">
                                   {unit}
@@ -966,7 +1220,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                             </div>
 
                             {/* Panel Visual Live Before & After */}
-                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 px-3 flex items-center gap-3 shrink-0">
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 px-3 flex items-center gap-3 shrink-0">
                               <div className="text-right">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block">Before (Saat Ini)</span>
                                 <span className="font-mono font-bold text-slate-700 text-[11px]">
@@ -979,14 +1233,14 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                               <div className="text-left">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block">After (Menjadi)</span>
                                 <span className={`font-mono font-bold text-[11px] ${
-                                  isDeficit ? 'text-rose-600' : 'text-cyan-700'
+                                  isDeficit ? 'text-rose-600' : 'text-sky-700'
                                 }`}>
                                   {afterStock.toLocaleString('id-ID')} {unit}
                                 </span>
                               </div>
 
                               {isDeficit && (
-                                <span className="text-[9px] font-bold text-rose-600 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-rose-600 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
                                   <AlertTriangle size={10} /> Defisit!
                                 </span>
                               )}
@@ -999,7 +1253,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                               className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer transition shrink-0"
                               title="Hapus Baris"
                             >
-                              <Plus size={16} className="rotate-45" />
+                              <X size={16} />
                             </button>
                           </div>
                         );
@@ -1009,24 +1263,28 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
                 </div>
               </div>
 
-              <div className="p-4 px-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="p-4 px-6 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">
-                  Total {newBagItems.length} item barang tercatat dalam formulir ini.
+                  Total {newBagItems.length} item barang tercatat.
                 </span>
                 <div className="flex gap-2.5">
                   <button
                     type="button"
                     onClick={() => setShowNewModal(false)}
-                    className="px-4 py-2 border border-slate-200 bg-white rounded-lg font-bold text-slate-600 hover:bg-slate-50 cursor-pointer text-xs transition"
+                    className="px-4 py-2 border border-slate-200 bg-white rounded-xl font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer text-xs transition active:scale-[0.98]"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 disabled:opacity-50 cursor-pointer text-xs shadow-md transition"
+                    className="px-4 py-2 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold shadow-xs shadow-sky-500/20 disabled:opacity-50 cursor-pointer text-xs transition active:scale-[0.98]"
                   >
-                    {isSubmitting ? 'Menyimpan...' : 'Ajukan Berita Acara Gudang'}
+                    {isSubmitting
+                      ? 'Menyimpan...'
+                      : autoApproveOnCreate && canApprove()
+                        ? 'Simpan & Setujui Langsung'
+                        : 'Simpan Dokumen BAG'}
                   </button>
                 </div>
               </div>

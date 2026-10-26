@@ -32,7 +32,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import * as htmlToImage from "html-to-image";
 import { useReactToPrint } from "react-to-print";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Plus, Minus } from "lucide-react";
+import { ShoppingCart, Plus, Minus, FileImage } from "lucide-react";
 import RealScanner from "./RealScanner";
 
 type BarcodePaperSize = "a4" | "letter" | "58mm" | "80mm";
@@ -109,9 +109,9 @@ export default function QrView({
     setListPage(1);
   }, [search, selectedCategory]);
 
-  const [printProduct, setPrintProduct] = useState<Product | null>(null);
   const [bulkPrintProducts, setBulkPrintProducts] = useState<Product[]>([]);
   const [isBulkPrint, setIsBulkPrint] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [printSettings, setPrintSettings] = useState<BarcodePrintSettings>(
     defaultBarcodePrintSettings,
   );
@@ -119,34 +119,87 @@ export default function QrView({
   const hiddenBulkRef = useRef<HTMLDivElement>(null);
   const stickerRef = useRef<HTMLDivElement>(null);
 
+  const handleDownloadJpeg = async () => {
+    const targetRef = isBulkPrint
+      ? hiddenBulkRef.current
+      : hiddenStickerRef.current;
+    if (!targetRef) return;
+
+    setIsExporting(true);
+    try {
+      const dataUrl = await htmlToImage.toJpeg(targetRef, {
+        backgroundColor: "#ffffff",
+        quality: 0.95,
+        pixelRatio: 3,
+      });
+
+      const fileName = isBulkPrint
+        ? "Barcode-Bulk.jpeg"
+        : `Barcode-${showQrModal?.sku || "produk"}.jpeg`;
+
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+
+      onTriggerNotification(`Berhasil mendownload JPEG ${fileName}`);
+    } catch (e) {
+      console.error("Gagal export JPEG", e);
+      onTriggerNotification("Gagal mendownload JPEG.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleDownloadPdf = async () => {
     const targetRef = isBulkPrint
       ? hiddenBulkRef.current
-      : stickerRef.current || hiddenStickerRef.current;
+      : hiddenStickerRef.current;
     if (!targetRef) return;
 
+    setIsExporting(true);
     try {
       const dataUrl = await htmlToImage.toPng(targetRef, {
         backgroundColor: "#ffffff",
         pixelRatio: 3,
       });
       const { jsPDF } = await import("jspdf");
-      const pdf = new jsPDF({ unit: "px", format: "a4" });
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-      pdf.addImage(dataUrl, "PNG", 0, 0, imgWidth, imgHeight);
+      let pdf: any;
+      if (
+        !isBulkPrint &&
+        (printSettings.paperSize === "58mm" || printSettings.paperSize === "80mm")
+      ) {
+        const targetWidth = printSettings.paperSize === "58mm" ? 164 : 226;
+        const dummyPdf = new jsPDF();
+        const imgProps = dummyPdf.getImageProperties(dataUrl);
+        const targetHeight = (imgProps.height * targetWidth) / imgProps.width;
+        pdf = new jsPDF({
+          unit: "px",
+          format: [targetWidth, targetHeight],
+        });
+        pdf.addImage(dataUrl, "PNG", 0, 0, targetWidth, targetHeight);
+      } else {
+        pdf = new jsPDF({
+          unit: "px",
+          format: printSettings.paperSize === "letter" ? "letter" : "a4",
+        });
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-      let heightLeft = imgHeight - pdfHeight;
-      let position = -pdfHeight;
-      while (heightLeft > 0) {
-        pdf.addPage();
-        pdf.addImage(dataUrl, "PNG", 0, position, imgWidth, imgHeight);
-        position -= pdfHeight;
-        heightLeft -= pdfHeight;
+        pdf.addImage(dataUrl, "PNG", 0, 0, imgWidth, imgHeight);
+
+        let heightLeft = imgHeight - pdfHeight;
+        let position = -pdfHeight;
+        while (heightLeft > 0) {
+          pdf.addPage();
+          pdf.addImage(dataUrl, "PNG", 0, position, imgWidth, imgHeight);
+          position -= pdfHeight;
+          heightLeft -= pdfHeight;
+        }
       }
 
       const fileName = isBulkPrint
@@ -155,8 +208,10 @@ export default function QrView({
       pdf.save(fileName);
       onTriggerNotification(`Berhasil mendownload PDF ${fileName}`);
     } catch (e) {
-      console.error(e);
+      console.error("Gagal export PDF", e);
       onTriggerNotification(`Gagal mendownload PDF.`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -169,32 +224,83 @@ export default function QrView({
       ),
   });
 
-  const handleHiddenPrint = useReactToPrint({
-    contentRef: hiddenStickerRef,
-    documentTitle: printProduct ? `Barcode-${printProduct.sku}` : "Barcode",
-    onAfterPrint: () => {
-      onTriggerNotification(
-        `Berhasil mengirim stiker Barcode [${printProduct?.sku}] ke printer.`,
-      );
-      setPrintProduct(null);
-    },
-  });
+  const handlePrintStiker = async () => {
+    if (isBulkPrint) {
+      handleBulkPrint();
+      return;
+    }
 
-  const triggerSinglePrint = () => {
-    if (showQrModal) {
-      setPrintProduct(showQrModal);
+    if (!hiddenStickerRef.current) return;
+
+    setIsExporting(true);
+    try {
+      const dataUrl = await htmlToImage.toJpeg(hiddenStickerRef.current, {
+        backgroundColor: "#ffffff",
+        quality: 1.0,
+        pixelRatio: 3,
+      });
+
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Barcode-${showQrModal?.sku || "produk"}</title>
+              <style>
+                @page { margin: 0; size: auto; }
+                body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-start; background: #fff; }
+                img { max-width: 100%; height: auto; display: block; }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUrl}" />
+            </body>
+          </html>
+        `);
+        doc.close();
+
+        const img = doc.querySelector("img");
+        const doPrint = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+              if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+              }
+            }, 1000);
+          }, 150);
+        };
+
+        if (img) {
+          if (img.complete) {
+            doPrint();
+          } else {
+            img.onload = doPrint;
+          }
+        }
+      }
+      onTriggerNotification(
+        `Berhasil mengirim stiker Barcode [${showQrModal?.sku}] ke printer.`,
+      );
+    } catch (e) {
+      console.error("Gagal print stiker", e);
+      onTriggerNotification("Gagal mencetak stiker.");
+    } finally {
+      setIsExporting(false);
     }
   };
-
-  useEffect(() => {
-    if (printProduct) {
-      // Need a small timeout to ensure the DOM is updated before printing
-      const timer = setTimeout(() => {
-        handleHiddenPrint();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [printProduct, handleHiddenPrint]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -896,7 +1002,7 @@ export default function QrView({
                           setShowQrModal(prod);
                           setIsBulkPrint(false);
                         }}
-                        className="px-2.5 py-1 text-[10px] bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-bold rounded border border-cyan-200"
+                        className="px-2.5 py-1 text-[10px] bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-lg border border-sky-200"
                       >
                         Cetak Barcode
                       </button>
@@ -1154,7 +1260,10 @@ export default function QrView({
                         ),
                       )
                     : showQrModal
-                      ? renderBarcodeLabel(showQrModal, 1)
+                      ? renderBarcodeLabel(
+                          showQrModal,
+                          getLayoutCardCount(printSettings.layout),
+                        )
                       : null}
                 </div>
 
@@ -1231,19 +1340,36 @@ export default function QrView({
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-100 flex gap-2 justify-end bg-slate-50">
+            <div className="p-4 border-t border-slate-100 flex items-center gap-2 justify-end bg-slate-50 flex-wrap">
               <button
-                onClick={handleDownloadPdf}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
+                type="button"
+                onClick={handleDownloadJpeg}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-sky-50/70 text-slate-700 hover:text-sky-800 border border-slate-200 hover:border-sky-200 shadow-2xs active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download stiker format JPEG"
               >
-                <Download size={16} />
-                <span>Download PDF</span>
+                <FileImage size={15} />
+                <span>{isExporting ? "Memproses..." : "Download JPEG"}</span>
               </button>
+
               <button
-                onClick={isBulkPrint ? handleBulkPrint : triggerSinglePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-bold transition-colors shadow-sm shadow-cyan-600/20"
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-sky-50/70 text-slate-700 hover:text-sky-800 border border-slate-200 hover:border-sky-200 shadow-2xs active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download stiker format PDF"
               >
-                <Printer size={16} />
+                <Download size={15} />
+                <span>{isExporting ? "Memproses..." : "Download PDF"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrintStiker}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white shadow-xs shadow-sky-500/20 active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Printer size={15} />
                 <span>Print Stiker</span>
               </button>
             </div>
@@ -1251,14 +1377,28 @@ export default function QrView({
         </div>
       )}
 
-      {/* Hidden container for print Product quick action */}
-      <div className="hidden">
+      {/* Hidden single product container for download/print single product */}
+      <div
+        style={{
+          position: "absolute",
+          left: -9999,
+          top: 0,
+          width: "1000px",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      >
         <div
           ref={hiddenStickerRef}
           className="bg-white p-4 rounded-xl border-2 border-black w-full overflow-hidden"
           style={getStickerContainerStyle()}
         >
-          {printProduct && renderBarcodeLabel(printProduct)}
+          {showQrModal &&
+            renderBarcodeLabel(
+              showQrModal,
+              getLayoutCardCount(printSettings.layout),
+            )}
         </div>
       </div>
 
