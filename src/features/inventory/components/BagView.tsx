@@ -131,10 +131,11 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
   const fetchBags = async () => {
     setIsLoading(true);
     try {
-      const res = await apiClient.get<{ data: Bag[] }>('/inventory/bags?include=warehouse,location,createdBy,approvedBy,approvalRequest,items.product');
-      setBags(res.data);
+      const res = await apiClient.get<{ data: Bag[] }>('/inventory/bags?include=warehouse,location,createdBy,approvedBy,approvalRequest,items.product&sort=created_at&direction=desc');
+      const loadedBags = res.data || [];
+      setBags(loadedBags);
       if (selectedBag) {
-        const updated = res.data.find(b => b.id === selectedBag.id);
+        const updated = loadedBags.find(b => b.id === selectedBag.id);
         if (updated) setSelectedBag(updated);
       }
     } catch (error) {
@@ -166,19 +167,26 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
     return products.find(p => p.id === productId);
   };
 
-  // Filtered BAGs
+  // Filtered BAGs (newest created first)
   const filteredBags = useMemo(() => {
-    return bags.filter(bag => {
-      if (statusFilter !== 'all' && bag.status !== statusFilter) return false;
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        bag.bag_number.toLowerCase().includes(q) ||
-        (bag.warehouse?.name && bag.warehouse.name.toLowerCase().includes(q)) ||
-        (bag.notes && bag.notes.toLowerCase().includes(q)) ||
-        (bag.reason_code && (REASON_CODES[bag.reason_code] || bag.reason_code).toLowerCase().includes(q))
-      );
-    });
+    return bags
+      .filter(bag => {
+        if (statusFilter !== 'all' && bag.status !== statusFilter) return false;
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          bag.bag_number.toLowerCase().includes(q) ||
+          (bag.warehouse?.name && bag.warehouse.name.toLowerCase().includes(q)) ||
+          (bag.notes && bag.notes.toLowerCase().includes(q)) ||
+          (bag.reason_code && (REASON_CODES[bag.reason_code] || bag.reason_code).toLowerCase().includes(q))
+        );
+      })
+      .sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.bag_number || b.id || '').localeCompare(a.bag_number || a.id || '');
+      });
   }, [bags, statusFilter, searchQuery]);
 
   const totalPages = Math.ceil(filteredBags.length / itemsPerPage);
@@ -275,7 +283,7 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
         auto_approve: willAutoApprove,
         items: newBagItems,
       };
-      await apiClient.post('/inventory/bags', payload);
+      const createdRes = await apiClient.post<{ data: Bag }>('/inventory/bags', payload);
 
       if (willAutoApprove) {
         Swal.fire('Berhasil Disimpan', 'Berita Acara Gudang berhasil disetujui dan stok fisik langsung diselaraskan.', 'success');
@@ -293,6 +301,11 @@ export default function BagView({ onTriggerNotification }: BagViewProps) {
       setNewBagNotes('');
       setNewBagReasonCode('OPNAME_DISCREPANCY');
       setNewBagItems([]);
+
+      setCurrentPage(1);
+      if (createdRes?.data) {
+        setSelectedBag(createdRes.data);
+      }
 
       await fetchBags();
       await loadMasterData();

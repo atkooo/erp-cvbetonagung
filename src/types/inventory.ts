@@ -38,6 +38,8 @@ export interface Bag {
   created_by?: string;
   approved_by?: string;
   approved_at?: string;
+  created_at?: string;
+  updated_at?: string;
   items?: BagItem[];
   warehouse?: {
     id: string;
