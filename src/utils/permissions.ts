@@ -55,9 +55,15 @@ export const hasViewAccess = (
       ? ['edit', 'full']
       : ['read', 'edit', 'full'];
 
+  // Support module alias for unified incoming-goods / goods-receipts
+  const requiredModules =
+    requiredModule === 'incoming_goods' || itemView === 'incoming-goods'
+      ? ['incoming_goods', 'goods_receipts']
+      : [requiredModule];
+
   // 6. Find all permissions for the required module (exact match or wildcard '*')
   const modulePerms = userPermissions.filter(
-    (p: any) => p.module === requiredModule || p.module === '*'
+    (p: any) => requiredModules.includes(p.module) || p.module === '*'
   );
 
   if (modulePerms.length === 0) {

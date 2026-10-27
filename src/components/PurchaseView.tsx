@@ -330,7 +330,7 @@ export default function PurchaseView({
       });
 
       onTriggerNotification(
-        `GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan (GRN).`,
+        `GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan Barang (GRN).`,
       );
       await loadData();
     } catch (err) {
@@ -693,9 +693,9 @@ export default function PurchaseView({
                                       <button
                                         onClick={() => {
                                           sessionStorage.setItem('action_receive_po', po.id);
-                                          onNavigate('goods-receipts');
+                                          onNavigate('incoming-goods');
                                         }}
-                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                        className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs shadow-sky-500/20 active:scale-[0.98] cursor-pointer"
                                       >
                                         <span>Lanjut ke Penerimaan Barang (GRN)</span>
                                         <ChevronRight size={14} />
@@ -709,7 +709,7 @@ export default function PurchaseView({
                                           sessionStorage.setItem('action_pay_ap', po.poNumber);
                                           onNavigate('accounts-payable');
                                         }}
-                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                        className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs shadow-sky-500/20 active:scale-[0.98] cursor-pointer"
                                       >
                                         <span>Lanjut ke Outstanding Payable (AP)</span>
                                         <ChevronRight size={14} />

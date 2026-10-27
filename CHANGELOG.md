@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Filter In-Modal & Pengecualian Produk (Tombol X) pada Bulk Cetak Barcode (`QrView.tsx`)**:
+  - **Filter di Dalam Modal:** Memindahkan kontrol pemilihan produk ke dalam modal Bulk Cetak Barcode, meliputi dropdown pemilihan Kategori dan input pencarian SKU/Nama produk secara langsung di dalam modal.
+  - **Default Category Terfokus:** Saat modal Bulk Cetak dibuka, sistem secara otomatis memilih kategori default pertama (bukan memuat seluruh katalog produk sekaligus), mencegah kelambatan render data dalam jumlah besar.
+  - **Tombol Hapus / Pengecualian (X) Per Kartu:** Menambahkan tombol close/x di sudut kanan atas setiap kartu pratinjau stiker barcode di dalam modal, memungkinkan pengguna mengecualikan item yang tidak diinginkan sebelum proses cetak/ekspor.
+  - **Sinkronisasi Pratinjau & Ekspor Bersih:** Tombol X hanya tampil pada pratinjau interaktif modal dan dihilangkan sepenuhnya pada output cetak/download PDF/JPEG agar label tetap bersih.
+  - **Penghitung & Tombol Reset:** Menampilkan badge jumlah produk yang siap dicetak serta tombol reset untuk memulihkan kembali produk-produk yang telah dikecualikan.
 - **Standarisasi Alur Persetujuan Mandiri Dokumen Berita Acara Gudang (BAG) Langsung di Menu (`BagView.tsx`)**:
   - Mengeliminasi ketergantungan pada Approval Center (AC) dengan menghadirkan tombol aksi persetujuan cepat (*Direct Inline Approval*) berupa tombol "Setujui Langsung" dan "Tolak" langsung pada setiap kartu dokumen BAG yang berstatus `pending_approval`.
   - Menghadirkan fitur seleksi multi-dokumen (*checkbox*) dan persetujuan massal (*Bulk Approval & Bulk Rejection*) lengkap dengan penghitung dokumen terpilih dan dialog konfirmasi terstandarisasi.
@@ -48,10 +54,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Memperbarui gaya tombol *Keluarkan Work Order* mengikuti standar Primary Button design system Soft Sky Blue (`bg-gradient-to-r from-sky-600 to-sky-700`).
 
 ### Fixed
+- **Konsolidasi Menu Penerimaan Barang (GRN) & Eliminasi Duplikasi Sidebar (`navigation.tsx`, `AppRouter.tsx`, `PurchaseView.tsx`, `permissions.ts`)**:
+  - Mengeliminasi menu ganda dan bug *dual-highlight* di sidebar di mana menu "Penerimaan Barang (GR)" di Pengadaan dan "Barang Masuk" di Persediaan sebelumnya menyala biru secara bersamaan.
+  - Memusatkan seluruh alur penerimaan barang ke menu **Penerimaan Barang (GRN)** di bawah section **Persediaan** (`/inventory/stock-in`), dan menghapus item duplikat di section Pengadaan.
+  - Menyelaraskan navigasi dari Purchase Order (`PurchaseView.tsx`) saat user menekan "Lanjut ke Penerimaan Barang (GRN)" agar langsung mengarah ke `incoming-goods` (`/inventory/stock-in`).
+  - Menambahkan pengalihan rute otomatis (*route redirect*) dari path `/purchasing/receiving` ke `/inventory/stock-in`.
+  - Memperbarui evaluator izin `hasViewAccess` (`permissions.ts`) sehingga pengguna dengan hak akses modul `goods_receipts` (misal Purchasing & Finance) maupun `incoming_goods` (Inventory) tetap memiliki hak akses penuh ke menu terpadu ini.
+  - Menstandarkan tombol aksi alur PO pada `PurchaseView.tsx` ke tema Soft Sky Blue & Slate (`bg-gradient-to-r from-sky-600 to-sky-700`).
 - **Waktu Server Real-time (WIB) pada Navbar Topbar (`Topbar.tsx`)**:
   - Menghapus badge penampil zona waktu otomatis lama dan menggantikannya dengan jam server real-time berzona **WIB** (Waktu Indonesia Barat / Asia/Jakarta).
   - Menampilkan nama hari lengkap, tanggal bulan tahun, jam, menit, hingga detik server yang sinkron (`Kamis, 22 Okt 2026 • 10:04:15 WIB`).
   - Mengimplementasikan sinkronisasi waktu presisi dengan endpoint backend `/api/system/time` dan kompensasi latensi jaringan agar waktu akurat ke detik server.
+- **Reposisi Tata Letak Struk Thermal Sales Order (`SalesOrderPrintService.ts`)**:
+  - **Info Pembayaran di Posisi Tengah:** Memindahkan seksi `INFO PEMBAYARAN & INVOICE` (mencakup status bayar, total terbayar, sisa tagihan terutang, serta rincian invoice dan kuitansi pelunasan/DP) tepat setelah daftar item barang.
+  - **Subtotal & Total SO di Bagian Bawah:** Menempatkan rekapitulasi `SUBTOTAL`, `DISKON TRANSAKSI`, dan `TOTAL SO` di bagian bawah (setelah info pembayaran) agar pembaca struk langsung melihat grand total pesanan dengan jelas dan tidak salah membaca/tertukar dengan nominal cicilan/DP.
+  - Penataan ini berlaku seragam pada cetakan thermal browser dialog (HTML), download file PDF roll 80mm, pratinjau modal interaktif, maupun pencetakan langsung mesin thermal via Web Bluetooth ESC/POS.
+- **Pembersihan Duplikasi Menu Sidebar Penerimaan Barang (`navigation.tsx`, `AppRouter.tsx`)**:
+  - Mengeliminasi duplikasi item menu *Penerimaan Barang (GR)* di seksi Pengadaan (`goods-receipts`), dan memusatkan seluruh alur penerimaan barang pada modul Persediaan Gudang sebagai *Penerimaan Barang (GRN)* (`incoming-goods`).
+  - Menambahkan pengalihan rute otomatis (*auto-redirect*) dari `/purchasing/receiving` ke `/inventory/stock-in` dan menyelaraskan evaluasi perizinan menu `incoming_goods`.
 - **Standarisasi Tombol & Palet Warna Antarmuka Sesuai Design System Soft Sky Blue & Slate (`ProductionWorkOrderView.tsx`, `RolePermissionView.tsx`)**:
   - Mengganti seluruh tombol ad-hoc (`bg-slate-900`, `bg-indigo-600`, `bg-emerald-700`, `bg-slate-100`) dengan kelas utilitas baku (`btn btn-primary`, `btn btn-secondary`, `btn btn-success`, `btn btn-danger`, `btn btn-ghost`).
   - Menstandarkan border-radius seluruh tombol menjadi `rounded-xl` (12px) untuk md/lg dan `rounded-lg` (8px) untuk sm/xs, lengkap dengan efek interaksi `active:scale-[0.98]`.

@@ -176,32 +176,9 @@ export const buildSalesOrderThermalHTML = (
 
       <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px;"' : ''}></div>
 
-      <!-- Summary / Totals -->
-      <table class="mb-2 font-bold" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
-        <tr>
-          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>SUBTOTAL</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${formatIDR(subtotalBeforeGlobalDiscount)}</td>
-        </tr>
-        ${
-          globalDiscountAmount > 0
-            ? `
-        <tr>
-          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON TRANSAKSI</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${formatIDR(globalDiscountAmount)}</td>
-        </tr>
-        `
-            : ''
-        }
-        <tr style="border-top: 1px dashed #000;">
-          <td ${isPdf ? 'style="padding: 3px 0; vertical-align: top; font-size: 12px;"' : 'style="font-size: 12px;"'}>TOTAL SO</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 3px 0; vertical-align: top; text-align: right; font-size: 12px;"' : 'style="font-size: 12px;"'}>Rp ${formatIDR(grandTotal)}</td>
-        </tr>
-      </table>
-
-      <!-- Status Pembayaran, Invoice & Kuitansi -->
-      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px;"' : ''}></div>
+      <!-- Status Pembayaran, Invoice & Kuitansi (Posisi di Tengah) -->
       <div class="text-center font-bold mb-1" ${isPdf ? 'style="text-align: center; font-size: 11px; font-weight: 900; margin-bottom: 4px;"' : 'style="font-size: 11px;"'}>
-        -- STATUS PEMBAYARAN & INVOICE --
+        -- INFO PEMBAYARAN & INVOICE --
       </div>
 
       ${(() => {
@@ -261,6 +238,30 @@ export const buildSalesOrderThermalHTML = (
           `}
         `;
       })()}
+
+      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px;"' : ''}></div>
+
+      <!-- Summary / Totals (Posisi di Bawah) -->
+      <table class="mb-2 font-bold" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>SUBTOTAL</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${formatIDR(subtotalBeforeGlobalDiscount)}</td>
+        </tr>
+        ${
+          globalDiscountAmount > 0
+            ? `
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON TRANSAKSI</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${formatIDR(globalDiscountAmount)}</td>
+        </tr>
+        `
+            : ''
+        }
+        <tr style="border-top: 1px dashed #000;">
+          <td ${isPdf ? 'style="padding: 3px 0; vertical-align: top; font-size: 12px;"' : 'style="font-size: 12px;"'}>TOTAL SO</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 3px 0; vertical-align: top; text-align: right; font-size: 12px;"' : 'style="font-size: 12px;"'}>Rp ${formatIDR(grandTotal)}</td>
+        </tr>
+      </table>
 
       ${
         info.notes
@@ -585,28 +586,7 @@ export const printBluetoothSalesOrder = async (
       appendBytes(lineFeed);
     });
 
-    appendStr('-'.repeat(PRINTER_WIDTH_80MM));
-    appendBytes(lineFeed);
-
-    appendBytes(boldOn);
-    const subtotalBeforeDiscount = (Number(info.total) || 0) + (Number(info.globalDiscountAmount) || 0);
-    const subtotalStr = `SUBTOTAL         Rp ${formatRupiahStr(subtotalBeforeDiscount).padStart(12)}`;
-    appendStr(subtotalStr.padStart(PRINTER_WIDTH_80MM));
-    appendBytes(lineFeed);
-
-    const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
-    if (globalDiscountAmount > 0) {
-      const discStr = `DISKON TRANSAKSI -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
-      appendStr(discStr.padStart(PRINTER_WIDTH_80MM));
-      appendBytes(lineFeed);
-    }
-
-    const totalStr = `TOTAL SO         Rp ${formatRupiahStr(info.total).padStart(12)}`;
-    appendStr(totalStr.padStart(PRINTER_WIDTH_80MM));
-    appendBytes(lineFeed);
-    appendBytes(boldOff);
-
-    // Section Status Pembayaran & Invoice
+    // Section Status Pembayaran & Invoice (Posisi di Tengah)
     appendStr('-'.repeat(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
     appendBytes(boldOn);
@@ -647,6 +627,28 @@ export const printBluetoothSalesOrder = async (
         }
       });
     }
+
+    // Section Summary / Totals SO (Posisi di Bawah)
+    appendStr('-'.repeat(PRINTER_WIDTH_80MM));
+    appendBytes(lineFeed);
+
+    appendBytes(boldOn);
+    const subtotalBeforeDiscount = (Number(info.total) || 0) + (Number(info.globalDiscountAmount) || 0);
+    const subtotalStr = `SUBTOTAL         Rp ${formatRupiahStr(subtotalBeforeDiscount).padStart(12)}`;
+    appendStr(subtotalStr.padStart(PRINTER_WIDTH_80MM));
+    appendBytes(lineFeed);
+
+    const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
+    if (globalDiscountAmount > 0) {
+      const discStr = `DISKON TRANSAKSI -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
+      appendStr(discStr.padStart(PRINTER_WIDTH_80MM));
+      appendBytes(lineFeed);
+    }
+
+    const totalStr = `TOTAL SO         Rp ${formatRupiahStr(info.total).padStart(12)}`;
+    appendStr(totalStr.padStart(PRINTER_WIDTH_80MM));
+    appendBytes(lineFeed);
+    appendBytes(boldOff);
 
     if (info.notes) {
       appendStr('-'.repeat(PRINTER_WIDTH_80MM));

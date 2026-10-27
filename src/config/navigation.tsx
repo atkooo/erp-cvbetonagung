@@ -73,7 +73,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   warehouses: "Master Gudang",
   discounts: "Skema Diskon",
   "stock-management": "Stok Persediaan",
-  "incoming-goods": "Barang Masuk",
+  "incoming-goods": "Penerimaan Barang (GRN)",
   "outgoing-goods": "Barang Keluar",
   "stock-movement-history": "Mutasi Stok",
   "berita-acara-gudang": "Berita Acara (BAG)",
@@ -93,7 +93,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "purchase-requests": "Permintaan Pembelian (PR)",
   rfq: "Penawaran Pemasok (RFQ)",
   "purchase-orders": "Purchase Order (PO)",
-  "goods-receipts": "Penerimaan Barang (GR)",
+  "goods-receipts": "Penerimaan Barang (GRN)",
   "purchase-returns": "Retur Pembelian",
   "production-work-orders": "Work Order (WO)",
   "bom-costing": "Bill of Materials (BOM)",
@@ -242,13 +242,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         requiredModule: "purchase_orders",
       },
       {
-        view: "goods-receipts",
-        label: "Penerimaan Barang (GR)",
-        icon: Download,
-        activeViews: ["incoming-goods"],
-        requiredModule: "goods_receipts",
-      },
-      {
         view: "purchase-returns",
         label: "Retur Pembelian",
         icon: RotateCcw,
@@ -373,9 +366,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
       },
       {
         view: "incoming-goods",
-        label: "Barang Masuk",
+        label: "Penerimaan Barang (GRN)",
         icon: Download,
-        activeViews: ["goods-receipts"],
         requiredModule: "incoming_goods",
       },
       {

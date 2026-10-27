@@ -109,7 +109,9 @@ export default function QrView({
     setListPage(1);
   }, [search, selectedCategory]);
 
-  const [bulkPrintProducts, setBulkPrintProducts] = useState<Product[]>([]);
+  const [modalCategory, setModalCategory] = useState<string>("all");
+  const [modalSearch, setModalSearch] = useState<string>("");
+  const [excludedProductIds, setExcludedProductIds] = useState<Set<string>>(new Set());
   const [isBulkPrint, setIsBulkPrint] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [printSettings, setPrintSettings] = useState<BarcodePrintSettings>(
@@ -120,6 +122,11 @@ export default function QrView({
   const stickerRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadJpeg = async () => {
+    if (isBulkPrint && activeBulkProducts.length === 0) {
+      onTriggerNotification("Tidak ada produk untuk didownload.");
+      return;
+    }
+
     const targetRef = isBulkPrint
       ? hiddenBulkRef.current
       : hiddenStickerRef.current;
@@ -152,6 +159,11 @@ export default function QrView({
   };
 
   const handleDownloadPdf = async () => {
+    if (isBulkPrint && activeBulkProducts.length === 0) {
+      onTriggerNotification("Tidak ada produk untuk didownload.");
+      return;
+    }
+
     const targetRef = isBulkPrint
       ? hiddenBulkRef.current
       : hiddenStickerRef.current;
@@ -226,6 +238,10 @@ export default function QrView({
 
   const handlePrintStiker = async () => {
     if (isBulkPrint) {
+      if (activeBulkProducts.length === 0) {
+        onTriggerNotification("Tidak ada produk untuk dicetak.");
+        return;
+      }
       handleBulkPrint();
       return;
     }
@@ -303,6 +319,24 @@ export default function QrView({
   };
 
   const [products, setProducts] = useState<Product[]>([]);
+
+  const categories = React.useMemo(() => {
+    return Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+  }, [products]);
+
+  const activeBulkProducts = React.useMemo(() => {
+    if (!isBulkPrint) return [];
+    return products.filter((p) => {
+      const matchesCategory =
+        modalCategory === "all" || p.category === modalCategory;
+      const matchesSearch =
+        !modalSearch ||
+        p.sku.toLowerCase().includes(modalSearch.toLowerCase()) ||
+        p.name.toLowerCase().includes(modalSearch.toLowerCase());
+      const notExcluded = !excludedProductIds.has(p.id);
+      return matchesCategory && matchesSearch && notExcluded;
+    });
+  }, [products, isBulkPrint, modalCategory, modalSearch, excludedProductIds]);
   const [isLoading, setIsLoading] = useState(false);
   const [companyProfile, setCompanyProfile] = useState<any>(null);
 
@@ -451,11 +485,27 @@ export default function QrView({
     setPrintSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  const openBulkPrintModal = (products: Product[]) => {
-    setBulkPrintProducts(products);
+  const openBulkPrintModal = () => {
+    const defaultCat =
+      selectedCategory !== "all"
+        ? selectedCategory
+        : categories.length > 0
+          ? categories[0]
+          : "all";
+    setModalCategory(defaultCat);
+    setModalSearch("");
+    setExcludedProductIds(new Set());
     setBulkPage(1);
     setIsBulkPrint(true);
     setShowQrModal(null);
+  };
+
+  const handleExcludeProduct = (productId: string) => {
+    setExcludedProductIds((prev) => {
+      const next = new Set(prev);
+      next.add(productId);
+      return next;
+    });
   };
 
   const getPageRange = (current: number, total: number) => {
@@ -477,8 +527,9 @@ export default function QrView({
 
   const closePrintModal = () => {
     setShowQrModal(null);
-    setBulkPrintProducts([]);
     setIsBulkPrint(false);
+    setExcludedProductIds(new Set());
+    setModalSearch("");
   };
 
   const getStickerContainerStyle = () => {
@@ -613,7 +664,10 @@ export default function QrView({
     );
   };
 
-  const renderBulkPrintPreview = (products: Product[]) => {
+  const renderBulkPrintPreview = (
+    productsToRender: Product[],
+    isInteractive = false,
+  ) => {
     const isCustom = printSettings.layout === "custom";
     const columns = isCustom
       ? Math.min(Math.max(printSettings.customColumns, 1), 6)
@@ -642,18 +696,36 @@ export default function QrView({
             : { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
         }
       >
-        {products.map((product) => (
+        {productsToRender.map((product) => (
           <div
             key={product.id}
-            className="bg-white border-2 border-black rounded-xl p-3 text-center"
+            className="relative bg-white border-2 border-black rounded-xl p-3 text-center group"
             style={{
               width: "100%",
               pageBreakInside: "avoid",
               breakInside: "avoid",
             }}
           >
+            {isInteractive && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleExcludeProduct(product.id);
+                }}
+                className="absolute top-2 right-2 p-1.5 bg-white/95 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg border border-slate-200 hover:border-rose-300 shadow-2xs transition-all cursor-pointer z-10"
+                title="Hapus dari daftar cetak"
+              >
+                <X size={13} />
+              </button>
+            )}
+
             {printSettings.showCompanyName && (
-              <h4 className="font-black text-black text-[11px] uppercase tracking-widest mb-2">
+              <h4
+                className={`font-black text-black text-[11px] uppercase tracking-widest mb-2 ${
+                  isInteractive ? "pr-6" : ""
+                }`}
+              >
                 {companyProfile?.name || "Perusahaan"}
               </h4>
             )}
@@ -910,9 +982,6 @@ export default function QrView({
       startIndex + itemsPerPage,
     );
 
-    const categories = Array.from(
-      new Set(products.map((p) => p.category).filter(Boolean)),
-    );
 
     viewContent = (
       <div className="space-y-5">
@@ -953,10 +1022,11 @@ export default function QrView({
               {filteredProducts.length} item
             </div>
             <button
-              onClick={() => openBulkPrintModal(filteredProducts)}
-              className="px-3 py-2 text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded border border-amber-200"
+              onClick={openBulkPrintModal}
+              className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white shadow-xs shadow-sky-500/20 active:scale-[0.98] transition-all duration-150 cursor-pointer"
             >
-              Bulk Cetak
+              <Printer size={13} />
+              <span>Bulk Cetak Barcode</span>
             </button>
           </div>
         </div>
@@ -1116,7 +1186,7 @@ export default function QrView({
       {viewContent}
 
       {/* Modal Cetak Barcode */}
-      {(showQrModal || bulkPrintProducts.length > 0) && (
+      {(showQrModal || isBulkPrint) && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[calc(100vh-3rem)] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
@@ -1127,7 +1197,7 @@ export default function QrView({
               </h3>
               <button
                 onClick={closePrintModal}
-                className="text-slate-400 hover:text-rose-500"
+                className="text-slate-400 hover:text-rose-500 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1135,6 +1205,83 @@ export default function QrView({
 
             <div className="p-6 flex-1 overflow-y-auto space-y-4 bg-slate-50">
               <div className="w-full space-y-3">
+                {/* IN-MODAL FILTER (Hanya untuk Bulk Cetak) */}
+                {isBulkPrint && (
+                  <div className="bg-white p-3.5 rounded-xl border border-sky-100 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex flex-1 items-center gap-2.5 flex-wrap">
+                        {/* Filter Kategori Dalam Modal */}
+                        <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                          <Tag size={13} className="text-slate-400" />
+                          <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                            Kategori:
+                          </label>
+                          <select
+                            value={modalCategory}
+                            onChange={(e) => {
+                              setModalCategory(e.target.value);
+                              setBulkPage(1);
+                              setExcludedProductIds(new Set());
+                            }}
+                            className="text-xs text-slate-800 bg-transparent focus:outline-none cursor-pointer font-semibold pr-1"
+                          >
+                            {categories.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                            <option value="all">
+                              Semua Kategori ({products.length} SKU)
+                            </option>
+                          </select>
+                        </div>
+
+                        {/* Input Cari Produk Dalam Modal */}
+                        <div className="relative flex-1 min-w-[200px] max-w-sm">
+                          <span className="absolute inset-y-0 left-2.5 flex items-center text-slate-400 pointer-events-none">
+                            <Search size={14} />
+                          </span>
+                          <input
+                            type="text"
+                            value={modalSearch}
+                            onChange={(e) => {
+                              setModalSearch(e.target.value);
+                              setBulkPage(1);
+                            }}
+                            placeholder="Cari SKU atau nama produk di modal..."
+                            className="w-full pl-8 pr-7 py-1.5 border border-slate-200 rounded-lg text-xs font-sans text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                          />
+                          {modalSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setModalSearch("")}
+                              className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Info Jumlah Siap Cetak & Reset Tombol */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-mono font-bold text-sky-800 bg-sky-50 border border-sky-200/70 px-2.5 py-1 rounded-lg">
+                          {activeBulkProducts.length} Produk Siap Cetak
+                        </span>
+                        {excludedProductIds.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExcludedProductIds(new Set())}
+                            className="text-[10px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+                            title="Kembalikan semua item yang telah dihapus"
+                          >
+                            Reset ({excludedProductIds.size} Dikecualikan)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px] text-slate-600">
                   <label className="flex flex-col gap-1">
                     <span className="font-semibold">Ukuran Kertas</span>
@@ -1252,28 +1399,53 @@ export default function QrView({
                   className="bg-white p-4 rounded-xl w-full overflow-hidden mx-auto"
                   style={getStickerContainerStyle()}
                 >
-                  {isBulkPrint && bulkPrintProducts.length > 0
-                    ? renderBulkPrintPreview(
-                        bulkPrintProducts.slice(
-                          (bulkPage - 1) * getBulkPageSize(),
-                          bulkPage * getBulkPageSize(),
+                  {isBulkPrint ? (
+                    activeBulkProducts.length > 0 ? (
+                      renderBulkPrintPreview(
+                        activeBulkProducts.slice(
+                          (Math.min(
+                            bulkPage,
+                            Math.max(
+                              1,
+                              Math.ceil(
+                                activeBulkProducts.length / getBulkPageSize(),
+                              ),
+                            ),
+                          ) -
+                            1) *
+                            getBulkPageSize(),
+                          Math.min(
+                            bulkPage,
+                            Math.max(
+                              1,
+                              Math.ceil(
+                                activeBulkProducts.length / getBulkPageSize(),
+                              ),
+                            ),
+                          ) * getBulkPageSize(),
                         ),
+                        true,
                       )
-                    : showQrModal
-                      ? renderBarcodeLabel(
-                          showQrModal,
-                          getLayoutCardCount(printSettings.layout),
-                        )
-                      : null}
+                    ) : (
+                      <div className="py-12 text-center text-slate-400 font-medium">
+                        Tidak ada produk yang siap dicetak untuk kategori atau pencarian ini.
+                      </div>
+                    )
+                  ) : showQrModal ? (
+                    renderBarcodeLabel(
+                      showQrModal,
+                      getLayoutCardCount(printSettings.layout),
+                    )
+                  ) : null}
                 </div>
 
                 {isBulkPrint &&
-                  bulkPrintProducts.length > getBulkPageSize() && (
+                  activeBulkProducts.length > getBulkPageSize() && (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-[10px] text-slate-600">
                       <div>
-                        Halaman {bulkPage} dari{" "}
+                        Halaman {Math.min(bulkPage, Math.ceil(activeBulkProducts.length / getBulkPageSize()))} dari{" "}
                         {Math.ceil(
-                          bulkPrintProducts.length / getBulkPageSize(),
+                          activeBulkProducts.length / getBulkPageSize(),
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1287,9 +1459,9 @@ export default function QrView({
                           Prev
                         </button>
                         {getPageRange(
-                          bulkPage,
+                          Math.min(bulkPage, Math.ceil(activeBulkProducts.length / getBulkPageSize())),
                           Math.ceil(
-                            bulkPrintProducts.length / getBulkPageSize(),
+                            activeBulkProducts.length / getBulkPageSize(),
                           ),
                         ).map((page, index) =>
                           page === -1 ? (
@@ -1304,8 +1476,8 @@ export default function QrView({
                               key={page}
                               onClick={() => setBulkPage(page)}
                               className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold ${
-                                bulkPage === page
-                                  ? "bg-cyan-600 text-white border-cyan-600"
+                                Math.min(bulkPage, Math.ceil(activeBulkProducts.length / getBulkPageSize())) === page
+                                  ? "bg-sky-600 text-white border-sky-600"
                                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                               }`}
                             >
@@ -1318,16 +1490,16 @@ export default function QrView({
                             setBulkPage((page) =>
                               Math.min(
                                 Math.ceil(
-                                  bulkPrintProducts.length / getBulkPageSize(),
+                                  activeBulkProducts.length / getBulkPageSize(),
                                 ),
                                 page + 1,
                               ),
                             )
                           }
                           disabled={
-                            bulkPage ===
+                            bulkPage >=
                             Math.ceil(
-                              bulkPrintProducts.length / getBulkPageSize(),
+                              activeBulkProducts.length / getBulkPageSize(),
                             )
                           }
                           className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
@@ -1344,7 +1516,7 @@ export default function QrView({
               <button
                 type="button"
                 onClick={handleDownloadJpeg}
-                disabled={isExporting}
+                disabled={isExporting || (isBulkPrint && activeBulkProducts.length === 0)}
                 className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-sky-50/70 text-slate-700 hover:text-sky-800 border border-slate-200 hover:border-sky-200 shadow-2xs active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Download stiker format JPEG"
               >
@@ -1355,7 +1527,7 @@ export default function QrView({
               <button
                 type="button"
                 onClick={handleDownloadPdf}
-                disabled={isExporting}
+                disabled={isExporting || (isBulkPrint && activeBulkProducts.length === 0)}
                 className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white hover:bg-sky-50/70 text-slate-700 hover:text-sky-800 border border-slate-200 hover:border-sky-200 shadow-2xs active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Download stiker format PDF"
               >
@@ -1366,7 +1538,7 @@ export default function QrView({
               <button
                 type="button"
                 onClick={handlePrintStiker}
-                disabled={isExporting}
+                disabled={isExporting || (isBulkPrint && activeBulkProducts.length === 0)}
                 className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white shadow-xs shadow-sky-500/20 active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Printer size={15} />
@@ -1419,8 +1591,9 @@ export default function QrView({
           className="bg-white p-4 rounded-xl border-2 border-black w-full overflow-hidden"
           style={getStickerContainerStyle()}
         >
-          {bulkPrintProducts.length > 0 &&
-            renderBulkPrintPreview(bulkPrintProducts)}
+          {isBulkPrint &&
+            activeBulkProducts.length > 0 &&
+            renderBulkPrintPreview(activeBulkProducts, false)}
         </div>
       </div>
     </>
