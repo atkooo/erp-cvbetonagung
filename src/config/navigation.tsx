@@ -80,6 +80,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   "stock-opname": "Stock Opname",
   "multi-warehouse": "Lokasi Gudang",
   pos: "Kasir (POS)",
+  "pos-history": "Riwayat POS",
   quotations: "Penawaran (Quotation)",
   "sales-orders": "Sales Order (SO)",
   "delivery-orders": "Surat Jalan (DO)",

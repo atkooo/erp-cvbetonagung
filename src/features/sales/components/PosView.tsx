@@ -15,6 +15,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 interface PosViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: any) => void;
 }
 
 interface CartItem {
@@ -40,7 +41,7 @@ const calculateBaseDiscount = (product: any) => {
   return 0;
 };
 
-export default function PosView({ onTriggerNotification }: PosViewProps) {
+export default function PosView({ onTriggerNotification, onNavigate }: PosViewProps) {
   const { authUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -63,18 +64,9 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
 
   const [fulfillmentType, setFulfillmentType] = useState<'take_away' | 'delivery'>('take_away');
   const [checkoutSuccessInfo, setCheckoutSuccessInfo] = useState<any>(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const locationUrl = useLocation();
   const navigate = useNavigate();
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyTotalPages, setHistoryTotalPages] = useState(1);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyStartDate, setHistoryStartDate] = useState('');
-  const [historyEndDate, setHistoryEndDate] = useState('');
-  const [historyCategory, setHistoryCategory] = useState(''); // Maps to status
 
   const [stocks, setStocks] = useState<any[]>([]);
 
@@ -436,71 +428,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCheckoutSuccessInfo(null);
   };
 
-  const buildHistoryPrintInfo = (tx: any) => {
-    const globalDiscountAmount = parseFloat(tx.global_discount_amount || '0');
-    const grandTotal = parseFloat(tx.total || '0');
-    const items = (tx.items || []).map((i: any) => {
-      const unitPrice = parseFloat(i.unit_price || i.price || i.product?.selling_price || i.product?.sellingPrice || '0');
-      const discountAmount = parseFloat(i.discount_amount || '0');
-      const qty = Number(i.quantity) || 0;
-      const subtotal = i.subtotal != null ? parseFloat(i.subtotal) : Math.max(0, unitPrice * qty - discountAmount);
-      return {
-        product: i.product,
-        name: i.product?.name || i.name || 'Item',
-        quantity: qty,
-        unit_price: unitPrice,
-        price: unitPrice,
-        discount_amount: discountAmount,
-        subtotal,
-      };
-    });
-    const itemsGross = items.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0);
-    const cartTotal = itemsGross > 0 ? itemsGross : (grandTotal + globalDiscountAmount);
-
-    const invoices = tx.invoices || [];
-    const paymentSum = invoices.flatMap((inv: any) => inv.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-    const invoicePaid = invoices.reduce((sum: number, inv: any) => sum + Number(inv.paid_amount || 0), 0);
-    const amountPaid = paymentSum > 0 ? paymentSum : (invoicePaid > 0 ? invoicePaid : grandTotal);
-    const change = amountPaid - grandTotal;
-    const cashierName = tx.createdBy?.name || tx.created_by?.name || tx.created_by_user?.name || tx.cashier_name || authUser?.name || 'Kasir';
-
-    return {
-      isHistory: true,
-      source: 'pos',
-      orderNumber: tx.order_number,
-      change,
-      fulfillmentType: (tx.fulfillment_type || 'take_away') as 'take_away' | 'delivery',
-      customerName: tx.customer?.name || 'Pelanggan',
-      cashierName,
-      amountPaid,
-      cartTotal,
-      grandTotal,
-      globalDiscountAmount,
-      globalDiscountType: tx.global_discount_type,
-      globalDiscountValue: parseFloat(tx.global_discount_value || '0'),
-      items,
-      date: tx.order_date,
-    };
-  };
-
-  const fetchHistory = async (page = 1, search = '', startDate = '', endDate = '', category = '') => {
-    setIsLoadingHistory(true);
-    try {
-      const qParam = search ? `&q=${encodeURIComponent(search)}` : '';
-      const dateParams = (startDate && endDate) ? `&start_date=${startDate}&end_date=${endDate}` : '';
-      const statusParam = category ? `&status=${category}` : '';
-
-      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?source=pos&include=customer,items.product.unit,invoices.payments,createdBy&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
-      setTransactionHistory(res.data || []);
-      setHistoryTotalPages(res.meta?.last_page || 1);
-      setHistoryPage(page);
-    } catch (err) {
-      onTriggerNotification('Gagal memuat riwayat transaksi');
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
   const printReceipt = (infoToPrint?: any) => {
     psPrintReceipt(infoToPrint || checkoutSuccessInfo, companyProfile, stocks, onTriggerNotification);
   };
@@ -556,16 +483,11 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
               <button
                 type="button"
                 onClick={() => {
-                  setHistoryPage(1);
-                  setHistorySearch('');
-                  setHistoryStartDate('');
-                  setHistoryEndDate('');
-                  setHistoryCategory('');
-                  fetchHistory(1, '', '', '', '');
-                  setShowHistoryModal(true);
+                  if (onNavigate) onNavigate('pos-history');
+                  else navigate('/sales/pos/history');
                 }}
                 className="btn btn-secondary btn-md text-slate-700"
-                title="Riwayat Transaksi"
+                title="Buka Halaman Riwayat Transaksi"
               >
                 <Search size={16} />
                 <span className="hidden sm:inline">Riwayat</span>
@@ -891,130 +813,6 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                 <ShoppingCart size={16} />
                 <span>Mulai Transaksi Baru</span>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* History Modal */}
-      {showHistoryModal && (
-        <div className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-3 bg-slate-50">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi</h3>
-                <button onClick={() => setShowHistoryModal(false)} className="text-slate-400 hover:text-slate-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                </button>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Cari no struk atau pelanggan..."
-                    value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1, historySearch, historyStartDate, historyEndDate, historyCategory)}
-                    className="w-full pl-9 pr-4 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={historyStartDate}
-                    onChange={(e) => setHistoryStartDate(e.target.value)}
-                    className="w-32 px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
-                  />
-                  <span className="text-slate-400 self-center">-</span>
-                  <input
-                    type="date"
-                    value={historyEndDate}
-                    onChange={(e) => setHistoryEndDate(e.target.value)}
-                    className="w-32 px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
-                  />
-                </div>
-                <select
-                  value={historyCategory}
-                  onChange={(e) => setHistoryCategory(e.target.value)}
-                  className="px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-emerald-200 outline-none transition-all"
-                >
-                  <option value="">Semua Kategori</option>
-                  <option value="completed">Selesai (Kasir POS)</option>
-                  <option value="processing">Diproses (Reguler)</option>
-                </select>
-                <button
-                  onClick={() => fetchHistory(1, historySearch, historyStartDate, historyEndDate, historyCategory)}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors"
-                >
-                  Terapkan
-                </button>
-              </div>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              {isLoadingHistory ? (
-                <div className="text-center py-8 text-slate-500">Memuat riwayat...</div>
-              ) : transactionHistory.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">Belum ada transaksi hari ini</div>
-              ) : (
-                <div className="space-y-3">
-                  {transactionHistory.map(tx => (
-                    <div key={tx.id} className="flex justify-between items-center p-4 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
-                      <div>
-                        <div className="font-bold text-slate-800">{tx.order_number}</div>
-                        <div className="text-sm text-slate-500">{tx.customer?.name || 'Pelanggan'} • {tx.order_date}</div>
-                        <div className="text-xs text-slate-400 mt-1">{tx.items?.length || 0} Item</div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="font-black text-slate-900">{formatRupiah(parseFloat(tx.total))}</div>
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => downloadReceipt(buildHistoryPrintInfo(tx))}
-                            className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
-                            title="Download Struk (PDF)"
-                          >
-                            <Download size={16} />
-                          </button>
-                          <button
-                            onClick={() => printBluetoothReceipt(buildHistoryPrintInfo(tx))}
-                            className="px-3 py-1.5 border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
-                            title="Cetak Bluetooth"
-                          >
-                            <Bluetooth size={16} />
-                          </button>
-                          <button
-                            onClick={() => printReceipt(buildHistoryPrintInfo(tx))}
-                            className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
-                          >
-                            <Package size={16} /> Cetak
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div className="text-sm text-slate-500">
-                Halaman {historyPage} dari {historyTotalPages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  disabled={historyPage <= 1 || isLoadingHistory}
-                  onClick={() => fetchHistory(historyPage - 1, historySearch, historyStartDate, historyEndDate, historyCategory)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
-                >
-                  Sebelumnnya
-                </button>
-                <button
-                  disabled={historyPage >= historyTotalPages || isLoadingHistory}
-                  onClick={() => fetchHistory(historyPage + 1, historySearch, historyStartDate, historyEndDate, historyCategory)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
-                >
-                  Selanjutnya
-                </button>
-              </div>
             </div>
           </div>
         </div>

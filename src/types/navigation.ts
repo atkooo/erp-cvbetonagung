@@ -31,6 +31,7 @@ export type ViewType =
   | 'scanned-product-detail'
   // Sales
   | 'pos'
+  | 'pos-history'
   | 'quotations'
   | 'sales-orders'
   | 'delivery-orders'

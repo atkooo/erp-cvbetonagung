@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Halaman Khusus Riwayat Transaksi Kasir POS (`PosHistoryView.tsx`, `AppRouter.tsx`, `routes.ts`, `navigation.tsx`)**:
+  - Mengubah fitur riwayat transaksi kasir yang sebelumnya berupa modal pop-up menjadi halaman terdedikasi di rute `/sales/pos/history`.
+  - Dilengkapi banner ringkasan metrik penjualan POS (total transaksi, total omset halaman, dan status pemenuhan barang).
+  - Menyediakan filter komprehensif: pencarian nomor nota/pelanggan/kasir, rentang tanggal (mulai & akhir), serta filter status operasional (Selesai, Diantar/Pending, Dibatalkan).
+  - Tabel transaksi rapi dengan aksi cetak struk thermal 80mm langsung, unduh PDF 80mm, cetak Bluetooth ESC/POS, dan navigasi langsung ke detail Sales Order.
+  - Pagination penuh dengan pilihan jumlah baris per halaman (10, 15, 25, 50).
+  - Tombol navigasi balik yang mulus antara layar Kasir POS (`/sales/pos`) dan Riwayat Transaksi POS (`/sales/pos/history`).
 - **Penyatuan Format Cetak Thermal POS dan Sales Order Kasir (Single Source of Truth / "Satu Kebenaran")**:
   - **Penyebab Perbedaan Sebelumnya Teridentifikasi**:
     - Transaksi POS yang dicetak dari menu Sales Order (tab Kasir / detail SO) menggunakan template thermal Sales Order formal B2B (`=== SALES ORDER ===`, pemecahan invoice terpisah, dan rincian kuitansi), sedangkan cetakan dari POS menggunakan format struk kasir toko.
@@ -37,11 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Menampilkan rincian `Subtotal Kotor`, `Diskon Item`, `Subtotal Bersih`, `Ongkos Kirim`, `Total Tagihan`, `Telah Dibayar`, dan `Sisa Tagihan` pada footer faktur.
 
 ### Changed
+- **Pemisahan Transaksi POS dari Modul Sales Order B2B (`SalesView.tsx`, `navigation.tsx`)**:
+  - Menghapus tab filter 'Kasir (POS)' dan badge sumber dokumen 'POS' pada tabel daftar Sales Order formal B2B.
+  - Mengarahkan pemanggilan data ke `salesApi.getSalesOrders('erp')` serta menyaring dokumen `source !== 'pos'`, sehingga ratusan transaksi kasir ritel harian tidak mencemari daftar pesanan proyek/formal B2B.
+  - Menghilangkan menu 'Riwayat POS' dari sidebar navigasi utama ERP agar bilah samping tetap rapi dan ringkas; riwayat POS diakses langsung melalui tombol 'Riwayat' di dalam antarmuka Kasir POS.
 - **Penerapan Pagination, Pengurutan Stok Tersedia, dan Optimasi Performa Kasir POS (`PosProductGrid.tsx`)**:
   - **Prioritas Urutan Ketersediaan Stok**: Produk yang memiliki stok fisik siap jual (*available stock* > 0) otomatis ditampilkan di bagian atas dan diurutkan berdasarkan jumlah stok terbanyak, sedangkan produk dengan stok kosong/habis ditaruh di urutan paling bawah.
   - **Pagination Produk POS**: Menambahkan kontrol pagination (pilihan 12, 24, atau 48 item per halaman, default 12) sehingga browser kasir tidak lagi me-render ratusan kartu produk dan elemen gambar sekaligus, mencegah lag dan membuat scrolling ringan.
   - **Optimasi Kalkulasi Stok O(1)**: Mengganti loop filter stok berulang pada JSX render dengan `stockMap` terkomputasi sekali dalam memori (*O(1) lookup*), meningkatkan kecepatan rendering kartu produk secara signifikan.
-  - **Quick Toggle Stok Ready**: Menambahkan tombol filter instan *Semua* vs *Ready Saja* di samping kolom pencarian untuk kemudahan kasir melihat produk yang siap kirim/bawa.
+  - **Penyederhanaan Filter Katalog POS**: Menghilangkan tombol filter toggle *Semua / Ready Saja* sesuai instruksi pengguna demi tampilan antarmuka yang bersih dan minimalis tanpa tombol berlebih.
 - **Pembersihan Tombol Approval Berlebih pada Transaksi POS (`SalesOrderDetailView.tsx`, `SalesView.tsx`)**:
   - Memperbaiki kondisi tombol **Setujui (Approve)** agar secara ketat hanya muncul untuk dokumen Sales Order B2B formal non-POS yang masih berstatus `Draft`.
   - Menghilangkan tombol approval pada transaksi kasir POS (`source === 'pos'`), karena transaksi kasir bersifat *instant settlement* (pembayaran langsung lunas, faktur langsung diterbitkan, serta surat jalan dan SPK produksi otomatis dibuat seketika saat checkout kasir selesai).

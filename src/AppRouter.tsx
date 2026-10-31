@@ -47,6 +47,7 @@ const WarehouseMasterView = lazyWithRetry(() => import('./components/WarehouseMa
 const DiscountsView = lazyWithRetry(() => import('./components/DiscountsView'));
 const InventoryView = lazyWithRetry(() => import('./components/InventoryView'));
 const PosView = lazyWithRetry(() => import('./features/sales/components/PosView'));
+const PosHistoryView = lazyWithRetry(() => import('./features/sales/components/PosHistoryView'));
 const SalesView = lazyWithRetry(() => import('./components/SalesView'));
 const InvoicesView = lazyWithRetry(() => import('./components/InvoicesView'));
 const PaymentsView = lazyWithRetry(() => import('./components/PaymentsView'));
@@ -218,6 +219,7 @@ const routes: RouteObject[] = [
 
       // Sales
       { path: 'sales/pos', element: lazyRoute(PosView) },
+      { path: 'sales/pos/history', element: lazyRoute(PosHistoryView) },
       { path: 'sales/quotation', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/quotation/:id', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/order', element: lazyRoute(SalesView, { type: 'sales-order' }) },

@@ -17,6 +17,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
 
   // Sales
   pos:                      '/sales/pos',
+  'pos-history':            '/sales/pos/history',
   quotations:               '/sales/quotation',
   'sales-orders':           '/sales/order',
   'delivery-orders':        '/sales/delivery-orders',
