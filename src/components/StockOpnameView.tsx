@@ -105,15 +105,15 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
   const canApprove = () => {
     if (!authUser) return true;
     const code = (userRoleCode || authUser.role?.code || '').toLowerCase();
-    if (['admin', 'superadmin', 'super_admin', 'owner', 'manager', 'head_of_warehouse'].includes(code)) {
+    if (['admin', 'superadmin', 'super_admin', 'owner', 'manager', 'head_of_warehouse', 'inventory'].includes(code)) {
       return true;
     }
     const permissions = authUser.role?.permissions || [];
-    const opnamePerm = permissions.find(p => (p.module === 'stock_opname' || p.module === 'inventory') && (p.action === 'approve' || p.action === 'all'));
-    if (opnamePerm && opnamePerm.pivot?.access_level === 'full') {
-      return true;
-    }
-    return permissions.some(p => (p.module === 'stock_opname' || p.module === 'inventory' || p.module === 'approvals') && p.pivot?.access_level === 'full');
+    return permissions.some(
+      (p: any) =>
+        (p.module === 'stock_opname' || p.module === 'inventory' || p.module === 'approvals') &&
+        (p.action === 'approve' || p.action === 'all' || p.accessLevel === 'full' || p.pivot?.access_level === 'full')
+    );
   };
 
   const isItemSelectable = (item: StockOpnameItem) => {
@@ -388,8 +388,52 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     }
   };
 
+  const handleBulkDirectApprove = async () => {
+    if (!selectedSession || selectedItemIds.length === 0) return;
+    const itemsToApprove = sessionItems.filter(
+      i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && (!i.approvalRequestId || i.approvalStatus === 'rejected')
+    );
+    if (itemsToApprove.length === 0) return;
+
+    const result = await Swal.fire({
+      title: 'Setujui & Selaraskan Massal?',
+      text: `Setujui penyesuaian dan selaraskan saldo stok fisik untuk ${itemsToApprove.length} item secara langsung?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Setujui Semua',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsSubmittingBulk(true);
+    let successCount = 0;
+    try {
+      for (const item of itemsToApprove) {
+        await inventoryApi.approveStockOpnameItem(item.id, undefined, true);
+        successCount++;
+      }
+      Swal.fire('Sukses', `${successCount} penyesuaian stok berhasil disetujui dan diselaraskan.`, 'success');
+      onTriggerNotification(`${successCount} penyesuaian stok disetujui & diselaraskan.`);
+      setSelectedItemIds(prev => prev.filter(id => !itemsToApprove.some(item => item.id === id)));
+      fetchSessionItems(selectedSession.id);
+    } catch (error: any) {
+      console.error('Error bulk direct approving items:', error);
+      Swal.fire('Info', `Hanya ${successCount} dari ${itemsToApprove.length} yang berhasil disetujui. ${error?.message || ''}`, 'warning');
+      fetchSessionItems(selectedSession.id);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
   const handleRequestApproval = async (item: StockOpnameItem) => {
     if (!selectedSession) return;
+
+    // Direct approval shortcut for authorized users
+    if (canApprove()) {
+      return handleApproveItem(item, true);
+    }
 
     const result = await Swal.fire({
       title: 'Ajukan Approval?',
@@ -420,15 +464,25 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
         Swal.fire('Sukses', 'Permintaan approval berhasil diajukan.', 'success');
         onTriggerNotification(`Permintaan approval penyesuaian stok ${item.sku} diajukan.`);
         fetchSessionItems(selectedSession.id);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error submitting approval:', error);
-        Swal.fire('Gagal', 'Gagal mengajukan permintaan approval.', 'error');
+        const isForbidden = error?.status === 403 || error?.statusCode === 403 || error?.message?.includes('Akses ditolak');
+        if (isForbidden) {
+          Swal.fire('Akses Ditolak', 'Pengajuan tiket approval memerlukan izin modul "Alur Persetujuan (Approvals)" pada Master & Sistem > Hak Akses (RBAC). Hubungi Administrator untuk mengaktifkannya, atau gunakan akun dengan hak approval.', 'error');
+        } else {
+          Swal.fire('Gagal', error?.message || 'Gagal mengajukan permintaan approval.', 'error');
+        }
       }
     }
   };
 
   const handleBulkRequestApproval = async () => {
     if (!selectedSession || selectedItemIds.length === 0) return;
+
+    // Direct bulk approval for authorized users
+    if (canApprove()) {
+      return handleBulkDirectApprove();
+    }
 
     const itemsToApprove = sessionItems.filter(
       i => selectedItemIds.includes(i.id) && i.differenceQty !== 0 && (!i.approvalRequestId || i.approvalStatus === 'rejected')
@@ -468,9 +522,14 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
         onTriggerNotification(`${successCount} permintaan approval diajukan.`);
         setSelectedItemIds(prev => prev.filter(id => !itemsToApprove.some(item => item.id === id)));
         fetchSessionItems(selectedSession.id);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error submitting bulk approval:', error);
-        Swal.fire('Info', `Hanya ${successCount} dari ${itemsToApprove.length} yang berhasil diajukan karena terjadi kesalahan.`, 'warning');
+        const isForbidden = error?.status === 403 || error?.statusCode === 403 || error?.message?.includes('Akses ditolak');
+        if (isForbidden) {
+          Swal.fire('Akses Ditolak', 'Pengajuan tiket approval memerlukan izin modul "Alur Persetujuan (Approvals)" pada Master & Sistem > Hak Akses (RBAC). Hubungi Administrator untuk mengaktifkannya, atau gunakan akun dengan hak approval.', 'error');
+        } else {
+          Swal.fire('Info', `Hanya ${successCount} dari ${itemsToApprove.length} yang berhasil diajukan karena terjadi kesalahan.`, 'warning');
+        }
         fetchSessionItems(selectedSession.id);
       } finally {
         setIsSubmittingBulk(false);
@@ -478,15 +537,15 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     }
   };
 
-  const handleApproveItem = async (item: StockOpnameItem) => {
+  const handleApproveItem = async (item: StockOpnameItem, autoAdjust: boolean = true) => {
     if (!selectedSession) return;
     const diffText = item.differenceQty > 0 ? `+${item.differenceQty}` : `${item.differenceQty}`;
     const result = await Swal.fire({
-      title: 'Setujui Penyesuaian?',
-      text: `Setujui penyesuaian selisih ${diffText} pcs untuk ${item.productName}?`,
+      title: autoAdjust ? 'Setujui & Selaraskan Stok?' : 'Setujui Penyesuaian?',
+      text: `Setujui penyesuaian selisih ${diffText} pcs untuk ${item.productName}${autoAdjust ? ' dan langsung selaraskan saldo stok fisik' : ''}?`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: 'Setujui',
+      confirmButtonText: autoAdjust ? 'Setujui & Selaraskan' : 'Setujui',
       cancelButtonText: 'Batal',
       confirmButtonColor: '#0284c7',
     });
@@ -494,9 +553,9 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
     if (!result.isConfirmed) return;
 
     try {
-      await inventoryApi.approveStockOpnameItem(item.id);
-      Swal.fire('Disetujui', `Penyesuaian stok ${item.productName} berhasil disetujui.`, 'success');
-      onTriggerNotification(`Penyesuaian stok ${item.sku} disetujui.`);
+      await inventoryApi.approveStockOpnameItem(item.id, undefined, autoAdjust);
+      Swal.fire('Disetujui', `Penyesuaian stok ${item.productName} berhasil disetujui${autoAdjust ? ' dan stok telah diselaraskan' : ''}.`, 'success');
+      onTriggerNotification(`Penyesuaian stok ${item.sku} disetujui${autoAdjust ? ' & diselaraskan' : ''}.`);
       fetchSessionItems(selectedSession.id);
     } catch (error: any) {
       console.error('Error approving item:', error);
@@ -877,14 +936,25 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                       return (selectedApprovable.length > 0 || selectedPending.length > 0 || selectedAdjustable.length > 0) && selectedSession?.status === 'in_progress' ? (
                         <div className="flex items-center gap-2 flex-wrap">
                           {selectedApprovable.length > 0 && (
-                            <button
-                              onClick={handleBulkRequestApproval}
-                              disabled={isSubmittingBulk}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-2xs cursor-pointer"
-                            >
-                              <Send size={13} />
-                              <span>Ajukan Approval ({selectedApprovable.length})</span>
-                            </button>
+                            canApprove() ? (
+                              <button
+                                onClick={handleBulkDirectApprove}
+                                disabled={isSubmittingBulk}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-xs shadow-sky-500/20 cursor-pointer active:scale-[0.98]"
+                              >
+                                <Check size={13} />
+                                <span>Setujui Langsung ({selectedApprovable.length})</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={handleBulkRequestApproval}
+                                disabled={isSubmittingBulk}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-700 rounded-xl font-semibold transition disabled:opacity-50 whitespace-nowrap text-xs shadow-2xs cursor-pointer active:scale-[0.98]"
+                              >
+                                <Send size={13} />
+                                <span>Ajukan Approval ({selectedApprovable.length})</span>
+                              </button>
+                            )
                           )}
                           {selectedPending.length > 0 && canApprove() && (
                             <>
@@ -1043,13 +1113,21 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                       {item.approvalStatus === 'pending'
                                         ? 'Menunggu Approval'
                                         : item.approvalStatus === 'approved'
-                                          ? 'Disetujui'
+                                          ? (item.isAdjusted ? 'Selesai' : 'Disetujui')
                                           : item.approvalStatus === 'rejected'
                                             ? 'Ditolak'
                                             : item.approvalStatus}
                                     </StatusPill>
                                   ) : hasDifference ? (
-                                    <span className="text-amber-600 font-bold">Butuh Pengajuan</span>
+                                    canApprove() ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                                        Siap Disetujui
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                        Butuh Pengajuan
+                                      </span>
+                                    )
                                   ) : (
                                     <span className="text-slate-400">-</span>
                                   )}
@@ -1103,13 +1181,23 @@ export default function StockOpnameView({ onTriggerNotification }: StockOpnameVi
                                     {selectedSession.status !== 'draft' && !isEditing && (
                                       <>
                                         {hasDifference && (!item.approvalRequestId || item.approvalStatus === 'rejected') && (
-                                          <button
-                                            onClick={() => handleRequestApproval(item)}
-                                            title={item.approvalStatus === 'rejected' ? 'Ajukan Ulang Approval' : 'Ajukan Approval'}
-                                            className="p-1.5 border border-slate-200 bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-lg transition cursor-pointer"
-                                          >
-                                            <Send size={13} />
-                                          </button>
+                                          canApprove() ? (
+                                            <button
+                                              onClick={() => handleApproveItem(item, true)}
+                                              title="Setujui & Selaraskan Stok Langsung"
+                                              className="p-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition cursor-pointer shadow-xs shadow-sky-500/20 active:scale-[0.98]"
+                                            >
+                                              <Check size={13} />
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => handleRequestApproval(item)}
+                                              title={item.approvalStatus === 'rejected' ? 'Ajukan Ulang Approval' : 'Ajukan Approval'}
+                                              className="p-1.5 border border-slate-200 bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-lg transition cursor-pointer active:scale-[0.98]"
+                                            >
+                                              <Send size={13} />
+                                            </button>
+                                          )
                                         )}
 
                                         {item.approvalStatus === 'pending' && canApprove() && (

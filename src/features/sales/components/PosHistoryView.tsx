@@ -204,41 +204,47 @@ export default function PosHistoryView({ onTriggerNotification, onNavigate }: Po
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-3">
+      {/* 1. Breadcrumb & Navigation Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 px-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-2 text-xs">
           <button
             type="button"
             onClick={() => {
               if (onNavigate) onNavigate('pos');
               else navigate('/sales/pos');
             }}
-            className="btn btn-secondary btn-md text-slate-600 hover:text-sky-700"
-            title="Kembali ke Layar Kasir"
+            className="flex items-center gap-1.5 text-slate-600 hover:text-sky-700 font-semibold px-2 py-1 rounded-lg hover:bg-sky-50 transition-colors cursor-pointer"
           >
-            <ArrowLeft size={16} />
-            <span>Kasir</span>
+            <ChevronLeft size={15} />
+            <span>Kembali ke Kasir</span>
           </button>
-          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-          <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 shadow-2xs">
-            <Receipt size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Riwayat Transaksi Kasir (POS)</h1>
-            <p className="text-xs text-slate-500">Arsip penjualan langsung kasir toko dan cetak ulang struk nota belanja.</p>
-          </div>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-500 font-medium">Penjualan</span>
+          <span className="text-slate-300">/</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigate) onNavigate('pos');
+              else navigate('/sales/pos');
+            }}
+            className="text-slate-500 hover:text-sky-700 font-medium hover:underline cursor-pointer"
+          >
+            Kasir (POS)
+          </button>
+          <span className="text-slate-300">/</span>
+          <span className="font-semibold text-sky-700">Riwayat Transaksi</span>
         </div>
 
-        <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             type="button"
             onClick={() => fetchTransactions(currentPage)}
             disabled={isLoading}
-            className="btn btn-secondary btn-md text-slate-700"
+            className="btn btn-secondary btn-sm"
             title="Segarkan data"
           >
-            <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
-            <span>Segarkan</span>
+            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Segarkan</span>
           </button>
           <button
             type="button"
@@ -246,10 +252,11 @@ export default function PosHistoryView({ onTriggerNotification, onNavigate }: Po
               if (onNavigate) onNavigate('pos');
               else navigate('/sales/pos');
             }}
-            className="btn btn-primary btn-md shadow-xs shadow-sky-500/20"
+            className="btn btn-primary btn-sm"
+            title="Buka Kasir Baru"
           >
-            <Calculator size={15} />
-            <span>Buka Kasir</span>
+            <Calculator size={13} />
+            <span className="hidden sm:inline">Kasir Baru</span>
           </button>
         </div>
       </div>

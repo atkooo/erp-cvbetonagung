@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   Receipt,
@@ -67,7 +68,18 @@ export default function SalesOrderDetailView({
   onNavigate,
   onTriggerNotification,
 }: SalesOrderDetailViewProps) {
+  const navigate = useNavigate();
   const [order, setOrder] = useState<SalesOrder | null>(initialOrder || null);
+  const isPosOrder = (order?.source as string || '').toLowerCase() === 'pos';
+
+  const handleBack = () => {
+    if (isPosOrder) {
+      if (onNavigate) onNavigate('pos-history');
+      else navigate('/sales/pos/history');
+    } else {
+      onBack();
+    }
+  };
   const [isLoading, setIsLoading] = useState(!initialOrder);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'items' | 'wo' | 'opl' | 'do' | 'invoices'>('items');
@@ -356,16 +368,42 @@ export default function SalesOrderDetailView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 px-4 rounded-xl border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-2 text-xs">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="flex items-center gap-1.5 text-slate-600 hover:text-sky-700 font-semibold px-2 py-1 rounded-lg hover:bg-sky-50 transition-colors cursor-pointer"
           >
             <ChevronLeft size={15} />
-            <span>Kembali ke Daftar</span>
+            <span>{isPosOrder ? 'Kembali ke Riwayat' : 'Kembali ke Daftar'}</span>
           </button>
           <span className="text-slate-300">/</span>
           <span className="text-slate-500 font-medium">Penjualan</span>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-500 font-medium">Sales Order</span>
+          {isPosOrder ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigate) onNavigate('pos');
+                  else navigate('/sales/pos');
+                }}
+                className="text-slate-500 hover:text-sky-700 font-medium hover:underline cursor-pointer"
+              >
+                Kasir (POS)
+              </button>
+              <span className="text-slate-300">/</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigate) onNavigate('pos-history');
+                  else navigate('/sales/pos/history');
+                }}
+                className="text-slate-500 hover:text-sky-700 font-medium hover:underline cursor-pointer"
+              >
+                Riwayat Transaksi
+              </button>
+            </>
+          ) : (
+            <span className="text-slate-500 font-medium">Sales Order</span>
+          )}
           <span className="text-slate-300">/</span>
           <span className="font-mono font-bold text-sky-700">{order.orderNumber}</span>
         </div>

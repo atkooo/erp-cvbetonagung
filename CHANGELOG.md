@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Persetujuan Langsung & Perbaikan Otorisasi Stock Opname (`StockOpnameView.tsx`)**:
+  - **Identifikasi Kendala 403 (Forbidden)**: Pengajuan tiket approval (`/api/inventory/approval-requests`) sebelumnya ditolak oleh middleware backend karena dipetakan ke modul `approvals` (di bawah Master & Sistem), sehingga pengguna yang hanya mengaktifkan otorisasi pada modul `stock_opname` (di bawah Persediaan) mendapatkan pesan 'Akses ditolak untuk role akun ini'.
+  - **Aksi Persetujuan Langsung (Direct Approval)**: Menghadirkan tombol 'Setujui Langsung' (per-item maupun massal) khusus untuk pengguna berwenang (`canApprove()`) yang langsung mengeksekusi `/inventory/stock-opname-items/{id}/approve` dengan opsi `auto_adjust: true`.
+  - **Efisiensi Alur Kerja 1-Klik**: Menghilangkan keharusan membuat tiket pengajuan approval berulang kali bagi akun yang sudah memiliki otorisasi penuh; saldo stok fisik langsung diselaraskan secara instan.
+  - **Status Visual Jelas**: Mengubah label status dari 'Butuh Pengajuan' menjadi badge 'Siap Disetujui' bagi akun approver, serta menambahkan pesan error deskriptif jika staf operasional non-approver belum memiliki izin modul 'approvals'.
 - **Halaman Khusus Riwayat Transaksi Kasir POS (`PosHistoryView.tsx`, `AppRouter.tsx`, `routes.ts`, `navigation.tsx`)**:
   - Mengubah fitur riwayat transaksi kasir yang sebelumnya berupa modal pop-up menjadi halaman terdedikasi di rute `/sales/pos/history`.
   - Dilengkapi banner ringkasan metrik penjualan POS (total transaksi, total omset halaman, dan status pemenuhan barang).
