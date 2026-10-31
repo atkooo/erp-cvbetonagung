@@ -14,6 +14,7 @@ interface ProductPickerProps {
   onChange: (product: Product) => void;
   categoryFilter?: string; // Deprecated: Use typeFilter instead
   typeFilter?: 'raw_material' | 'finished_good' | 'service';
+  procurementTypeFilter?: 'purchase' | 'manufacture';
   locationIdFilter?: string;
   excludedProductIds?: string[];
   showCategoryFilter?: boolean;
@@ -26,6 +27,7 @@ export default function ProductPicker({
   onChange,
   categoryFilter,
   typeFilter,
+  procurementTypeFilter,
   locationIdFilter,
   excludedProductIds = [],
   showCategoryFilter = true,
@@ -75,6 +77,12 @@ export default function ProductPicker({
       }
       if (typeFilter) {
         filtered = filtered.filter(p => p.type === typeFilter || p.id === value);
+      }
+      if (procurementTypeFilter) {
+        filtered = filtered.filter(p => {
+          const pType = p.procurementType || (p as any).procurement_type || (p.type === 'raw_material' ? 'purchase' : 'manufacture');
+          return pType === procurementTypeFilter || p.id === value;
+        });
       }
       setProducts(filtered);
     } catch (error) {

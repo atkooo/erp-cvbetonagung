@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Penyatuan Format Cetak Thermal POS dan Sales Order Kasir (Single Source of Truth / "Satu Kebenaran")**:
+  - **Penyebab Perbedaan Sebelumnya Teridentifikasi**:
+    - Transaksi POS yang dicetak dari menu Sales Order (tab Kasir / detail SO) menggunakan template thermal Sales Order formal B2B (`=== SALES ORDER ===`, pemecahan invoice terpisah, dan rincian kuitansi), sedangkan cetakan dari POS menggunakan format struk kasir toko.
+    - Pada riwayat transaksi POS (`PosView.tsx`), pembayaran `amountPaid` dan kembalian `change` sebelumnya ter-hardcode ke grand total dan Rp 0 alih-alih membaca data pembayaran riil.
+  - **Standarisasi & Penyatuan Format (`PosPrintService.ts`, `SalesOrderPrintService.ts`)**:
+    - Menghadirkan fungsi konversi `convertSalesOrderToPosPrintInfo` yang menjamin seluruh dokumen dengan `source === 'pos'` memakai satu renderer cetak struk kasir yang identik di seluruh sistem.
+    - Mengintegrasikan cetak thermal browser, unduh PDF roll 80mm, dan Bluetooth ESC/POS di `SalesOrderPrintService.ts` agar otomatis mendistribusikan format struk kasir POS jika `source === 'pos'`.
+    - Memperbarui kalkulasi `amountPaid` dan `change` pada riwayat transaksi POS (`PosView.tsx`) agar membaca data pembayaran kuitansi dan faktur secara akurat dari relasi eager load backend.
+    - Menyelaraskan judul modal cetak thermal di `SalesView.tsx` dan `SalesOrderDetailView.tsx` menjadi **Cetak Struk Kasir (POS)** jika dokumen yang dibuka bersumber dari POS.
+- **Penyajian Rincian Diskon Lengkap pada Nota & Struk (POS, Sales Order, Quotation, & Invoice)**:
+  - **POS Kasir (`PosPrintService.ts`, `PosView.tsx`)**:
+    - Memperbaiki pencetakan struk thermal browser, file PDF 80mm, dan Bluetooth ESC/POS agar menyajikan rincian diskon item lengkap dengan persentase (contoh: `Diskon Item (10%): -Rp 10.000`).
+    - Menyajikan rincian terstruktur pada bagian footer struk: `SUBTOTAL` kotor, `DISKON ITEM`, `DISKON TRANSAKSI (X%)`, `TOTAL DISKON`, dan `GRAND TOTAL`.
+    - Memperbaiki fungsi cetak ulang dari riwayat transaksi (`PosView.tsx`) sehingga seluruh data diskon global transaksi dan rincian harga kotor item tetap utuh tersimpan dan tercetak rapi.
+  - **Sales Order Thermal & Bluetooth (`SalesOrderPrintService.ts`)**:
+    - Memperbarui `buildSalesOrderThermalHTML` dan `printBluetoothSalesOrder` agar mengkalkulasi subtotal kotor asli dari seluruh item.
+    - Menampilkan label diskon per item beserta persentasenya pada baris rincian produk.
+    - Menambahkan rincian ringkasan finansial di bagian bawah nota thermal: `SUBTOTAL` kotor, `DISKON ITEM` (jika ada), `DISKON TRANSAKSI (X%)` (jika ada), `TOTAL DISKON` (jika keduanya ada), dan `TOTAL SO`.
+  - **Sales Order A4 Print & Tampilan Detail (`SalesOrderDetailView.tsx`)**:
+    - Menghadirkan baris potongan diskon item beserta persentase di kolom harga satuan pada tabel cetak resmi A4 dan tampilan detail pesanan.
+    - Memperbarui tabel rincian finansial A4: menampilkan `SUBTOTAL KOTOR`, `TOTAL DISKON ITEM`, `DISKON TRANSAKSI (X%)`, `TOTAL SEMUA DISKON`, dan `TOTAL SALES ORDER`.
+    - Menyelaraskan kartu ringkasan finansial dan KPI badge penghematan (*Hemat Rp ...*) di layar antarmuka pengguna.
+  - **Penawaran Harga / Quotation (`QuotationPrintService.ts`, `QuotationDetailView.tsx`)**:
+    - Menerapkan format rincian diskon yang sama pada struk thermal roll 80mm, pencetakan Bluetooth ESC/POS, dan cetak dokumen resmi A4 untuk penawaran harga.
+    - Menghadirkan baris `SUBTOTAL KOTOR`, `TOTAL DISKON ITEM`, `DISKON TRANSAKSI`, dan `TOTAL KESELURUHAN`.
+  - **Faktur Penjualan / Invoice (`InvoicesView.tsx`, `types/sales.ts`)**:
+    - Menambahkan rincian diskon per item pada tabel cetak A4 faktur penjualan.
+    - Menampilkan rincian `Subtotal Kotor`, `Diskon Item`, `Subtotal Bersih`, `Ongkos Kirim`, `Total Tagihan`, `Telah Dibayar`, dan `Sisa Tagihan` pada footer faktur.
+
+### Changed
+- **Pembersihan Tombol Approval Berlebih pada Transaksi POS (`SalesOrderDetailView.tsx`, `SalesView.tsx`)**:
+  - Memperbaiki kondisi tombol **Setujui (Approve)** agar secara ketat hanya muncul untuk dokumen Sales Order B2B formal non-POS yang masih berstatus `Draft`.
+  - Menghilangkan tombol approval pada transaksi kasir POS (`source === 'pos'`), karena transaksi kasir bersifat *instant settlement* (pembayaran langsung lunas, faktur langsung diterbitkan, serta surat jalan dan SPK produksi otomatis dibuat seketika saat checkout kasir selesai).
+- **Pembersihan Kolom Tanda Tangan (TTD) pada Seluruh Template Formulir Cetak A4**:
+  - Menghapus blok tanda tangan (Dibuat Oleh, Menyetujui/Pelanggan, Mengetahui, Direktur Utama, Hormat Kami, dll.) pada seluruh dokumen cetak format A4:
+    - **Sales Order A4** ([`SalesOrderDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/SalesOrderDetailView.tsx), [`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx))
+    - **Quotation / Penawaran Harga A4** ([`QuotationDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/QuotationDetailView.tsx))
+    - **Faktur Penjualan / Invoice A4** ([`InvoicesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/InvoicesView.tsx))
+    - **Surat Jalan / Delivery Order A4** ([`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx))
+    - **Purchase Request / Permintaan Pembelian A4** ([`PurchaseRequestView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseRequestView.tsx))
+    - **Purchase Order / Pesanan Pembelian A4** ([`PurchaseView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseView.tsx))
+    - **Request for Quotation / RFQ A4** ([`RfqView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RfqView.tsx))
+    - **Goods Receipt Note / Bukti Penerimaan Barang A4** ([`InwardTab.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/inventory/InwardTab.tsx))
+- **Penyaringan Pemilihan Produk Berdasarkan Metode Pengadaan Vendor (`ProductPicker.tsx`, `PurchaseView.tsx`, `RfqView.tsx`, `PurchaseRequestView.tsx`, `RestockModal.tsx`, `types.ts`)**:
+  - Menambahkan properti `procurementTypeFilter?: 'purchase' | 'manufacture'` pada [`ProductPicker.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ProductPicker.tsx) untuk membatasi opsi pemilihan produk hanya pada barang yang sesuai metode pengadaan.
+  - Menerapkan `procurementTypeFilter="purchase"` pada pembuatan Purchase Order manual ([`PurchaseView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseView.tsx)), Permintaan Pembelian ([`PurchaseRequestView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseRequestView.tsx)), dan Permintaan Penawaran Harga ([`RfqView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RfqView.tsx)) agar pengguna tidak dapat keliru memesan barang yang diproduksi sendiri oleh pabrik.
+  - Memperbarui deskripsi dan header pada Modal Restok Barang Kosong ([`RestockModal.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RestockModal.tsx)) serta interface tipe data [`RestockSuggestionItem`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/purchasing/types.ts) untuk merefleksikan bahwa restok PO secara eksklusif diperuntukkan bagi pengadaan bahan baku dan barang beli-jadi dari vendor/supplier.
+
+### Added
+- **Halaman Detail Lengkap Penawaran / Quotation Detail View (`QuotationDetailView.tsx`, `SalesView.tsx`, `AppRouter.tsx`, `api.ts`)**:
+  - Menghadirkan halaman detail terpisah yang lengkap untuk dokumen Penawaran Harga ([`QuotationDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/QuotationDetailView.tsx)) dengan rute `/sales/quotation/:id`, setara dengan halaman `SalesOrderDetailView`.
+  - Dilengkapi tombol aksi terintegrasi di header: **Cetak Thermal (80mm)** dengan live preview & multi-channel print (Struk, Bluetooth, PDF), **Cetak PDF (A4)** dengan template resmi A4, **Setujui (Approve)** dengan konversi otomatis ke Sales Order, **Edit Penawaran**, dan **Batalkan**.
+  - Menyajikan ringkasan visual komprehensif: Stepper alur status penawaran (Draf Dibuat -> Diajukan -> Persetujuan -> Sales Order), Kartu Informasi Pelanggan (kontak, alamat, kota), Kartu Periode Penawaran (tanggal terbit, berlaku s/d), dan Kartu Nilai Finansial (subtotal, diskon global transaksi, total).
+  - Tiga tab navigasi: **Rincian Produk & Item** (tabel lengkap dimensi fisik custom batang x panjang, spesifikasi teknis, harga satuan, diskon item, dan subtotal), **Sales Order Terkait** (daftar pesanan penjualan yang lahir dari penawaran ini dengan tautan navigasi langsung), dan **Catatan & Syarat Ketentuan**.
+  - Menghubungkan tombol navigasi tunggal **Detail Penawaran** pada setiap baris tabel daftar penawaran di [`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx) sehingga antarmuka tabel bersih dan konsisten dengan tabel Sales Order (pencetakan thermal roll 80mm diakses terpusat di dalam halaman detail).
+- **Cetak Struk Thermal 80mm untuk Penawaran Harga / Quotation (`QuotationPrintService.ts`, `QuotationDetailView.tsx`)**:
+  - Menghadirkan modul layanan pencetakan thermal khusus untuk Penawaran Harga ([`QuotationPrintService.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/services/QuotationPrintService.ts)) yang setara dan selaras dengan Sales Order thermal print.
+  - Mendukung 3 metode pencetakan: Dialog Cetak Browser / Printer USB Roll 80mm (`printQuotationThermal`), Unduh PDF format Roll 80mm (`downloadQuotationThermalPdf`), dan Cetak Langsung ESC/POS via Web Bluetooth API (`printBluetoothQuotation`).
+  - Mengintegrasikan modal pratinjau interaktif struk thermal roll 76mm-80mm di dalam halaman detail penawaran lengkap dengan informasi profil perusahaan (logo, alamat, kontak), nomor penawaran, tanggal penawaran, batas berlaku, nama pelanggan, rincian produk (dimensi fisik, deskripsi, diskon per item), subtotal, diskon global transaksi, total penawaran, serta catatan penawaran.
 - **Filter In-Modal & Pengecualian Produk (Tombol X) pada Bulk Cetak Barcode (`QrView.tsx`)**:
   - **Filter di Dalam Modal:** Memindahkan kontrol pemilihan produk ke dalam modal Bulk Cetak Barcode, meliputi dropdown pemilihan Kategori dan input pencarian SKU/Nama produk secara langsung di dalam modal.
   - **Default Category Terfokus:** Saat modal Bulk Cetak dibuka, sistem secara otomatis memilih kategori default pertama (bukan memuat seluruh katalog produk sekaligus), mencegah kelambatan render data dalam jumlah besar.
@@ -49,6 +108,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tampilan Rincian Alokasi Pengambilan Barang di Detail Sales Order (`SalesOrderDetailView.tsx`)**:
   - Menampilkan breakdown unit yang telah diambil langsung (*take away*) dan unit sisa yang masih inden/dalam pengiriman di bawah kolom kuantitas item Sales Order.
 ### Removed
+- **Penghapusan Menu Duplikat "Laporan Keuangan" di Sidebar Keuangan & Sentralisasi ke Pusat Laporan (`navigation.tsx`, `AppRouter.tsx`, `routes.ts`, `DashboardView.tsx`, `ReportCenterView.tsx`)**:
+  - Menghapus item menu duplikat "Laporan Keuangan" (`view: "finance-reports"`) dari section sidebar Keuangan ([`navigation.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/config/navigation.tsx)) agar navigasi sidebar lebih ramping, bersih, dan tidak membingungkan pengguna.
+  - Memastikan seluruh laporan keuangan (Laba Rugi, Arus Kas & Buku Besar, Beban Operasional, Piutang AR Aging, Hutang AP Aging) terpusat secara terpadu di menu Pusat Laporan (`/reports`).
+  - Menambahkan pembacaan parameter URL `category` dan `report` pada [`ReportCenterView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/reports/components/ReportCenterView.tsx) sehingga akses atau pengalihan ke `/reports?category=finance` otomatis membuka panel laporan keuangan pertama yang aktif.
+  - Memperbarui rute URL `/finance/reports` di [`AppRouter.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/AppRouter.tsx) dan mapping [`routes.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/routes.ts) untuk mengalihkan (*redirect*) ke `/reports?category=finance`.
+  - Mengarahkan pintasan kartu metrik laba rugi di Dashboard ([`DashboardView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DashboardView.tsx)) ke Pusat Laporan Terpadu (`report-center`).
+  - Menyelaraskan palet warna dan tombol di [`ReportCenterView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/reports/components/ReportCenterView.tsx) dengan standar Design System Soft Sky Blue (`sky-600`, `sky-50`, `rounded-xl`).
 - **Tombol Permintaan Stok (SPR) pada Toolbar Work Order (`ProductionWorkOrderView.tsx`)**:
   - Menghapus tombol *Permintaan Stok (SPR)* dari header antarmuka Work Order Cetak agar antarmuka lebih bersih dan fokus pada aksi operasional.
   - Memperbarui gaya tombol *Keluarkan Work Order* mengikuti standar Primary Button design system Soft Sky Blue (`bg-gradient-to-r from-sky-600 to-sky-700`).

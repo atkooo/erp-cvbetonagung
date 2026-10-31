@@ -201,9 +201,15 @@ export default function SalesOrderDetailView({
   const invoicesList = order.invoices || [];
 
   // Finansial calculation
-  const grossTotal = (order.items || []).reduce((acc, it) => acc + (Number(it.unitPrice) * Number(it.quantity)), 0);
+  const totalItemGross = (order.items || []).reduce((acc, it) => {
+    const gross = Number(it.unitPrice || 0) * Number(it.quantity || 0);
+    return acc + (gross > 0 ? gross : ((Number(it.subtotal || 0)) + (Number(it.discountAmount || 0))));
+  }, 0);
+  const totalItemDiscount = (order.items || []).reduce((acc, it) => acc + (Number(it.discountAmount) || 0), 0);
   const globalDiscount = Number(order.globalDiscountAmount || 0);
   const netTotal = Number(order.total || 0);
+  const grossTotal = totalItemGross > 0 ? totalItemGross : (netTotal + globalDiscount + totalItemDiscount);
+  const hasAnyDiscount = totalItemDiscount > 0 || globalDiscount > 0;
 
   const totalPaid = invoicesList.reduce((sum, inv: any) => sum + Number(inv.paidAmount ?? inv.paid_amount ?? 0), 0);
   const totalRemaining = Math.max(0, netTotal - totalPaid);
@@ -294,15 +300,22 @@ export default function SalesOrderDetailView({
         ? 'Sebagian (DP)'
         : 'Belum Dibayar';
 
+    const total = Number(order.total) || 0;
+    const paymentSum = mappedInvoices.flatMap((inv: any) => inv.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const amountPaid = paymentSum > 0 ? paymentSum : (totalPaid > 0 ? totalPaid : total);
+    const change = amountPaid - total;
+    const cashierName = (order as any).createdBy?.name || (order as any).created_by?.name || (order as any).created_by_user?.name || undefined;
+
     return {
       orderNumber: order.orderNumber,
       orderDate: formatDate(order.orderDate),
       customerName: order.customerName || order.customer?.name || 'Pelanggan',
+      cashierName,
       status: order.status,
       notes: order.notes || undefined,
       quotationNumber: order.quotationNumber || order.quotation?.quotationNumber || undefined,
       source: order.source,
-      total: Number(order.total) || 0,
+      total,
       globalDiscountAmount: Number(order.globalDiscountAmount) || 0,
       globalDiscountType: order.globalDiscountType || undefined,
       globalDiscountValue: Number(order.globalDiscountValue) || 0,
@@ -310,6 +323,8 @@ export default function SalesOrderDetailView({
       totalPaid,
       totalRemaining,
       paymentStatus,
+      amountPaid,
+      change,
       items: (order.items || []).map(item => {
         const unitPrice = Number(item.unitPrice || 0);
         const qty = Number(item.quantity) || 0;
@@ -430,8 +445,8 @@ export default function SalesOrderDetailView({
               <span>Cetak PDF (A4)</span>
             </button>
 
-            {/* Approval / Workflow Buttons */}
-            {(order.status === 'Draft' || order.status === 'draft' || order.status === 'Diproses') && (
+            {/* Approval / Workflow Buttons (Hanya untuk Sales Order ERP non-POS yang masih berstatus Draft) */}
+            {order.source !== 'pos' && (order.status === 'Draft' || order.status === 'draft') && (
               <button
                 onClick={handleApprove}
                 disabled={isActionLoading}
@@ -578,8 +593,8 @@ export default function SalesOrderDetailView({
           <div className="p-3 space-y-1">
             <span className="text-[10px] uppercase font-bold text-slate-400">Total Transaksi</span>
             <div className="font-mono font-bold text-sm text-slate-900">{formatIDR(netTotal)}</div>
-            {globalDiscount > 0 && (
-              <span className="text-[10px] text-emerald-600 font-medium">Hemat {formatIDR(globalDiscount)}</span>
+            {hasAnyDiscount && (
+              <span className="text-[10px] text-emerald-600 font-medium">Hemat {formatIDR(totalItemDiscount + globalDiscount)}</span>
             )}
           </div>
           <div className="p-3 space-y-1">
@@ -759,7 +774,19 @@ export default function SalesOrderDetailView({
                         </td>
                         <td className="p-3.5 text-right font-mono text-slate-700">{formatIDR(unitPrice)}</td>
                         <td className="p-3.5 text-right font-mono text-slate-500">
-                          {discount > 0 ? `- ${formatIDR(discount)}` : '-'}
+                          {discount > 0 ? (
+                            <span className="text-rose-600 font-semibold">
+                              - {formatIDR(discount)}
+                              {(() => {
+                                const gross = qty * unitPrice;
+                                if (gross > 0) {
+                                  const pct = Math.round((discount / gross) * 100);
+                                  if (pct > 0 && pct <= 100) return ` (${pct}%)`;
+                                }
+                                return '';
+                              })()}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="p-3.5 pr-5 text-right font-mono font-bold text-slate-900">
                           {formatIDR(subtotal)}
@@ -786,10 +813,22 @@ export default function SalesOrderDetailView({
                   <span>Subtotal Bruto:</span>
                   <span>{formatIDR(grossTotal)}</span>
                 </div>
+                {totalItemDiscount > 0 && (
+                  <div className="flex justify-between text-rose-600 font-semibold">
+                    <span>Diskon Item:</span>
+                    <span>- {formatIDR(totalItemDiscount)}</span>
+                  </div>
+                )}
                 {globalDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-semibold">
-                    <span>Diskon Dokumen:</span>
+                  <div className="flex justify-between text-rose-600 font-semibold">
+                    <span>Diskon Dokumen {order.globalDiscountType === 'percentage' && order.globalDiscountValue ? `(${order.globalDiscountValue}%)` : ''}:</span>
                     <span>- {formatIDR(globalDiscount)}</span>
+                  </div>
+                )}
+                {totalItemDiscount > 0 && globalDiscount > 0 && (
+                  <div className="flex justify-between text-rose-700 font-bold border-t border-slate-200 pt-1">
+                    <span>Total Diskon:</span>
+                    <span>- {formatIDR(totalItemDiscount + globalDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-200">
@@ -1148,8 +1187,12 @@ export default function SalesOrderDetailView({
               <div className="flex items-center gap-2">
                 <Receipt size={18} className="text-sky-100" />
                 <div>
-                  <h3 className="font-bold text-sm">Cetak Thermal Sales Order</h3>
-                  <p className="text-[10px] text-sky-100/80">{order.orderNumber} - Format roll 80mm</p>
+                  <h3 className="font-bold text-sm">
+                    {order.source === 'pos' ? 'Cetak Struk Kasir (POS)' : 'Cetak Thermal Sales Order'}
+                  </h3>
+                  <p className="text-[10px] text-sky-100/80">
+                    {order.orderNumber} - {order.source === 'pos' ? 'Struk kasir roll 80mm' : 'Format roll 80mm'}
+                  </p>
                 </div>
               </div>
               <button
@@ -1289,7 +1332,19 @@ export default function SalesOrderDetailView({
                     </td>
                     <td className="border border-black p-2 text-right font-mono align-top">
                       {formatIDR(itemUnitPrice)}
-                      {discount > 0 && <div className="text-[9px] text-rose-600">- Diskon: {formatIDR(discount)}</div>}
+                      {discount > 0 && (() => {
+                        const itemGross = qty * itemUnitPrice;
+                        let itemPct = '';
+                        if (itemGross > 0) {
+                          const pct = Math.round((discount / itemGross) * 100);
+                          if (pct > 0 && pct <= 100) itemPct = ` (${pct}%)`;
+                        }
+                        return (
+                          <div className="text-[9px] text-rose-600 font-sans mt-0.5">
+                            - Diskon Item{itemPct}: {formatIDR(discount)}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="border border-black p-2 text-right font-mono font-bold align-top">{formatIDR(itemSubtotal)}</td>
                   </tr>
@@ -1300,18 +1355,36 @@ export default function SalesOrderDetailView({
                   <td colSpan={5} className="border border-black p-3 text-center text-slate-500">Tidak ada item pesanan.</td>
                 </tr>
               )}
-              {globalDiscount > 0 && (
+              {hasAnyDiscount && (
                 <>
                   <tr className="bg-slate-50">
                     <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">SUBTOTAL KOTOR</td>
                     <td className="border border-black p-2 text-right font-mono">{formatIDR(grossTotal)}</td>
                   </tr>
-                  <tr className="bg-rose-50 text-rose-700">
-                    <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
-                      DISKON TRANSAKSI {order.globalDiscountType === 'percentage' && order.globalDiscountValue ? `(${order.globalDiscountValue}%)` : ''}
-                    </td>
-                    <td className="border border-black p-2 text-right font-mono">- {formatIDR(globalDiscount)}</td>
-                  </tr>
+                  {totalItemDiscount > 0 && (
+                    <tr className="bg-rose-50/70 text-rose-700">
+                      <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
+                        TOTAL DISKON ITEM
+                      </td>
+                      <td className="border border-black p-2 text-right font-mono">- {formatIDR(totalItemDiscount)}</td>
+                    </tr>
+                  )}
+                  {globalDiscount > 0 && (
+                    <tr className="bg-rose-50 text-rose-700">
+                      <td colSpan={4} className="border border-black p-2 text-right font-bold text-[11px]">
+                        DISKON TRANSAKSI {order.globalDiscountType === 'percentage' && order.globalDiscountValue ? `(${order.globalDiscountValue}%)` : ''}
+                      </td>
+                      <td className="border border-black p-2 text-right font-mono">- {formatIDR(globalDiscount)}</td>
+                    </tr>
+                  )}
+                  {totalItemDiscount > 0 && globalDiscount > 0 && (
+                    <tr className="bg-rose-100/60 text-rose-800 font-bold">
+                      <td colSpan={4} className="border border-black p-2 text-right text-[11px]">
+                        TOTAL SEMUA DISKON
+                      </td>
+                      <td className="border border-black p-2 text-right font-mono">- {formatIDR(totalItemDiscount + globalDiscount)}</td>
+                    </tr>
+                  )}
                 </>
               )}
               <tr className="bg-slate-100 font-bold">
@@ -1393,33 +1466,11 @@ export default function SalesOrderDetailView({
           </div>
 
           {/* Notes */}
-          <div className="text-[11px] mb-8">
+          <div className="text-[11px]">
             <strong>Catatan Dokumen:</strong>
             <p className="mt-0.5 text-slate-700 italic">
               {order.notes || 'Dokumen ini diterbitkan sebagai bukti konfirmasi pemesanan resmi (Sales Order) dan dasar penagihan pembayaran.'}
             </p>
-          </div>
-
-          {/* Signatures */}
-          <div className="grid grid-cols-3 gap-8 text-center text-xs mt-10">
-            <div>
-              <p>Dibuat Oleh,</p>
-              <div className="h-20" />
-              <p className="border-t border-black pt-1.5 font-bold">SALES DEPT.</p>
-              <p className="text-[10px] text-slate-600">{companyProfile.name}</p>
-            </div>
-            <div>
-              <p>Menyetujui (Customer),</p>
-              <div className="h-20" />
-              <p className="border-t border-black pt-1.5 font-bold">{order.customerName || order.customer?.name || 'Pelanggan'}</p>
-              <p className="text-[10px] text-slate-600">Tanda Tangan & Cap</p>
-            </div>
-            <div>
-              <p>Mengetahui,</p>
-              <div className="h-20" />
-              <p className="border-t border-black pt-1.5 font-bold">DIREKTUR UTAMA</p>
-              <p className="text-[10px] text-slate-600">{companyProfile.name}</p>
-            </div>
           </div>
         </div>
       </div>

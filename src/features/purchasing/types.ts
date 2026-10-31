@@ -292,6 +292,7 @@ export interface RestockSuggestionItem {
   sku: string;
   name: string;
   type: string;
+  procurement_type?: 'purchase' | 'manufacture';
   category_id?: string;
   category_name: string;
   unit_id?: string;

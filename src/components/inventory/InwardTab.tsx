@@ -410,23 +410,6 @@ export const InwardTab: React.FC<InwardTabProps> = ({
                       harus mereferensikan nomor GRN untuk kebutuhan audit.
                     </p>
                   </div>
-
-                  <div className="flex justify-between text-center mt-12 px-12">
-                    <div>
-                      <p className="mb-24">Pengirim / Ekspedisi</p>
-                      <p className="font-bold border-b border-black pb-1 uppercase select-none text-white">
-                        .
-                      </p>
-                      <p className="mt-1 text-gray-500">( Nama Jelas )</p>
-                    </div>
-                    <div>
-                      <p className="mb-24">Bagian Gudang</p>
-                      <p className="font-bold border-b border-black pb-1 uppercase">
-                        {getReceiverName(grn)}
-                      </p>
-                      <p className="mt-1">Penerima</p>
-                    </div>
-                  </div>
                 </div>
               );
             })()}

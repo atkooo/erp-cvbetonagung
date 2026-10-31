@@ -210,12 +210,6 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: WalletCards,
         requiredModule: "accounts_payable",
       },
-      {
-        view: "finance-reports",
-        label: "Laporan Keuangan",
-        icon: BarChart3,
-        requiredModule: "finance_reports",
-      },
     ],
   },
   {

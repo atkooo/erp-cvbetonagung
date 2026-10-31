@@ -523,9 +523,9 @@ export default function DashboardView({
               <div className="mt-5 pt-3 border-t border-slate-100">
                 <button
                   onClick={() => {
-                    onNavigate("finance-reports");
+                    onNavigate("report-center");
                     onTriggerNotification(
-                      "Membuka Laporan Analisis Penjualan Lengkap",
+                      "Membuka Pusat Laporan Terpadu",
                     );
                   }}
                   className="w-full text-center py-2 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1"

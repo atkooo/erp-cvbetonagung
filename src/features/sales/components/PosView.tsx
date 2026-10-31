@@ -382,17 +382,36 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
         global_discount_amount: globalDiscountAmountComputed,
       });
 
+      const itemsGross = cart.reduce((total, item) => {
+        const defaultPrice = parseFloat(
+          (item as any).price?.toString() ||
+          item.product.sellingPrice?.toString() ||
+          (item.product as any).selling_price?.toString() ||
+          '0'
+        );
+        return total + (defaultPrice * item.quantity);
+      }, 0);
+
       const txInfo = {
         orderNumber: salesOrder.orderNumber || (salesOrder as any).order_number,
         change: paid - grandTotal,
         fulfillmentType,
-        cashierName: authUser?.name || 'Admin',
+        cashierName: authUser?.name || 'Kasir',
         customerName: customers.find(c => c.id === selectedCustomerId)?.name || 'Pelanggan',
         amountPaid: paid,
-        cartTotal: cartTotal,
+        cartTotal: itemsGross,
         grandTotal: grandTotal,
         globalDiscountAmount: globalDiscountAmountComputed,
-        items: [...cart],
+        globalDiscountType,
+        globalDiscountValue: parseFloat(globalDiscountValue || '0'),
+        source: 'pos',
+        items: cart.map(item => ({
+          ...item,
+          name: item.product?.name || (item as any).name || 'Item',
+          price: parseFloat((item as any).price?.toString() || item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0'),
+          unit_price: parseFloat((item as any).price?.toString() || item.product.sellingPrice?.toString() || (item.product as any).selling_price?.toString() || '0'),
+          discount_amount: item.discount_amount || 0,
+        })),
         date: toApiDate(),
       };
 
@@ -417,6 +436,53 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
     setCheckoutSuccessInfo(null);
   };
 
+  const buildHistoryPrintInfo = (tx: any) => {
+    const globalDiscountAmount = parseFloat(tx.global_discount_amount || '0');
+    const grandTotal = parseFloat(tx.total || '0');
+    const items = (tx.items || []).map((i: any) => {
+      const unitPrice = parseFloat(i.unit_price || i.price || i.product?.selling_price || i.product?.sellingPrice || '0');
+      const discountAmount = parseFloat(i.discount_amount || '0');
+      const qty = Number(i.quantity) || 0;
+      const subtotal = i.subtotal != null ? parseFloat(i.subtotal) : Math.max(0, unitPrice * qty - discountAmount);
+      return {
+        product: i.product,
+        name: i.product?.name || i.name || 'Item',
+        quantity: qty,
+        unit_price: unitPrice,
+        price: unitPrice,
+        discount_amount: discountAmount,
+        subtotal,
+      };
+    });
+    const itemsGross = items.reduce((sum: number, it: any) => sum + (it.price * it.quantity), 0);
+    const cartTotal = itemsGross > 0 ? itemsGross : (grandTotal + globalDiscountAmount);
+
+    const invoices = tx.invoices || [];
+    const paymentSum = invoices.flatMap((inv: any) => inv.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+    const invoicePaid = invoices.reduce((sum: number, inv: any) => sum + Number(inv.paid_amount || 0), 0);
+    const amountPaid = paymentSum > 0 ? paymentSum : (invoicePaid > 0 ? invoicePaid : grandTotal);
+    const change = amountPaid - grandTotal;
+    const cashierName = tx.createdBy?.name || tx.created_by?.name || tx.created_by_user?.name || tx.cashier_name || authUser?.name || 'Kasir';
+
+    return {
+      isHistory: true,
+      source: 'pos',
+      orderNumber: tx.order_number,
+      change,
+      fulfillmentType: (tx.fulfillment_type || 'take_away') as 'take_away' | 'delivery',
+      customerName: tx.customer?.name || 'Pelanggan',
+      cashierName,
+      amountPaid,
+      cartTotal,
+      grandTotal,
+      globalDiscountAmount,
+      globalDiscountType: tx.global_discount_type,
+      globalDiscountValue: parseFloat(tx.global_discount_value || '0'),
+      items,
+      date: tx.order_date,
+    };
+  };
+
   const fetchHistory = async (page = 1, search = '', startDate = '', endDate = '', category = '') => {
     setIsLoadingHistory(true);
     try {
@@ -424,7 +490,7 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
       const dateParams = (startDate && endDate) ? `&start_date=${startDate}&end_date=${endDate}` : '';
       const statusParam = category ? `&status=${category}` : '';
 
-      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?source=pos&include=customer,items.product&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
+      const res = await apiClient.get<{ data: any[], meta: any }>(`/sales/sales-orders?source=pos&include=customer,items.product.unit,invoices.payments,createdBy&per_page=10&sort=-created_at&page=${page}${qParam}${dateParams}${statusParam}`);
       setTransactionHistory(res.data || []);
       setHistoryTotalPages(res.meta?.last_page || 1);
       setHistoryPage(page);
@@ -903,72 +969,21 @@ export default function PosView({ onTriggerNotification }: PosViewProps) {
                         <div className="font-black text-slate-900">{formatRupiah(parseFloat(tx.total))}</div>
                         <div className="flex gap-1.5">
                           <button
-                            onClick={() => {
-                              const info = {
-                                isHistory: true,
-                                orderNumber: tx.order_number,
-                                change: 0,
-                                fulfillmentType: 'take_away',
-                                customerName: tx.customer?.name || 'Pelanggan',
-                                amountPaid: parseFloat(tx.total),
-                                cartTotal: parseFloat(tx.total),
-                                items: (tx.items || []).map((i: any) => ({
-                                  product: i.product,
-                                  quantity: i.quantity,
-                                  discount_amount: i.discount_amount,
-                                })),
-                                date: tx.order_date,
-                              };
-                              downloadReceipt(info);
-                            }}
+                            onClick={() => downloadReceipt(buildHistoryPrintInfo(tx))}
                             className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
                             title="Download Struk (PDF)"
                           >
                             <Download size={16} />
                           </button>
                           <button
-                            onClick={() => {
-                              const info = {
-                                isHistory: true,
-                                orderNumber: tx.order_number,
-                                change: 0,
-                                fulfillmentType: 'take_away',
-                                customerName: tx.customer?.name || 'Pelanggan',
-                                amountPaid: parseFloat(tx.total),
-                                cartTotal: parseFloat(tx.total),
-                                items: (tx.items || []).map((i: any) => ({
-                                  product: i.product,
-                                  quantity: i.quantity,
-                                  discount_amount: i.discount_amount,
-                                })),
-                                date: tx.order_date,
-                              };
-                              printBluetoothReceipt(info);
-                            }}
+                            onClick={() => printBluetoothReceipt(buildHistoryPrintInfo(tx))}
                             className="px-3 py-1.5 border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
                             title="Cetak Bluetooth"
                           >
                             <Bluetooth size={16} />
                           </button>
                           <button
-                            onClick={() => {
-                              const info = {
-                                isHistory: true,
-                                orderNumber: tx.order_number,
-                                change: 0,
-                                fulfillmentType: 'take_away',
-                                customerName: tx.customer?.name || 'Pelanggan',
-                                amountPaid: parseFloat(tx.total),
-                                cartTotal: parseFloat(tx.total),
-                                items: (tx.items || []).map((i: any) => ({
-                                  product: i.product,
-                                  quantity: i.quantity,
-                                  discount_amount: i.discount_amount,
-                                })),
-                                date: tx.order_date,
-                              };
-                              printReceipt(info);
-                            }}
+                            onClick={() => printReceipt(buildHistoryPrintInfo(tx))}
                             className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-sm font-bold transition-colors flex items-center gap-1"
                           >
                             <Package size={16} /> Cetak

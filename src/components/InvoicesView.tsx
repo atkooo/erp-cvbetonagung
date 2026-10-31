@@ -635,21 +635,40 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                   </thead>
                   <tbody className="divide-y divide-slate-200 border-b-2 border-slate-900">
                     {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                      selectedInvoice.items.map((item, index) => (
-                        <tr key={item.id || index}>
-                          <td className="py-3 px-3 text-center text-slate-500">{index + 1}</td>
-                          <td className="py-3 px-3">
-                            <p className="font-bold text-slate-900">{item.product?.name || 'Produk'}</p>
-                            {item.pieceCount && item.length && (
-                              <p className="text-[10px] text-slate-600 mt-0.5">{item.pieceCount} Fisik x {item.length} {item.product?.unit?.name || 'M'}</p>
-                            )}
-                            {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
-                          </td>
-                          <td className="py-3 px-3 text-center font-mono">{item.quantity} <span className="text-[10px] text-slate-500">{item.product?.unit?.name || ''}</span></td>
-                          <td className="py-3 px-3 text-right font-mono">{formatIDR(item.unitPrice)}</td>
-                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">{formatIDR(item.subtotal)}</td>
-                        </tr>
-                      ))
+                      selectedInvoice.items.map((item, index) => {
+                        const qty = Number(item.quantity) || 0;
+                        const unitPrice = Number(item.unitPrice) || 0;
+                        const itemDiscount = Number((item as any).discountAmount ?? (item as any).discount_amount ?? 0);
+                        const gross = qty * unitPrice;
+                        let itemPctStr = '';
+                        if (itemDiscount > 0 && gross > 0) {
+                          const pct = Math.round((itemDiscount / gross) * 100);
+                          if (pct > 0 && pct <= 100) itemPctStr = ` (${pct}%)`;
+                        }
+
+                        return (
+                          <tr key={item.id || index}>
+                            <td className="py-3 px-3 text-center text-slate-500 align-top">{index + 1}</td>
+                            <td className="py-3 px-3 align-top">
+                              <p className="font-bold text-slate-900">{item.product?.name || 'Produk'}</p>
+                              {item.pieceCount && item.length && (
+                                <p className="text-[10px] text-slate-600 mt-0.5">{item.pieceCount} Fisik x {item.length} {item.product?.unit?.name || 'M'}</p>
+                              )}
+                              {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+                            </td>
+                            <td className="py-3 px-3 text-center font-mono align-top">{item.quantity} <span className="text-[10px] text-slate-500">{item.product?.unit?.name || ''}</span></td>
+                            <td className="py-3 px-3 text-right font-mono align-top">
+                              <div>{formatIDR(item.unitPrice)}</div>
+                              {itemDiscount > 0 && (
+                                <div className="text-[9px] text-rose-600 font-sans mt-0.5">
+                                  - Diskon{itemPctStr}: {formatIDR(itemDiscount)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 align-top">{formatIDR(item.subtotal)}</td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td className="py-3 px-3 text-center text-slate-500">1</td>
@@ -663,55 +682,64 @@ export default function InvoicesView({ onTriggerNotification, onNavigate }: Invo
                       </tr>
                     )}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={3} rowSpan={selectedInvoice.shippingCost && selectedInvoice.shippingCost > 0 ? 4 : 3} className="py-4 px-3 text-xs align-top border-r border-slate-200">
-                        <div className="bg-amber-50 border border-amber-200 p-3 rounded text-amber-800 inline-block w-full max-w-sm">
-                          <p className="font-bold mb-1">Status: {selectedInvoice.status.toUpperCase()}</p>
-                          <p className="text-[10px]">Harap sertakan Nomor Invoice pada berita transfer pembayaran Anda.</p>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase">Subtotal</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatIDR(selectedInvoice.subtotal ?? (selectedInvoice.total - (selectedInvoice.shippingCost || 0)))}
-                      </td>
-                    </tr>
-                    {selectedInvoice.shippingCost != null && selectedInvoice.shippingCost > 0 && (
-                      <tr>
-                        <td className="py-2 px-3 text-right text-xs font-bold text-slate-600 uppercase">Ongkos Kirim (DO)</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-cyan-800">+ {formatIDR(selectedInvoice.shippingCost)}</td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase border-b border-slate-200">Telah Dibayar</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 border-b border-slate-200">- {formatIDR(selectedInvoice.paidAmount)}</td>
-                    </tr>
-                    <tr className="bg-slate-50">
-                      <td className="py-3 px-3 text-right text-xs font-black text-slate-900 uppercase">Sisa Tagihan</td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 text-lg border-b-4 border-slate-900">
-                        {formatIDR(selectedInvoice.total - selectedInvoice.paidAmount)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                  {(() => {
+                    const invoiceItems = selectedInvoice.items || [];
+                    const totalItemGross = invoiceItems.reduce((acc, it: any) => {
+                      const q = Number(it.quantity) || 0;
+                      const p = Number(it.unitPrice) || 0;
+                      const g = q * p;
+                      return acc + (g > 0 ? g : (Number(it.subtotal || 0) + Number(it.discountAmount ?? it.discount_amount ?? 0)));
+                    }, 0);
+                    const totalItemDiscount = invoiceItems.reduce((acc, it: any) => acc + Number(it.discountAmount ?? it.discount_amount ?? 0), 0);
+                    const invoiceTotal = Number(selectedInvoice.total) || 0;
+                    const shippingCost = Number(selectedInvoice.shippingCost) || 0;
+                    const baseSubtotal = selectedInvoice.subtotal != null ? Number(selectedInvoice.subtotal) : (invoiceTotal - shippingCost);
+                    const grossSubtotal = totalItemGross > 0 ? totalItemGross : (baseSubtotal + totalItemDiscount);
+                    const hasDiscount = totalItemDiscount > 0;
+                    const rowCount = 3 + (hasDiscount ? 1 : 0) + (shippingCost > 0 ? 1 : 0);
 
-              {/* Signatures */}
-              <div className="grid grid-cols-2 gap-20 mt-auto pt-8">
-                <div className="text-center text-sm">
-                  <p className="text-slate-600 mb-20">Diterima Oleh,</p>
-                  <p className="border-t border-slate-900 mx-10 pt-2 font-bold uppercase text-slate-800">
-                    {selectedInvoice.customerName}
-                  </p>
-                  <p className="text-[10px] text-slate-500">Ttd & Stempel Perusahaan</p>
-                </div>
-                <div className="text-center text-sm">
-                  <p className="text-slate-600 mb-20">Hormat Kami,</p>
-                  <p className="border-t border-slate-900 mx-10 pt-2 font-bold uppercase text-slate-800">
-                    Finance Dept.
-                  </p>
-                  <p className="text-[10px] text-slate-500">{companyProfile.name}</p>
-                </div>
+                    return (
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3} rowSpan={rowCount} className="py-4 px-3 text-xs align-top border-r border-slate-200">
+                            <div className="bg-amber-50 border border-amber-200 p-3 rounded text-amber-800 inline-block w-full max-w-sm">
+                              <p className="font-bold mb-1">Status: {selectedInvoice.status.toUpperCase()}</p>
+                              <p className="text-[10px]">Harap sertakan Nomor Invoice pada berita transfer pembayaran Anda.</p>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase">
+                            {hasDiscount ? 'Subtotal Kotor' : 'Subtotal'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {formatIDR(hasDiscount ? grossSubtotal : baseSubtotal)}
+                          </td>
+                        </tr>
+                        {hasDiscount && (
+                          <tr className="bg-rose-50/50 text-rose-700">
+                            <td className="py-2 px-3 text-right text-xs font-bold uppercase">Diskon Item</td>
+                            <td className="py-2 px-3 text-right font-mono font-bold">- {formatIDR(totalItemDiscount)}</td>
+                          </tr>
+                        )}
+                        {shippingCost > 0 && (
+                          <tr>
+                            <td className="py-2 px-3 text-right text-xs font-bold text-slate-600 uppercase">Ongkos Kirim (DO)</td>
+                            <td className="py-2 px-3 text-right font-mono font-bold text-cyan-800">+ {formatIDR(shippingCost)}</td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-600 uppercase border-b border-slate-200">Telah Dibayar</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600 border-b border-slate-200">- {formatIDR(selectedInvoice.paidAmount)}</td>
+                        </tr>
+                        <tr className="bg-slate-50">
+                          <td className="py-3 px-3 text-right text-xs font-black text-slate-900 uppercase">Sisa Tagihan</td>
+                          <td className="py-3 px-3 text-right font-mono font-black text-slate-900 text-lg border-b-4 border-slate-900">
+                            {formatIDR(invoiceTotal - selectedInvoice.paidAmount)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    );
+                  })()}
+                </table>
               </div>
 
               {/* Footer */}

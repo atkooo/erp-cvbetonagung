@@ -711,6 +711,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                               <td className="p-2">
                                 <ProductPicker
                                   value={item.productId}
+                                  procurementTypeFilter="purchase"
                                   onChange={(prod) => {
                                     handleItemChange(
                                       item.id,
@@ -983,23 +984,6 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                     Demikian Request For Quotation ini kami sampaikan, atas
                     kerja samanya kami ucapkan terima kasih.
                   </p>
-                </div>
-
-                <div className="flex justify-between text-center mt-12 px-12 text-xs">
-                  <div>
-                    <p className="mb-20">Hormat Kami,</p>
-                    <p className="font-bold border-b border-black pb-1 inline-block min-w-37.5 uppercase">
-                      Purchasing Dept.
-                    </p>
-                    <p className="mt-1">{companyProfile.name}</p>
-                  </div>
-                  <div>
-                    <p className="mb-20">Pihak Vendor,</p>
-                    <p className="font-bold border-b border-black pb-1 inline-block min-w-37.5 text-white">
-                      .
-                    </p>
-                    <p className="mt-1">{rfq.supplierName}</p>
-                  </div>
                 </div>
               </div>
             );

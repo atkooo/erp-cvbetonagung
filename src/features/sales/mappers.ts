@@ -57,6 +57,20 @@ export const mapQuotationFromDto = (dto: QuotationDto): Quotation => ({
   globalDiscountType: dto.global_discount_type,
   globalDiscountValue: dto.global_discount_value != null ? Number(dto.global_discount_value) : undefined,
   globalDiscountAmount: dto.global_discount_amount != null ? Number(dto.global_discount_amount) : undefined,
+  customer: dto.customer ? {
+    id: dto.customer.id,
+    name: dto.customer.name,
+    phone: dto.customer.phone,
+    address: dto.customer.address,
+    city: dto.customer.city,
+  } : undefined,
+  salesOrders: (dto.sales_orders || []).map(so => ({
+    id: so.id,
+    orderNumber: so.order_number,
+    orderDate: so.order_date ? so.order_date.split('T')[0] : '',
+    status: so.status,
+    total: Number(so.total),
+  })),
   notes: dto.notes || undefined,
   items: (dto.items || []).map(item => ({
     id: item.id,

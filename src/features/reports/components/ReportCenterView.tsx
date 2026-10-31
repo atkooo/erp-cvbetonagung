@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
@@ -111,10 +112,50 @@ function firstOfMonthStr() {
 }
 
 export default function ReportCenterView() {
-  const [selectedReportId, setSelectedReportId] = useState<string>('sales_daily');
+  const [searchParams] = useSearchParams();
+
+  const getInitialReportId = () => {
+    const reportParam = searchParams.get('report');
+    const categoryParam = searchParams.get('category');
+    if (reportParam) {
+      for (const cat of REPORT_CATEGORIES) {
+        if (cat.reports.some(r => r.id === reportParam)) return reportParam;
+      }
+    }
+    if (categoryParam) {
+      const cat = REPORT_CATEGORIES.find(c => c.id === categoryParam);
+      if (cat) {
+        const first = cat.reports.find(r => r.implemented) || cat.reports[0];
+        if (first) return first.id;
+      }
+    }
+    return 'sales_daily';
+  };
+
+  const [selectedReportId, setSelectedReportId] = useState<string>(getInitialReportId);
   const [period, setPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [dateFrom, setDateFrom] = useState(firstOfMonthStr());
   const [dateTo, setDateTo] = useState(todayStr());
+
+  useEffect(() => {
+    const reportParam = searchParams.get('report');
+    const categoryParam = searchParams.get('category');
+    if (reportParam) {
+      for (const cat of REPORT_CATEGORIES) {
+        if (cat.reports.some(r => r.id === reportParam)) {
+          setSelectedReportId(reportParam);
+          return;
+        }
+      }
+    }
+    if (categoryParam) {
+      const cat = REPORT_CATEGORIES.find(c => c.id === categoryParam);
+      if (cat) {
+        const first = cat.reports.find(r => r.implemented) || cat.reports[0];
+        if (first) setSelectedReportId(first.id);
+      }
+    }
+  }, [searchParams]);
 
   const filters: ReportFilters = { period, date_from: dateFrom, date_to: dateTo };
 
@@ -157,7 +198,7 @@ export default function ReportCenterView() {
       <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-4 border-b border-slate-100">
           <h2 className="font-bold text-slate-800 flex items-center gap-2">
-            <BarChart3 size={18} className="text-blue-500" />
+            <BarChart3 size={18} className="text-sky-600" />
             Pusat Laporan Terpadu
           </h2>
           <p className="text-[10px] text-slate-500 mt-1">Pilih kategori laporan untuk memulai</p>
@@ -169,7 +210,7 @@ export default function ReportCenterView() {
             return (
               <div key={category.id} className="space-y-0.5">
                 <div className="flex items-center gap-2 px-2 py-1 mb-1">
-                  <Icon size={14} className="text-blue-500" />
+                  <Icon size={14} className="text-sky-600" />
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{category.title}</span>
                 </div>
                 {category.reports.map((report) => (
@@ -178,11 +219,11 @@ export default function ReportCenterView() {
                     onClick={() => setSelectedReportId(report.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2 ${
                       selectedReportId === report.id
-                        ? 'bg-blue-50 text-blue-700 font-bold'
+                        ? 'bg-sky-50 text-sky-700 font-bold'
                         : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedReportId === report.id ? 'bg-blue-500' : 'bg-transparent'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedReportId === report.id ? 'bg-sky-600' : 'bg-transparent'}`} />
                     <span className="flex-1">{report.name}</span>
                     {!report.implemented && (
                       <span className="text-[9px] font-bold bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full shrink-0">Soon</span>
@@ -217,7 +258,7 @@ export default function ReportCenterView() {
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${period === p ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${period === p ? 'bg-white shadow-sm text-sky-600' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     {p === 'daily' ? 'Harian' : p === 'monthly' ? 'Bulanan' : 'Tahunan'}
                   </button>
@@ -250,11 +291,11 @@ export default function ReportCenterView() {
 
               <div className="h-6 w-px bg-slate-200" />
 
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-xs font-bold transition-colors">
-                <FileSpreadsheet size={13} className="text-green-600" />
+              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-sky-50/70 hover:text-sky-800 hover:border-sky-200 text-xs font-semibold shadow-2xs transition-all active:scale-[0.98]">
+                <FileSpreadsheet size={13} className="text-emerald-600" />
                 Excel
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-bold shadow-sm transition-colors">
+              <button className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl text-xs font-semibold shadow-xs shadow-sky-500/20 active:scale-[0.98] transition-all">
                 <Download size={13} />
                 PDF
               </button>
@@ -274,7 +315,7 @@ export default function ReportCenterView() {
 function PlaceholderPanel({ name }: { name: string }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-      <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center mb-5 shadow-sm border border-blue-100">
+      <div className="w-20 h-20 bg-sky-50 text-sky-600 rounded-3xl flex items-center justify-center mb-5 shadow-sm border border-sky-100">
         <BarChart3 size={40} strokeWidth={1.5} />
       </div>
       <h3 className="text-base font-bold text-slate-700 mb-1">Segera Hadir</h3>

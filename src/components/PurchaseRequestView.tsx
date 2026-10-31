@@ -393,6 +393,7 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
                           setFormItems(newItems);
                         }}
                         typeFilter="raw_material"
+                        procurementTypeFilter="purchase"
                         placeholder="Pilih Material..."
                       />
                     </div>
@@ -508,24 +509,6 @@ export default function PurchaseRequestView({ onTriggerNotification, onNavigate 
                   )}
                 </tbody>
               </table>
-
-              <div className="flex justify-between text-center mt-16 px-12 text-xs">
-                <div>
-                  <p className="mb-20">Dibuat Oleh,</p>
-                  <p className="font-bold border-b border-black pb-1 inline-block min-w-[150px] uppercase">{pr.requesterName}</p>
-                  <p className="mt-1">Pemohon</p>
-                </div>
-                <div>
-                  <p className="mb-20">Mengetahui,</p>
-                  <p className="font-bold border-b border-black pb-1 inline-block min-w-[150px]"></p>
-                  <p className="mt-1">Manajer Departemen</p>
-                </div>
-                <div>
-                  <p className="mb-20">Disetujui Oleh,</p>
-                  <p className="font-bold border-b border-black pb-1 inline-block min-w-[150px]"></p>
-                  <p className="mt-1">Purchasing / Direktur</p>
-                </div>
-              </div>
             </div>
           );
         })()}

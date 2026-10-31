@@ -5,11 +5,14 @@ export interface PrintInfo {
   cashierName?: string;
   cartTotal: number;
   globalDiscountAmount?: number;
+  globalDiscountType?: 'percentage' | 'nominal';
+  globalDiscountValue?: number;
   grandTotal?: number;
   amountPaid: number;
   change: number;
   items: Array<any>;
   isHistory?: boolean;
+  source?: string;
 }
 
 export interface CompanyProfile {
@@ -25,7 +28,7 @@ export interface StockItem {
   quantity: string | number;
 }
 
-interface NormalizedItem {
+export interface NormalizedItem {
   name: string;
   quantity: number;
   price: number;
@@ -50,23 +53,37 @@ const escapeHtml = (unsafe: string | null | undefined): string => {
     .replace(/'/g, "&#039;");
 };
 
-const normalizeReceiptItems = (items: any[], stocks: StockItem[], isHistory: boolean = false): NormalizedItem[] => {
+export const normalizeReceiptItems = (items: any[], stocks: StockItem[] = [], isHistory: boolean = false): NormalizedItem[] => {
   return (items || []).map((item: any) => {
     const isCustom = Boolean(item.is_custom || item.product?.is_custom);
-    const price = parseFloat(item.product?.sellingPrice?.toString() || item.product?.selling_price?.toString() || '0');
-    const discountAmount = Number(item.discount_amount) || 0;
+    const price = parseFloat(
+      item.unit_price?.toString() ||
+      item.price?.toString() ||
+      item.product?.sellingPrice?.toString() ||
+      item.product?.selling_price?.toString() ||
+      '0'
+    );
+    const discountAmount = Number(item.discount_amount || item.discountAmount) || 0;
     const qty = Number(item.quantity) || 0;
-    const subtotal = (price * qty) - discountAmount;
+    const subtotal = item.subtotal != null ? Number(item.subtotal) : Math.max(0, (price * qty) - discountAmount);
 
     const hasActiveDiscount = item.product?.discount && (item.product.discount.is_active === true || item.product.discount.is_active === 1);
-    const discountType = hasActiveDiscount ? item.product.discount.type : null;
-    const discountValue = hasActiveDiscount ? item.product.discount.value : 0;
-    const discountLabel = discountType === 'percentage' ? `(${parseFloat(String(discountValue))}%)` : '';
+    const discountType = hasActiveDiscount ? item.product.discount.type : (item.discount_type || null);
+    const discountValue = hasActiveDiscount ? item.product.discount.value : (item.discount_value || 0);
+    let discountLabel = '';
+    if (discountType === 'percentage' && Number(discountValue) > 0) {
+      discountLabel = `(${parseFloat(String(discountValue))}%)`;
+    } else if (discountAmount > 0 && price * qty > 0) {
+      const pct = Math.round((discountAmount / (price * qty)) * 100);
+      if (pct > 0 && pct < 100) {
+        discountLabel = `(${pct}%)`;
+      }
+    }
 
     const maxStock = parseFloat(String(stocks.find((s) => s.product_id === item.product?.id && s.location_id === item.location_id)?.quantity || '0'));
     const readyQty = Math.min(qty, maxStock);
     const indentQty = isHistory ? 0 : (isCustom ? qty : Math.max(0, qty - maxStock));
-    const unitName = item.product?.unit?.name || (typeof item.product?.unit === 'string' ? item.product.unit : 'Unit');
+    const unitName = item.product?.unit?.name || (typeof item.product?.unit === 'string' ? item.product.unit : (item.unit || 'Unit'));
     const indentText = indentQty > 0
       ? (readyQty > 0
           ? `(Ambil: ${readyQty} ${unitName}, Inden/Kirim: ${indentQty} ${unitName})`
@@ -74,7 +91,7 @@ const normalizeReceiptItems = (items: any[], stocks: StockItem[], isHistory: boo
       : `(Bawa Langsung: ${qty} ${unitName})`;
 
     return {
-      name: item.product?.name || 'Item',
+      name: item.product?.name || item.productName || item.name || 'Item',
       quantity: qty,
       price,
       subtotal,
@@ -86,48 +103,58 @@ const normalizeReceiptItems = (items: any[], stocks: StockItem[], isHistory: boo
   });
 };
 
-const buildReceiptHTML = (info: PrintInfo, companyProfile: CompanyProfile, normalizedItems: NormalizedItem[], isPdf: boolean = false) => {
+export const buildReceiptHTML = (info: PrintInfo, companyProfile: CompanyProfile, normalizedItems: NormalizedItem[], isPdf: boolean = false) => {
   const containerStyle = isPdf
     ? `font-family: 'Courier New', Courier, monospace; font-size: 12px; font-weight: 600; line-height: 1.2; padding: 2mm; color: #000; box-sizing: border-box; width: 69mm; margin: 0 auto;`
     : ``;
 
   const imgCrossorigin = isPdf ? `crossorigin="anonymous"` : ``;
   
-  const cartTotal = Number(info.cartTotal) || 0;
+  const totalItemGross = normalizedItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+  const totalItemDiscount = normalizedItems.reduce((acc, it) => acc + (it.discountAmount || 0), 0);
   const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
-  const grandTotal = Number(info.grandTotal || info.cartTotal) || 0;
+  const grandTotal = Number(info.grandTotal || (totalItemGross - totalItemDiscount - globalDiscountAmount)) || 0;
+  const subtotalGross = totalItemGross > 0 ? totalItemGross : (Number(info.cartTotal) || (grandTotal + totalItemDiscount + globalDiscountAmount));
+  const hasAnyDiscount = totalItemDiscount > 0 || globalDiscountAmount > 0;
   const amountPaid = Number(info.amountPaid) || 0;
   const change = Number(info.change) || 0;
+
+  const now = new Date();
+  const printTimestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return `
     <div ${isPdf ? `style="${containerStyle}"` : ''}>
       <div class="text-center mb-1" ${isPdf ? 'style="text-align: center; margin-bottom: 5px;"' : ''}>
         <img id="receipt-logo" src="${escapeHtml(companyProfile?.logoUrl) || (window.location.origin + '/logo.png')}" style="max-width: 60px; max-height: 60px; filter: grayscale(100%); object-fit: contain;" alt="Logo" ${imgCrossorigin} />
       </div>
-      <div class="text-center mb-2 font-bold" ${isPdf ? 'style="text-align: center; font-size: 14px; font-weight: 900; margin-bottom: 10px;"' : 'style="font-size: 14px;"'}>
+      <div class="text-center mb-1 font-bold" ${isPdf ? 'style="text-align: center; font-size: 14px; font-weight: 900; margin-bottom: 4px;"' : 'style="font-size: 14px; margin-bottom: 4px;"'}>
         ${escapeHtml(companyProfile?.name ? companyProfile.name.toUpperCase() : 'PERUSAHAAN')}
       </div>
-      <div class="text-center border-b mb-2" ${isPdf ? 'style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 10px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
+      <div class="text-center border-b mb-2" ${isPdf ? 'style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 8px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
         ${escapeHtml(companyProfile?.address || 'Jl. Raya Konstruksi No.123').replace(/\\n/g, '<br>')}
         <br>Telp: ${escapeHtml(companyProfile?.phone || '0812-3456-7890')}
       </div>
-      
-      <div class="mb-2" ${isPdf ? 'style="margin-bottom: 10px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
-        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>No:</span> <span>${escapeHtml(info.orderNumber)}</span></div>
-        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Tgl:</span> <span>${escapeHtml(info.date)}</span></div>
-        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Kasir:</span> <span>${escapeHtml(info.cashierName || 'Admin')}</span></div>
-        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Plg:</span> <span>${escapeHtml(info.customerName)}</span></div>
+
+      <div class="text-center font-bold mb-2" ${isPdf ? 'style="text-align: center; font-size: 11px; font-weight: 900; margin-bottom: 8px; letter-spacing: 0.5px;"' : 'style="font-size: 11px; letter-spacing: 0.5px;"'}>
+        STRUK PENJUALAN KASIR
       </div>
       
-      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;"' : ''}></div>
+      <div class="mb-2" ${isPdf ? 'style="margin-bottom: 8px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
+        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>No:</span> <span>${escapeHtml(info.orderNumber)}</span></div>
+        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Tgl:</span> <span>${escapeHtml(info.date)}</span></div>
+        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Kasir:</span> <span>${escapeHtml(info.cashierName || 'Kasir')}</span></div>
+        <div ${isPdf ? 'style="display: flex; justify-content: space-between;"' : 'class="flex"'}><span>Plg:</span> <span>${escapeHtml(info.customerName || 'Pelanggan')}</span></div>
+      </div>
       
-      <table class="mb-2" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px;"' : 'style="font-size: 11px;"'}>
+      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;"' : ''}></div>
+      
+      <table class="mb-2" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px;"' : 'style="font-size: 11px;"'}>
         ${normalizedItems.map(item => `
           <tr>
             <td colspan="3" ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>
               ${escapeHtml(item.name)}
               ${item.indentQty > 0 ? `<div style="font-size: 10px; font-weight: normal; margin-top: 2px;">${escapeHtml(item.indentText)}</div>` : ''}
-              ${item.discountAmount > 0 ? `<div style="font-size: 10px; color: #555; margin-top: 2px;">Diskon ${escapeHtml(item.discountLabel)}: -Rp ${new Intl.NumberFormat('id-ID').format(item.discountAmount)}</div>` : ''}
+              ${item.discountAmount > 0 ? `<div style="font-size: 10px; color: #555; margin-top: 2px;">Diskon Item${item.discountLabel ? ` ${escapeHtml(item.discountLabel)}` : ''}: -Rp ${new Intl.NumberFormat('id-ID').format(item.discountAmount)}</div>` : ''}
             </td>
           </tr>
           <tr>
@@ -138,25 +165,44 @@ const buildReceiptHTML = (info: PrintInfo, companyProfile: CompanyProfile, norma
         `).join('')}
       </table>
       
-      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;"' : ''}></div>
+      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 5px;"' : ''}></div>
       
-      <table class="mb-2 font-bold" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
+      <table class="mb-2 font-bold" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
+        ${hasAnyDiscount ? `
         <tr>
           <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>SUBTOTAL</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${new Intl.NumberFormat('id-ID').format(cartTotal)}</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${new Intl.NumberFormat('id-ID').format(subtotalGross)}</td>
         </tr>
+        ${totalItemDiscount > 0 ? `
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON ITEM</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${new Intl.NumberFormat('id-ID').format(totalItemDiscount)}</td>
+        </tr>
+        ` : ''}
         ${globalDiscountAmount > 0 ? `
         <tr>
-          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON TRANSAKSI</td>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON TRANSAKSI ${info.globalDiscountType === 'percentage' && info.globalDiscountValue ? `(${info.globalDiscountValue}%)` : ''}</td>
           <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${new Intl.NumberFormat('id-ID').format(globalDiscountAmount)}</td>
         </tr>
+        ` : ''}
+        ${totalItemDiscount > 0 && globalDiscountAmount > 0 ? `
         <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>TOTAL DISKON</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${new Intl.NumberFormat('id-ID').format(totalItemDiscount + globalDiscountAmount)}</td>
+        </tr>
+        ` : ''}
+        <tr style="border-top: 1px dashed #000;">
           <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>GRAND TOTAL</td>
           <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${new Intl.NumberFormat('id-ID').format(grandTotal)}</td>
         </tr>
-        ` : ''}
+        ` : `
         <tr>
-          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>BAYAR (DP)</td>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>TOTAL</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${new Intl.NumberFormat('id-ID').format(grandTotal)}</td>
+        </tr>
+        `}
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>${change >= 0 ? 'BAYAR' : 'BAYAR (DP)'}</td>
           <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${new Intl.NumberFormat('id-ID').format(amountPaid)}</td>
         </tr>
         <tr>
@@ -165,8 +211,14 @@ const buildReceiptHTML = (info: PrintInfo, companyProfile: CompanyProfile, norma
         </tr>
       </table>
       
-      <div class="text-center mb-2 font-bold" ${isPdf ? 'style="text-align: center; margin-bottom: 10px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
-        STATUS: ${change >= 0 ? 'LUNAS' : 'BELUM LUNAS (OUTSTANDING RECEIVABLE)'}
+      <div class="text-center mb-2 font-bold" ${isPdf ? 'style="text-align: center; margin-bottom: 8px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px; margin-bottom: 8px;"'}>
+        STATUS: ${change >= 0 ? 'LUNAS' : 'BELUM LUNAS'}
+      </div>
+
+      <div class="border-b" ${isPdf ? 'style="border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px;"' : ''}></div>
+      <div class="text-center" ${isPdf ? 'style="text-align: center; font-size: 9px; color: #444;"' : 'style="font-size: 9px; color: #444;"'}>
+        <p>Terima kasih atas kunjungan Anda</p>
+        <p style="margin-top: 2px;">Waktu Cetak: ${printTimestamp}</p>
       </div>
     </div>
   `;
@@ -415,14 +467,22 @@ export const printBluetoothReceipt = async (
     appendStr('-'.repeat(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
 
+    appendBytes(center);
+    appendBytes(boldOn);
+    appendStr('STRUK PENJUALAN KASIR');
+    appendBytes(lineFeed);
+    appendBytes(boldOff);
+    appendStr('-'.repeat(PRINTER_WIDTH_80MM));
+    appendBytes(lineFeed);
+
     appendBytes(left);
     appendStr(`No   : ${info.orderNumber}`);
     appendBytes(lineFeed);
     appendStr(`Tgl  : ${info.date}`);
     appendBytes(lineFeed);
-    appendStr(`Kasir: ${info.cashierName || 'Admin'}`);
+    appendStr(`Kasir: ${info.cashierName || 'Kasir'}`);
     appendBytes(lineFeed);
-    appendStr(`Plg  : ${info.customerName}`);
+    appendStr(`Plg  : ${info.customerName || 'Pelanggan'}`);
     appendBytes(lineFeed);
     appendStr('-'.repeat(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
@@ -440,7 +500,7 @@ export const printBluetoothReceipt = async (
       }
 
       if (item.discountAmount > 0) {
-        appendStr(` Diskon ${item.discountLabel}: -Rp ${formatRupiahStr(item.discountAmount)}`);
+        appendStr(` Diskon Item${item.discountLabel ? ` ${item.discountLabel}` : ''}: -Rp ${formatRupiahStr(item.discountAmount)}`);
         appendBytes(lineFeed);
       }
 
@@ -458,41 +518,72 @@ export const printBluetoothReceipt = async (
     appendBytes(lineFeed);
 
     appendBytes(boldOn);
-    const cartTotal = Number(info.cartTotal) || 0;
-    const subtotalStr2 = `SUBTOTAL           Rp ${formatRupiahStr(cartTotal).padStart(12)}`;
-    appendStr(subtotalStr2.padStart(PRINTER_WIDTH_80MM));
-    appendBytes(lineFeed);
-
+    const totalItemGross = normalizedItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+    const totalItemDiscount = normalizedItems.reduce((acc, it) => acc + (it.discountAmount || 0), 0);
     const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
-    const grandTotal = Number(info.grandTotal || info.cartTotal) || 0;
-    if (globalDiscountAmount > 0) {
-      const globalDiscStr = `DISKON TRANSAKSI  -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
-      appendStr(globalDiscStr.padStart(PRINTER_WIDTH_80MM));
+    const grandTotal = Number(info.grandTotal || (totalItemGross - totalItemDiscount - globalDiscountAmount)) || 0;
+    const subtotalGross = totalItemGross > 0 ? totalItemGross : (Number(info.cartTotal) || (grandTotal + totalItemDiscount + globalDiscountAmount));
+    const hasAnyDiscount = totalItemDiscount > 0 || globalDiscountAmount > 0;
+
+    if (hasAnyDiscount) {
+      const subtotalStr2 = `SUBTOTAL           Rp ${formatRupiahStr(subtotalGross).padStart(12)}`;
+      appendStr(subtotalStr2.padStart(PRINTER_WIDTH_80MM));
       appendBytes(lineFeed);
+
+      if (totalItemDiscount > 0) {
+        const itemDiscStr = `DISKON ITEM       -Rp ${formatRupiahStr(totalItemDiscount).padStart(12)}`;
+        appendStr(itemDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
+
+      if (globalDiscountAmount > 0) {
+        const discLabel = info.globalDiscountType === 'percentage' && info.globalDiscountValue ? `DISKON (${info.globalDiscountValue}%)` : 'DISKON TRX';
+        const globalDiscStr = `${discLabel.padEnd(18)} -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
+        appendStr(globalDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
+
+      if (totalItemDiscount > 0 && globalDiscountAmount > 0) {
+        const totDiscStr = `TOTAL DISKON      -Rp ${formatRupiahStr(totalItemDiscount + globalDiscountAmount).padStart(12)}`;
+        appendStr(totDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
 
       const grandTotalStr = `GRAND TOTAL        Rp ${formatRupiahStr(grandTotal).padStart(12)}`;
       appendStr(grandTotalStr.padStart(PRINTER_WIDTH_80MM));
       appendBytes(lineFeed);
+    } else {
+      const totalStr = `TOTAL              Rp ${formatRupiahStr(grandTotal).padStart(12)}`;
+      appendStr(totalStr.padStart(PRINTER_WIDTH_80MM));
+      appendBytes(lineFeed);
     }
 
     const amountPaid = Number(info.amountPaid) || 0;
-    const bayarStr = `BAYAR (DP)         Rp ${formatRupiahStr(amountPaid).padStart(12)}`;
+    const change = Number(info.change) || 0;
+    const bayarLabel = change >= 0 ? 'BAYAR' : 'BAYAR (DP)';
+    const bayarStr = `${bayarLabel.padEnd(18)} Rp ${formatRupiahStr(amountPaid).padStart(12)}`;
     appendStr(bayarStr.padStart(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
 
-    const change = Number(info.change) || 0;
-    const sisaStr = `${change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN'}       Rp ${formatRupiahStr(Math.abs(change)).padStart(12)}`;
+    const sisaLabel = change >= 0 ? 'KEMBALI' : 'SISA TAGIHAN';
+    const sisaStr = `${sisaLabel.padEnd(18)} Rp ${formatRupiahStr(Math.abs(change)).padStart(12)}`;
     appendStr(sisaStr.padStart(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
 
     appendBytes(center);
     appendBytes(lineFeed);
-    appendBytes(lineFeed);
-    appendStr(`STATUS: ${change >= 0 ? 'LUNAS' : 'BELUM LUNAS (OUTSTANDING RECEIVABLE)'}`);
+    appendStr(`STATUS: ${change >= 0 ? 'LUNAS' : 'BELUM LUNAS'}`);
     appendBytes(lineFeed);
     appendBytes(boldOff);
 
     appendBytes(lineFeed);
+    const now = new Date();
+    const printTimestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    appendStr('Terima kasih atas kunjungan Anda');
+    appendBytes(lineFeed);
+    appendStr(`Waktu Cetak: ${printTimestamp}`);
+    appendBytes(lineFeed);
+
     appendBytes(lineFeed);
     appendBytes(lineFeed);
     appendBytes(lineFeed);
@@ -526,5 +617,64 @@ export const printBluetoothReceipt = async (
     console.error(error);
     onTriggerNotification('Gagal mencetak Bluetooth: ' + (error as Error).message);
   }
+};
+
+/**
+ * Konversi seragam data SalesOrder (khususnya source === 'pos') menjadi PrintInfo kasir POS
+ * Menjamin Single Source of Truth ("Satu Kebenaran") antar modul Sales Order dan POS.
+ */
+export const convertSalesOrderToPosPrintInfo = (info: any): PrintInfo => {
+  const invoices = info.invoices || [];
+  const paymentSum = invoices.flatMap((inv: any) => inv.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  const invoicePaid = invoices.reduce((sum: number, inv: any) => sum + Number(inv.paidAmount ?? inv.paid_amount ?? 0), 0);
+  const total = Number(info.total) || 0;
+
+  const amountPaid = info.amountPaid !== undefined
+    ? Number(info.amountPaid)
+    : (paymentSum > 0 ? paymentSum : (info.totalPaid !== undefined ? Number(info.totalPaid) : (invoicePaid > 0 ? invoicePaid : total)));
+
+  const change = info.change !== undefined
+    ? Number(info.change)
+    : (amountPaid - total);
+
+  const items = (info.items || []).map((it: any) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unitPrice ?? it.price ?? 0);
+    const disc = Number(it.discountAmount ?? it.discount_amount ?? 0);
+    const sub = it.subtotal != null ? Number(it.subtotal) : Math.max(0, qty * price - disc);
+
+    return {
+      name: it.productName || it.product?.name || it.name || 'Item',
+      quantity: qty,
+      price,
+      unit_price: price,
+      discount_amount: disc,
+      discountAmount: disc,
+      subtotal: sub,
+      unit: it.unit || it.product?.unit?.name || it.product?.unit || 'Unit',
+      description: it.description,
+    };
+  });
+
+  const totalItemGross = items.reduce((acc: number, it: any) => acc + (it.price * it.quantity), 0);
+  const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
+  const cartTotal = totalItemGross > 0 ? totalItemGross : (total + globalDiscountAmount);
+
+  return {
+    orderNumber: info.orderNumber,
+    date: info.orderDate || info.date,
+    customerName: info.customerName || 'Pelanggan',
+    cashierName: info.cashierName || 'Kasir',
+    cartTotal,
+    grandTotal: total,
+    globalDiscountAmount,
+    globalDiscountType: info.globalDiscountType,
+    globalDiscountValue: Number(info.globalDiscountValue || 0),
+    amountPaid,
+    change,
+    items,
+    isHistory: true,
+    source: 'pos',
+  };
 };
 

@@ -4,6 +4,14 @@
  */
 
 import { CompanyProfile } from '../../../utils/companyProfile';
+import {
+  buildReceiptHTML,
+  normalizeReceiptItems,
+  printReceipt,
+  downloadReceipt,
+  printBluetoothReceipt,
+  convertSalesOrderToPosPrintInfo,
+} from '../components/pos/PosPrintService';
 
 export interface SalesOrderItemPrint {
   productName: string;
@@ -53,6 +61,9 @@ export interface SalesOrderPrintInfo {
   totalPaid?: number;
   totalRemaining?: number;
   paymentStatus?: string;
+  cashierName?: string;
+  amountPaid?: number;
+  change?: number;
 }
 
 const PRINTER_WIDTH_80MM = 48;
@@ -78,15 +89,29 @@ export const buildSalesOrderThermalHTML = (
   companyProfile: CompanyProfile,
   isPdf: boolean = false
 ): string => {
+  // Jika transaksi berasal dari POS, selalu gunakan satu kebenaran format struk kasir POS
+  if (info.source === 'pos') {
+    const posInfo = convertSalesOrderToPosPrintInfo(info);
+    const normalizedItems = normalizeReceiptItems(posInfo.items, [], true);
+    return buildReceiptHTML(posInfo, companyProfile, normalizedItems, isPdf);
+  }
+
   const containerStyle = isPdf
     ? `font-family: 'Courier New', Courier, monospace; font-size: 11px; font-weight: 600; line-height: 1.25; padding: 2mm; color: #000; box-sizing: border-box; width: 69mm; margin: 0 auto;`
     : ``;
 
   const imgCrossorigin = isPdf ? `crossorigin="anonymous"` : ``;
 
-  const subtotalBeforeGlobalDiscount = (Number(info.total) || 0) + (Number(info.globalDiscountAmount) || 0);
+  const totalItemGross = (info.items || []).reduce((sum, item) => {
+    const gross = (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+    return sum + (gross > 0 ? gross : ((Number(item.subtotal) || 0) + (Number(item.discountAmount) || 0)));
+  }, 0);
+  const totalItemDiscount = (info.items || []).reduce((sum, item) => sum + (Number(item.discountAmount) || 0), 0);
   const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
   const grandTotal = Number(info.total) || 0;
+  const subtotalGross = totalItemGross > 0 ? totalItemGross : (grandTotal + globalDiscountAmount + totalItemDiscount);
+  const hasAnyDiscount = totalItemDiscount > 0 || globalDiscountAmount > 0;
+  const globalDiscountLabel = info.globalDiscountType === 'percentage' && info.globalDiscountValue ? ` (${info.globalDiscountValue}%)` : '';
 
   const now = new Date();
   const printTimestamp = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -142,8 +167,18 @@ export const buildSalesOrderThermalHTML = (
       <!-- Items Table -->
       <table class="mb-2" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px;"' : 'style="font-size: 10px;"'}>
         ${info.items
-          .map(
-            (item) => `
+          .map((item) => {
+            const itemGross = (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+            const itemDisc = Number(item.discountAmount) || 0;
+            let itemDiscLabel = '';
+            if (itemDisc > 0 && itemGross > 0) {
+              const pct = Math.round((itemDisc / itemGross) * 100);
+              if (pct > 0 && pct <= 100) {
+                itemDiscLabel = ` (${pct}%)`;
+              }
+            }
+
+            return `
           <tr>
             <td colspan="3" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; font-weight: bold;"' : 'class="font-bold"'}>
               ${escapeHtml(item.productName)}
@@ -158,8 +193,8 @@ export const buildSalesOrderThermalHTML = (
                   : ''
               }
               ${
-                item.discountAmount && item.discountAmount > 0
-                  ? `<div style="font-size: 9px; color: #555;">Diskon Item: -Rp ${formatIDR(item.discountAmount)}</div>`
+                itemDisc > 0
+                  ? `<div style="font-size: 9px; color: #555;">Diskon Item${itemDiscLabel}: -Rp ${formatIDR(itemDisc)}</div>`
                   : ''
               }
             </td>
@@ -169,8 +204,8 @@ export const buildSalesOrderThermalHTML = (
             <td ${isPdf ? 'style="padding: 1px 0; vertical-align: top;"' : ''}>@ ${formatIDR(item.unitPrice)}</td>
             <td class="text-right" ${isPdf ? 'style="padding: 1px 0; vertical-align: top; text-align: right;"' : ''}>${formatIDR(item.subtotal)}</td>
           </tr>
-        `
-          )
+        `;
+          })
           .join('')}
       </table>
 
@@ -243,19 +278,50 @@ export const buildSalesOrderThermalHTML = (
 
       <!-- Summary / Totals (Posisi di Bawah) -->
       <table class="mb-2 font-bold" ${isPdf ? 'style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; font-weight: 900;"' : 'style="font-size: 11px;"'}>
+        ${
+          hasAnyDiscount
+            ? `
         <tr>
           <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>SUBTOTAL</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${formatIDR(subtotalBeforeGlobalDiscount)}</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${formatIDR(subtotalGross)}</td>
         </tr>
+        ${
+          totalItemDiscount > 0
+            ? `
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top; font-weight: normal; color: #444;"' : 'style="font-weight: normal; color: #444;"'}>Diskon Item</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right; font-weight: normal; color: #444;"' : 'style="font-weight: normal; color: #444;"'}>-Rp ${formatIDR(totalItemDiscount)}</td>
+        </tr>
+        `
+            : ''
+        }
         ${
           globalDiscountAmount > 0
             ? `
         <tr>
-          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>DISKON TRANSAKSI</td>
-          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${formatIDR(globalDiscountAmount)}</td>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top; font-weight: normal; color: #444;"' : 'style="font-weight: normal; color: #444;"'}>Diskon Transaksi${globalDiscountLabel}</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right; font-weight: normal; color: #444;"' : 'style="font-weight: normal; color: #444;"'}>-Rp ${formatIDR(globalDiscountAmount)}</td>
         </tr>
         `
             : ''
+        }
+        ${
+          totalItemDiscount > 0 && globalDiscountAmount > 0
+            ? `
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>TOTAL DISKON</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>-Rp ${formatIDR(totalItemDiscount + globalDiscountAmount)}</td>
+        </tr>
+        `
+            : ''
+        }
+        `
+            : `
+        <tr>
+          <td ${isPdf ? 'style="padding: 2px 0; vertical-align: top;"' : ''}>SUBTOTAL</td>
+          <td class="text-right" ${isPdf ? 'style="padding: 2px 0; vertical-align: top; text-align: right;"' : ''}>Rp ${formatIDR(grandTotal)}</td>
+        </tr>
+        `
         }
         <tr style="border-top: 1px dashed #000;">
           <td ${isPdf ? 'style="padding: 3px 0; vertical-align: top; font-size: 12px;"' : 'style="font-size: 12px;"'}>TOTAL SO</td>
@@ -294,6 +360,11 @@ export const printSalesOrderThermal = (
   onTriggerNotification: (msg: string) => void
 ) => {
   if (!info) return;
+
+  if (info.source === 'pos') {
+    const posInfo = convertSalesOrderToPosPrintInfo(info);
+    return printReceipt(posInfo, companyProfile, [], onTriggerNotification);
+  }
 
   const printWindow = window.open('', '_blank', 'width=420,height=650');
   if (!printWindow) {
@@ -370,6 +441,11 @@ export const downloadSalesOrderThermalPdf = async (
 ) => {
   if (!info) return;
 
+  if (info.source === 'pos') {
+    const posInfo = convertSalesOrderToPosPrintInfo(info);
+    return downloadReceipt(posInfo, companyProfile, [], onTriggerNotification);
+  }
+
   const container = document.createElement('div');
   container.style.position = 'absolute';
   container.style.left = '-9999px';
@@ -425,6 +501,11 @@ export const printBluetoothSalesOrder = async (
   onTriggerNotification: (msg: string) => void
 ) => {
   if (!info) return;
+
+  if (info.source === 'pos') {
+    const posInfo = convertSalesOrderToPosPrintInfo(info);
+    return printBluetoothReceipt(posInfo, companyProfile, [], onTriggerNotification);
+  }
 
   try {
     const nav = navigator as any;
@@ -575,7 +656,13 @@ export const printBluetoothSalesOrder = async (
       }
 
       if (item.discountAmount && item.discountAmount > 0) {
-        appendStr(` Diskon: -Rp ${formatRupiahStr(item.discountAmount)}`);
+        const itemGross = (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+        let discPctStr = '';
+        if (itemGross > 0) {
+          const pct = Math.round((item.discountAmount / itemGross) * 100);
+          if (pct > 0 && pct <= 100) discPctStr = ` (${pct}%)`;
+        }
+        appendStr(` Diskon Item${discPctStr}: -Rp ${formatRupiahStr(item.discountAmount)}`);
         appendBytes(lineFeed);
       }
 
@@ -633,19 +720,42 @@ export const printBluetoothSalesOrder = async (
     appendBytes(lineFeed);
 
     appendBytes(boldOn);
-    const subtotalBeforeDiscount = (Number(info.total) || 0) + (Number(info.globalDiscountAmount) || 0);
-    const subtotalStr = `SUBTOTAL         Rp ${formatRupiahStr(subtotalBeforeDiscount).padStart(12)}`;
-    appendStr(subtotalStr.padStart(PRINTER_WIDTH_80MM));
-    appendBytes(lineFeed);
-
+    const totalItemGross = (info.items || []).reduce((sum, item) => {
+      const gross = (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+      return sum + (gross > 0 ? gross : ((Number(item.subtotal) || 0) + (Number(item.discountAmount) || 0)));
+    }, 0);
+    const totalItemDiscount = (info.items || []).reduce((sum, item) => sum + (Number(item.discountAmount) || 0), 0);
     const globalDiscountAmount = Number(info.globalDiscountAmount) || 0;
-    if (globalDiscountAmount > 0) {
-      const discStr = `DISKON TRANSAKSI -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
-      appendStr(discStr.padStart(PRINTER_WIDTH_80MM));
+    const grandTotal = Number(info.total) || 0;
+    const subtotalGross = totalItemGross > 0 ? totalItemGross : (grandTotal + globalDiscountAmount + totalItemDiscount);
+    const hasAnyDiscount = totalItemDiscount > 0 || globalDiscountAmount > 0;
+
+    if (hasAnyDiscount) {
+      const subtotalStr = `SUBTOTAL         Rp ${formatRupiahStr(subtotalGross).padStart(12)}`;
+      appendStr(subtotalStr.padStart(PRINTER_WIDTH_80MM));
       appendBytes(lineFeed);
+
+      if (totalItemDiscount > 0) {
+        const itemDiscStr = `DISKON ITEM       -Rp ${formatRupiahStr(totalItemDiscount).padStart(12)}`;
+        appendStr(itemDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
+
+      if (globalDiscountAmount > 0) {
+        const discLabel = info.globalDiscountType === 'percentage' && info.globalDiscountValue ? `DISKON (${info.globalDiscountValue}%)` : 'DISKON TRX';
+        const globalDiscStr = `${discLabel.padEnd(16)} -Rp ${formatRupiahStr(globalDiscountAmount).padStart(12)}`;
+        appendStr(globalDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
+
+      if (totalItemDiscount > 0 && globalDiscountAmount > 0) {
+        const totDiscStr = `TOTAL DISKON      -Rp ${formatRupiahStr(totalItemDiscount + globalDiscountAmount).padStart(12)}`;
+        appendStr(totDiscStr.padStart(PRINTER_WIDTH_80MM));
+        appendBytes(lineFeed);
+      }
     }
 
-    const totalStr = `TOTAL SO         Rp ${formatRupiahStr(info.total).padStart(12)}`;
+    const totalStr = `TOTAL SO         Rp ${formatRupiahStr(grandTotal).padStart(12)}`;
     appendStr(totalStr.padStart(PRINTER_WIDTH_80MM));
     appendBytes(lineFeed);
     appendBytes(boldOff);

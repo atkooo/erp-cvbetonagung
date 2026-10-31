@@ -971,6 +971,7 @@ export default function PurchaseView({
                             <ProductPicker
                               value={item.productId}
                               showCategoryFilter
+                              procurementTypeFilter="purchase"
                               onChange={(prod) => {
                                 handleItemChange(item.id, "productId", prod.id);
                                 handleItemChange(item.id, "unit", prod.unit);
@@ -1196,30 +1197,6 @@ export default function PurchaseView({
                       salinan dokumen PO ini pada saat pengiriman faktur tagihan
                       dan surat jalan (GRN).
                     </p>
-                  </div>
-
-                  <div className="flex justify-between text-center mt-12 px-12">
-                    <div>
-                      <p className="mb-24">Dipesan Oleh,</p>
-                      <p className="font-bold border-b border-black pb-1 uppercase">
-                        Purchasing Dept.
-                      </p>
-                      <p className="mt-1">{companyProfile.name}</p>
-                    </div>
-                    <div>
-                      <p className="mb-24">Disetujui Oleh,</p>
-                      <p className="font-bold border-b border-black pb-1 uppercase">
-                        Direktur Utama
-                      </p>
-                      <p className="mt-1">{companyProfile.name}</p>
-                    </div>
-                    <div>
-                      <p className="mb-24">Dikonfirmasi Oleh,</p>
-                      <p className="font-bold border-b border-black pb-1 text-white select-none">
-                        .
-                      </p>
-                      <p className="mt-1">{poToPrint.supplierName}</p>
-                    </div>
                   </div>
                 </div>
               );

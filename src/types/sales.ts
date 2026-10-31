@@ -183,7 +183,17 @@ export interface Quotation {
   customer?: {
     id: string;
     name: string;
+    phone?: string;
+    address?: string;
+    city?: string;
   };
+  salesOrders?: {
+    id: string;
+    orderNumber: string;
+    orderDate: string;
+    status: string;
+    total: number;
+  }[];
 }
 
 export interface InvoiceItem {
@@ -194,6 +204,7 @@ export interface InvoiceItem {
   length?: number;
   quantity: number;
   unitPrice: number;
+  discountAmount?: number;
   subtotal: number;
   product?: {
     id: string;

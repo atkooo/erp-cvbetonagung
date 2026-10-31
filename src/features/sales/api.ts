@@ -20,6 +20,13 @@ export const salesApi = {
     return mapQuotationFromDto(response.data);
   },
 
+  async getQuotation(id: string): Promise<Quotation> {
+    const response = await apiClient.get<{ data: QuotationDto }>(
+      `/sales/quotations/${id}?include=customer,items.product.unit,salesOrders`
+    );
+    return mapQuotationFromDto(response.data);
+  },
+
   async approveQuotation(id: string): Promise<SalesOrder> {
     const response = await apiClient.post<{ data: SalesOrderDto }>(`/sales/quotations/${id}/approve`, {
       order_date: toApiDate(),

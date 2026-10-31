@@ -238,7 +238,7 @@ export default function RestockModal({
             <div>
               <h2 className="text-base font-bold text-slate-900">Restok Barang Kosong & Menipis</h2>
               <p className="text-xs text-slate-500">
-                Pilih barang yang berada di bawah batas stok minimum untuk diterbitkan Purchase Order (PO) ke pemasok
+                Pilih barang pengadaan vendor/supplier (bahan baku & beli-jadi) yang berada di bawah batas stok minimum untuk diterbitkan Purchase Order (PO)
               </p>
             </div>
           </div>

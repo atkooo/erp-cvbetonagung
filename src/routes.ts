@@ -29,7 +29,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   'accounts-payable':       '/finance/account-payable',
   'cash-expense':           '/finance/cash-bank',
   accounts:                 '/finance/accounts',
-  'finance-reports':        '/finance/reports',
+  'finance-reports':        '/reports?category=finance',
 
   // Purchasing
   'purchase-requests':      '/purchasing/requests',

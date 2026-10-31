@@ -55,7 +55,6 @@ const PurchaseRequestView = lazyWithRetry(() => import('./components/PurchaseReq
 const RfqView = lazyWithRetry(() => import('./components/RfqView'));
 const ProjectsView = lazyWithRetry(() => import('./components/ProjectsView'));
 const QrView = lazyWithRetry(() => import('./components/QrView'));
-const FinanceReportView = lazyWithRetry(() => import('./components/FinanceReportView'));
 const InventoryReportView = lazyWithRetry(() => import('./components/InventoryReportView'));
 const ReportCenterView = lazyWithRetry(() => import('./features/reports/components/ReportCenterView'));
 const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
@@ -220,6 +219,7 @@ const routes: RouteObject[] = [
       // Sales
       { path: 'sales/pos', element: lazyRoute(PosView) },
       { path: 'sales/quotation', element: lazyRoute(SalesView, { type: 'quotation' }) },
+      { path: 'sales/quotation/:id', element: lazyRoute(SalesView, { type: 'quotation' }) },
       { path: 'sales/order', element: lazyRoute(SalesView, { type: 'sales-order' }) },
       { path: 'sales/order/:id', element: lazyRoute(SalesView, { type: 'sales-order' }) },
       { path: 'sales/delivery-orders', element: lazyRoute(DeliveryOrdersView) },
@@ -232,7 +232,7 @@ const routes: RouteObject[] = [
       { path: 'finance/account-payable', element: lazyRoute(ReceivablesPayablesView, { initialMode: 'ap' }) },
       { path: 'finance/cash-bank', element: lazyRoute(CashExpenseView) },
       { path: 'finance/accounts', element: lazyRoute(FinanceAccountsView) },
-      { path: 'finance/reports', element: lazyRoute(FinanceReportView) },
+      { path: 'finance/reports', element: <Navigate to="/reports?category=finance" replace /> },
 
       // Purchasing
       { path: 'purchasing/requests', element: lazyRoute(PurchaseRequestView) },

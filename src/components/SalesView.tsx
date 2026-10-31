@@ -36,6 +36,7 @@ import {
   FileText,
 } from '@/src/components/icons';
 import SalesOrderDetailView from '../features/sales/components/SalesOrderDetailView';
+import QuotationDetailView from '../features/sales/components/QuotationDetailView';
 import { Quotation, SalesOrder, ViewType, Customer, Product } from '../types';
 import { authStorage, apiClient } from '../services/api';
 import { salesApi } from '../features/sales/api';
@@ -57,6 +58,13 @@ import {
   SalesOrderPrintInfo,
   SalesOrderInvoicePrint,
 } from '../features/sales/services/SalesOrderPrintService';
+import {
+  printQuotationThermal,
+  downloadQuotationThermalPdf,
+  printBluetoothQuotation,
+  buildQuotationThermalHTML,
+  QuotationPrintInfo,
+} from '../features/sales/services/QuotationPrintService';
 
 interface SalesViewProps {
   type: 'quotation' | 'sales-order';
@@ -118,11 +126,16 @@ export default function SalesView({
 
   const navigate = useNavigate();
   const { id: paramOrderId } = useParams<{ id?: string }>();
-  const [activeSalesOrderId, setActiveSalesOrderId] = useState<string | null>(paramOrderId || null);
+  const [activeSalesOrderId, setActiveSalesOrderId] = useState<string | null>(!isQuotation ? (paramOrderId || null) : null);
+  const [activeQuotationId, setActiveQuotationId] = useState<string | null>(isQuotation ? (paramOrderId || null) : null);
 
   useEffect(() => {
     if (!isQuotation) {
       setActiveSalesOrderId(paramOrderId || null);
+      setActiveQuotationId(null);
+    } else {
+      setActiveQuotationId(paramOrderId || null);
+      setActiveSalesOrderId(null);
     }
   }, [paramOrderId, isQuotation]);
 
@@ -161,15 +174,22 @@ export default function SalesView({
         ? 'Sebagian (DP)'
         : 'Belum Dibayar';
 
+    const total = Number(so.total) || 0;
+    const paymentSum = mappedInvoices.flatMap((inv: any) => inv.payments || []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const amountPaid = paymentSum > 0 ? paymentSum : (totalPaid > 0 ? totalPaid : total);
+    const change = amountPaid - total;
+    const cashierName = so.createdBy?.name || so.created_by?.name || (so as any).created_by_user?.name || undefined;
+
     return {
       orderNumber: so.orderNumber,
       orderDate: formatDate(so.orderDate),
       customerName: so.customerName || so.customer?.name || 'Pelanggan',
+      cashierName,
       status: so.status,
       notes: so.notes || undefined,
       quotationNumber: so.quotationNumber || so.quotation?.quotationNumber || undefined,
       source: so.source,
-      total: Number(so.total) || 0,
+      total,
       globalDiscountAmount: Number(so.globalDiscountAmount) || 0,
       globalDiscountType: so.globalDiscountType || undefined,
       globalDiscountValue: Number(so.globalDiscountValue) || 0,
@@ -177,6 +197,8 @@ export default function SalesView({
       totalPaid,
       totalRemaining,
       paymentStatus,
+      amountPaid,
+      change,
       items: (so.items || []).map((item: any) => {
         const unitPrice = Number(item.price ?? item.unitPrice ?? item.unit_price ?? 0);
         const qty = Number(item.quantity) || 0;
@@ -200,19 +222,70 @@ export default function SalesView({
     };
   };
 
-  const handleThermalPrintWindow = (so: any) => {
-    const info = mapSalesOrderToPrintInfo(so);
-    printSalesOrderThermal(info, companyProfile, onTriggerNotification);
+  const mapQuotationToPrintInfo = (q: any): QuotationPrintInfo => {
+    return {
+      quotationNumber: q.quotationNumber || q.quoteNumber || 'QT-DRAFT',
+      quotationDate: formatDate(q.quotationDate || q.date),
+      validUntil: q.validUntil ? formatDate(q.validUntil) : undefined,
+      customerName: q.customerName || q.customer?.name || 'Pelanggan',
+      customerPhone: q.customer?.phone || undefined,
+      status: q.status || 'Draft',
+      notes: q.notes || undefined,
+      total: Number(q.total) || 0,
+      globalDiscountAmount: Number(q.globalDiscountAmount) || 0,
+      globalDiscountType: q.globalDiscountType || undefined,
+      globalDiscountValue: Number(q.globalDiscountValue) || 0,
+      items: (q.items || []).map((item: any) => {
+        const unitPrice = Number(item.price ?? item.unitPrice ?? item.unit_price ?? 0);
+        const qty = Number(item.quantity) || 0;
+        const discount = Number(item.discountAmount ?? item.discount_amount ?? 0);
+        const subtotal = Number(item.subtotal) || (qty * unitPrice - discount);
+        const rawUnit = item.unit || item.product?.unit?.name || item.product?.unit?.code || item.product?.unit || '';
+        const unitName = typeof rawUnit === 'string' ? rawUnit : (rawUnit?.name || '');
+
+        return {
+          productName: item.product?.name || item.productName || 'Item',
+          pieceCount: item.pieceCount ? Number(item.pieceCount) : undefined,
+          length: item.length ? Number(item.length) : undefined,
+          quantity: qty,
+          unit: unitName,
+          unitPrice,
+          discountAmount: discount,
+          subtotal,
+          description: item.description || undefined,
+        };
+      }),
+    };
   };
 
-  const handleThermalDownloadPdf = (so: any) => {
-    const info = mapSalesOrderToPrintInfo(so);
-    downloadSalesOrderThermalPdf(info, companyProfile, onTriggerNotification);
+  const handleThermalPrintWindow = (doc: any) => {
+    if (isQuotation || (!doc.orderNumber && (doc.quotationNumber || doc.quoteNumber))) {
+      const info = mapQuotationToPrintInfo(doc);
+      printQuotationThermal(info, companyProfile, onTriggerNotification);
+    } else {
+      const info = mapSalesOrderToPrintInfo(doc);
+      printSalesOrderThermal(info, companyProfile, onTriggerNotification);
+    }
   };
 
-  const handleThermalPrintBluetooth = (so: any) => {
-    const info = mapSalesOrderToPrintInfo(so);
-    printBluetoothSalesOrder(info, companyProfile, onTriggerNotification);
+  const handleThermalDownloadPdf = (doc: any) => {
+    if (isQuotation || (!doc.orderNumber && (doc.quotationNumber || doc.quoteNumber))) {
+      const info = mapQuotationToPrintInfo(doc);
+      downloadQuotationThermalPdf(info, companyProfile, onTriggerNotification);
+    } else {
+      const info = mapSalesOrderToPrintInfo(doc);
+      downloadSalesOrderThermalPdf(info, companyProfile, onTriggerNotification);
+    }
+  };
+
+  const handleThermalPrintBluetooth = (doc: any) => {
+    if (isQuotation || (!doc.orderNumber && (doc.quotationNumber || doc.quoteNumber))) {
+      const info = mapQuotationToPrintInfo(doc);
+      printBluetoothQuotation(info, companyProfile, onTriggerNotification);
+    } else {
+      const info = mapSalesOrderToPrintInfo(doc);
+      printBluetoothSalesOrder(info, companyProfile, onTriggerNotification);
+    }
   };
 
   // Form states to create a quick document
@@ -845,21 +918,43 @@ export default function SalesView({
     }
   };
 
+  // Jika dalam mode Quotation dan ada Penawaran yang dipilih, tampilkan halaman terpisah (QuotationDetailView)
+  if (isQuotation && activeQuotationId) {
+    return (
+      <QuotationDetailView
+        quotationId={activeQuotationId}
+        initialQuotation={quotations.find(q => q.id === activeQuotationId || (q.quotationNumber || q.quoteNumber) === activeQuotationId) || null}
+        onBack={() => {
+          setActiveQuotationId(null);
+          navigate('/sales/quotation');
+          loadData();
+        }}
+        onNavigate={onNavigate}
+        onTriggerNotification={onTriggerNotification}
+        onEdit={(q) => {
+          setActiveQuotationId(null);
+          handleOpenEditQuotation(q);
+        }}
+      />
+    );
+  }
+
   // Jika dalam mode Sales Order dan ada SO yang dipilih, tampilkan halaman terpisah (SalesOrderDetailView)
   if (!isQuotation && activeSalesOrderId) {
-      return (
-        <SalesOrderDetailView
-          salesOrderId={activeSalesOrderId}
-          initialOrder={salesOrders.find(s => s.id === activeSalesOrderId || s.orderNumber === activeSalesOrderId) || null}
-          onBack={() => {
-            setActiveSalesOrderId(null);
-            navigate('/sales/order');
-          }}
-          onNavigate={onNavigate}
-          onTriggerNotification={onTriggerNotification}
-        />
-      );
-    }
+    return (
+      <SalesOrderDetailView
+        salesOrderId={activeSalesOrderId}
+        initialOrder={salesOrders.find(s => s.id === activeSalesOrderId || s.orderNumber === activeSalesOrderId) || null}
+        onBack={() => {
+          setActiveSalesOrderId(null);
+          navigate('/sales/order');
+          loadData();
+        }}
+        onNavigate={onNavigate}
+        onTriggerNotification={onTriggerNotification}
+      />
+    );
+  }
 
     return (
       <div className="space-y-6 relative">
@@ -1051,10 +1146,16 @@ export default function SalesView({
                               <div className="flex items-center justify-end gap-1.5">
                                 {isQuotation ? (
                                   <button
-                                    onClick={() => setSelectedDoc(doc)}
-                                    className="p-1 text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 rounded-lg border border-sky-200 transition-all font-bold text-[10px] px-2.5 py-1 cursor-pointer"
+                                    onClick={() => {
+                                      setActiveQuotationId(doc.id);
+                                      navigate(`/sales/quotation/${doc.id}`);
+                                    }}
+                                    className="btn btn-secondary btn-sm text-[11px] font-semibold flex items-center gap-1.5 hover:text-sky-700 hover:border-sky-300"
+                                    title="Buka Detail Penawaran"
                                   >
-                                    Rincian Item
+                                    <FileText size={12} className="text-sky-600" />
+                                    <span>Detail Penawaran</span>
+                                    <ChevronRight size={12} className="text-slate-400" />
                                   </button>
                                 ) : (
                                   <button
@@ -1311,26 +1412,24 @@ export default function SalesView({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  {(!isQuotation || !(selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft')) && (
-                    <div className={`col-span-2 grid ${!isQuotation ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-                      <button
-                        onClick={() => handlePrintAction()}
-                        className="w-full py-2 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-800 hover:border-sky-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Printer size={13} />
-                        <span>Cetak PDF (A4)</span>
-                      </button>
-                      {!isQuotation && (
-                        <button
-                          onClick={() => setThermalModalDoc(selectedDoc)}
-                          className="w-full py-2 bg-linear-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                        >
-                          <Receipt size={13} />
-                          <span>Cetak Thermal (80mm)</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="col-span-2 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handlePrintAction()}
+                      className="w-full py-2 bg-white border border-slate-200 text-slate-700 hover:bg-sky-50 hover:text-sky-800 hover:border-sky-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      title={isQuotation ? "Cetak Dokumen Penawaran A4" : "Cetak Dokumen Sales Order A4"}
+                    >
+                      <Printer size={13} />
+                      <span>Cetak PDF (A4)</span>
+                    </button>
+                    <button
+                      onClick={() => setThermalModalDoc(selectedDoc)}
+                      className="w-full py-2 bg-linear-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      title="Cetak Struk Thermal Roll 80mm"
+                    >
+                      <Receipt size={13} />
+                      <span>Cetak Thermal (80mm)</span>
+                    </button>
+                  </div>
 
                   {isQuotation && (selectedDoc.status === 'Terkirim' || selectedDoc.status === 'Draft') ? (
                     <>
@@ -1372,7 +1471,7 @@ export default function SalesView({
                     </>
                   ) : !isQuotation && (selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses' || selectedDoc.status === 'Disetujui') ? (
                     <div className="flex flex-col gap-2 w-full">
-                      {(selectedDoc.status === 'Draft' || selectedDoc.status === 'Diproses') ? (
+                      {selectedDoc.source !== 'pos' && (selectedDoc.status === 'Draft' || selectedDoc.status === 'draft') ? (
                         <button
                           onClick={() => handleApproveSalesOrder(selectedDoc.id, selectedDoc.orderNumber)}
                           className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
@@ -1515,7 +1614,6 @@ export default function SalesView({
               const docNumber = isQuotation ? (selectedDoc.quoteNumber || selectedDoc.quotationNumber) : selectedDoc.orderNumber;
               const docTitle = isQuotation ? 'QUOTATION' : 'SALES ORDER';
               const docDateLabel = isQuotation ? 'Tanggal Penawaran' : 'Tanggal Sales Order';
-              const signatureTitle = isQuotation ? 'Disetujui Oleh,' : 'Dikonfirmasi Oleh,';
 
               return (
                 <div className="max-w-200 mx-auto">
@@ -1696,26 +1794,6 @@ export default function SalesView({
                   <p className="text-[11px] mt-6">
                     <strong>Catatan:</strong> {selectedDoc.notes || 'Dokumen ini diterbitkan sebagai dasar administrasi penjualan, produksi, pengiriman, dan penagihan customer.'}
                   </p>
-
-                  <div className="grid grid-cols-3 gap-10 mt-10 text-center text-xs">
-                    <div>
-                      <p>Dibuat Oleh,</p>
-                      <div className="h-20"></div>
-                      <p className="border-t border-black pt-2 font-bold">SALES DEPT.</p>
-                      <p>{companyProfile.name}</p>
-                    </div>
-                    <div>
-                      <p>{signatureTitle}</p>
-                      <div className="h-20"></div>
-                      <p className="border-t border-black pt-2 font-bold">{selectedDoc.customerName}</p>
-                    </div>
-                    <div>
-                      <p>Mengetahui,</p>
-                      <div className="h-20"></div>
-                      <p className="border-t border-black pt-2 font-bold">DIREKTUR UTAMA</p>
-                      <p>{companyProfile.name}</p>
-                    </div>
-                  </div>
                 </div>
               );
             })()}
@@ -2127,10 +2205,21 @@ export default function SalesView({
           </div>
         )}
 
-        {/* 7. Thermal Print Modal (Sales Order) */}
+        {/* 7. Thermal Print Modal (Sales Order & Quotation) */}
         {thermalModalDoc && (() => {
-          const info = mapSalesOrderToPrintInfo(thermalModalDoc);
-          const thermalHtml = buildSalesOrderThermalHTML(info, companyProfile, false);
+          const isDocQuotation = isQuotation || (!thermalModalDoc.orderNumber && (thermalModalDoc.quotationNumber || thermalModalDoc.quoteNumber));
+          const docNumber = isDocQuotation
+            ? (thermalModalDoc.quotationNumber || thermalModalDoc.quoteNumber)
+            : thermalModalDoc.orderNumber;
+          const isPos = !isDocQuotation && thermalModalDoc.source === 'pos';
+          const modalTitle = isDocQuotation
+            ? 'Cetak Thermal Penawaran Harga'
+            : (isPos ? 'Cetak Struk Kasir (POS)' : 'Cetak Thermal Sales Order');
+          const docFormatDesc = isPos ? 'Struk kasir roll 80mm' : 'Format roll 80mm tanpa tanda tangan';
+
+          const thermalHtml = isDocQuotation
+            ? buildQuotationThermalHTML(mapQuotationToPrintInfo(thermalModalDoc), companyProfile, false)
+            : buildSalesOrderThermalHTML(mapSalesOrderToPrintInfo(thermalModalDoc), companyProfile, false);
 
           return (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans text-xs">
@@ -2139,8 +2228,8 @@ export default function SalesView({
                   <div className="flex items-center gap-2">
                     <Receipt size={18} className="text-sky-100" />
                     <div>
-                      <h3 className="font-bold text-sm">Cetak Thermal Sales Order</h3>
-                      <p className="text-[10px] text-sky-100/80">{info.orderNumber} - Format roll 80mm tanpa tanda tangan</p>
+                      <h3 className="font-bold text-sm">{modalTitle}</h3>
+                      <p className="text-[10px] text-sky-100/80">{docNumber} - {docFormatDesc}</p>
                     </div>
                   </div>
                   <button

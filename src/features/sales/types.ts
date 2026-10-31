@@ -35,7 +35,17 @@ export interface QuotationDto {
   customer?: {
     id: string;
     name: string;
+    phone?: string;
+    address?: string;
+    city?: string;
   };
+  sales_orders?: {
+    id: string;
+    order_number: string;
+    order_date: string;
+    status: string;
+    total: number;
+  }[];
   global_discount_type?: 'percentage' | 'nominal' | null;
   global_discount_value?: string | number | null;
   global_discount_amount?: string | number | null;
