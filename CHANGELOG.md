@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Menampilkan rincian `Subtotal Kotor`, `Diskon Item`, `Subtotal Bersih`, `Ongkos Kirim`, `Total Tagihan`, `Telah Dibayar`, dan `Sisa Tagihan` pada footer faktur.
 
 ### Changed
+- **Penerapan Pagination, Pengurutan Stok Tersedia, dan Optimasi Performa Kasir POS (`PosProductGrid.tsx`)**:
+  - **Prioritas Urutan Ketersediaan Stok**: Produk yang memiliki stok fisik siap jual (*available stock* > 0) otomatis ditampilkan di bagian atas dan diurutkan berdasarkan jumlah stok terbanyak, sedangkan produk dengan stok kosong/habis ditaruh di urutan paling bawah.
+  - **Pagination Produk POS**: Menambahkan kontrol pagination (pilihan 12, 24, atau 48 item per halaman, default 12) sehingga browser kasir tidak lagi me-render ratusan kartu produk dan elemen gambar sekaligus, mencegah lag dan membuat scrolling ringan.
+  - **Optimasi Kalkulasi Stok O(1)**: Mengganti loop filter stok berulang pada JSX render dengan `stockMap` terkomputasi sekali dalam memori (*O(1) lookup*), meningkatkan kecepatan rendering kartu produk secara signifikan.
+  - **Quick Toggle Stok Ready**: Menambahkan tombol filter instan *Semua* vs *Ready Saja* di samping kolom pencarian untuk kemudahan kasir melihat produk yang siap kirim/bawa.
 - **Pembersihan Tombol Approval Berlebih pada Transaksi POS (`SalesOrderDetailView.tsx`, `SalesView.tsx`)**:
   - Memperbaiki kondisi tombol **Setujui (Approve)** agar secara ketat hanya muncul untuk dokumen Sales Order B2B formal non-POS yang masih berstatus `Draft`.
   - Menghilangkan tombol approval pada transaksi kasir POS (`source === 'pos'`), karena transaksi kasir bersifat *instant settlement* (pembayaran langsung lunas, faktur langsung diterbitkan, serta surat jalan dan SPK produksi otomatis dibuat seketika saat checkout kasir selesai).
