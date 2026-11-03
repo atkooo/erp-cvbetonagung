@@ -41,6 +41,15 @@ interface PurchaseViewProps {
   onNavigate?: (view: string) => void;
 }
 
+interface PoFormItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+  unit: string;
+}
+
 export default function PurchaseView({
   onTriggerNotification,
   onNavigate,
@@ -56,6 +65,7 @@ export default function PurchaseView({
     window.addEventListener('erp_company_profile_updated', handleProfileUpdate);
     return () => window.removeEventListener('erp_company_profile_updated', handleProfileUpdate);
   }, []);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [restockItemCount, setRestockItemCount] = useState(0);
@@ -77,20 +87,28 @@ export default function PurchaseView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New PO States
+  const [referenceType, setReferenceType] = useState<"rfq" | "so">("rfq");
   const [supplierId, setSupplierId] = useState("");
   const [salesOrderId, setSalesOrderId] = useState("");
   const [salesOrderNumberDisplay, setSalesOrderNumberDisplay] = useState("");
   const [rfqId, setRfqId] = useState<string>("");
   const [rfqNumberDisplay, setRfqNumberDisplay] = useState<string>("");
-  const [formItems, setFormItems] = useState<
-    {
-      id: string;
-      productId: string;
-      quantity: number;
-      price: number;
-      unit?: string;
-    }[]
-  >([{ id: "1", productId: "", quantity: 1, price: 0 }]);
+  const [formItems, setFormItems] = useState<PoFormItem[]>([]);
+
+  const resetPoForm = () => {
+    setReferenceType("rfq");
+    setSupplierId("");
+    setSalesOrderId("");
+    setSalesOrderNumberDisplay("");
+    setRfqId("");
+    setRfqNumberDisplay("");
+    setFormItems([]);
+  };
+
+  const handleOpenAddModal = () => {
+    resetPoForm();
+    setShowAddModal(true);
+  };
 
   // Quick add supplier states
   const [showAddSupplier, setShowAddSupplier] = useState(false);
@@ -114,12 +132,11 @@ export default function PurchaseView({
       setProducts(prods);
       setSalesOrders(sos);
 
-      // Ambil jumlah barang yang membutuhkan restok
       purchasingApi.getRestockSuggestions().then(res => {
         setRestockItemCount(res.summary.total_items);
       }).catch(e => console.error("Error loading restock count", e));
 
-      if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
+      // Supplier is set based on selected RFQ or chosen manually when SO reference is selected
     } catch (err) {
       console.error("Failed to load purchasing data", err);
       const msg =
@@ -135,37 +152,57 @@ export default function PurchaseView({
     loadData();
   }, []);
 
-  // Workflow shortcut effect
+  // Workflow shortcut effect (e.g. dari RFQ)
   useEffect(() => {
     const pendingRfqId = sessionStorage.getItem('action_create_po');
     if (pendingRfqId) {
       sessionStorage.removeItem('action_create_po');
-      
-      const checkAndOpen = setInterval(() => {
-        // Just set the RFQ ID and open the modal, the RFQ picker might fetch it.
-        setRfqId(pendingRfqId);
-        setShowAddModal(true);
-        clearInterval(checkAndOpen);
-      }, 500);
-      
-      setTimeout(() => clearInterval(checkAndOpen), 10000);
+      setReferenceType('rfq');
+      setRfqId(pendingRfqId);
+      setShowAddModal(true);
+
+      purchasingApi.getRfqs().then((allRfqs) => {
+        const matched = allRfqs.find(r => r.id === pendingRfqId || r.rfqNumber === pendingRfqId);
+        if (matched) {
+          setRfqNumberDisplay(matched.rfqNumber);
+          setSupplierId(matched.supplierId);
+          if (matched.items && matched.items.length > 0) {
+            setFormItems(
+              matched.items.map((item, index) => {
+                const prod = products.find((p) => p.id === item.productId || (item.productId && p.id.toLowerCase() === item.productId.toLowerCase()));
+                const pName = (item.productName && item.productName !== 'Unknown Product' && item.productName !== 'Custom Item')
+                  ? item.productName
+                  : prod?.name || (item as any).description || 'Material / Produk';
+                return {
+                  id: `form-item-${Date.now()}-${index}`,
+                  productId: item.productId,
+                  productName: pName,
+                  quantity: item.quantity,
+                  price: item.quotedUnitPrice || prod?.costPrice || 0,
+                  unit: item.unit || prod?.unit || "Unit",
+                };
+              })
+            );
+          }
+        }
+      }).catch(err => console.error("Error loading pending RFQ", err));
     }
-  }, []);
+  }, [products]);
 
   const handleAddItem = () => {
-    setFormItems([
-      ...formItems,
-      { id: `form-item-${Date.now()}`, productId: "", quantity: 1, price: 0 },
+    setFormItems(prev => [
+      ...prev,
+      { id: `form-item-${Date.now()}-${prev.length}`, productId: "", productName: "", quantity: 1, price: 0, unit: "Unit" },
     ]);
   };
 
   const handleRemoveItem = (id: string) => {
     if (formItems.length > 1) {
-      setFormItems(formItems.filter((item) => item.id !== id));
+      setFormItems(prev => prev.filter((item) => item.id !== id));
     }
   };
 
-  const handleItemChange = (id: string, field: string, value: any) => {
+  const handleItemChange = (id: string, field: keyof PoFormItem, value: any) => {
     setFormItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, [field]: value } : item,
@@ -179,6 +216,17 @@ export default function PurchaseView({
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(num);
+  };
+
+  const getItemDisplayName = (it: { productId?: string; productName?: string; description?: string }) => {
+    if (it.productName && it.productName !== 'Unknown Product' && it.productName !== 'Custom Item') {
+      return it.productName;
+    }
+    if (it.productId) {
+      const matched = products.find(p => p.id === it.productId || (p.id && it.productId && p.id.toLowerCase() === it.productId.toLowerCase()));
+      if (matched) return matched.name;
+    }
+    return it.description || it.productName || 'Material / Produk';
   };
 
   const filteredPOs = purchaseOrders.filter((po) => {
@@ -201,10 +249,37 @@ export default function PurchaseView({
     setCurrentPage(1);
   }, [search, statusFilter]);
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (referenceType === 'rfq' && !rfqId) {
+      onTriggerNotification(
+        "Gagal: Pembuatan Purchase Order wajib memilih dokumen referensi RFQ!",
+      );
+      return;
+    }
+
+    if (referenceType === 'so' && !salesOrderId) {
+      onTriggerNotification(
+        "Gagal: Pembuatan Purchase Order wajib memilih dokumen referensi Sales Order!",
+      );
+      return;
+    }
+
+    if (!rfqId && !salesOrderId) {
+      onTriggerNotification(
+        "Gagal: Pembuatan Purchase Order wajib memiliki referensi dari RFQ atau Sales Order!",
+      );
+      return;
+    }
+
+    if (!supplierId) {
+      onTriggerNotification("Gagal: Vendor Supplier wajib dipilih!");
+      return;
+    }
+
     if (
+      formItems.length === 0 ||
       formItems.some(
         (item) => !item.productId || item.quantity <= 0 || item.price < 0,
       )
@@ -219,16 +294,17 @@ export default function PurchaseView({
       const d = new Date();
       const todayStr = d.toISOString().split("T")[0];
       const expectedDate = new Date(d);
-      expectedDate.setDate(d.getDate() + 7); // assume 7 days delivery
+      expectedDate.setDate(d.getDate() + 7);
 
       await purchasingApi.createPurchaseOrder({
         supplier_id: supplierId,
-        sales_order_id: salesOrderId || undefined,
-        rfq_id: rfqId || undefined,
+        sales_order_id: referenceType === 'so' ? salesOrderId : undefined,
+        rfq_id: referenceType === 'rfq' ? rfqId : undefined,
         order_date: todayStr,
         expected_date: expectedDate.toISOString().split("T")[0],
         items: formItems.map((it) => ({
           product_id: it.productId,
+          description: it.productName || undefined,
           quantity: it.quantity,
           unit_price: it.price,
         })),
@@ -236,21 +312,14 @@ export default function PurchaseView({
       onTriggerNotification(`Sukses menerbitkan PO via API`);
 
       // Reset form
-      setFormItems([
-        { id: `form-item-${Date.now()}`, productId: "", quantity: 1, price: 0 },
-      ]);
-      setRfqId("");
-      setRfqNumberDisplay("");
-      setSalesOrderId("");
-
+      resetPoForm();
+      setShowAddModal(false);
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       onTriggerNotification(
-        err instanceof Error ? err.message : "Gagal membuat dokumen PO",
+        err?.response?.data?.message || (err instanceof Error ? err.message : "Gagal membuat dokumen PO"),
       );
     }
-
-    setShowAddModal(false);
   };
 
   const handleQuickAddSupplier = async (e: React.FormEvent) => {
@@ -258,108 +327,48 @@ export default function PurchaseView({
     if (!newSupName) return;
 
     try {
-      const code = 'AUTO GENERATED';
-      const newSupplier = await suppliersApi.createSupplier({
-        code,
+      const newSup = await suppliersApi.createSupplier({
         name: newSupName,
         phone: newSupPhone,
         city: newSupCity,
         address: newSupAddress,
-        status: "active",
       });
 
-      setSuppliers((prev) => [...prev, newSupplier]);
-      setSupplierId(newSupplier.id);
+      setSuppliers((prev) => [newSup, ...prev]);
+      setSupplierId(newSup.id);
       setShowAddSupplier(false);
-      onTriggerNotification(
-        `Berhasil menambahkan supplier baru: ${newSupplier.name}`,
-      );
 
       setNewSupName("");
       setNewSupPhone("");
       setNewSupCity("");
       setNewSupAddress("");
+
+      onTriggerNotification(`Supplier ${newSup.name} berhasil ditambahkan!`);
     } catch (err) {
       onTriggerNotification(
-        err instanceof Error ? err.message : "Gagal menambah supplier",
+        err instanceof Error
+          ? err.message
+          : "Gagal menambahkan supplier baru",
       );
     }
   };
 
-  const handleReceiveGoods = async (
-    poId: string,
-    poNum: string,
-    items: any[],
-  ) => {
-    try {
-      const po = purchaseOrders.find(
-        (purchaseOrder) => purchaseOrder.id === poId,
-      );
-      const receiptItems = (po?.items || items || [])
-        .map((item: any) => ({
-          purchase_order_item_id: item.id,
-          product_id: item.productId,
-          received_quantity: Math.max(
-            0,
-            item.quantity - (item.receivedQty || 0),
-          ),
-          rejected_quantity: 0,
-          notes: `Diterima dari PO ${poNum}`,
-        }))
-        .filter(
-          (item: any) =>
-            item.purchase_order_item_id &&
-            item.product_id &&
-            item.received_quantity > 0,
-        );
-
-      if (receiptItems.length === 0) {
-        onTriggerNotification(
-          `Tidak ada sisa item yang perlu diterima untuk PO ${poNum}.`,
-        );
-        return;
-      }
-
-      await purchasingApi.createGoodsReceiptNote({
-        purchase_order_id: poId,
-        receipt_date: new Date().toISOString().split("T")[0],
-        to_location_id: "019e9ad6-c8d2-7170-9090-1def3d995d06", // HARDCODED for now as there's no location picker yet
-        status: "posted",
-        notes: `Barang diterima dari PO ${poNum}`,
-        items: receiptItems,
-      });
-
-      onTriggerNotification(
-        `GRN penerimaan berhasil dibuat untuk PO ${poNum}. Cek di menu Penerimaan Barang (GRN).`,
-      );
-      await loadData();
-    } catch (err) {
-      onTriggerNotification(
-        err instanceof Error ? err.message : "Gagal konfirmasi penerimaan",
-      );
-    }
-  };
-
-  const handleApprove = async (poId: string, poNum: string) => {
+  const handleApprove = async (id: string, poNumber: string) => {
     const result = await Swal.fire({
-      title: "Konfirmasi Approval PO",
-      text: `Apakah Anda yakin ingin menyetujui Purchase Order ${poNum}? PO yang telah disetujui akan berstatus Dipesan dan dikirim ke Supplier.`,
-      icon: "warning",
+      title: "Setujui PO?",
+      text: `Apakah Anda yakin ingin menyetujui PO ${poNumber}? Status akan berubah menjadi Dipesan.`,
+      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#059669", // emerald-600
-      cancelButtonColor: "#64748b", // slate-500
-      confirmButtonText: "Ya, Setujui PO!",
+      confirmButtonText: "Ya, Setujui",
       cancelButtonText: "Batal",
+      confirmButtonColor: "#059669",
     });
 
     if (result.isConfirmed) {
       try {
-        await purchasingApi.approvePurchaseOrder(poId);
-        Swal.fire(
-          "Approved!",
-          `PO ${poNum} berhasil disetujui. Status kini menjadi Dipesan.`,
-          "success",
-        );
+        await purchasingApi.approvePurchaseOrder(id);
+        Swal.fire("Berhasil", `PO ${poNumber} berhasil disetujui.`, "success");
+        onTriggerNotification(`PO ${poNumber} disetujui.`);
         await loadData();
       } catch (err) {
         Swal.fire(
@@ -373,18 +382,18 @@ export default function PurchaseView({
     }
   };
 
-  const handleCancel = async (poId: string, poNum: string) => {
-    const result = await Swal.fire({
-      title: "Batalkan PO?",
-      text: `Masukkan alasan pembatalan Purchase Order ${poNum}:`,
-      icon: "error",
-      input: "textarea",
-      inputPlaceholder: "Tuliskan alasan pembatalan di sini...",
+  const handleCancel = async (id: string, poNumber: string) => {
+    const { value: reason } = await Swal.fire({
+      title: `Batalkan PO ${poNumber}?`,
+      text: "Masukkan alasan pembatalan dokumen Purchase Order:",
+      input: "text",
+      inputPlaceholder: "Alasan pembatalan...",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#e11d48", // rose-600
-      cancelButtonColor: "#64748b", // slate-500
-      confirmButtonText: "Ya, Batalkan!",
-      cancelButtonText: "Tidak",
+      confirmButtonText: "Ya, Batalkan",
+      cancelButtonText: "Kembali",
+      confirmButtonColor: "#e11d48",
+      cancelButtonColor: "#94a3b8",
       inputValidator: (value) => {
         if (!value) {
           return "Alasan pembatalan wajib diisi!";
@@ -392,10 +401,11 @@ export default function PurchaseView({
       },
     });
 
-    if (result.isConfirmed) {
+    if (reason) {
       try {
-        await purchasingApi.cancelPurchaseOrder(poId, result.value);
-        Swal.fire("Dibatalkan!", `PO ${poNum} berhasil dibatalkan.`, "success");
+        await purchasingApi.cancelPurchaseOrder(id, reason);
+        Swal.fire("Berhasil", `PO ${poNumber} berhasil dibatalkan.`, "success");
+        onTriggerNotification(`PO ${poNumber} dibatalkan.`);
         await loadData();
       } catch (err) {
         Swal.fire(
@@ -410,118 +420,68 @@ export default function PurchaseView({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Visual top card info */}
-      <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">
-            <ShoppingCart size={20} />
+    <div className="space-y-5 font-sans text-xs">
+      {/* Header Banner */}
+      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-sky-50 text-sky-600 border border-sky-100 rounded-xl">
+            <ShoppingCart size={22} />
           </div>
           <div>
-            <h3 className="font-sans font-bold text-sm text-slate-800">
-              Siklus Pembelian & Restock Bahan Cor (Purchase Order)
+            <h3 className="font-bold text-sm text-slate-800">
+              Purchase Order (PO)
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Pantau kontrak pengadaan ke pabrik baja wiremesh, semen gresik,
-              dan pasir lumajang super.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Penerbitan pesanan resmi logistik dan material ke supplier rekanan
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowRestockModal(true)}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5 shrink-0 transition-all cursor-pointer relative"
+            className="btn btn-secondary btn-md border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 flex items-center gap-1.5 shrink-0"
           >
             <Package size={15} />
             <span>Restok Barang Kosong</span>
             {restockItemCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-white text-amber-700 text-[10px] font-black rounded-full shadow-xs">
+              <span className="ml-1 px-1.5 py-0.2 bg-amber-600 text-white text-[10px] font-bold rounded-full">
                 {restockItemCount}
               </span>
             )}
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-slate-900 border border-slate-800 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-800 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
+            onClick={handleOpenAddModal}
+            className="btn btn-primary btn-md flex items-center gap-2"
           >
             <Plus size={16} />
-            <span>Buat PO Manual</span>
+            <span>Buat PO Baru</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          [
-            "PR-2026-0601",
-            "Permintaan Pembelian",
-            "Gudang mengajukan kebutuhan semen, pasir, dan wiremesh.",
-            "Draft",
-          ],
-          [
-            "PO-2026-05-014",
-            "Purchase Order",
-            "Admin menerbitkan pesanan resmi ke supplier.",
-            "Dipesan",
-          ],
-          [
-            "GRN-2026-0601",
-            "Penerimaan Gudang",
-            "Barang masuk dicek fisik sebelum stok bertambah.",
-            "Parsial",
-          ],
-          [
-            "AP-2026-0601",
-            "Hutang Supplier",
-            "Tagihan supplier menunggu jadwal pembayaran finance.",
-            "Open",
-          ],
-        ].map(([code, title, desc, status]) => (
-          <div
-            key={code}
-            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[10px] font-black text-cyan-600">
-                {code}
-              </span>
-              <span className="px-2 py-0.5 rounded border bg-slate-50 text-[9px] font-bold text-slate-500">
-                {status}
-              </span>
-            </div>
-            <h4 className="mt-2 font-bold text-slate-800">{title}</h4>
-            <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-              {desc}
-            </p>
-          </div>
-        ))}
-      </div>
-
       {/* Query Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Search size={16} />
-          </span>
+          <Search size={16} className="absolute left-3.5 top-2.5 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari PO No atau nama supplier..."
-            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs"
+            placeholder="Cari No PO atau nama supplier..."
+            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-          <Filter size={13} className="text-slate-400" />
+        <div className="flex items-center gap-2 bg-slate-50/80 px-3 py-1.5 rounded-xl border border-slate-200/80">
+          <Filter size={14} className="text-slate-400" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-[11px] text-slate-600 bg-transparent py-1 cursor-pointer focus:outline-none"
+            className="text-xs text-slate-700 font-medium bg-transparent py-0.5 cursor-pointer outline-none"
           >
-            <option value="All">Semua PO</option>
+            <option value="All">Semua Status</option>
             <option value="Draft">Draft</option>
-            <option value="Dipesan">Dipesan (Ordered)</option>
+            <option value="Dipesan">Dipesan</option>
             <option value="Diterima Sebagian">Diterima Sebagian</option>
             <option value="Diterima Penuh">Diterima Penuh</option>
           </select>
@@ -534,17 +494,17 @@ export default function PurchaseView({
       ) : errorMessage ? (
         <ErrorCard message={errorMessage} onRetry={loadData} />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left font-sans text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
-                  <th className="p-3.5 pl-5">No PO.</th>
-                  <th className="p-3.5">Pemasok Vendor</th>
+                <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 uppercase tracking-wider font-mono text-[10px]">
+                  <th className="p-3.5 pl-5">No PO</th>
+                  <th className="p-3.5">Pemasok / Supplier</th>
                   <th className="p-3.5">Tanggal Surat</th>
                   <th className="p-3.5">Total Pengadaan</th>
                   <th className="p-3.5">Status Logistik</th>
-                  <th className="p-3.5 pr-5 text-right">Rincian Item</th>
+                  <th className="p-3.5 pr-5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -561,90 +521,91 @@ export default function PurchaseView({
                   <>
                     {paginatedPOs.map((po) => {
                       const isExpanded = expandedPoId === po.id;
-                      const statusColors: Record<string, string> = {
-                        Draft: "bg-slate-100 text-slate-600",
-                        Dipesan: "bg-blue-100 text-blue-700 border-blue-200",
-                        "Diterima Sebagian":
-                          "bg-amber-100 text-amber-700 border-amber-300 animate-pulse",
-                        "Diterima Penuh":
-                          "bg-emerald-100 text-emerald-800 border-emerald-200",
-                        Dibatalkan: "bg-slate-100 text-slate-400",
-                      };
-
                       return (
                         <React.Fragment key={po.id}>
-                          <tr className="hover:bg-slate-50/40">
+                          <tr className="hover:bg-sky-50/20 transition-colors">
                             <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
                               <button
                                 onClick={() =>
                                   setExpandedPoId(isExpanded ? null : po.id)
                                 }
-                                className="flex items-center gap-1.5 focus:outline-none text-left"
+                                className="flex items-center gap-2 focus:outline-none text-left cursor-pointer group"
                               >
                                 {isExpanded ? (
                                   <ChevronDown
                                     size={14}
-                                    className="text-cyan-500"
+                                    className="text-sky-600"
                                   />
                                 ) : (
                                   <ChevronRight
                                     size={14}
-                                    className="text-slate-400"
+                                    className="text-slate-400 group-hover:text-sky-600 transition-colors"
                                   />
                                 )}
-                                <span>{po.poNumber}</span>
+                                <span className="group-hover:text-sky-700 transition-colors">{po.poNumber}</span>
                               </button>
                             </td>
-                            <td className="p-3.5 font-bold text-slate-700">
+                            <td className="p-3.5 font-semibold text-slate-700">
                               {po.supplierName}
                             </td>
                             <td className="p-3.5 font-mono text-slate-500">
                               {formatDate(po.date)}
                             </td>
-                            <td className="p-3.5 font-mono font-black text-slate-900">
+                            <td className="p-3.5 font-mono font-bold text-slate-900">
                               {formatIDR(po.total)}
                             </td>
                             <td className="p-3.5">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status] || "bg-slate-100"}`}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-semibold border ${
+                                  po.status === 'Diterima Penuh'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : po.status === 'Diterima Sebagian'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : po.status === 'Dipesan'
+                                    ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
                               >
                                 {po.status}
                               </span>
                             </td>
                             <td className="p-3.5 pr-5 text-right whitespace-nowrap">
-                              {po.status === "Draft" && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handleApprove(po.id, po.poNumber)
-                                    }
-                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleCancel(po.id, po.poNumber)
-                                    }
-                                    className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
-                                  >
-                                    Batal
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => {
-                                  setPrintPoId(po.id);
-                                  onTriggerNotification(
-                                    `Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`,
-                                  );
-                                  setTimeout(() => handlePrintAction(), 300);
-                                }}
-                                className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
-                                title="Print PO"
-                              >
-                                Cetak
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                {po.status === "Draft" && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleApprove(po.id, po.poNumber)
+                                      }
+                                      className="btn btn-sm btn-success"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleCancel(po.id, po.poNumber)
+                                      }
+                                      className="btn btn-sm btn-danger"
+                                    >
+                                      Batal
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setPrintPoId(po.id);
+                                    onTriggerNotification(
+                                      `Menyiapkan dokumen PO ${po.poNumber} untuk dicetak...`,
+                                    );
+                                    setTimeout(() => handlePrintAction(), 300);
+                                  }}
+                                  className="btn btn-sm btn-secondary flex items-center gap-1.5"
+                                  title="Print PO"
+                                >
+                                  <Printer size={13} />
+                                  <span>Cetak</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
 
@@ -653,40 +614,42 @@ export default function PurchaseView({
                             <tr className="bg-slate-50/50">
                               <td
                                 colSpan={6}
-                                className="p-4 pl-12 border-b border-slate-100"
+                                className="p-4 pl-12 border-t border-slate-100"
                               >
-                                <div className="space-y-4 max-w-xl">
-                                  <div className="flex items-center gap-3">
-                                    <h5 className="font-mono text-[9px] font-bold text-slate-400 tracking-wider">
-                                      KOMPONEN RESTOCK BORONGAN
+                                <div className="space-y-3 max-w-xl">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="font-bold text-[10px] text-slate-400 uppercase tracking-wider">
+                                      Komponen Barang Pengadaan
                                     </h5>
                                     {po.salesOrderNumber && (
-                                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100 flex items-center gap-1">
-                                        <ShoppingCart size={10} />
-                                        Terkait SO: {po.salesOrderNumber}
+                                      <span className="px-2 py-0.5 bg-sky-50 text-sky-700 rounded-lg text-[10px] font-medium border border-sky-100 flex items-center gap-1">
+                                        <ShoppingCart size={11} />
+                                        SO: {po.salesOrderNumber}
                                       </span>
                                     )}
                                   </div>
                                   <div className="space-y-1.5">
-                                    {po.items?.map((it, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="p-2.5 bg-white border rounded-lg flex items-center justify-between text-xs"
-                                      >
-                                        <div>
-                                          <strong className="text-slate-700 block">
-                                            {it.productName}
-                                          </strong>
-                                          <span className="text-slate-400 font-mono text-[10px]">
-                                            {it.quantity} Pcs x{" "}
-                                            {formatIDR(it.price)}
+                                    {po.items?.map((it, idx) => {
+                                      const displayName = getItemDisplayName(it);
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-2xs"
+                                        >
+                                          <div>
+                                            <span className="font-semibold text-slate-800 text-xs block">
+                                              {displayName}
+                                            </span>
+                                            <span className="text-slate-500 font-mono text-[11px]">
+                                              {it.quantity} Pcs x {formatIDR(it.price)}
+                                            </span>
+                                          </div>
+                                          <span className="font-mono text-slate-900 font-bold text-xs">
+                                            {formatIDR(it.quantity * it.price)}
                                           </span>
                                         </div>
-                                        <strong className="font-mono text-slate-950">
-                                          {formatIDR(it.quantity * it.price)}
-                                        </strong>
-                                      </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                   {onNavigate && po.status === "Dipesan" && (
                                     <div className="pt-2">
@@ -695,7 +658,7 @@ export default function PurchaseView({
                                           sessionStorage.setItem('action_receive_po', po.id);
                                           onNavigate('incoming-goods');
                                         }}
-                                        className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs shadow-sky-500/20 active:scale-[0.98] cursor-pointer"
+                                        className="btn btn-primary btn-md w-full flex items-center justify-center gap-2"
                                       >
                                         <span>Lanjut ke Penerimaan Barang (GRN)</span>
                                         <ChevronRight size={14} />
@@ -709,7 +672,7 @@ export default function PurchaseView({
                                           sessionStorage.setItem('action_pay_ap', po.poNumber);
                                           onNavigate('accounts-payable');
                                         }}
-                                        className="w-full py-2.5 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-xs shadow-sky-500/20 active:scale-[0.98] cursor-pointer"
+                                        className="btn btn-primary btn-md w-full flex items-center justify-center gap-2"
                                       >
                                         <span>Lanjut ke Outstanding Payable (AP)</span>
                                         <ChevronRight size={14} />
@@ -718,12 +681,12 @@ export default function PurchaseView({
                                   )}
 
                                   {po.status !== 'cancelled' && po.status !== 'Dibatalkan' && (
-                                    <div className="pt-2">
+                                    <div className="pt-1">
                                       <button
                                         onClick={() => handleCancel(po.id, po.poNumber)}
-                                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                        className="btn btn-secondary btn-md w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 rounded-xl flex items-center justify-center gap-1.5"
                                       >
-                                        <X size={13} className="text-rose-500" />
+                                        <X size={14} className="text-rose-500" />
                                         <span>Batalkan Purchase Order</span>
                                       </button>
                                     </div>
@@ -741,25 +704,25 @@ export default function PurchaseView({
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
-              <div className="text-[10px] text-slate-400 font-mono">
+            <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200/80">
+              <div className="text-[11px] text-slate-400 font-mono">
                 Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredPOs.length)} dari {filteredPOs.length} data
               </div>
               <div className="flex items-center gap-2 text-xs font-mono">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  className="btn btn-secondary btn-sm"
                 >
                   Prev
                 </button>
-                <span className="text-slate-500 px-2">
+                <span className="text-slate-500 px-2 font-medium">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                  className="btn btn-secondary btn-sm"
                 >
                   Next
                 </button>
@@ -771,17 +734,25 @@ export default function PurchaseView({
 
       {/* Rilis PO Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-xs">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-cyan-400" />
-                <h3 className="font-bold text-sm">Pemesanan PO Supplier</h3>
+            <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-50 text-sky-600 border border-sky-100 rounded-lg">
+                  <ShoppingCart size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Penerbitan Dokumen PO</h3>
+                  <p className="text-[11px] text-slate-500">Buat pesanan resmi pengadaan logistik ke supplier</p>
+                </div>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white"
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetPoForm();
+                }}
+                className="p-1.5 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -789,282 +760,410 @@ export default function PurchaseView({
 
             {/* Form */}
             <form
+              id="po-form"
               onSubmit={handleSubmit}
-              className="p-5 space-y-4 max-h-[70vh] overflow-y-auto"
+              className="p-5 space-y-4 overflow-y-auto flex-1"
             >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase">
-                      Vendor Supplier *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddSupplier(true)}
-                      className="text-[10px] text-cyan-600 font-bold hover:text-cyan-800 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus size={10} /> Tambah Baru
-                    </button>
-                  </div>
-                  {suppliers.length > 0 ? (
-                    <select
-                      value={supplierId}
-                      onChange={(e) => setSupplierId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded bg-white focus:outline-none focus:border-cyan-500 disabled:bg-slate-100 disabled:text-slate-500"
-                      required
-                      disabled={!!rfqId}
-                    >
-                      {suppliers.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.city})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      disabled
-                      className="w-full px-3 py-2 border border-slate-200 rounded bg-slate-100 text-slate-400"
-                    >
-                      <option>Memuat Supplier...</option>
-                    </select>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Referensi RFQ
-                  </label>
-                  <RfqPicker
-                    value={rfqNumberDisplay}
-                    onChange={(rfq) => {
-                      setRfqId(rfq.id);
-                      setRfqNumberDisplay(rfq.rfqNumber);
-                      setSupplierId(rfq.supplierId); // Auto-select supplier
-                      if (rfq.items && rfq.items.length > 0) {
-                        setFormItems(
-                          rfq.items.map((item, index) => ({
-                            id: `form-item-${Date.now()}-${index}`,
-                            productId: item.productId,
-                            quantity: item.quantity,
-                            price:
-                              item.quotedUnitPrice ||
-                              products.find((p) => p.id === item.productId)
-                                ?.costPrice ||
-                              0,
-                            unit: item.unit,
-                          })),
-                        );
+              {/* Pilihan Sumber Referensi (Wajib) */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>Sumber Referensi Dokumen</span>
+                  <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (referenceType !== 'rfq') {
+                        setReferenceType('rfq');
+                        setSalesOrderId('');
+                        setSalesOrderNumberDisplay('');
+                        setSupplierId('');
+                        setFormItems([]);
                       }
                     }}
-                    onClear={() => {
-                      setRfqId("");
-                      setRfqNumberDisplay("");
-                      setSupplierId("");
-                      setFormItems([
-                        {
-                          id: `form-item-${Date.now()}`,
-                          productId: "",
-                          quantity: 1,
-                          price: 0,
-                        },
-                      ]);
-                    }}
-                    statusFilter="Diterima"
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase">
-                    Referensi Sales Order (Opsional)
-                  </label>
-                  <SalesOrderPicker
-                    value={salesOrderNumberDisplay || salesOrderId}
-                    excludedSalesOrderIds={purchaseOrders
-                      .filter(p => !['cancelled', 'dibatalkan'].includes((p.status || '').toLowerCase()))
-                      .map(p => p.salesOrderId)
-                      .filter(Boolean) as string[]}
-                    onChange={(so) => {
-                      setSalesOrderId(so.id);
-                      setSalesOrderNumberDisplay(so.orderNumber);
-                      if (so && so.items && so.items.length > 0) {
-                        const pendingItems: any[] = [];
-                        
-                        so.items.forEach((item) => {
-                          if (so.source === 'pos') {
-                            // For POS, items in a draft or ready_to_load DeliveryOrder are PO items
-                            const poQty = so.deliveryOrders?.filter(d => d.status === 'draft' || d.status === 'ready_to_load')
-                              .flatMap(d => d.items || [])
-                              .filter(di => di.productId === item.productId)
-                              .reduce((sum, di) => sum + di.quantity, 0) || 0;
-                            
-                            if (poQty > 0) {
-                              pendingItems.push({ ...item, quantity: poQty });
-                            }
-                          } else {
-                            // For ERP, all items can be purchased (we don't strictly filter yet)
-                            pendingItems.push(item);
-                          }
-                        });
+                    className={`p-3 rounded-xl border text-left transition-all flex items-center gap-2.5 cursor-pointer ${
+                      referenceType === 'rfq'
+                        ? 'bg-sky-50/60 border-sky-500 text-sky-900 ring-2 ring-sky-500/20 font-semibold'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg shrink-0 ${referenceType === 'rfq' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      <FileText size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">Penawaran Pemasok (RFQ)</div>
+                      <div className="text-[11px] text-slate-400">Penawaran harga vendor yang telah disetujui</div>
+                    </div>
+                  </button>
 
-                        setFormItems(
-                          pendingItems.map((item, index) => {
-                            const prod = products.find((p) => p.id === item.productId);
-                            const itemSellingPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? prod?.sellingPrice ?? (prod as any)?.price ?? 0);
-                            const itemCostPrice = (prod?.costPrice && Number(prod.costPrice) > 0)
-                              ? Number(prod.costPrice)
-                              : itemSellingPrice;
-
-                            return {
-                              id: `form-item-${Date.now()}-${index}`,
-                              productId: item.productId || "",
-                              quantity: item.quantity,
-                              price: itemCostPrice,
-                              unit: item.unit || prod?.unit || "Unit",
-                            };
-                          })
-                        );
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (referenceType !== 'so') {
+                        setReferenceType('so');
+                        setRfqId('');
+                        setRfqNumberDisplay('');
+                        setSupplierId(suppliers.length > 0 ? suppliers[0].id : '');
+                        setFormItems([]);
                       }
                     }}
-                    onClear={() => {
-                      setSalesOrderId("");
-                      setSalesOrderNumberDisplay("");
-                    }}
-                    statusFilter="" // Allow all or limit to certain status? Empty to show all ERP SOs.
-                  />
+                    className={`p-3 rounded-xl border text-left transition-all flex items-center gap-2.5 cursor-pointer ${
+                      referenceType === 'so'
+                        ? 'bg-sky-50/60 border-sky-500 text-sky-900 ring-2 ring-sky-500/20 font-semibold'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg shrink-0 ${referenceType === 'so' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      <ShoppingCart size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">Pesanan Penjualan (SO)</div>
+                      <div className="text-[11px] text-slate-400">Pengadaan barang untuk pesanan penjualan</div>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-bold text-slate-800 text-sm">
-                    Daftar Item PO
-                  </h4>
+              {/* Input Referensi & Supplier berdasarkan Tipe Referensi */}
+              {referenceType === 'rfq' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                      Referensi RFQ <span className="text-rose-500">*</span>
+                    </label>
+                    <RfqPicker
+                      value={rfqNumberDisplay || rfqId}
+                      onChange={(rfq) => {
+                        setRfqId(rfq.id);
+                        setRfqNumberDisplay(rfq.rfqNumber);
+                        setSupplierId(rfq.supplierId);
+                        if (rfq.items && rfq.items.length > 0) {
+                          setFormItems(
+                            rfq.items.map((item, index) => {
+                              const prod = products.find((p) => p.id === item.productId || (item.productId && p.id.toLowerCase() === item.productId.toLowerCase()));
+                              const pName = (item.productName && item.productName !== 'Unknown Product' && item.productName !== 'Custom Item')
+                                ? item.productName
+                                : prod?.name || (item as any).description || 'Material / Produk';
+                              return {
+                                id: `form-item-${Date.now()}-${index}`,
+                                productId: item.productId,
+                                productName: pName,
+                                quantity: item.quantity,
+                                price:
+                                  item.quotedUnitPrice ||
+                                  prod?.costPrice ||
+                                  0,
+                                unit: item.unit || prod?.unit || "Unit",
+                              };
+                            }),
+                          );
+                        } else {
+                          setFormItems([]);
+                        }
+                      }}
+                      onClear={() => {
+                        setRfqId("");
+                        setRfqNumberDisplay("");
+                        setSupplierId("");
+                        setFormItems([]);
+                      }}
+                      statusFilter="Diterima"
+                      placeholder="Pilih Referensi RFQ (Diterima)..."
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                      Vendor Supplier <span className="text-rose-500">*</span>
+                    </label>
+                    {rfqId && supplierId ? (
+                      <div className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-between">
+                        <span>{suppliers.find(s => s.id === supplierId)?.name || 'Supplier Terkunci dari RFQ'}</span>
+                        <span className="text-[10px] text-sky-600 font-bold bg-sky-50 px-2 py-0.5 rounded border border-sky-100">
+                          Terkunci dari RFQ
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="w-full p-2.5 border border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400 text-xs">
+                        Pilih referensi RFQ terlebih dahulu
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                      Referensi Sales Order <span className="text-rose-500">*</span>
+                    </label>
+                    <SalesOrderPicker
+                      value={salesOrderNumberDisplay || salesOrderId}
+                      excludedSalesOrderIds={purchaseOrders
+                        .filter(p => !['cancelled', 'dibatalkan'].includes((p.status || '').toLowerCase()))
+                        .map(p => p.salesOrderId)
+                        .filter(Boolean) as string[]}
+                      onChange={(so) => {
+                        setSalesOrderId(so.id);
+                        setSalesOrderNumberDisplay(so.orderNumber);
+                        if (so && so.items && so.items.length > 0) {
+                          const pendingItems = [];
+                          
+                          so.items.forEach((item) => {
+                            if (so.source === 'pos') {
+                              const poQty = so.deliveryOrders?.filter(d => d.status === 'draft' || d.status === 'ready_to_load')
+                                .flatMap(d => d.items || [])
+                                .filter(di => di.productId === item.productId)
+                                .reduce((sum, di) => sum + di.quantity, 0) || 0;
+                              
+                              if (poQty > 0) {
+                                pendingItems.push({ ...item, quantity: poQty });
+                              }
+                            } else {
+                              pendingItems.push(item);
+                            }
+                          });
+
+                          const itemsToUse = pendingItems.length > 0 ? pendingItems : so.items;
+
+                          setFormItems(
+                            itemsToUse.map((item, index) => {
+                              const prod = products.find((p) => p.id === item.productId || (item.productId && p.id.toLowerCase() === item.productId.toLowerCase()));
+                              const pName = item.productName || prod?.name || item.product?.name || (item as any).description || 'Material / Produk';
+                              const itemSellingPrice = Number(item.price ?? item.unitPrice ?? (item as any).unit_price ?? prod?.sellingPrice ?? (prod as any)?.price ?? 0);
+                              const itemCostPrice = (prod?.costPrice && Number(prod.costPrice) > 0)
+                                ? Number(prod.costPrice)
+                                : itemSellingPrice;
+
+                              return {
+                                id: `form-item-${Date.now()}-${index}`,
+                                productId: item.productId || "",
+                                productName: pName,
+                                quantity: item.quantity,
+                                price: itemCostPrice,
+                                unit: item.unit || prod?.unit || "Unit",
+                              };
+                            })
+                          );
+                        } else {
+                          setFormItems([]);
+                        }
+                      }}
+                      onClear={() => {
+                        setSalesOrderId("");
+                        setSalesOrderNumberDisplay("");
+                        setFormItems([]);
+                      }}
+                      statusFilter=""
+                      placeholder="Pilih Referensi Sales Order..."
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                        Vendor Supplier <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddSupplier(true)}
+                        className="text-[10px] text-sky-600 font-bold hover:text-sky-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={10} /> Tambah Baru
+                      </button>
+                    </div>
+                    {suppliers.length > 0 ? (
+                      <select
+                        value={supplierId}
+                        onChange={(e) => setSupplierId(e.target.value)}
+                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs font-medium cursor-pointer"
+                        required
+                      >
+                        <option value="">-- Pilih Supplier Vendor --</option>
+                        {suppliers.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.city})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        disabled
+                        className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-100 text-slate-400 text-xs"
+                      >
+                        <option>Memuat Supplier...</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Item List Header and Actions */}
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                      Daftar Item PO
+                    </h4>
+                    {formItems.length > 0 && (
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {formItems.length} item
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border rounded font-bold flex items-center gap-1 transition-colors text-[10px]"
+                    disabled={!rfqId && !salesOrderId}
+                    className="btn btn-secondary btn-sm text-sky-700 hover:text-sky-800 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={!rfqId && !salesOrderId ? "Pilih dokumen referensi terlebih dahulu" : "Tambah baris item"}
                   >
-                    <Plus size={12} /> Tambah
+                    <Plus size={13} />
+                    <span>Tambah Baris</span>
                   </button>
                 </div>
 
-                <div className="bg-slate-50 border rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-155 table-fixed text-left">
-                    <colgroup>
-                      <col className="w-[52%]" />
-                      <col className="w-[18%]" />
-                      <col className="w-[22%]" />
-                      <col className="w-[8%]" />
-                    </colgroup>
-                    <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-500 border-b">
-                      <tr>
-                        <th className="p-2">Material / Produk</th>
-                        <th className="p-2">Qty</th>
-                        <th className="p-2">Harga Satuan (Rp)</th>
-                        <th className="p-2 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {formItems.map((item) => (
-                        <tr key={item.id} className="bg-white">
-                          <td className="p-2">
-                            <ProductPicker
-                              value={item.productId}
-                              showCategoryFilter
-                              procurementTypeFilter="purchase"
-                              onChange={(prod) => {
-                                handleItemChange(item.id, "productId", prod.id);
-                                handleItemChange(item.id, "unit", prod.unit);
-                                handleItemChange(
-                                  item.id,
-                                  "price",
-                                  (prod.costPrice && Number(prod.costPrice) > 0) ? Number(prod.costPrice) : (Number(prod.sellingPrice || (prod as any).price) || 0),
-                                );
-                              }}
-                            />
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="1"
-                                className="w-16 p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
-                                value={item.quantity}
-                                onChange={(e) =>
+                {/* Empty State vs Item Table */}
+                {(!rfqId && !salesOrderId) || formItems.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50/70 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                    <FileText className="mx-auto mb-2 text-slate-400" size={24} />
+                    <p className="font-semibold text-xs text-slate-700">Wajib Memilih Dokumen Referensi</p>
+                    <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
+                      Silakan pilih dokumen {referenceType === 'rfq' ? 'RFQ (Penawaran Pemasok)' : 'Sales Order (Pesanan Penjualan)'} di atas untuk memuat daftar barang yang akan dipesan.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200/80 rounded-xl overflow-x-auto">
+                    <table className="w-full min-w-155 table-fixed text-left">
+                      <colgroup>
+                        <col className="w-[52%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[8%]" />
+                      </colgroup>
+                      <thead className="bg-slate-50/80 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200/80">
+                        <tr>
+                          <th className="p-3">Material / Produk</th>
+                          <th className="p-3">Qty</th>
+                          <th className="p-3">Harga Satuan</th>
+                          <th className="p-3 text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {formItems.map((item) => (
+                          <tr key={item.id} className="bg-white hover:bg-slate-50/30">
+                            <td className="p-2.5">
+                              <ProductPicker
+                                value={item.productId}
+                                selectedProductName={item.productName}
+                                showCategoryFilter
+                                procurementTypeFilter="purchase"
+                                onChange={(prod) => {
+                                  handleItemChange(item.id, "productId", prod.id);
+                                  handleItemChange(item.id, "productName", prod.name);
+                                  handleItemChange(item.id, "unit", prod.unit || "Unit");
                                   handleItemChange(
                                     item.id,
-                                    "quantity",
-                                    parseInt(e.target.value) || 0,
+                                    "price",
+                                    (prod.costPrice && Number(prod.costPrice) > 0)
+                                      ? Number(prod.costPrice)
+                                      : (Number(prod.sellingPrice || (prod as any).price) || 0),
+                                  );
+                                }}
+                                placeholder="Pilih Material / Produk..."
+                              />
+                            </td>
+                            <td className="p-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      item.id,
+                                      "quantity",
+                                      parseInt(e.target.value) || 0,
+                                    )
+                                  }
+                                  required
+                                />
+                                <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0 w-8">
+                                  {item.unit || "Unit"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-2.5">
+                              <CurrencyInput
+                                className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs"
+                                value={item.price || ''}
+                                onValueChange={(val) =>
+                                  handleItemChange(
+                                    item.id,
+                                    "price",
+                                    parseInt(val) || 0,
                                   )
                                 }
                                 required
                               />
-                              <span className="text-[10px] text-slate-500 font-bold uppercase min-w-8">
-                                {item.unit || "-"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-2">
-                            <CurrencyInput
-                              className="w-full p-1.5 border rounded outline-none focus:border-cyan-500 text-xs"
-                              value={item.price || ''}
-                              onValueChange={(val) =>
-                                handleItemChange(
-                                  item.id,
-                                  "price",
-                                  parseInt(val) || 0,
-                                )
-                              }
-                              required
-                            />
-                          </td>
-                          <td className="p-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              disabled={formItems.length === 1}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(item.id)}
+                                disabled={formItems.length === 1}
+                                className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                                title="Hapus baris"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {formItems.length > 0 && (
+                <div className="p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-600">
+                    Total Estimasi PO:
+                  </span>
+                  <span className="text-sm font-bold font-mono text-slate-900">
+                    {formatIDR(
+                      formItems.reduce(
+                        (acc, curr) => acc + curr.quantity * curr.price,
+                        0,
+                      ),
+                    )}
+                  </span>
                 </div>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 border rounded-xl">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">
-                  Total Borongan PO
-                </span>
-                <p className="text-sm font-black font-mono text-cyan-600 mt-1">
-                  {formatIDR(
-                    formItems.reduce(
-                      (acc, curr) => acc + curr.quantity * curr.price,
-                      0,
-                    ),
-                  )}
-                </p>
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-3 py-2 border rounded-lg text-slate-650"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-900 border text-white rounded-lg"
-                >
-                  Rilis Surat PO
-                </button>
-              </div>
+              )}
             </form>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2.5 mt-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetPoForm();
+                }}
+                className="btn btn-secondary btn-md"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="po-form"
+                disabled={isLoading || (!rfqId && !salesOrderId) || formItems.length === 0}
+                className="btn btn-primary btn-md flex items-center gap-2"
+              >
+                {isLoading ? "Menyimpan..." : "Rilis Surat PO"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1155,7 +1254,7 @@ export default function PurchaseView({
                             {idx + 1}
                           </td>
                           <td className="p-3 border border-black font-medium">
-                            {item.productName}
+                            {getItemDisplayName(item)}
                           </td>
                           <td className="p-3 border border-black text-center">
                             {item.quantity}
@@ -1206,25 +1305,27 @@ export default function PurchaseView({
 
       {/* Quick Add Supplier Modal */}
       {showAddSupplier && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-4 py-3 bg-cyan-50 border-b border-cyan-100 flex items-center justify-between">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-60 p-4 font-sans text-xs">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden">
+            <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShoppingCart size={16} className="text-cyan-600" />
-                <h3 className="font-bold text-cyan-900 text-sm">
+                <div className="p-1.5 bg-sky-50 text-sky-600 border border-sky-100 rounded-lg">
+                  <ShoppingCart size={16} />
+                </div>
+                <h3 className="font-bold text-slate-800 text-sm">
                   Tambah Supplier Baru
                 </h3>
               </div>
               <button
                 onClick={() => setShowAddSupplier(false)}
-                className="text-cyan-400 hover:text-cyan-600"
+                className="p-1 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleQuickAddSupplier} className="p-4 space-y-3">
+            <form onSubmit={handleQuickAddSupplier} className="p-5 space-y-3.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">
+                <label className="text-[11px] font-bold text-slate-700">
                   Nama Supplier *
                 </label>
                 <input
@@ -1232,53 +1333,53 @@ export default function PurchaseView({
                   type="text"
                   value={newSupName}
                   onChange={(e) => setNewSupName(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">
+                <label className="text-[11px] font-bold text-slate-700">
                   No. Telepon / WhatsApp
                 </label>
                 <input
                   type="text"
                   value={newSupPhone}
                   onChange={(e) => setNewSupPhone(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">
+                <label className="text-[11px] font-bold text-slate-700">
                   Kota
                 </label>
                 <input
                   type="text"
                   value={newSupCity}
                   onChange={(e) => setNewSupCity(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600">
+                <label className="text-[11px] font-bold text-slate-700">
                   Alamat Lengkap
                 </label>
                 <textarea
                   rows={2}
                   value={newSupAddress}
                   onChange={(e) => setNewSupAddress(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded focus:border-cyan-400 focus:outline-none resize-none"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs resize-none"
                 />
               </div>
-              <div className="pt-2 border-t flex justify-end gap-2 text-xs font-bold mt-2">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2 text-xs font-bold mt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddSupplier(false)}
-                  className="px-3 py-1.5 border rounded text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 shadow-sm cursor-pointer"
+                  className="btn btn-primary btn-md"
                 >
                   Simpan Supplier
                 </button>

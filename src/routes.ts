@@ -76,6 +76,7 @@ export const VIEW_TO_PATH: Record<ViewType, string> = {
   'audit-logs':             '/system/audit',
   reminders:                '/system/reminders',
   'document-exports':       '/system/exports',
+  changelog:                '/system/changelog',
   'role-permissions':       '/system/roles',
   users:                    '/system/users',
   settings:                 '/settings',

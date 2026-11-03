@@ -36,10 +36,17 @@ export default function LoginView({
 
   const appName = import.meta.env.VITE_APP_NAME;
 
+  const isDevOrLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      Boolean(import.meta.env.DEV));
+
   const handleLogoClick = () => {
     setLogoClicks((prev) => {
       const next = prev + 1;
-      if (next >= 5) {
+      const threshold = isDevOrLocal ? 2 : 5;
+      if (next >= threshold) {
         setShowOtpField(true);
         onTriggerNotification("Mode Akses Khusus Super Admin Aktif.");
         return 0;
@@ -70,8 +77,16 @@ export default function LoginView({
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (showOtpField) {
-      if (!otp) {
+    let activeOtp = showOtpField ? otp.trim() : undefined;
+
+    // Development / Localhost bypass:
+    // If on localhost/dev and user enters 111111 in password or OTP, treat as Super Admin OTP bypass
+    if (isDevOrLocal && !activeOtp && password.trim() === "111111") {
+      activeOtp = "111111";
+    }
+
+    if (showOtpField || activeOtp) {
+      if (!activeOtp) {
         showLoginError("Isi OTP untuk melanjutkan.");
         return;
       }
@@ -89,7 +104,7 @@ export default function LoginView({
       const session = await authApi.login(
         email,
         password,
-        showOtpField ? otp : undefined,
+        activeOtp,
         rememberMe,
       );
       onLoginSuccess(session);
@@ -228,18 +243,27 @@ export default function LoginView({
 
               {showOtpField && (
                 <div className="space-y-1.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900">
-                    <LockKeyhole size={13} className="text-amber-700" />
-                    <span>Super Admin OTP</span>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
+                    <div className="flex items-center gap-1.5">
+                      <LockKeyhole size={13} className="text-amber-700" />
+                      <span>Super Admin OTP</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOtpField(false)}
+                      className="text-[10px] text-amber-700 hover:text-amber-900 hover:underline cursor-pointer font-medium"
+                    >
+                      Batal
+                    </button>
                   </div>
                   <input
                     type="text"
                     maxLength={6}
                     required
-                    placeholder="******"
+                    placeholder={isDevOrLocal ? "111111" : "******"}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
-                    className="w-full bg-white border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 rounded-lg py-2 px-3 text-amber-900 placeholder:text-amber-300 outline-none transition-all text-sm font-mono tracking-widest text-center"
+                    className="w-full bg-white border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 rounded-lg py-2 px-3 text-amber-900 placeholder:text-amber-400 outline-none transition-all text-sm font-mono tracking-widest text-center"
                   />
                 </div>
               )}

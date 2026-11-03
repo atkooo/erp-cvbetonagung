@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck, Clock, Globe } from '@/src/components/icons';
+import { Settings, Shield, HardDrive, Percent, Check, Landmark, Compass, UserCheck, Clock, Globe, Sparkles } from '@/src/components/icons';
 import { systemApi } from '../services/api';
 import { getCompanyProfile, saveCompanyProfile } from '../utils/companyProfile';
 import {
@@ -19,9 +19,10 @@ import {
 
 interface SettingsViewProps {
   onTriggerNotification: (message: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
-export default function SettingsView({ onTriggerNotification }: SettingsViewProps) {
+export default function SettingsView({ onTriggerNotification, onNavigate }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'tax' | 'timezone' | 'backup'>('profile');
 
   // Company Form states

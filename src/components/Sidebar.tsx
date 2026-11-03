@@ -175,9 +175,27 @@ export default function Sidebar() {
         })}
       </div>
 
-      {isPinned && (
-        <div className="p-2.5 bg-white/70 border-t border-sky-100 text-center text-[9px] text-sky-700/60 font-mono whitespace-nowrap">
-          Sistem ERP CV. Beton Agung
+      {isPinned ? (
+        <div className="p-2.5 bg-white/70 border-t border-sky-100 flex items-center justify-between text-[9px] text-sky-700/60 font-mono px-3">
+          <span>CV. Beton Agung</span>
+          <Link
+            to={pathForView('changelog')}
+            className="hover:text-sky-800 text-sky-600 font-semibold flex items-center gap-1 transition-colors"
+            title="Lihat Log Pembaruan Sistem (v2.1.0)"
+          >
+            <span>v2.1.0</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </Link>
+        </div>
+      ) : (
+        <div className="py-2 bg-white/70 border-t border-sky-100 flex justify-center">
+          <Link
+            to={pathForView('changelog')}
+            className="p-1 hover:text-sky-700 text-slate-400 rounded transition-colors"
+            title="Log Pembaruan Sistem (v2.1.0)"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          </Link>
         </div>
       )}
     </div>

@@ -70,6 +70,7 @@ export type ViewType =
   | 'audit-logs'
   | 'reminders'
   | 'document-exports'
+  | 'changelog'
   // Settings
   | 'role-permissions'
   | 'users'

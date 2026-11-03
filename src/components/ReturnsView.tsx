@@ -16,8 +16,10 @@ import {
   Eye,
   Trash2,
   X,
+  Filter,
 } from "@/src/components/icons";
 import SearchableSelect from "./SearchableSelect";
+import ProductPicker from "./ProductPicker";
 import Swal from "sweetalert2";
 import { purchasingApi } from "../features/purchasing/api";
 import {
@@ -39,59 +41,32 @@ interface ReturnsViewProps {
   defaultType?: "customer" | "supplier";
 }
 
-const Panel = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div
-    className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}
-  >
-    {children}
-  </div>
-);
-
-const Header = ({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) => (
-  <Panel className="p-5">
-    <div className="flex items-center gap-3">
-      <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-lg">{icon}</div>
-      <div>
-        <h3 className="font-sans font-bold text-sm text-slate-800">{title}</h3>
-        <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
-      </div>
-    </div>
-  </Panel>
-);
+interface ReturnFormItem {
+  product_id: string;
+  productName: string;
+  quantity: number;
+  notes: string;
+  max_qty?: number;
+}
 
 const StatusPill = ({
   children,
   tone = "slate",
 }: {
   children: React.ReactNode;
-  tone?: "slate" | "cyan" | "amber" | "emerald" | "rose" | "indigo";
+  tone?: "slate" | "amber" | "emerald" | "rose" | "sky";
 }) => {
   const tones: Record<string, string> = {
-    slate: "bg-slate-100 text-slate-600 border-slate-200",
-    cyan: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    slate: "bg-slate-50 text-slate-700 border-slate-200",
     amber: "bg-amber-50 text-amber-700 border-amber-200",
     emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
     rose: "bg-rose-50 text-rose-700 border-rose-200",
-    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    sky: "bg-sky-50 text-sky-700 border-sky-200",
   };
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${tones[tone]}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-semibold border ${tones[tone] || tones.slate}`}
     >
       {children}
     </span>
@@ -133,13 +108,12 @@ export default function ReturnsView({
       setType(defaultType);
     }
   }, [defaultType]);
+
   const [selectedPartnerId, setSelectedPartnerId] = useState("");
   const [selectedRefId, setSelectedRefId] = useState("");
   const [reason, setReason] = useState("");
   const [action, setAction] = useState<"refund" | "replace">("refund");
-  const [items, setItems] = useState<
-    { product_id: string; quantity: number; notes: string; max_qty?: number }[]
-  >([]);
+  const [items, setItems] = useState<ReturnFormItem[]>([]);
 
   useEffect(() => {
     fetchReturns();
@@ -175,7 +149,6 @@ export default function ReturnsView({
         icon: "error",
         title: "Gagal",
         text: message,
-        customClass: { confirmButton: "bg-cyan-600 font-bold" },
       });
     } finally {
       setIsSubmittingRefund(false);
@@ -218,6 +191,7 @@ export default function ReturnsView({
         showCancelButton: true,
         confirmButtonText: "Ya, Ubah",
         cancelButtonText: "Batal",
+        confirmButtonColor: "#0284c7",
       });
 
       if (!result.isConfirmed) return;
@@ -241,6 +215,7 @@ export default function ReturnsView({
           showCancelButton: true,
           confirmButtonText: "Ya, Tetap Setujui",
           cancelButtonText: "Batal",
+          confirmButtonColor: "#0284c7",
         });
 
         if (backorderResult.isConfirmed) {
@@ -318,23 +293,25 @@ export default function ReturnsView({
   };
 
   const handleAddItem = () => {
-    setItems([...items, { product_id: "", quantity: 1, notes: "" }]);
+    setItems(prev => [...prev, { product_id: "", productName: "", quantity: 1, notes: "" }]);
   };
 
   const handleRemoveItem = (idx: number) => {
-    setItems(items.filter((_, i) => i !== idx));
+    setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleItemChange = (idx: number, field: string, value: any) => {
-    const newItems = [...items];
-    if (field === "quantity") {
-      const max = newItems[idx].max_qty;
-      if (max !== undefined && value > max) {
-        value = max;
+  const handleItemChange = (idx: number, field: keyof ReturnFormItem, value: any) => {
+    setItems(prev => {
+      const updated = [...prev];
+      if (field === "quantity") {
+        const max = updated[idx].max_qty;
+        if (max !== undefined && value > max) {
+          value = max;
+        }
       }
-    }
-    newItems[idx] = { ...newItems[idx], [field]: value };
-    setItems(newItems);
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
   };
 
   // Filter & Search
@@ -382,7 +359,7 @@ export default function ReturnsView({
     }
   };
 
-  const getQcStatusTone = (status: string) => {
+  const getQcStatusTone = (status: string): "amber" | "emerald" | "rose" | "sky" | "slate" => {
     switch (status) {
       case "pending_qc":
         return "amber";
@@ -391,44 +368,68 @@ export default function ReturnsView({
       case "rejected":
         return "rose";
       case "supplier_claim":
-        return "indigo";
+        return "sky";
       default:
         return "slate";
     }
   };
 
-  // Filtering dependent dropdown lists
-  const filteredSalesOrders = salesOrders.filter(
-    (so) =>
-      so.customerName ===
-      customers.find((c) => c.id === selectedPartnerId)?.name,
-  );
-  const filteredPurchaseOrders = purchaseOrders.filter(
-    (po) =>
-      po.supplierName ===
-      suppliers.find((s) => s.id === selectedPartnerId)?.name,
-  );
-
   return (
-    <div className="space-y-6 text-xs font-sans">
-      <Header
-        icon={<RotateCcw size={20} />}
-        title={defaultType === 'customer' ? "Retur Penjualan (Customer)" : defaultType === 'supplier' ? "Retur Pembelian (Supplier)" : "Retur Barang (Customer & Supplier)"}
-        desc={defaultType === 'customer' ? "Pusat pengelolaan retur barang masuk dari pelanggan." : defaultType === 'supplier' ? "Pusat pengembalian klaim keluar ke pihak pemasok." : "Pusat pengelolaan retur barang rusak/cacat dari pelanggan atau pengembalian klaim ke pihak supplier."}
-      />
+    <div className="space-y-5 text-xs font-sans">
+      {/* Header Banner */}
+      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-sky-50 text-sky-600 border border-sky-100 rounded-xl">
+            <RotateCcw size={22} />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm text-slate-800">
+              {defaultType === 'customer' 
+                ? "Retur Penjualan (Customer)" 
+                : defaultType === 'supplier' 
+                ? "Retur Pembelian (Supplier)" 
+                : "Retur Barang & Pengembalian Dana"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {defaultType === 'customer' 
+                ? "Pusat pencatatan retur barang masuk dan klaim dari pelanggan" 
+                : defaultType === 'supplier' 
+                ? "Pusat pengembalian klaim barang cacat/rusak ke pemasok" 
+                : "Pencatatan retur barang dari pelanggan dan pengembalian klaim ke pemasok"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={fetchReturns}
+            className="btn btn-secondary btn-md flex items-center gap-1.5"
+          >
+            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+            <span>Segarkan</span>
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="btn btn-primary btn-md flex items-center gap-2"
+          >
+            <Plus size={16} />
+            <span>Buat Retur Baru</span>
+          </button>
+        </div>
+      </div>
 
-      {/* Control Panel */}
-      <Panel className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/50 border border-slate-200">
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full md:w-auto">
           {/* Search bar */}
-          <div className="relative w-full md:w-60">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-              <Search size={14} />
-            </span>
+          <div className="relative w-full md:w-72">
+            <Search size={16} className="absolute left-3.5 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari retur..."
-              className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 text-xs bg-white"
+              placeholder="Cari No Retur, Partner, atau Alasan..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs bg-white transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -436,19 +437,20 @@ export default function ReturnsView({
 
           {/* Type Filter */}
           {!defaultType && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-slate-50/80 p-1 rounded-xl border border-slate-200/80">
               {[
-                ["all", "Semua"],
-                ["customer", "Retur Customer"],
-                ["supplier", "Retur Supplier"],
+                ["all", "Semua Retur"],
+                ["customer", "Retur Pelanggan"],
+                ["supplier", "Retur Pemasok"],
               ].map(([t, label]) => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t as any)}
-                  className={`px-3 py-1.5 rounded-lg font-bold border transition ${filterType === t
-                    ? "bg-slate-900 text-white border-slate-950"
-                    : "bg-white hover:bg-slate-50 text-slate-600 border-slate-200"
-                    }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    filterType === t
+                      ? "bg-white text-sky-700 shadow-2xs font-bold border border-slate-200/60"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
                 >
                   {label}
                 </button>
@@ -456,31 +458,10 @@ export default function ReturnsView({
             </div>
           )}
         </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchReturns}
-            className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600 transition"
-          >
-            <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
-            <span>Segarkan</span>
-          </button>
-
-          <button
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold transition"
-          >
-            <Plus size={14} />
-            <span>Buat Retur Baru</span>
-          </button>
-        </div>
-      </Panel>
-
-      {/* Table Panel */}
-      <Panel className="overflow-hidden space-y-4 pb-4">
+      {/* Table Section */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <RefreshCw className="animate-spin text-slate-400" size={24} />
@@ -488,14 +469,14 @@ export default function ReturnsView({
         ) : filteredReturns.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <AlertTriangle size={24} className="mx-auto mb-2 text-slate-300" />
-            <p>Tidak ada data retur barang.</p>
+            <p>Tidak ditemukan data transaksi retur.</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-187.5">
                 <thead>
-                  <tr className="bg-slate-50 border-b text-[10px] uppercase tracking-widest font-mono text-slate-500">
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] uppercase tracking-wider font-mono text-slate-500">
                     <th className="p-3.5 pl-5">No Retur</th>
                     <th className="p-3.5">Jenis</th>
                     <th className="p-3.5">Nama Partner</th>
@@ -508,24 +489,25 @@ export default function ReturnsView({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {paginatedReturns.map((ret) => (
-                    <tr key={ret.id} className="hover:bg-slate-50/50">
-                      <td className="p-3.5 pl-5 font-mono text-cyan-600 font-bold">
+                    <tr key={ret.id} className="hover:bg-sky-50/20 transition-colors">
+                      <td className="p-3.5 pl-5 font-mono text-sky-700 font-bold">
                         {ret.returnNumber}
                       </td>
                       <td className="p-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${ret.type === "customer"
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-slate-100 text-slate-700"
-                            }`}
+                          className={`px-2.5 py-0.5 rounded-lg text-[10px] font-semibold border ${
+                            ret.type === "customer"
+                              ? "bg-sky-50 text-sky-700 border-sky-200"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          }`}
                         >
                           {ret.type === "customer" ? "Customer" : "Supplier"}
                         </span>
                       </td>
-                      <td className="p-3.5 font-bold text-slate-700">
+                      <td className="p-3.5 font-semibold text-slate-700">
                         {ret.partnerName}
                       </td>
-                      <td className="p-3.5 font-mono text-slate-500">
+                      <td className="p-3.5 font-mono text-slate-600 font-medium">
                         {ret.referenceNumber}
                       </td>
                       <td className="p-3.5 text-slate-600 font-medium">
@@ -536,15 +518,15 @@ export default function ReturnsView({
                           {getQcStatusLabel(ret.qcStatus)}
                         </StatusPill>
                       </td>
-                      <td className="p-3.5 font-mono text-slate-400">
+                      <td className="p-3.5 font-mono text-slate-500">
                         {ret.createdAt}
                       </td>
                       <td className="p-3.5 pr-5 text-right">
                         <button
                           onClick={() => setSelectedReturn(ret)}
-                          className="px-2.5 py-1.5 border rounded-lg bg-slate-50 hover:bg-slate-100 text-[10px] font-bold text-slate-600 ml-auto transition flex items-center gap-1"
+                          className="btn btn-secondary btn-sm ml-auto flex items-center gap-1.5"
                         >
-                          <Eye size={12} />
+                          <Eye size={13} />
                           <span>QC Detail</span>
                         </button>
                       </td>
@@ -555,25 +537,25 @@ export default function ReturnsView({
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 pt-2">
-                <div className="text-[10px] text-slate-400 font-mono">
+              <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200/80">
+                <div className="text-[11px] text-slate-400 font-mono">
                   Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredReturns.length)} dari {filteredReturns.length} data
                 </div>
                 <div className="flex items-center gap-2 text-xs font-mono">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    className="btn btn-secondary btn-sm"
                   >
                     Prev
                   </button>
-                  <span className="text-slate-500 px-2">
+                  <span className="text-slate-500 px-2 font-medium">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                    className="btn btn-secondary btn-sm"
                   >
                     Next
                   </button>
@@ -582,69 +564,72 @@ export default function ReturnsView({
             )}
           </>
         )}
-      </Panel>
+      </div>
 
       {/* Modal: View & QC Details */}
       {selectedReturn && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden border border-slate-200">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <span className="text-[10px] font-mono text-slate-400 uppercase">
-                  Detail Quality Control
-                </span>
-                <h4 className="font-bold text-slate-800 text-xs">
-                  Transaksi Retur {selectedReturn.returnNumber}
-                </h4>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-50 text-sky-600 border border-sky-100 rounded-lg">
+                  <RotateCcw size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm">
+                    Transaksi Retur {selectedReturn.returnNumber}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">Detail pemeriksaan kualitas dan status klaim retur</p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedReturn(null)}
-                className="text-slate-400 hover:text-slate-600"
+                className="p-1.5 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {/* Partner Details info */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 block">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
                     Jenis Retur
                   </span>
-                  <span className="font-bold text-slate-700 capitalize">
-                    {selectedReturn.type}
+                  <span className="font-semibold text-slate-700 capitalize">
+                    {selectedReturn.type === 'customer' ? 'Retur Pelanggan' : 'Retur Pemasok'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">
-                    Pelanggan/Pemasok
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
+                    Pelanggan / Pemasok
                   </span>
-                  <span className="font-bold text-slate-700">
+                  <span className="font-semibold text-slate-800">
                     {selectedReturn.partnerName}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
                     Referensi Transaksi
                   </span>
-                  <span className="font-mono text-cyan-600 font-bold">
+                  <span className="font-mono text-sky-700 font-bold">
                     {selectedReturn.referenceNumber}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 block">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
                     Alasan Retur
                   </span>
                   <span className="font-medium text-slate-600">
                     {selectedReturn.reason}
                   </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm text-slate-500 mb-1">
-                    Tindakan
+                <div className="col-span-2">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
+                    Tindakan Penyelesaian
                   </span>
-                  <span className="font-medium text-slate-600">
+                  <span className="font-medium text-slate-700">
                     {selectedReturn.action === 'refund' ? 'Refund / Potong Tagihan' : 'Ganti Barang (Replacement)'}
                   </span>
                 </div>
@@ -653,13 +638,13 @@ export default function ReturnsView({
               {/* Items list */}
               <div className="space-y-2">
                 {selectedReturn.overpaymentAmount && selectedReturn.overpaymentAmount > 0 && selectedReturn.qcStatus === 'approved' && selectedReturn.action !== 'replace' && (
-                  <div className="p-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-center justify-between">
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center justify-between">
                     <div>
                       Terdapat kelebihan bayar sebesar <strong>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(selectedReturn.overpaymentAmount)}</strong> pada tagihan ini.
                     </div>
                     <button
                       onClick={() => setShowRefundModal(true)}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold transition"
+                      className="btn btn-sm btn-primary"
                     >
                       Proses Refund
                     </button>
@@ -668,41 +653,47 @@ export default function ReturnsView({
                 <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">
                   Item Barang Retur
                 </h5>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-left border-collapse">
+                <div className="border border-slate-200/80 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 border-b text-[9px] uppercase font-mono text-slate-400">
-                        <th className="p-2.5 pl-4">Barang / SKU</th>
-                        <th className="p-2.5">Kuantitas</th>
-                        <th className="p-2.5 pr-4">Catatan Item</th>
+                      <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] uppercase font-mono text-slate-500">
+                        <th className="p-3 pl-4">Barang / SKU</th>
+                        <th className="p-3">Kuantitas</th>
+                        <th className="p-3 pr-4">Catatan Item</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {selectedReturn.items &&
-                        selectedReturn.items.length > 0 ? (
-                        selectedReturn.items.map((item) => (
-                          <tr key={item.id} className="text-slate-600">
-                            <td className="p-2.5 pl-4">
-                              <span className="font-bold text-slate-800 block">
-                                {item.productName}
-                              </span>
-                              <span className="text-[9px] font-mono text-slate-400">
-                                {item.productSku}
-                              </span>
-                            </td>
-                            <td className="p-2.5 font-mono font-bold text-slate-700">
-                              {item.quantity} pcs
-                            </td>
-                            <td className="p-2.5 pr-4 text-slate-500">
-                              {item.notes}
-                            </td>
-                          </tr>
-                        ))
+                      {selectedReturn.items && selectedReturn.items.length > 0 ? (
+                        selectedReturn.items.map((item) => {
+                          const matched = products.find(p => p.id === item.productId || (item.productId && p.id.toLowerCase() === item.productId.toLowerCase()));
+                          const pName = (item.productName && item.productName !== 'Produk Tidak Dikenal')
+                            ? item.productName
+                            : matched?.name || 'Material / Produk';
+                          const pSku = (item.productSku && item.productSku !== '-') ? item.productSku : matched?.sku || '-';
+                          return (
+                            <tr key={item.id} className="text-slate-600 hover:bg-slate-50/30">
+                              <td className="p-3 pl-4">
+                                <span className="font-semibold text-slate-800 block text-xs">
+                                  {pName}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  {pSku}
+                                </span>
+                              </td>
+                              <td className="p-3 font-mono font-bold text-slate-800 text-xs">
+                                {item.quantity} pcs
+                              </td>
+                              <td className="p-3 pr-4 text-slate-500 text-xs">
+                                {item.notes || '-'}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td
                             colSpan={3}
-                            className="p-4 text-center text-slate-400"
+                            className="p-6 text-center text-slate-400"
                           >
                             Tidak ada item terdaftar.
                           </td>
@@ -715,10 +706,10 @@ export default function ReturnsView({
             </div>
 
             {/* QC Actions footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 block">
-                  Status QC Saat Ini
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Status QC:
                 </span>
                 <StatusPill tone={getQcStatusTone(selectedReturn.qcStatus)}>
                   {getQcStatusLabel(selectedReturn.qcStatus)}
@@ -731,9 +722,9 @@ export default function ReturnsView({
                     onClick={() =>
                       handleUpdateStatus(selectedReturn.id, "rejected")
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 rounded-lg font-bold transition"
+                    className="btn btn-sm btn-danger flex items-center gap-1.5"
                   >
-                    <XCircle size={13} />
+                    <XCircle size={14} />
                     <span>Tolak Retur</span>
                   </button>
 
@@ -741,9 +732,9 @@ export default function ReturnsView({
                     onClick={() =>
                       handleUpdateStatus(selectedReturn.id, "supplier_claim")
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 border bg-white hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 text-slate-600 rounded-lg font-bold transition"
+                    className="btn btn-sm btn-secondary flex items-center gap-1.5"
                   >
-                    <Truck size={13} />
+                    <Truck size={14} />
                     <span>Klaim Supplier</span>
                   </button>
 
@@ -751,16 +742,16 @@ export default function ReturnsView({
                     onClick={() =>
                       handleUpdateStatus(selectedReturn.id, "approved")
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition"
+                    className="btn btn-sm btn-success flex items-center gap-1.5"
                   >
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={14} />
                     <span>Setujui & Restock</span>
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setSelectedReturn(null)}
-                  className="px-4 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600"
+                  className="btn btn-secondary btn-md"
                 >
                   Tutup
                 </button>
@@ -772,27 +763,27 @@ export default function ReturnsView({
 
       {/* Modal: Refund Return */}
       {showRefundModal && selectedReturn && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                Proses Uang Kembali
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-100">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                Proses Pengembalian Dana (Refund)
               </h4>
               <button
                 onClick={() => setShowRefundModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="p-1 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-rose-700 text-xs">
+              <div className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs">
                 Terdapat kelebihan bayar sebesar <strong>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(selectedReturn.overpaymentAmount || 0)}</strong>. Silakan pilih kas atau bank asal untuk melakukan pengembalian dana.
               </div>
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">Pilih Kas / Bank</label>
+                <label className="font-bold text-slate-700 block text-xs">Pilih Kas / Bank *</label>
                 <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white text-xs font-medium"
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
                 >
@@ -803,17 +794,17 @@ export default function ReturnsView({
                 </select>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2">
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2.5">
               <button
                 onClick={() => setShowRefundModal(false)}
-                className="px-4 py-2 border bg-white hover:bg-slate-50 rounded-lg font-bold text-slate-600"
+                className="btn btn-secondary btn-md"
               >
                 Batal
               </button>
               <button
                 disabled={!selectedAccountId || isSubmittingRefund}
                 onClick={handleRefund}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                className="btn btn-sm btn-danger min-w-30"
               >
                 {isSubmittingRefund ? "Memproses..." : "Refund Sekarang"}
               </button>
@@ -824,28 +815,36 @@ export default function ReturnsView({
 
       {/* Modal: Create New Return */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden border border-slate-200">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                Buat Transaksi Retur Baru
-              </h4>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-50 text-sky-600 border border-sky-100 rounded-lg">
+                  <RotateCcw size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm">
+                    Buat Transaksi Retur Baru
+                  </h4>
+                  <p className="text-[11px] text-slate-500">Pencatatan barang retur dan alasan klaim</p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="p-1.5 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateReturn} className="p-5 space-y-4">
+            <form onSubmit={handleCreateReturn} className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
-                    Tipe Retur
+                  <label className="font-bold text-slate-700 block text-xs">
+                    Tipe Retur *
                   </label>
                   <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-white disabled:bg-slate-50 disabled:text-slate-500"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white disabled:bg-slate-50 disabled:text-slate-500 text-xs font-medium"
                     value={type}
                     onChange={(e) => {
                       setType(e.target.value as any);
@@ -864,10 +863,10 @@ export default function ReturnsView({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
+                  <label className="font-bold text-slate-700 block text-xs">
                     {type === "customer"
-                      ? "Pilih Transaksi / Sales Order (SO)"
-                      : "Pilih Transaksi / Purchase Order (PO)"}
+                      ? "Pilih Transaksi / Sales Order (SO) *"
+                      : "Pilih Transaksi / Purchase Order (PO) *"}
                   </label>
                   <SearchableSelect
                     value={selectedRefId}
@@ -876,9 +875,21 @@ export default function ReturnsView({
                       if (type === "customer") {
                         const so = salesOrders.find(s => s.id === val);
                         if (so) {
-                          setSelectedPartnerId(so.customerId);
+                          setSelectedPartnerId(so.customerId || "");
                           if (so.items) {
-                            setItems(so.items.map(i => ({ product_id: i.productId, quantity: i.quantity, notes: "", max_qty: i.quantity })));
+                            setItems(
+                              so.items.map((i) => {
+                                const prod = products.find(p => p.id === i.productId || (i.productId && p.id.toLowerCase() === i.productId.toLowerCase()));
+                                const pName = i.productName || prod?.name || i.product?.name || (i as any).description || 'Material / Produk';
+                                return {
+                                  product_id: i.productId,
+                                  productName: pName,
+                                  quantity: i.quantity,
+                                  notes: "",
+                                  max_qty: i.quantity,
+                                };
+                              })
+                            );
                           } else {
                             setItems([]);
                           }
@@ -888,7 +899,19 @@ export default function ReturnsView({
                         if (po) {
                           setSelectedPartnerId(po.supplierId);
                           if (po.items) {
-                            setItems(po.items.map(i => ({ product_id: i.productId, quantity: i.quantity, notes: "", max_qty: i.quantity })));
+                            setItems(
+                              po.items.map((i) => {
+                                const prod = products.find(p => p.id === i.productId || (i.productId && p.id.toLowerCase() === i.productId.toLowerCase()));
+                                const pName = i.productName || prod?.name || (i as any).description || 'Material / Produk';
+                                return {
+                                  product_id: i.productId || "",
+                                  productName: pName,
+                                  quantity: i.quantity,
+                                  notes: "",
+                                  max_qty: i.quantity,
+                                };
+                              })
+                            );
                           } else {
                             setItems([]);
                           }
@@ -897,7 +920,7 @@ export default function ReturnsView({
                     }}
                     placeholder={type === "customer" ? "-- Cari Nomor SO --" : "-- Cari Nomor PO --"}
                     options={type === "customer"
-                      ? activeSalesOrders.map((so) => ({ value: so.id, label: `${so.orderNumber} - ${so.customerName}` }))
+                      ? activeSalesOrders.map((so) => ({ value: so.id, label: `${so.orderNumber} - ${so.customerName || 'Pelanggan'}` }))
                       : activePurchaseOrders.map((po) => ({ value: po.id, label: `${po.poNumber} - ${po.supplierName}` }))
                     }
                   />
@@ -906,107 +929,76 @@ export default function ReturnsView({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
-                    {type === "customer" ? "Pelanggan (Otomatis)" : "Pemasok (Otomatis)"}
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 bg-slate-50 text-slate-500"
-                    value={selectedPartnerId}
-                    disabled
-                    onChange={(e) => {
-                      // Handled by reference selection
-                    }}
-                    required
-                  >
-                    <option value="">-- Partner --</option>
-                    {type === "customer"
-                      ? customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))
-                      : suppliers.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
-                    Alasan Retur
+                  <label className="font-bold text-slate-700 block text-xs">
+                    Alasan Pengajuan Retur *
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
-                    placeholder="Contoh: Barang retak rambut / salah spek"
+                    required
+                    placeholder="Contoh: Barang cacat, patah saat bongkar, salah ukuran..."
+                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs bg-white"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    required
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block">
-                    Tindakan Retur
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-cyan-500"
-                    value={action}
-                    onChange={(e) => setAction(e.target.value as "refund" | "replace")}
-                  >
-                    <option value="refund">Refund / Potong Tagihan</option>
-                    <option value="replace">Ganti Barang (Replacement)</option>
-                  </select>
-                </div>
+                {type === "customer" && (
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 block text-xs">
+                      Tindakan Penyelesaian
+                    </label>
+                    <select
+                      className="w-full p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white text-xs font-medium"
+                      value={action}
+                      onChange={(e) => setAction(e.target.value as any)}
+                    >
+                      <option value="refund">Refund / Potong Tagihan</option>
+                      <option value="replace">Ganti Barang (Replacement)</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Items Section */}
-              <div className="space-y-2 border-t pt-3">
+              <div className="space-y-2.5 border-t border-slate-100 pt-4">
                 <div className="flex items-center justify-between">
-                  <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">
+                  <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
                     Item Barang Retur
                   </h5>
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="px-2 py-1 text-[10px] bg-slate-900 hover:bg-slate-800 text-white rounded font-bold"
+                    className="btn btn-secondary btn-sm text-sky-700 hover:text-sky-800 flex items-center gap-1"
                   >
-                    Tambah Item
+                    <Plus size={13} />
+                    <span>Tambah Item</span>
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-45 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                   {items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border"
+                      className="flex gap-2.5 items-center bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80"
                     >
                       <div className="flex-1">
-                        <select
-                          className="w-full px-2 py-1 border rounded bg-white text-[11px]"
+                        <ProductPicker
                           value={item.product_id}
-                          onChange={(e) =>
-                            handleItemChange(idx, "product_id", e.target.value)
-                          }
-                          required
-                        >
-                          <option value="">-- Pilih Produk --</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.sku})
-                            </option>
-                          ))}
-                        </select>
+                          selectedProductName={item.productName}
+                          onChange={(prod) => {
+                            handleItemChange(idx, "product_id", prod.id);
+                            handleItemChange(idx, "productName", prod.name);
+                          }}
+                          placeholder="Pilih Produk..."
+                        />
                       </div>
 
-                      <div className="w-20">
+                      <div className="w-24 shrink-0">
                         <input
                           type="number"
                           min={1}
                           max={item.max_qty}
-                          className="w-full px-2 py-1 border rounded text-center text-[11px]"
+                          className="w-full p-2 border border-slate-200 rounded-xl text-center text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white font-mono font-bold"
                           value={item.quantity}
                           onChange={(e) =>
                             handleItemChange(
@@ -1018,14 +1010,14 @@ export default function ReturnsView({
                           required
                         />
                         {item.max_qty !== undefined && (
-                          <div className="text-[9px] text-slate-400 mt-0.5 text-center">Max: {item.max_qty}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 text-center font-mono">Max: {item.max_qty}</div>
                         )}
                       </div>
 
                       <div className="flex-1">
                         <input
                           type="text"
-                          className="w-full px-2 py-1 border rounded text-[11px]"
+                          className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 bg-white"
                           placeholder="Catatan kerusakan..."
                           value={item.notes}
                           onChange={(e) =>
@@ -1037,34 +1029,35 @@ export default function ReturnsView({
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(idx)}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded"
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                        title="Hapus baris"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   ))}
 
                   {items.length === 0 && (
-                    <p className="text-center text-slate-400 py-4">
-                      Belum ada item ditambahkan.
+                    <p className="text-center text-slate-400 py-6 text-xs">
+                      Belum ada item ditambahkan. Pilih referensi SO/PO atau klik "Tambah Item".
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border rounded-lg hover:bg-slate-50 font-bold text-slate-600"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold"
+                  className="btn btn-primary btn-md"
                 >
-                  Simpan Transaksi
+                  Simpan Transaksi Retur
                 </button>
               </div>
             </form>

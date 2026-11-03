@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Bell, User, AlertTriangle, ShieldCheck, Settings, LogOut, Check, Clock } from '@/src/components/icons';
+import { Bell, User, AlertTriangle, ShieldCheck, Settings, LogOut, Check, Clock, Sparkles } from '@/src/components/icons';
 import { VIEW_TITLES } from '../config/navigation';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

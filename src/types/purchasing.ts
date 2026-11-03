@@ -31,6 +31,7 @@ export interface PurchaseRequestItem {
   quantity: number;
   status: string;
   unit?: string;
+  description?: string;
 }
 
 export interface PurchaseRequest {
@@ -54,6 +55,7 @@ export interface RfqItem {
   quotedUnitPrice: number;
   subtotal: number;
   unit?: string;
+  description?: string;
 }
 
 export interface Rfq {

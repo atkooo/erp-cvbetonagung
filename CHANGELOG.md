@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **Halaman Catatan Pembaruan Sistem di Website (`ChangelogView.tsx`, `changelogData.ts`, `AppRouter.tsx`, `Sidebar.tsx`, `Topbar.tsx`)**:
+  - Menghadirkan halaman antarmuka terdedikasi untuk melihat riwayat rilis, penambahan fitur, perbaikan bug, dan optimasi alur kerja ERP di rute `/system/changelog` (dan alias rute `/changelog`).
+  - Menyediakan dua mode tampilan fleksibel: **Tampilan Kartu Interaktif** (timeline rilis, badge kategori semantik, rincian butir perubahan, daftar file terdampak) dan **Format Teks Markdown Asli** lengkap dengan tombol 1-klik untuk menyalin dokumentasi ke clipboard.
+  - Dilengkapi panel filter kategori (Semua, Alur Kerja & SOP, Fitur Baru, Perbaikan Bug, Keamanan, Desain UI) dan pencarian instan berbasis kata kunci modul maupun rincian perubahan.
+  - Integrasi navigasi menyeluruh: dapat diakses langsung dari menu navigasi utama 'Sistem' di Sidebar, tautan indikator versi di footer Sidebar (`v2.1.0`), serta menu profil pengguna di Topbar.
+- **Kewajiban Referensi Pengadaan pada Pembuatan Purchase Order (`PurchaseView.tsx`, `api.ts`)**:
+  - **Penegakan Aturan SOP (Wajib Referensi)**:
+    - Pembuatan dokumen Purchase Order (PO) kini secara ketat mewajibkan adanya dokumen referensi yang sah, yaitu memilih salah satu dari **Penawaran Pemasok (RFQ)** atau **Pesanan Penjualan (Sales Order)**. Pembuatan PO bebas tanpa asal-usul dokumen ditiadakan demi menjaga tata kelola dan ketertelusuran pengadaan logistik.
+  - **Alur Kerja Pemilihan Referensi**:
+    - **Referensi RFQ**: Memilih dokumen RFQ (berstatus 'Diterima') akan otomatis mengunci Vendor Supplier dari pemenang penawaran harga dan memuat seluruh item pengadaan beserta kuantitas dan harga satuan penawaran vendor ke dalam tabel barang.
+    - **Referensi Sales Order**: Memilih dokumen Sales Order (Back-to-Back) akan otomatis memuat rincian barang dari pesanan penjualan pelanggan yang membutuhkan pemenuhan stok vendor, dan pengguna dapat menentukan supplier vendor yang dituju.
+    - Dilengkapi pemilih tipe referensi interaktif (*segmented control*) yang otomatis mereset rincian data ketika beralih opsi agar data item tidak tercampur.
+  - **Validasi Antarmuka & API**:
+    - Jika referensi belum dipilih, form menampilkan panduan kosong yang jelas, menonaktifkan tombol penambahan baris item bebas, dan menonaktifkan tombol submit 'Rilis Surat PO'.
+    - Validasi submit (`handleSubmit`) memblokir proses penyimpanan jika referensi belum dipilih dan memunculkan notifikasi peringatan.
+    - Lapisan API `purchasingApi.createPurchaseOrder` dilengkapi validasi wajib referensi (`rfq_id` atau `sales_order_id`) sebelum mengirimkan muatan data ke server.
+- **Perbaikan Bug Nama Item & Standardisasi Desain Purchase Order dan Retur (`PurchaseView.tsx`, `ReturnsView.tsx`)**:
+  - **Investigasi & Akar Masalah**:
+    - Pada form Purchase Order (`PurchaseView.tsx`), state `formItems` sebelumnya tidak menyimpan `productName`. Ketika pengguna menambahkan item dari RFQ atau Sales Order (Back-to-Back), atau memilih langsung lewat `ProductPicker`, nama produk tidak disimpan di state baris form sehingga input picker kehilangan konteks nama saat re-render. Selain itu, payload submit `purchasingApi.createPurchaseOrder` tidak mengirimkan `description: it.productName`, dan daftar item pada tabel riwayat PO kehilangan fallback pencarian nama produk jika relasi produk backend belum ter-eager load.
+    - Pada form Retur Penjualan & Pembelian (`ReturnsView.tsx`), pemilihan item sebelumnya menggunakan `<select>` HTML biasa yang terbatas. Ketika referensi Sales Order atau Purchase Order dipilih, nama item hilang dan kembali ke `-- Pilih Produk --` jika terjadi perbedaan format ID atau produk belum selesai dimuat. Tampilan rincian item retur pada modal verifikasi QC juga kehilangan fallback nama dari master produk.
+  - **Solusi & Perbaikan**:
+    - Pada `PurchaseView.tsx`: Menambahkan interface `PoFormItem` yang menyimpan `productName` dan `unit` secara persisten. Menghubungkan `ProductPicker` dengan properti `selectedProductName={item.productName}`. Menyimpan nama produk secara otomatis ketika import item dari RFQ maupun Sales Order. Mengirimkan `description: it.productName` saat membuat PO ke API. Menyediakan fallback nama bertingkat pada tabel rincian dan template cetak dokumen PO.
+    - Pada `ReturnsView.tsx`: Menambahkan interface `ReturnFormItem` yang membawa `productName`. Mengganti elemen dropdown `<select>` biasa dengan komponen `ProductPicker` interaktif dengan fitur pencarian cepat dan retensi `selectedProductName={item.productName}`. Memetakan nama produk saat referensi SO/PO dipilih, serta menambahkan fallback display nama produk pada rincian modal verifikasi QC.
+  - **Standardisasi Desain UI Sesuai Panduan `AGENTS.md`**:
+    - Mengadopsi palet warna tunggal Soft Sky Blue (`sky-600`, `sky-50`, `border-slate-200`) dan netral slate pada halaman Purchase Order dan Retur.
+    - Menstandarisasi tombol menggunakan `btn btn-primary btn-md` (gradien soft sky `from-sky-600 to-sky-700` dengan `rounded-xl`), `btn btn-secondary`, `btn btn-success` (emerald untuk approval/konfirmasi), dan `btn btn-danger` (rose untuk tolak/batal).
+    - Menghilangkan elemen dekoratif dan micro-details yang tidak perlu. Menata ulang header banner, filter tabs, modal dialog (Rilis PO, Tambah Supplier Cepat, Formulir Retur Baru, Verifikasi QC Retur, dan Konfirmasi Refund) agar selaras, konsisten, dan rapi.
+- **Perbaikan Bug Nama Item & Standardisasi Desain PR dan RFQ (`PurchaseRequestView.tsx`, `RfqView.tsx`, `ProductPicker.tsx`, `PurchaseRequestPicker.tsx`, `mappers.ts`)**:
+  - **Investigasi & Akar Masalah Nama Item Kosong**:
+    - Pada form PR dan RFQ, state form sebelumnya hanya menyimpan `productId` tanpa menyimpan nama produk (`productName`), sehingga ketika picker di-re-render atau item ditambahkan ke baris berikutnya, trigger tombol picker kehilangan konteks nama produk dan hanya menampilkan placeholder default.
+    - Pada RFQ saat pengguna memilih Referensi PR, pemetaan item PR ke form RFQ hanya mengambil `productId` dan mengabaikan `productName`, sementara `ProductPicker` menyaring produk dengan `procurementTypeFilter="purchase"`. Jika produk bertipe non-purchase atau terjadi perbedaan casing UUID, item tersebut tereliminasi dari daftar sehingga nama produk tampil kosong/blank.
+    - Saat submit PR dan RFQ, payload item tidak menyertakan kolom `description: item.productName`, sehingga backend menyimpan `description` bernilai `null` dan fallback pembacaan item di tabel menjadi kosong jika relasi produk backend belum ter-eager load.
+  - **Solusi & Perbaikan**:
+    - Menambahkan `selectedProductName?: string` pada `ProductPickerProps` dan mencocokkan ID produk secara case-insensitive (`p.id.toLowerCase() === value.toLowerCase()`). Jika produk belum selesai dimuat atau berada di luar filter sementara, nama produk yang dipilih tetap langsung muncul dengan andal.
+    - Memperbarui state item form di `PurchaseRequestView` dan `RfqView` agar menyimpan `productName` dan `unit` secara persisten.
+    - Menambahkan pengiriman `description: item.productName` pada saat pembuatan PR dan RFQ ke backend (`apiClient.post`), serta memperbarui domain types (`PurchaseRequestItem`, `RfqItem`) dan mappers (`mapPurchaseRequestItemFromDto`, `mapRfqItemFromDto`) dengan fallback bertingkat (nama produk -> description -> pencocokan master produk lokal).
+    - Memastikan saat referensi PR dipilih di RFQ, seluruh nama item produk langsung terisi ke dalam tabel form RFQ.
+  - **Standardisasi Desain UI Sesuai Panduan `AGENTS.md`**:
+    - **Palet Warna Tunggal (Soft Sky Blue & Slate)**: Menghilangkan seluruh warna dekoratif yang tidak baku (`cyan-*`, `indigo-*`, `purple-*`) dan menggantinya dengan tema utama `sky-600`, `sky-50`, `border-sky-100`, dan netral `slate-50` s.d. `slate-800`.
+    - **Standardisasi Tombol**: Menggunakan varian baku `btn btn-primary btn-md` (gradien soft sky `from-sky-600 to-sky-700` dengan `rounded-xl`), `btn btn-secondary`, `btn btn-success` (emerald untuk approval/terima), dan `btn btn-danger` (rose untuk tolak/batal).
+    - **Header & Modal Bersih**: Menata ulang header banner, kartu filter pencarian, dialog modal multi-item, dan kartu rincian dokumen dengan border halus (`border-slate-200/80`), `rounded-2xl`, serta efek interaksi responsif (`active:scale-[0.98]`).
+- **Bypass OTP Super Admin untuk Lingkungan Localhost & Development (`LoginView.tsx`, `AuthController.php`)**:
+  - Pada tahap pengembangan (localhost / 127.0.0.1 / APP_ENV=local / APP_DEBUG=true), masuk sebagai Super Admin dapat dilakukan cukup dengan memasukkan angka `111111` (angka 1 sebanyak 6 kali) pada kolom OTP Super Admin tanpa memerlukan aplikasi Google Authenticator fisik.
+  - Mendukung bypass otomatis ketika memasukkan password `111111` pada akun Super Admin di form login standar lingkungan lokal untuk mempercepat proses testing dan pengembangan.
 - **Persetujuan Langsung & Perbaikan Otorisasi Stock Opname (`StockOpnameView.tsx`)**:
   - **Identifikasi Kendala 403 (Forbidden)**: Pengajuan tiket approval (`/api/inventory/approval-requests`) sebelumnya ditolak oleh middleware backend karena dipetakan ke modul `approvals` (di bawah Master & Sistem), sehingga pengguna yang hanya mengaktifkan otorisasi pada modul `stock_opname` (di bawah Persediaan) mendapatkan pesan 'Akses ditolak untuk role akun ini'.
   - **Aksi Persetujuan Langsung (Direct Approval)**: Menghadirkan tombol 'Setujui Langsung' (per-item maupun massal) khusus untuk pengguna berwenang (`canApprove()`) yang langsung mengeksekusi `/inventory/stock-opname-items/{id}/approve` dengan opsi `auto_adjust: true`.
@@ -19,352 +63,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tabel transaksi rapi dengan aksi cetak struk thermal 80mm langsung, unduh PDF 80mm, cetak Bluetooth ESC/POS, dan navigasi langsung ke detail Sales Order.
   - Pagination penuh dengan pilihan jumlah baris per halaman (10, 15, 25, 50).
   - Tombol navigasi balik yang mulus antara layar Kasir POS (`/sales/pos`) dan Riwayat Transaksi POS (`/sales/pos/history`).
-- **Penyatuan Format Cetak Thermal POS dan Sales Order Kasir (Single Source of Truth / "Satu Kebenaran")**:
-  - **Penyebab Perbedaan Sebelumnya Teridentifikasi**:
-    - Transaksi POS yang dicetak dari menu Sales Order (tab Kasir / detail SO) menggunakan template thermal Sales Order formal B2B (`=== SALES ORDER ===`, pemecahan invoice terpisah, dan rincian kuitansi), sedangkan cetakan dari POS menggunakan format struk kasir toko.
-    - Pada riwayat transaksi POS (`PosView.tsx`), pembayaran `amountPaid` dan kembalian `change` sebelumnya ter-hardcode ke grand total dan Rp 0 alih-alih membaca data pembayaran riil.
-  - **Standarisasi & Penyatuan Format (`PosPrintService.ts`, `SalesOrderPrintService.ts`)**:
-    - Menghadirkan fungsi konversi `convertSalesOrderToPosPrintInfo` yang menjamin seluruh dokumen dengan `source === 'pos'` memakai satu renderer cetak struk kasir yang identik di seluruh sistem.
-    - Mengintegrasikan cetak thermal browser, unduh PDF roll 80mm, dan Bluetooth ESC/POS di `SalesOrderPrintService.ts` agar otomatis mendistribusikan format struk kasir POS jika `source === 'pos'`.
-    - Memperbarui kalkulasi `amountPaid` dan `change` pada riwayat transaksi POS (`PosView.tsx`) agar membaca data pembayaran kuitansi dan faktur secara akurat dari relasi eager load backend.
-    - Menyelaraskan judul modal cetak thermal di `SalesView.tsx` dan `SalesOrderDetailView.tsx` menjadi **Cetak Struk Kasir (POS)** jika dokumen yang dibuka bersumber dari POS.
-- **Penyajian Rincian Diskon Lengkap pada Nota & Struk (POS, Sales Order, Quotation, & Invoice)**:
-  - **POS Kasir (`PosPrintService.ts`, `PosView.tsx`)**:
-    - Memperbaiki pencetakan struk thermal browser, file PDF 80mm, dan Bluetooth ESC/POS agar menyajikan rincian diskon item lengkap dengan persentase (contoh: `Diskon Item (10%): -Rp 10.000`).
-    - Menyajikan rincian terstruktur pada bagian footer struk: `SUBTOTAL` kotor, `DISKON ITEM`, `DISKON TRANSAKSI (X%)`, `TOTAL DISKON`, dan `GRAND TOTAL`.
-    - Memperbaiki fungsi cetak ulang dari riwayat transaksi (`PosView.tsx`) sehingga seluruh data diskon global transaksi dan rincian harga kotor item tetap utuh tersimpan dan tercetak rapi.
-  - **Sales Order Thermal & Bluetooth (`SalesOrderPrintService.ts`)**:
-    - Memperbarui `buildSalesOrderThermalHTML` dan `printBluetoothSalesOrder` agar mengkalkulasi subtotal kotor asli dari seluruh item.
-    - Menampilkan label diskon per item beserta persentasenya pada baris rincian produk.
-    - Menambahkan rincian ringkasan finansial di bagian bawah nota thermal: `SUBTOTAL` kotor, `DISKON ITEM` (jika ada), `DISKON TRANSAKSI (X%)` (jika ada), `TOTAL DISKON` (jika keduanya ada), dan `TOTAL SO`.
-  - **Sales Order A4 Print & Tampilan Detail (`SalesOrderDetailView.tsx`)**:
-    - Menghadirkan baris potongan diskon item beserta persentase di kolom harga satuan pada tabel cetak resmi A4 dan tampilan detail pesanan.
-    - Memperbarui tabel rincian finansial A4: menampilkan `SUBTOTAL KOTOR`, `TOTAL DISKON ITEM`, `DISKON TRANSAKSI (X%)`, `TOTAL SEMUA DISKON`, dan `TOTAL SALES ORDER`.
-    - Menyelaraskan kartu ringkasan finansial dan KPI badge penghematan (*Hemat Rp ...*) di layar antarmuka pengguna.
-  - **Penawaran Harga / Quotation (`QuotationPrintService.ts`, `QuotationDetailView.tsx`)**:
-    - Menerapkan format rincian diskon yang sama pada struk thermal roll 80mm, pencetakan Bluetooth ESC/POS, dan cetak dokumen resmi A4 untuk penawaran harga.
-    - Menghadirkan baris `SUBTOTAL KOTOR`, `TOTAL DISKON ITEM`, `DISKON TRANSAKSI`, dan `TOTAL KESELURUHAN`.
-  - **Faktur Penjualan / Invoice (`InvoicesView.tsx`, `types/sales.ts`)**:
-    - Menambahkan rincian diskon per item pada tabel cetak A4 faktur penjualan.
-    - Menampilkan rincian `Subtotal Kotor`, `Diskon Item`, `Subtotal Bersih`, `Ongkos Kirim`, `Total Tagihan`, `Telah Dibayar`, dan `Sisa Tagihan` pada footer faktur.
-
-### Changed
-- **Pemisahan Transaksi POS dari Modul Sales Order B2B (`SalesView.tsx`, `navigation.tsx`)**:
-  - Menghapus tab filter 'Kasir (POS)' dan badge sumber dokumen 'POS' pada tabel daftar Sales Order formal B2B.
-  - Mengarahkan pemanggilan data ke `salesApi.getSalesOrders('erp')` serta menyaring dokumen `source !== 'pos'`, sehingga ratusan transaksi kasir ritel harian tidak mencemari daftar pesanan proyek/formal B2B.
-  - Menghilangkan menu 'Riwayat POS' dari sidebar navigasi utama ERP agar bilah samping tetap rapi dan ringkas; riwayat POS diakses langsung melalui tombol 'Riwayat' di dalam antarmuka Kasir POS.
-- **Penerapan Pagination, Pengurutan Stok Tersedia, dan Optimasi Performa Kasir POS (`PosProductGrid.tsx`)**:
-  - **Prioritas Urutan Ketersediaan Stok**: Produk yang memiliki stok fisik siap jual (*available stock* > 0) otomatis ditampilkan di bagian atas dan diurutkan berdasarkan jumlah stok terbanyak, sedangkan produk dengan stok kosong/habis ditaruh di urutan paling bawah.
-  - **Pagination Produk POS**: Menambahkan kontrol pagination (pilihan 12, 24, atau 48 item per halaman, default 12) sehingga browser kasir tidak lagi me-render ratusan kartu produk dan elemen gambar sekaligus, mencegah lag dan membuat scrolling ringan.
-  - **Optimasi Kalkulasi Stok O(1)**: Mengganti loop filter stok berulang pada JSX render dengan `stockMap` terkomputasi sekali dalam memori (*O(1) lookup*), meningkatkan kecepatan rendering kartu produk secara signifikan.
-  - **Penyederhanaan Filter Katalog POS**: Menghilangkan tombol filter toggle *Semua / Ready Saja* sesuai instruksi pengguna demi tampilan antarmuka yang bersih dan minimalis tanpa tombol berlebih.
-- **Pembersihan Tombol Approval Berlebih pada Transaksi POS (`SalesOrderDetailView.tsx`, `SalesView.tsx`)**:
-  - Memperbaiki kondisi tombol **Setujui (Approve)** agar secara ketat hanya muncul untuk dokumen Sales Order B2B formal non-POS yang masih berstatus `Draft`.
-  - Menghilangkan tombol approval pada transaksi kasir POS (`source === 'pos'`), karena transaksi kasir bersifat *instant settlement* (pembayaran langsung lunas, faktur langsung diterbitkan, serta surat jalan dan SPK produksi otomatis dibuat seketika saat checkout kasir selesai).
-- **Pembersihan Kolom Tanda Tangan (TTD) pada Seluruh Template Formulir Cetak A4**:
-  - Menghapus blok tanda tangan (Dibuat Oleh, Menyetujui/Pelanggan, Mengetahui, Direktur Utama, Hormat Kami, dll.) pada seluruh dokumen cetak format A4:
-    - **Sales Order A4** ([`SalesOrderDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/SalesOrderDetailView.tsx), [`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx))
-    - **Quotation / Penawaran Harga A4** ([`QuotationDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/QuotationDetailView.tsx))
-    - **Faktur Penjualan / Invoice A4** ([`InvoicesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/InvoicesView.tsx))
-    - **Surat Jalan / Delivery Order A4** ([`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx))
-    - **Purchase Request / Permintaan Pembelian A4** ([`PurchaseRequestView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseRequestView.tsx))
-    - **Purchase Order / Pesanan Pembelian A4** ([`PurchaseView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseView.tsx))
-    - **Request for Quotation / RFQ A4** ([`RfqView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RfqView.tsx))
-    - **Goods Receipt Note / Bukti Penerimaan Barang A4** ([`InwardTab.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/inventory/InwardTab.tsx))
-- **Penyaringan Pemilihan Produk Berdasarkan Metode Pengadaan Vendor (`ProductPicker.tsx`, `PurchaseView.tsx`, `RfqView.tsx`, `PurchaseRequestView.tsx`, `RestockModal.tsx`, `types.ts`)**:
-  - Menambahkan properti `procurementTypeFilter?: 'purchase' | 'manufacture'` pada [`ProductPicker.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ProductPicker.tsx) untuk membatasi opsi pemilihan produk hanya pada barang yang sesuai metode pengadaan.
-  - Menerapkan `procurementTypeFilter="purchase"` pada pembuatan Purchase Order manual ([`PurchaseView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseView.tsx)), Permintaan Pembelian ([`PurchaseRequestView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/PurchaseRequestView.tsx)), dan Permintaan Penawaran Harga ([`RfqView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RfqView.tsx)) agar pengguna tidak dapat keliru memesan barang yang diproduksi sendiri oleh pabrik.
-  - Memperbarui deskripsi dan header pada Modal Restok Barang Kosong ([`RestockModal.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/RestockModal.tsx)) serta interface tipe data [`RestockSuggestionItem`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/purchasing/types.ts) untuk merefleksikan bahwa restok PO secara eksklusif diperuntukkan bagi pengadaan bahan baku dan barang beli-jadi dari vendor/supplier.
-
-### Added
-- **Halaman Detail Lengkap Penawaran / Quotation Detail View (`QuotationDetailView.tsx`, `SalesView.tsx`, `AppRouter.tsx`, `api.ts`)**:
-  - Menghadirkan halaman detail terpisah yang lengkap untuk dokumen Penawaran Harga ([`QuotationDetailView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/components/QuotationDetailView.tsx)) dengan rute `/sales/quotation/:id`, setara dengan halaman `SalesOrderDetailView`.
-  - Dilengkapi tombol aksi terintegrasi di header: **Cetak Thermal (80mm)** dengan live preview & multi-channel print (Struk, Bluetooth, PDF), **Cetak PDF (A4)** dengan template resmi A4, **Setujui (Approve)** dengan konversi otomatis ke Sales Order, **Edit Penawaran**, dan **Batalkan**.
-  - Menyajikan ringkasan visual komprehensif: Stepper alur status penawaran (Draf Dibuat -> Diajukan -> Persetujuan -> Sales Order), Kartu Informasi Pelanggan (kontak, alamat, kota), Kartu Periode Penawaran (tanggal terbit, berlaku s/d), dan Kartu Nilai Finansial (subtotal, diskon global transaksi, total).
-  - Tiga tab navigasi: **Rincian Produk & Item** (tabel lengkap dimensi fisik custom batang x panjang, spesifikasi teknis, harga satuan, diskon item, dan subtotal), **Sales Order Terkait** (daftar pesanan penjualan yang lahir dari penawaran ini dengan tautan navigasi langsung), dan **Catatan & Syarat Ketentuan**.
-  - Menghubungkan tombol navigasi tunggal **Detail Penawaran** pada setiap baris tabel daftar penawaran di [`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx) sehingga antarmuka tabel bersih dan konsisten dengan tabel Sales Order (pencetakan thermal roll 80mm diakses terpusat di dalam halaman detail).
-- **Cetak Struk Thermal 80mm untuk Penawaran Harga / Quotation (`QuotationPrintService.ts`, `QuotationDetailView.tsx`)**:
-  - Menghadirkan modul layanan pencetakan thermal khusus untuk Penawaran Harga ([`QuotationPrintService.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/sales/services/QuotationPrintService.ts)) yang setara dan selaras dengan Sales Order thermal print.
-  - Mendukung 3 metode pencetakan: Dialog Cetak Browser / Printer USB Roll 80mm (`printQuotationThermal`), Unduh PDF format Roll 80mm (`downloadQuotationThermalPdf`), dan Cetak Langsung ESC/POS via Web Bluetooth API (`printBluetoothQuotation`).
-  - Mengintegrasikan modal pratinjau interaktif struk thermal roll 76mm-80mm di dalam halaman detail penawaran lengkap dengan informasi profil perusahaan (logo, alamat, kontak), nomor penawaran, tanggal penawaran, batas berlaku, nama pelanggan, rincian produk (dimensi fisik, deskripsi, diskon per item), subtotal, diskon global transaksi, total penawaran, serta catatan penawaran.
-- **Filter In-Modal & Pengecualian Produk (Tombol X) pada Bulk Cetak Barcode (`QrView.tsx`)**:
-  - **Filter di Dalam Modal:** Memindahkan kontrol pemilihan produk ke dalam modal Bulk Cetak Barcode, meliputi dropdown pemilihan Kategori dan input pencarian SKU/Nama produk secara langsung di dalam modal.
-  - **Default Category Terfokus:** Saat modal Bulk Cetak dibuka, sistem secara otomatis memilih kategori default pertama (bukan memuat seluruh katalog produk sekaligus), mencegah kelambatan render data dalam jumlah besar.
-  - **Tombol Hapus / Pengecualian (X) Per Kartu:** Menambahkan tombol close/x di sudut kanan atas setiap kartu pratinjau stiker barcode di dalam modal, memungkinkan pengguna mengecualikan item yang tidak diinginkan sebelum proses cetak/ekspor.
-  - **Sinkronisasi Pratinjau & Ekspor Bersih:** Tombol X hanya tampil pada pratinjau interaktif modal dan dihilangkan sepenuhnya pada output cetak/download PDF/JPEG agar label tetap bersih.
-  - **Penghitung & Tombol Reset:** Menampilkan badge jumlah produk yang siap dicetak serta tombol reset untuk memulihkan kembali produk-produk yang telah dikecualikan.
-- **Standarisasi Alur Persetujuan Mandiri Dokumen Berita Acara Gudang (BAG) Langsung di Menu (`BagView.tsx`)**:
-  - Mengeliminasi ketergantungan pada Approval Center (AC) dengan menghadirkan tombol aksi persetujuan cepat (*Direct Inline Approval*) berupa tombol "Setujui Langsung" dan "Tolak" langsung pada setiap kartu dokumen BAG yang berstatus `pending_approval`.
-  - Menghadirkan fitur seleksi multi-dokumen (*checkbox*) dan persetujuan massal (*Bulk Approval & Bulk Rejection*) lengkap dengan penghitung dokumen terpilih dan dialog konfirmasi terstandarisasi.
-  - Memperbaiki evaluasi hak akses `canApprove()` agar mengenali permission granular `berita_acara_gudang` dan role `inventory`, sehingga staf dan kepala gudang berhak dapat langsung menyetujui dokumen tanpa terhalang guard palsu.
-  - Menambahkan opsi *Persetujuan Langsung (Direct Approval)* pada modal pembuatan BAG baru (`auto_approve`), memungkinkan pembuat dokumen yang berwenang untuk langsung menyetujui dan menyelaraskan saldo stok gudang dalam 1 kali simpan.
-  - Menyelaraskan seluruh antarmuka komponen [`BagView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/inventory/components/BagView.tsx) dengan Design System Soft Sky Blue & Slate (`sky-600`, `sky-50`, `border-slate-200`, `rounded-xl`, tombol standar `active:scale-[0.98]`).
-- **Opsi Cetak / Download JPEG & Perbaikan Render Barcode Single Produk (`QrView.tsx`)**:
-  - Menambahkan tombol aksi `Download JPEG` untuk mengekspor stiker barcode produk ke format gambar JPEG beresolusi tinggi (3x pixel ratio, latar putih murni) yang presisi dan kompatibel untuk thermal label printer maupun penyimpanan arsip.
-  - Memperbaiki masalah cetak dan download PDF kosong/blank pada stiker barcode single produk dengan memindahkan target render ekspor dari `display: none` (`.hidden`) dan luar efek `backdrop-blur` / `overflow: auto` modal ke off-screen layout container yang sinkron dengan state modal.
-  - Mengoptimalkan ukuran halaman PDF untuk ukuran kertas thermal roll (58mm dan 80mm) agar pas 1:1 tanpa margin A4 berlebih yang menyebabkan hasil cetak mengecil.
-  - Mengimplementasikan pencetakan langsung stiker single via image pipeline beresolusi tinggi agar bebas dari distorsi CSS print browser dan memastikan isi barcode tercetak jelas.
-  - Menghubungkan layout lembar stiker (Single, 2x2, 3x3, 4x4, custom) dengan jumlah stiker produk (`copies`) pada preview modal dan output cetak/download.
-  - Standarisasi tombol footer modal sesuai Design System Soft Sky Blue & Slate (`Download JPEG`, `Download PDF`, `Print Stiker`).
-- **Pagination, Pencarian, & Filter Tipe Transaksi pada Beban Operasional (`CashExpenseView.tsx`)**:
-  - Menambahkan kontrol pagination tabel histori transaksi beban operasional dengan konfigurasi jumlah baris per halaman (10, 25, 50), tombol navigasi Halaman Sebelumnya/Berikutnya, dan ringkasan info data.
-  - Menambahkan fitur pencarian real-time (nomor transaksi, kategori, keterangan, akun kas/bank) dan filter jenis transaksi (`Semua Jenis`, `Pengeluaran (Beban)`, `Pemasukan (Kas Masuk)`).
-  - Standarisasi antarmuka dan tombol sesuai Design System Soft Sky Blue & Slate (`Button.tsx`, gradien `sky-600` to `sky-700`, border `sky-100`/`sky-200`).
-- **Fitur "Remember Me" (Ingat Saya) & Otomatisasi Idle Logout 30 Menit (`LoginView.tsx`, `api.ts`, `AuthContext.tsx`, `echo.ts`)**:
-  - Menambahkan checkbox "Ingat Saya" pada halaman login ([LoginView.tsx](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/LoginView.tsx)) dengan palet Soft Sky Blue & Slate (`accent-sky-600`) dan indikator status interaktif (*Tetap Masuk* vs *Maks. 30 mnt idle*).
-  - **Sesi Non-Remember Me:** Sesi dan token kini disimpan di `sessionStorage` sehingga saat tab atau jendela browser ditutup, sesi login otomatis terhapus.
-  - **Sesi Remember Me:** Kredensial dan token disimpan di `localStorage` sehingga user tetap masuk saat membuka kembali browser di kemudian hari.
-  - **Auto-Logout saat Idle:** Mengimplementasikan pendeteksi aktivitas user ter-throttle pada [`AuthContext.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/contexts/AuthContext.tsx). Jika opsi Remember Me tidak dicentang dan tidak ada aktivitas selama 30 menit (atau setelah tab di-background/laptop dibuka kembali), user otomatis logout dengan pesan modal notifikasi informatif.
-  - Memperbarui authorizer WebSocket pada [`echo.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/echo.ts) agar mendukung token dari `sessionStorage` maupun `localStorage`.
-- **Integrasi Transaksi Kasir POS ke Sales Order (Opsi A) dengan Filter Tab Sumber & Badge (`SalesView.tsx`, `salesApi.ts`)**:
-  - Menambahkan segmented control tab filter di atas daftar pesanan Sales Order: `Semua Pesanan`, `Sales Order (ERP)`, dan `Kasir (POS)` lengkap dengan penghitung jumlah pesanan secara real-time.
-  - Menampilkan badge sumber pesanan yang bersih (`ERP` vs `POS`) di sebelah nomor dokumen pada baris tabel Sales Order.
-  - Memperbarui `salesApi.getSalesOrders` dan pemetaan data agar mendukung pengambilan seluruh transaksi (`source: 'all'`).
-- **Redesain & Percantik Antarmuka POS Kasir Sesuai Design System Soft Sky Blue & Slate (`PosView.tsx`, `PosProductGrid.tsx`, `PosCartSidebar.tsx`, `PosPrintService.ts`)**:
-  - Menghilangkan warna hijau gelap/ad-hoc lama (`from-slate-900 to-emerald-950`) dan menggantikannya dengan palet standar **Soft Sky Blue (`sky-600`) & Slate**.
-  - **Header & Modal Transaksi:** Tombol aksi standar baku (`btn btn-secondary`, `btn btn-primary`), input pembayaran font-mono dengan highlight Soft Sky, serta dialog sukses transaksi bergradien modern.
-  - **Katalog Produk:** Kartu produk berdesain modern dengan border `hover:border-sky-300`, badge stok ready (*Ready: X*) vs habis (*Stok Habis (Inden)*), serta badge jumlah dalam keranjang berwarna Soft Sky bulat.
-  - **Sidebar Keranjang & Struk:** Header gradien Soft Sky, indikator stok gudang cerdas per item (*✓ Ready*, *⚡ Bawa Sebagian*, *⚠️ 100% Inden*), pemilihan gudang stok yang rapi, dan tombol checkout baku `btn btn-primary`.
-  - **Struk Kasir:** Pembaruan format struk thermal dan PDF untuk mencetak rincian kuantitas yang dibawa langsung (*Ambil*) dan kuantitas yang masih inden/dalam pengiriman (*Inden/Kirim*).
-- **Tampilan Rincian Alokasi Pengambilan Barang di Detail Sales Order (`SalesOrderDetailView.tsx`)**:
-  - Menampilkan breakdown unit yang telah diambil langsung (*take away*) dan unit sisa yang masih inden/dalam pengiriman di bawah kolom kuantitas item Sales Order.
-### Removed
-- **Penghapusan Menu Duplikat "Laporan Keuangan" di Sidebar Keuangan & Sentralisasi ke Pusat Laporan (`navigation.tsx`, `AppRouter.tsx`, `routes.ts`, `DashboardView.tsx`, `ReportCenterView.tsx`)**:
-  - Menghapus item menu duplikat "Laporan Keuangan" (`view: "finance-reports"`) dari section sidebar Keuangan ([`navigation.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/config/navigation.tsx)) agar navigasi sidebar lebih ramping, bersih, dan tidak membingungkan pengguna.
-  - Memastikan seluruh laporan keuangan (Laba Rugi, Arus Kas & Buku Besar, Beban Operasional, Piutang AR Aging, Hutang AP Aging) terpusat secara terpadu di menu Pusat Laporan (`/reports`).
-  - Menambahkan pembacaan parameter URL `category` dan `report` pada [`ReportCenterView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/reports/components/ReportCenterView.tsx) sehingga akses atau pengalihan ke `/reports?category=finance` otomatis membuka panel laporan keuangan pertama yang aktif.
-  - Memperbarui rute URL `/finance/reports` di [`AppRouter.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/AppRouter.tsx) dan mapping [`routes.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/routes.ts) untuk mengalihkan (*redirect*) ke `/reports?category=finance`.
-  - Mengarahkan pintasan kartu metrik laba rugi di Dashboard ([`DashboardView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DashboardView.tsx)) ke Pusat Laporan Terpadu (`report-center`).
-  - Menyelaraskan palet warna dan tombol di [`ReportCenterView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/reports/components/ReportCenterView.tsx) dengan standar Design System Soft Sky Blue (`sky-600`, `sky-50`, `rounded-xl`).
-- **Tombol Permintaan Stok (SPR) pada Toolbar Work Order (`ProductionWorkOrderView.tsx`)**:
-  - Menghapus tombol *Permintaan Stok (SPR)* dari header antarmuka Work Order Cetak agar antarmuka lebih bersih dan fokus pada aksi operasional.
-  - Memperbarui gaya tombol *Keluarkan Work Order* mengikuti standar Primary Button design system Soft Sky Blue (`bg-gradient-to-r from-sky-600 to-sky-700`).
-
-### Fixed
-- **Konsolidasi Menu Penerimaan Barang (GRN) & Eliminasi Duplikasi Sidebar (`navigation.tsx`, `AppRouter.tsx`, `PurchaseView.tsx`, `permissions.ts`)**:
-  - Mengeliminasi menu ganda dan bug *dual-highlight* di sidebar di mana menu "Penerimaan Barang (GR)" di Pengadaan dan "Barang Masuk" di Persediaan sebelumnya menyala biru secara bersamaan.
-  - Memusatkan seluruh alur penerimaan barang ke menu **Penerimaan Barang (GRN)** di bawah section **Persediaan** (`/inventory/stock-in`), dan menghapus item duplikat di section Pengadaan.
-  - Menyelaraskan navigasi dari Purchase Order (`PurchaseView.tsx`) saat user menekan "Lanjut ke Penerimaan Barang (GRN)" agar langsung mengarah ke `incoming-goods` (`/inventory/stock-in`).
-  - Menambahkan pengalihan rute otomatis (*route redirect*) dari path `/purchasing/receiving` ke `/inventory/stock-in`.
-  - Memperbarui evaluator izin `hasViewAccess` (`permissions.ts`) sehingga pengguna dengan hak akses modul `goods_receipts` (misal Purchasing & Finance) maupun `incoming_goods` (Inventory) tetap memiliki hak akses penuh ke menu terpadu ini.
-  - Menstandarkan tombol aksi alur PO pada `PurchaseView.tsx` ke tema Soft Sky Blue & Slate (`bg-gradient-to-r from-sky-600 to-sky-700`).
-- **Waktu Server Real-time (WIB) pada Navbar Topbar (`Topbar.tsx`)**:
-  - Menghapus badge penampil zona waktu otomatis lama dan menggantikannya dengan jam server real-time berzona **WIB** (Waktu Indonesia Barat / Asia/Jakarta).
-  - Menampilkan nama hari lengkap, tanggal bulan tahun, jam, menit, hingga detik server yang sinkron (`Kamis, 22 Okt 2026 • 10:04:15 WIB`).
-  - Mengimplementasikan sinkronisasi waktu presisi dengan endpoint backend `/api/system/time` dan kompensasi latensi jaringan agar waktu akurat ke detik server.
-- **Reposisi Tata Letak Struk Thermal Sales Order (`SalesOrderPrintService.ts`)**:
-  - **Info Pembayaran di Posisi Tengah:** Memindahkan seksi `INFO PEMBAYARAN & INVOICE` (mencakup status bayar, total terbayar, sisa tagihan terutang, serta rincian invoice dan kuitansi pelunasan/DP) tepat setelah daftar item barang.
-  - **Subtotal & Total SO di Bagian Bawah:** Menempatkan rekapitulasi `SUBTOTAL`, `DISKON TRANSAKSI`, dan `TOTAL SO` di bagian bawah (setelah info pembayaran) agar pembaca struk langsung melihat grand total pesanan dengan jelas dan tidak salah membaca/tertukar dengan nominal cicilan/DP.
-  - Penataan ini berlaku seragam pada cetakan thermal browser dialog (HTML), download file PDF roll 80mm, pratinjau modal interaktif, maupun pencetakan langsung mesin thermal via Web Bluetooth ESC/POS.
-- **Pembersihan Duplikasi Menu Sidebar Penerimaan Barang (`navigation.tsx`, `AppRouter.tsx`)**:
-  - Mengeliminasi duplikasi item menu *Penerimaan Barang (GR)* di seksi Pengadaan (`goods-receipts`), dan memusatkan seluruh alur penerimaan barang pada modul Persediaan Gudang sebagai *Penerimaan Barang (GRN)* (`incoming-goods`).
-  - Menambahkan pengalihan rute otomatis (*auto-redirect*) dari `/purchasing/receiving` ke `/inventory/stock-in` dan menyelaraskan evaluasi perizinan menu `incoming_goods`.
-- **Standarisasi Tombol & Palet Warna Antarmuka Sesuai Design System Soft Sky Blue & Slate (`ProductionWorkOrderView.tsx`, `RolePermissionView.tsx`)**:
-  - Mengganti seluruh tombol ad-hoc (`bg-slate-900`, `bg-indigo-600`, `bg-emerald-700`, `bg-slate-100`) dengan kelas utilitas baku (`btn btn-primary`, `btn btn-secondary`, `btn btn-success`, `btn btn-danger`, `btn btn-ghost`).
-  - Menstandarkan border-radius seluruh tombol menjadi `rounded-xl` (12px) untuk md/lg dan `rounded-lg` (8px) untuk sm/xs, lengkap dengan efek interaksi `active:scale-[0.98]`.
-  - Menyelaraskan aksen warna cyan lama pada `RolePermissionView.tsx` (item role aktif, checkbox hak akses, tab kategori modul, dan pagination) ke palet tunggal Soft Sky Blue (`sky-600` / `sky-50`).
-- **Perbaikan Tooltip Dependensi & Dropdown Preset Hak Akses (`RolePermissionView.tsx`)**:
-  - Mengisolasi rendering popover tooltip data pendukung otomatis (`DependencyHint`) dan menu aksi cepat (`BulkActionDropdown`) ke tingkat `document.body` menggunakan **React Portal (`createPortal`)** dengan `position: fixed`.
-  - Mencegah popover merusak tata letak baris tabel (*table cell layout shift*), menghilangkan kemunculan scrollbar semu pada kontainer tabel yang menggeser kolom, serta menjaga posisi baris dan checkbox di sekitarnya agar tidak bergerak saat popover dibuka atau ditutup.
-  - Menambahkan deteksi batas layar (*smart viewport collision detection*): popover dan menu dropdown secara otomatis membalik ke atas (*flip upwards*) jika berada di dekat batas bawah viewport, serta menutup otomatis saat tombol Escape ditekan atau pengguna mengklik di luar area.
-  - Memperbarui visual tooltip sesuai tema Soft Sky Blue & Slate yang rapi dan elegan, lengkap dengan tombol penutup (X) dan penanda izin otomatis.
-- **Perbaikan Filter Hak Akses Granular pada Sidebar (`permissions.ts` & `navigation.tsx`)**:
-  - Memperbaiki logika evaluasi hak akses `hasViewAccess` untuk sistem perizinan berbasis aksi granular (`view`, `create`, `update`, `delete`). Sebelumnya hak akses `minAccessLevel: "edit"` masih meloloskan pengguna yang hanya memiliki izin `view` (Lihat Saja).
-  - Kini menu yang membutuhkan `minAccessLevel: "edit"` (seperti Lokasi Gudang, Master Produk, Pelanggan, Kas & Bank) secara akurat **disembunyikan dari sidebar** jika role pengguna hanya memiliki izin baca `view` (tanpa `create`/`update`/`delete`), sementara pemanggilan API data pendukung di latar belakang (mis. untuk pilihan gudang/produk di POS/Sales Order) tetap berjalan lancar.
-  - Menambahkan aturan `minAccessLevel: "edit"` pada menu **Lokasi Gudang** (`storage_locations`) dan **Kategori Cuti** (`leave_types`).
-- **Perbaikan Label Status Pengadaan Item di Halaman Detail Sales Order (`SalesOrderDetailView.tsx`)**:
-  - Memperbaiki logika deteksi tipe pengadaan (`isManufactureProduct`) pada kolom tabel daftar item. Sebelumnya, seluruh item dengan tipe produk `finished_good` otomatis dilabeli sebagai **Pabrikasi** tanpa memeriksa atribut `procurementType === 'purchase'`.
-  - Kini item barang jadi yang metode pengadaannya adalah beli-jadi/supplier secara akurat dilabeli sebagai **Pembelian / Stok**, selaras dengan alur dokumen Purchase Order (PO) dan indikator Work Order (WO).
-
-### Added
-- **Kolom & Pencarian Berdasarkan Sales Order pada Daftar E-Faktur / Invoice Penjualan (`InvoicesView.tsx`)**:
-  - Menambahkan kolom **Sales Order** pada tabel utama daftar E-Faktur yang menampilkan nomor pesanan terkait (`SO...`) dengan badge rapi.
-  - Memperluas input pencarian cepat (*search filter*) sehingga pengguna dapat mencari faktur langsung berdasarkan nomor Sales Order, di samping nomor invoice dan nama pelanggan.
-  - Memperbarui kapasitas kolom tabel dan skeleton loader menjadi 9 kolom.
-- **Proteksi Hak Akses Navigasi Menu Kas & Bank (`navigation.tsx`)**:
-  - Menetapkan `minAccessLevel: "edit"` pada item menu navigasi Kas & Bank (`accounts`).
-  - Pengguna dengan hak baca-saja (*read-only*) seperti kasir dan sales yang hanya membutuhkan data kas/bank untuk pilihan pembayaran di POS tidak akan melihat menu Kas & Bank di sidebar navigasi mereka.
-- **Lampiran Rincian Informasi Invoice & Kuitansi Pembayaran pada Cetakan Thermal Printer (80mm) & PDF Printer (A4)**:
-  - **Thermal Printer (80mm Roll & Web Bluetooth ESC/POS)**: Menambahkan seksi status pembayaran, rincian nomor invoice, total tagihan faktur, tanggal, nomor kuitansi pembayaran (kode `PAY-...`), metode pelunasan, nominal pembayaran, total terbayar, dan sisa tagihan (*outstanding*).
-  - **PDF Printer (A4 Dokumen Resmi)**: Menambahkan tabel resmi terstandarisasi *Rincian Invoice & Kuitansi Tanda Terima Pembayaran* yang memuat nomor invoice, tanggal terbit, nilai faktur, rincian kuitansi pelunasan lengkap (nomor kuitansi, tanggal bayar, metode, nominal), total yang telah terbayar, dan sisa tagihan terutang.
-  - Memperbarui integrasi cetak A4 pada halaman detail Sales Order menggunakan `react-to-print` dengan layout dokumen formal yang rapi dan konsisten.
-- **Halaman Khusus Detail Sales Order Mandiri dengan Breadcrumb & Monitoring Tab (`SalesOrderDetailView.tsx`)**:
-  - Mengubah tampilan rincian modal menjadi halaman terpisah penuh dengan navigasi *Breadcrumb* interaktif (`Penjualan / Sales Order / [No SO]`).
-  - Menghubungkan pelacakan lintas alur operasional: monitoring Work Order (WO) produksi, OPL / Purchase Order (PO), Surat Jalan (DO), dan status penagihan faktur & kuitansi.
-  - Menghapus tombol thermal dari baris tabel daftar utama Sales Order dan memindahkannya secara elegan ke dalam toolbar halaman detail.
-- **Standarisasi Penamaan Label Navigasi Sidebar & Matriks RBAC Sesuai Standar Industri ERP**:
-  - Menyelaraskan seluruh label menu navigasi sidebar (`navigation.tsx`) dan matriks perizinan modul RBAC (`RolePermissionView.tsx`) dengan istilah resmi dan baku standar industri ERP yang singkat, padat, dan profesional.
-  - Harmonisasi singkatan baku internasional dan akuntansi:
-    - Keuangan & Akuntansi: `Piutang (AR)` (*Accounts Receivable*), `Hutang (AP)` (*Accounts Payable*), `Faktur (Invoice)`, `Beban Operasional`, `Kas & Bank`.
-    - Penjualan & Distribusi: `Sales Order (SO)`, `Surat Jalan (DO)` (*Delivery Order*), `Penawaran (Quotation)`, `Kasir (POS)`, `Retur Penjualan`.
-    - Pengadaan: `Purchase Order (PO)`, `Permintaan Pembelian (PR)`, `Penawaran Pemasok (RFQ)`, `Penerimaan Barang (GR)`, `Retur Pembelian`.
-    - Produksi & Proyek: `Work Order (WO)`, `Bill of Materials (BOM)`, `Anggaran Proyek (RAB)`, `Manajemen Proyek`.
-    - Persediaan Gudang: `Stok Persediaan`, `Mutasi Stok`, `Berita Acara (BAG)`, `Barang Masuk`, `Barang Keluar`, `Master Gudang`.
-    - SDM & Kepegawaian: `Presensi Karyawan`, `Terminal Presensi`, `Penggajian (Payroll)`, `Pinjaman Karyawan`, `Manajemen Cuti`, `Data Karyawan`.
-    - Master & Tata Kelola: `Pelanggan (Customer)`, `Pemasok (Supplier)`, `Master Produk`, `Hak Akses (RBAC)`, `Pengguna Sistem`, `Satuan (UoM)`.
-  - Memastikan konsistensi 100% antara penamaan di navigasi sidebar, judul header tampilan (`VIEW_TITLES`), dan kategori perizinan matriks RBAC (`MODULE_LABELS` & `CATEGORIES`).
-- **Redesain Tema & Standarisasi Single Color Palette (Soft Sky Blue & Slate)**:
-  - Mengganti tema gelap pekat (`slate-950`, `slate-900`) pada Sidebar, Topbar, dan Brand Panel Login menjadi palet biru muda/soft cerah (`sky-600`, `sky-50`, `sky-100`) dengan gradien lembut dan efek kaca transparan (`backdrop-blur-md`).
-  - Menetapkan **Single Unified Color Palette** untuk mencegah tampilan warna-warni campur aduk:
-    - *Warna Utama*: Soft Sky / Blue (`sky-600` / `#0284c7`, hover `sky-700`).
-    - *Latar & Kartu*: Gradien canvas lembut (`bg-gradient-to-br from-slate-50 via-sky-50/30 to-blue-50/20`) dan kartu beraksen frosted glass.
-    - *Warna Status (Semantic Only)*: Dibatasi ketat hanya untuk status data/dokumen (`emerald` = Selesai, `amber` = Menunggu, `rose` = Batal/Ditolak, `slate` = Draft).
-- **Standarisasi Desain Tombol (Standardized Button Design System)**:
-  - Menyediakan komponen reusable [`Button.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/Button.tsx) dan index export [`ui/index.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ui/index.ts) dengan dukungan variant (`primary`, `secondary`, `danger`, `danger-solid`, `success`, `ghost`), ukuran (`xs`, `sm`, `md`, `lg`), status `isLoading`, ikon, serta efek interaktif (`active:scale-[0.98]`).
-  - Menambahkan kelas utilitas CSS baku di [`index.css`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/index.css) (`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-success`, `.btn-ghost`, `.btn-sm`, `.btn-md`, `.btn-lg`).
-  - Merestrukturisasi tombol ad-hoc di halaman utama ([`SalesView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/SalesView.tsx), [`CustomersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/CustomersView.tsx), [`ProductsView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/ProductsView.tsx), [`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx)) yang sebelumnya memakai gaya gelap/warna-warni acak (`bg-slate-900`, `bg-indigo-600`) menjadi standar desain seragam.
-- **Redesain Halaman Login Modern Minimalist dengan Blok Gradasi & Efek Garis (`LoginView.tsx`)**:
-  - Menggabungkan estetika visual modern: latar belakang dengan pola garis kisi arsitektural halus (*architectural grid lines*), serta panel kiri berupa blok gradasi soft sky-navy (`sky-600` via `sky-700` to `slate-900`) beraksen grid geometris transparan dan garis aksen tipis.
-  - Menghilangkan teks promosi berulang yang mengganggu sehingga informasi tetap bersih, fokus, dan profesional: nama entitas resmi **CV. Beton Agung**, logo, indikator status sistem terverifikasi, dan formulir login presisi.
-  - Mempertahankan integrasi input darurat Super Admin OTP yang elegan serta tombol terstandarisasi `.btn .btn-primary`.
-
-### Fixed
-- **Pembersihan Modul Induk Legacy dari Tabel Matriks RBAC (`RolePermissionView.tsx`)**:
-  - Menyembunyikan modul induk warisan (`sales`, `purchasing`, `inventory`, `finance`, `production`, `approvals`) dari tampilan matriks perizinan RBAC.
-  - Memastikan 100% baris perizinan di tabel RBAC merepresentasikan menu nyata/konkret di sidebar (seperti POS, Penawaran, Sales Order, Surat Jalan, Retur Penjualan, dll.), sehingga tidak ada lagi baris modul semu yang membingungkan administrator.
-- **Pemisahan Granular 1-to-1 Hak Akses Master Data & Lokasi Gudang (`navigation.tsx` & `RolePermissionView.tsx`)**:
-  - Memisahkan perizinan untuk Kategori Produk (`product_categories`), Satuan (UoM) (`units`), Skema Diskon (`discounts`), dan Lokasi Gudang (`storage_locations`) menjadi modul mandiri 1-to-1 di RBAC.
-  - Mengatasi masalah di mana mencentang izin Master Produk (`products`) sebelumnya ikut memunculkan menu Kategori Produk, Satuan (UoM), dan Skema Diskon di sidebar.
-  - Mengatasi masalah di mana mencentang Master Gudang (`warehouses`) ikut memunculkan menu Lokasi Gudang di bagian Persediaan.
-  - Kini setiap menu sidebar berdiri sendiri: jika hanya mencentang *Master Produk*, maka murni hanya menu *Master Produk* yang tampil di sidebar.
-- **Pembersihan Toolbar Kasir POS (`PosView.tsx`)**:
-  - Menghapus tombol *Cetak Terakhir* di header kasir POS agar toolbar tetap bersih, minimalis, dan tidak memicu pencetakan duplikat yang tidak sengaja.
-  - Pencetakan struk transaksi sebelumnya tetap dapat diakses secara tertib melalui tombol *Riwayat* (History Modal) dan cetak instan tetap tersedia di modal sukses pembayaran.
-- **Pemisahan Riwayat Kasir POS dan Dokumen Sales Order B2B (`SalesView.tsx`)**:
-  - Menghilangkan sepenuhnya riwayat transaksi kasir POS (`source === 'pos'`) dari daftar dan drawer dokumen Sales Order, sehingga modul Sales Order murni hanya mengelola kontrak & pesanan penjualan B2B (ERP).
-  - Menghapus kolom `Sumber` (`Kasir (POS)` vs `B2B (ERP)`) dari tabel daftar Sales Order karena seluruh item di halaman ini adalah dokumen Sales Order B2B.
-  - Memanggil API dengan filter eksplisit `salesApi.getSalesOrders('erp')` dan filter ganda pada state lokal.
-  - Membersihkan percabangan logic status inden/PO kasir yang sebelumnya menempel di rincian item drawer Sales Order.
-- **Pembersihan & Penyederhanaan Teks UI, Label Sidebar, dan Preset RBAC (`navigation.tsx` & `RolePermissionView.tsx`)**:
-  - Mempersingkat menu preset akses massal menjadi ringkas: `Full`, `Edit`, `Read`, `Reset` (menghapus pengulangan kata dalam kurung seperti `(Semua Aksi)`, `(Lihat, Tambah, Ubah)`).
-  - Menghapus teks instruksi/note yang repetitif di halaman matriks RBAC: banner header redundan, note petunjuk centang di atas tabel, label pengulangan `5 aksi tersedia` di bawah setiap baris modul, note panjang di footer tabel, dan card peringatan di bawah tabel.
-  - Membersihkan seluruh nama menu sidebar dan judul halaman dari tanda kurung singkatan/keterangan repetitif (misal `Kasir (POS)` $\rightarrow$ `Kasir`, `Penawaran Harga (Quotation)` $\rightarrow$ `Penawaran Harga`, `Sales Order (SO)` $\rightarrow$ `Sales Order`, `Delivery Order (DO)` $\rightarrow$ `Delivery Order`, `Buku Kas & Bank` $\rightarrow$ `Kas & Bank`, `Manajemen Customer (Pelanggan)` $\rightarrow$ `Customer`, `Master Produk Konstruksi` $\rightarrow$ `Produk`, dll.).
-- **Isolasi Granular Menu Sidebar & Hak Akses Modul (Penghapusan Keterikatan `PARENT_MODULES` di `permissions.ts`)**:
-  - Menghapus pemetaan relasi `PARENT_MODULES` yang sebelumnya menyebabkan menu sidebar HRD (`attendance`, `attendance_scanner`, `leave`, `leave_types`, `employee_loans`) otomatis terbuka semua ketika izin Master Karyawan (`employees`) diaktifkan.
-  - Setiap menu navigasi sidebar kini divalidasi secara independen 1-to-1 (`p.module === requiredModule || p.module === '*'`).
-  - Mengaktifkan izin Master Karyawan (Read Only) kini benar-benar hanya menampilkan menu Master Karyawan di sidebar tanpa memicu kemunculan menu HRD lainnya.
-- **Penyederhanaan Matriks Hak Akses RBAC ke Checkbox Matriks (`RolePermissionView.tsx`)**:
-  - Mengubah sel hak akses individual (`LIHAT`, `TAMBAH`, `UBAH`, `HAPUS`, `SETUJUI`) dari dropdown berulang (`None/Read/Edit/Full`) menjadi **Checkbox Interaktif (Centang / On-Off)** yang bersih dan intuitif.
-  - Menghilangkan kebingungan logika di mana aksi tunggal seperti "Tambah" atau "Hapus" sebelumnya memiliki pilihan dropdown tingkatan akses.
-  - Memperbarui menu titik tiga (`Set Akses`) menjadi **Preset Akses Cepat** yang logis:
-    - *Full Access*: Mengaktifkan semua aksi untuk modul tersebut (`Lihat`, `Tambah`, `Ubah`, `Hapus`, `Setujui`).
-    - *Edit Access*: Mengaktifkan aksi operasional (`Lihat`, `Tambah`, `Ubah`) dan mencabut izin destruktif (`Hapus`, `Setujui`).
-    - *Read Access*: Hanya mengaktifkan aksi `Lihat`.
-    - *Hapus Semua Akses*: Mencabut seluruh hak akses modul.
-- **Penambahan Method `patch` pada `apiClient` (`services/api.ts`)**:
-  - Menyediakan implementasi method `patch<T>(path, body?, options?)` pada `apiClient` untuk menyelesaikan error TypeScript pada pemanggilan API partial updates pelanggan (`customers/api.ts`).
-- **Optimasi Class Tailwind CSS**:
-  - Mengonversi arbitrary value class (`max-w-[140px]`, `min-w-[760px]`, `min-w-[220px]`, `w-[75px]`, `w-[72px]`) ke notation token standar (`max-w-35`, `min-w-190`, `min-w-55`, `w-18.75`, `w-18`) pada `DeliveryOrdersView.tsx`, `RolePermissionView.tsx`, dan `Sidebar.tsx`.
-- **Perbaikan Infinite Loop pada `hasViewAccess` & `NavigateToHome` (`permissions.ts`)**:
-  - Menghapus entri `projects: 'projects'` dari `PARENT_MODULES` dan menambahkan pengaman siklus (cycle-breaker) pada traversal `while`.
-  - Mengatasi freezing/infinite loading saat pengguna dengan role tanpa akses ke dashboard utama (seperti role Finance) masuk ke aplikasi.
-
-### Removed
-- **Pembersihan Menu Redundan "Approval Workflow" (`navigation.tsx` & `RolePermissionView.tsx`)**:
-  - Menghapus menu "Approval Workflow" dari navigasi Sidebar dan tabel matriks hak akses RBAC.
-  - Seluruh alur persetujuan operasional (Cuti, Kasbon, Retur, Pembayaran, PO/PR, dan BAG) kini 100% diproses langsung di modul masing-masing tanpa duplikasi ke menu terpisah.
-- **Pembersihan Dead Code & Dependensi Tidak Terpakai**:
-  - Menghapus abstraction wrapper redundan [`resources.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/resources.ts) (52 baris) dan menyederhanakan [`customers/api.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/features/customers/api.ts) untuk menggunakan `apiClient` secara langsung.
-  - Menghapus dependensi backend yang tidak terpakai dari client SPA (`express`, `@types/express`) serta devDependencies redundan (`tsx`, `esbuild`) dari `package.json`.
-
-### Added
-- **Cetak Thermal Sales Order (80mm) Ringkas Tanpa Tanda Tangan (`SalesOrderPrintService.ts` & `SalesView.tsx`)**:
-  - Menyediakan layanan cetak struk thermal 80mm untuk transaksi B2B Sales Order (`SalesOrderPrintService.ts`) yang mendukung 3 mode:
-    - *Cetak Struk Browser (Window Print)*: Otomatis memicu dialog cetak browser dengan layout monospaced sempit (`@page { size: auto; margin: 0; }`).
-    - *Bluetooth ESC/POS*: Mengirim data byte langsung ke printer mini Bluetooth portable via Web Bluetooth API (`navigator.bluetooth`).
-    - *Unduh PDF Thermal*: Menghasilkan file PDF berukuran roll 80mm dinamis via `jspdf` dan `html-to-image`.
-  - Format slip thermal dirancang bersih dan ringkas tanpa kolom tanda tangan (nama perusahaan, No. SO, tanggal, customer, rincian barang vertikal/stacked, subtotal, diskon transaksi, grand total, dan catatan).
-  - Menambahkan tombol aksi cepat `Thermal` pada baris tabel daftar Sales Order dan tombol `Cetak Thermal (80mm)` pada panel rincian dokumen di `SalesView.tsx`, lengkap dengan modal live preview interaktif.
-- **Validasi Kesiapan Pengadaan Barang Beli-Jadi Sebelum Pembuatan Surat Jalan (Opsi A)**:
-  - `DeliveryOrdersView.tsx`: Menambahkan pengecekan kesiapan penerimaan barang dari supplier (`checkSalesOrderDeliveryStatus`). Opsi Sales Order pada dropdown pembuatan Surat Jalan kini menampilkan status kesiapan dan diblokir/disabled jika terdapat barang beli-jadi (`purchase`) yang PO supplier-nya belum selesai diterima (`fully_received`) atau stok gudang belum mencukupi. Menampilkan alert peringatan jelas beserta tombol navigasi cepat ke modul Pembelian (PO).
-  - `SalesView.tsx`: Menampilkan badge status kedatangan barang PO pada rincian item Sales Order (`Beli Jadi (PO Diterima - Siap Kirim)` vs `Beli Jadi (Menunggu PO Supplier)`). Alur pemesanan ke supplier difokuskan melalui modul Pembelian (PO) setelah pembayaran DP invoice diselesaikan pelanggan.
-  - `SearchableSelect.tsx`: Memperluas interface opsi dengan dukungan atribut `disabled` dan `hint` status.
-  - `sales/types.ts` & `sales/mappers.ts`: Menambahkan relasi `purchaseOrders` pada DTO dan entitas `SalesOrder`.
-- **RBAC Fine-Grained Sub-Modul & Navigasi Fleksibel Antar Fitur**:
-  - `navigation.tsx`: Seluruh item sub-menu navigasi ERP kini memiliki `requiredModule` spesifik (misal: `purchase_orders`, `goods_receipts`, `pos`, `sales_orders`, `delivery_orders`, `inventory_stocks`, dll.).
-  - **Pemisahan Modul Operasional & Scanner (`attendance_scanner`, `qr_scanner`, `leave_types`)**:
-    - Memisahkan izin **Scan Absensi QR** (`attendance_scanner`) dari **Dashboard & Rekap Absensi** (`attendance`), sehingga perangkat tablet scan absensi dapat dikunci hanya membuka scanner tanpa bisa mengintip rekap absensi karyawan lain.
-    - Memisahkan izin **Scanner Barcode Produk** (`qr_scanner`) dari **Daftar Barcode Produk** (`qr_products`).
-    - Memisahkan izin **Master Jenis Cuti** (`leave_types`) dari **Pengajuan & Approval Cuti** (`leave`).
-  - `permissions.ts`: Menambahkan mapping `PARENT_MODULES` dan hierarki otorisasi bertingkat secara rekursif, memungkinkan role pengguna hanya mengakses sub-fitur tertentu secara independen atau mewarisi izin parent.
-  - `RolePermissionView.tsx` & `navigation.tsx`:
-    - Memperluas `MODULE_LABELS` dengan label bahasa Indonesia baku untuk seluruh 51 modul & sub-fitur granular.
-    - **Standarisasi Label 1-to-1**: Menyelaraskan seluruh penamaan modul di tabel Role & Permission agar 100% persis sama dengan label menu navigasi Sidebar ERP, menghilangkan kebingungan perbedaan istilah.
-    - Menambahkan **Tab Filter Kategori** (*Semua Modul*, *Sales & POS*, *Purchasing*, *Inventory*, *Finance*, *Produksi & Proyek*, *HRD*, *Master & Sistem*) agar matriks hak akses mudah dikelola tanpa overwhelmed oleh banyaknya sub-modul.
-- **Pemisahan Otorisasi Master Data vs Transaksi Operasional (`minAccessLevel`)**:
-  - `NavigationItem` ([`navigation.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/config/navigation.tsx)): Menambahkan atribut `minAccessLevel?: 'read' | 'edit' | 'full'`. Menu Master Data (Produk, Kategori, Satuan, Supplier, Customer, Gudang) dikonfigurasi dengan `minAccessLevel: 'edit'`.
-  - [`permissions.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/utils/permissions.ts): Helper `hasViewAccess` diperluas untuk mengevaluasi hierarki `minAccessLevel`. Jika role pengguna (misal Kasir / Sales) hanya memiliki level `read` pada modul produk, menu Master Produk otomatis **tersembunyi (HIDE)** dari sidebar.
-  - [`Sidebar.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/Sidebar.tsx): Navigasi sidebar kini memfilter item menu menggunakan `minAccessLevel`.
-  - [`AppRouter.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/AppRouter.tsx): `ViewWrapper` dilengkapi pengamanan rute langsung (URL navigation guard) yang mencegat akses langsung ke path master data jika role akun tidak memenuhi `minAccessLevel`.
-- **Konfigurasi Setup Production cPanel Shared Hosting (`app.cvbetonagung.com`)**:
-  - `frontend/.env.production`: Mengatur `VITE_API_BASE_URL="https://api.cvbetonagung.com/api"` dan `APP_URL="https://app.cvbetonagung.com"`.
-  - Build output terverifikasi siap deploy (`dist/`) lengkap dengan `.htaccess` URL rewrite untuk SPA routing di Apache cPanel.
-- **Penyembunyian Menu Sidebar Secara Dinamis Sesuai Izin Akses View (RBAC)**:
-  - Menu sidebar kini otomatis disembunyikan jika role pengguna tidak memiliki izin akses (aksi `view` dengan `access_level` aktif), mencegah kemunculan pesan error *"Gagal Memuat Data - Akses ditolak untuk role akun ini"*.
-  - Helper fungsi `hasViewAccess` di [`permissions.ts`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/utils/permissions.ts) untuk memverifikasi hak akses `module`, `action: 'view'`, serta level hak akses (`read`, `edit`, `full`).
-  - Pembaruan mapping `requiredModule` pada [`navigation.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/config/navigation.tsx) untuk seluruh item menu ERP (termasuk `dashboard`, `report-center`, `reminders`, `audit-logs`, dan `users`).
-  - Penyesuaian `NavigateToHome` pada [`AppRouter.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/AppRouter.tsx) yang secara cerdas mengarahkan pengguna ke menu modul pertama yang diizinkan apabila role tidak memiliki hak akses ke Dashboard Utama.
-- **Pembeda Metode Pengadaan Produk (Sourcing Type: Produksi Pabrik vs Beli Jadi Supplier)**:
-  - Penambahan input **Metode Pengadaan (Sourcing)** pada modal Tambah / Edit Produk (`ProductsView.tsx`):
-    - *Produksi Pabrik Sendiri (Work Order)* (`manufacture`): Diteruskan ke Work Order (SPK Pabrik) saat Sales Order diapprove.
-    - *Beli Jadi dari Pemasok / Trading (Purchase Order)* (`purchase`): Pengadaan dari supplier, tidak membuat Work Order.
-  - Tampilan visual badge pengadaan pada tabel master produk: `Produksi Pabrik (WO)`, `Beli Jadi (PO)`, dan `Bahan Baku (PO)`.
-  - Tampilan visual badge pengadaan pada setiap rincian item Sales Order di detail modal (`SalesView.tsx`) agar pengguna dapat langsung mengidentifikasi item fabrikasi pabrik vs item beli jadi/supplier.
-  - Pembaruan types (`Product`, `ProductDto`, `ProductFormData`, `SalesOrder.items.product`, `Quotation.items.product`) dan mappers produk serta penjualan.
-- **Dukungan Ongkos Kirim (Gratis & Berbayar) pada Surat Jalan (Delivery Order)**:
-  - Antarmuka pembuatan Surat Jalan (`DeliveryOrdersView.tsx`) dilengkapi toggle pilihan jenis pengiriman: **Gratis Ongkir** (Rp 0) dan **Berbayar (Ongkir)**.
-  - Untuk pengiriman berbayar, disediakan input nominal Rupiah dan pilihan metode beban:
-    - *Ditagih ke Tagihan Invoice* (otomatis mengakumulasikan biaya ongkir ke invoice Sales Order pelanggan),
-    - *Bayar di Tempat (COD / Tunai ke Supir)*,
-    - *Ditanggung Perusahaan (Subsidi)*.
-  - Input informasi armada & logistik: Nama Supir / Driver dan Nomor Plat Kendaraan (Nopol).
-  - Kolom **Ongkir & Armada** pada tabel daftar Surat Jalan dengan badge visual status ongkir dan nama supir/nopol.
-  - Kartu ringkasan informasi ongkos kirim dan supir/nopol pada modal detail Surat Jalan.
-  - Pembaruan layout cetak Surat Jalan (A4) yang mencantumkan status biaya ongkir, metode penanggung, serta nama supir dan nomor plat kendaraan pada kolom tanda tangan supir.
-  - Pembaruan tampilan detail dan cetak Invoice (`InvoicesView.tsx`) untuk menampilkan rincian baris biaya ongkos kirim pengiriman DO bila ada.
-- **Pengaturan Zona Waktu Dinamis Indonesia (`WIB`, `WITA`, `WIT`, `Auto`)**:
-  - Sentralisasi formatting tanggal dan jam di `src/utils/date.ts` dengan konversi otomatis dari UTC database ke zona waktu lokal pengguna.
-  - Penambahan tab **Zona Waktu & Jam** di `SettingsView.tsx` dengan pilihan WIB, WITA, WIT, atau Otomatis (Browser) serta live preview jam berdetak real-time.
-  - Penambahan badge indikator zona waktu aktif di `Topbar.tsx` yang dapat diklik untuk langsung membuka Pengaturan.
-  - Dukungan penyimpanan preferensi zona waktu di `CompanyProfile` dan `localStorage`.
-- **Pembaruan Navigasi & Pintasan Modul Finance & Accounting**:
-  - Penambahan menu **Kas & Biaya Operasional** (`/finance/cash-bank`) dan **Laporan Keuangan & Omset** (`/finance/reports`) pada navigasi sidebar.
-  - Penambahan tombol pintasan langsung ke **Kas & Biaya Operasional** dan **Laporan Arus Kas & Saldo Berjalan** di header `FinanceAccountsView.tsx`.
-- **Fitur Restok Barang Kosong & Menipis (`RestockModal.tsx`)**:
-  - Modal interaktif untuk meninjau barang di bawah batas minimum stok (habis / menipis).
-  - Tampilan ringkasan defisit stok, harga beli acuan, input kuantitas order yang dapat disesuaikan, serta pemilihan supplier pemasok.
-  - Integrasi tombol "Restok Barang Kosong" dengan badge jumlah kebutuhan restok pada toolbar `PurchaseView.tsx`.
-  - Integrasi API `getRestockSuggestions` dan `generateRestockPo` pada `features/purchasing/api.ts`.
-- **Integrasi Antrian Produksi & Auto WO dari Sales Order**:
-  - Tampilan visual label "Auto WO dari SO" dan status "Antrian (Draft)" pada daftar Work Order di `ProductionWorkOrderView.tsx`.
-  - Tombol aksi cepat "Mulai Produksi" untuk memajukan SPK dari antrian draft langsung ke tahap "Cetak & Curing".
-- **Pembatasan Duplikasi Pengiriman Antrian Work Order (WO)**:
-  - Pada `SalesView.tsx`, tombol "Kirim ke Antrian Produksi (WO)" kini hanya muncul jika Sales Order belum memiliki Work Order aktif (`!selectedDoc.hasActiveWorkOrder`).
-  - Jika Work Order sudah pernah digenerate dan statusnya masih aktif (belum dibatalkan), tombol tidak akan ditampilkan agar tidak terjadi pembuatan data ganda.
-  - Jika seluruh Work Order terkait sebelumnya telah dibatalkan (`cancelled`), tombol secara otomatis kembali muncul sehingga pengguna dapat membuat Work Order baru bila diperlukan.
-  - Menambahkan relasi `productionWorkOrders` dan pemetaan `hasActiveWorkOrder` pada `types/sales.ts`, `features/sales/types.ts`, `features/sales/api.ts`, dan `features/sales/mappers.ts`.
-
-### Fixed
-- **Penguncian Input No. Surat Jalan Menjadi Non-Editable (Read-Only)**:
-  - Pada modal Buat Surat Jalan ([`DeliveryOrdersView.tsx`](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/DeliveryOrdersView.tsx)), field nomor surat jalan dikunci dengan atribut `readOnly` dan penataan visual non-editable (`bg-slate-100 cursor-not-allowed select-none`) untuk mencegah perubahan manual tidak sengaja, karena nomor telah digenerate otomatis secara konsisten oleh sistem.
-- **Perbaikan WebSocket Reverb Connection Failed di Lingkungan Hosting**:
-  - Mengubah konfigurasi [echo.ts](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/echo.ts) agar tidak lagi menggunakan hardcode `localhost:8080`, melainkan membaca konfigurasi `VITE_REVERB_*` secara dinamis.
-  - Menjadikan inisialisasi Laravel Echo bersifat opsional (null-safe): koneksi WebSocket hanya akan dijalankan jika kredensial `VITE_REVERB_APP_KEY` dan `VITE_REVERB_HOST` didefinisikan di environment, mencegah error `WebSocket connection to wss://localhost:8080 failed` di browser klien saat hosting production.
-  - Memperbarui [NotificationBell.tsx](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/components/NotificationBell.tsx) dengan pengecekan aman agar tetap berjalan mulus menggunakan REST API notifikasi jika WebSocket tidak aktif.
-- **Pembersihan Catatan Alert Box di Modal Sales Order (`SalesView.tsx`)**:
-  - Menghapus kotak notifikasi/catatan draft (`Sales Order masih Draft...`) dan catatan beli jadi pada tombol aksi modal detail Sales Order untuk menjaga antarmuka tetap bersih dan ringkas. Tombol "Kirim ke Antrian Produksi (WO)" kini hanya muncul saat Sales Order sudah bukan draft dan memiliki item produksi pabrik.
-- **Modal Faktur & Pembayaran Scrollable (`InvoicesView.tsx` & `PaymentsView.tsx`)**:
-  - Memperbaiki modal slip detail faktur penagihan (Billing) yang terpotong pada layar atau tab kecil dengan menerapkan `max-h-[92vh]`, `overflow-y-auto` pada isi faktur, serta membuat bilah tombol aksi (termasuk tombol "Lanjut Terima Pembayaran") berstatus `sticky`/`shrink-0` di bagian bawah modal.
-- **Perbaikan Missing Imports pada `SalesView.tsx`**:
-  - Menambahkan import `CompanyProfile`, `getCompanyProfile`, dan `formatAddressForPrint` dari `utils/companyProfile` yang menyebabkan error kompilasi TypeScript.
-  - Memperbaiki modal kasir terima pembayaran di `PaymentsView.tsx` agar form dan tombol "Simpan Penerimaan" dapat di-scroll dan selalu terlihat di semua resolusi layar.
-- Fixed `Unknown API resource` when creating Goods Receipt Note (GRN) by updating the endpoint path to `/purchasing/goods-receipt-notes` in `purchasing/api.ts`.
-- Fixed POS item status label displaying "Sudah Diambil / Selesai" for PO/Inden items by handling DeliveryOrder status `'draft'` in frontend mappers (`mappers.ts`), types (`sales.ts`), `SalesView.tsx`, `PurchaseView.tsx`, `ProductionWorkOrderView.tsx`, and `DeliveryOrdersView.tsx`.
-- Fixed PO item price / selling price resolving to 0/empty when creating Purchase Orders from Sales Orders or checking out POS transactions by adding fallbacks across `PurchaseView.tsx`, `PosView.tsx`, and `SalesView.tsx`.
-- Fixed unhandled `Unexpected token '<'` JSON parse errors when the API server or reverse proxy returns HTML error / fallback pages by adding HTML response detection and descriptive error messages in [api.ts](file:///d:/Okta/Project/2025-ALURIN-system/2026-ALURIN-System-ERP/frontend/src/services/api.ts).
-- Fixed 404 / "Halaman tidak ditemukan atau sedang dalam konstruksi" when clicking "Lanjut ke Penerimaan Barang (GRN)" from Purchase Order (`/purchasing/receiving`) by registering the route in `AppRouter.tsx` mapping to `InventoryView` (`initialTab: 'masuk'`), adding navigation item in `navigation.tsx`, and making PO lookup robust in `InventoryView.tsx`.
-
-
-## [1.0.0] - 2026-07-31
-### Added
-- Initial project setup & ERP Frontend features.

@@ -82,6 +82,10 @@ export const purchasingApi = {
   },
 
   async createPurchaseOrder(data: CreatePurchaseOrderDto & { rfq_id?: string; purchase_request_id?: string }): Promise<PurchaseOrder> {
+    if (!data.rfq_id && !data.sales_order_id) {
+      throw new Error("Pembuatan Purchase Order wajib menyertakan referensi dari RFQ atau Sales Order.");
+    }
+
     const payload = {
       supplier_id: data.supplier_id,
       po_date: data.order_date, // Note: DB uses po_date
@@ -225,4 +229,3 @@ export const purchasingApi = {
     return mapPurchaseOrderFromDto(res.data);
   }
 };
-

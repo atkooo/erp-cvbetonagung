@@ -84,6 +84,7 @@ const FinanceAccountsView = lazyWithRetry(() => import('./features/finance/compo
 const RolePermissionView = lazyWithRetry(() => import('./components/RolePermissionView'));
 const UsersView = lazyWithRetry(() => import('./components/UsersView'));
 const ProfileView = lazyWithRetry(() => import('./components/ProfileView'));
+const ChangelogView = lazyWithRetry(() => import('./components/ChangelogView'));
 
 import RootLayout from './layouts/RootLayout';
 
@@ -282,6 +283,8 @@ const routes: RouteObject[] = [
       { path: 'system/exports', element: lazyRoute(DocumentExportsView) },
       { path: 'system/roles', element: lazyRoute(RolePermissionView) },
       { path: 'system/users', element: lazyRoute(UsersView) },
+      { path: 'system/changelog', element: lazyRoute(ChangelogView) },
+      { path: 'changelog', element: <Navigate to="/system/changelog" replace /> },
 
       { path: 'settings', element: lazyRoute(SettingsView) },
       { path: 'profile', element: lazyRoute(ProfileView) },

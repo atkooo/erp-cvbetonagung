@@ -30,6 +30,7 @@ export const hasViewAccess = (
       'leave-management',
       'payroll-management',
       'employee-loans',
+      'changelog',
     ];
     return employeeAllowedViews.includes(itemView || '');
   }

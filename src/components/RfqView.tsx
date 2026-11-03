@@ -1,3 +1,8 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
@@ -11,9 +16,10 @@ import {
   Building2,
   Trash2,
 } from "@/src/components/icons";
-import { Rfq, Supplier } from "../types";
+import { Rfq, Supplier, Product } from "../types";
 import { suppliersApi } from "../features/suppliers/api";
 import { purchasingApi } from "../features/purchasing/api";
+import { productsApi } from "../features/products/api";
 import PurchaseRequestPicker from "./PurchaseRequestPicker";
 import ProductPicker from "./ProductPicker";
 import CurrencyInput from "./CurrencyInput";
@@ -25,6 +31,15 @@ import Swal from 'sweetalert2';
 interface RfqViewProps {
   onTriggerNotification: (message: string) => void;
   onNavigate?: (view: string) => void;
+}
+
+interface RfqFormItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  quotedUnitPrice: number;
+  unit: string;
 }
 
 export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewProps) {
@@ -51,6 +66,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [rfqs, setRfqs] = useState<Rfq[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [creatingPoRfqId, setCreatingPoRfqId] = useState<string | null>(null);
@@ -66,26 +82,22 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
     new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
   );
 
-  const [formItems, setFormItems] = useState<
-    {
-      id: string;
-      productId: string;
-      quantity: number;
-      quotedUnitPrice: number;
-      unit?: string;
-    }[]
-  >([{ id: "1", productId: "", quantity: 1, quotedUnitPrice: 0 }]);
+  const [formItems, setFormItems] = useState<RfqFormItem[]>([
+    { id: `form-item-${Date.now()}`, productId: "", productName: "", quantity: 1, quotedUnitPrice: 0, unit: "Unit" }
+  ]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [sups, rfqData] = await Promise.all([
+      const [sups, rfqData, prods] = await Promise.all([
         suppliersApi.getSuppliers(),
         purchasingApi.getRfqs(),
+        productsApi.getProducts(),
       ]);
       setSuppliers(sups);
-      if (sups.length > 0) setSupplierId(sups[0].id);
+      if (sups.length > 0 && !supplierId) setSupplierId(sups[0].id);
       setRfqs(rfqData);
+      setProducts(prods);
     } catch (err) {
       console.error(err);
       onTriggerNotification("Gagal memuat data RFQ");
@@ -103,45 +115,59 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
     const pendingPrId = sessionStorage.getItem('action_create_rfq');
     if (pendingPrId) {
       sessionStorage.removeItem('action_create_rfq');
-      
-      const checkAndOpen = setInterval(() => {
-        // We need PR info, but since it requires fetching PRs to get the PR Number,
-        // wait, RfqView has a PurchaseRequestPicker.
-        // We can just open the modal and let the user pick it or set the ID directly.
-        setPrId(pendingPrId);
-        // We might not have the PR Number immediately, so the picker will fetch or user can see it's picked.
-        setShowAddModal(true);
-        clearInterval(checkAndOpen);
-      }, 500);
-      
-      setTimeout(() => clearInterval(checkAndOpen), 10000);
+      setPrId(pendingPrId);
+      setShowAddModal(true);
     }
   }, []);
 
   const handleAddItem = () => {
-    setFormItems([
-      ...formItems,
+    setFormItems(prev => [
+      ...prev,
       {
-        id: `form-item-${Date.now()}`,
+        id: `form-item-${Date.now()}-${prev.length}`,
         productId: "",
+        productName: "",
         quantity: 1,
         quotedUnitPrice: 0,
+        unit: "Unit",
       },
     ]);
   };
 
   const handleRemoveItem = (id: string) => {
     if (formItems.length > 1) {
-      setFormItems(formItems.filter((item) => item.id !== id));
+      setFormItems(prev => prev.filter((item) => item.id !== id));
     }
   };
 
-  const handleItemChange = (id: string, field: string, value: any) => {
-    setFormItems(
-      formItems.map((item) =>
+  const handleItemChange = (id: string, field: keyof RfqFormItem, value: any) => {
+    setFormItems(prev =>
+      prev.map((item) =>
         item.id === id ? { ...item, [field]: value } : item,
       ),
     );
+  };
+
+  const getItemDisplayName = (it: { productId?: string; productName?: string; description?: string }) => {
+    if (it.productName && it.productName !== 'Custom Item' && it.productName !== 'Unknown Product') {
+      return it.productName;
+    }
+    if (it.productId) {
+      const matched = products.find(p => p.id === it.productId || (p.id && it.productId && p.id.toLowerCase() === it.productId.toLowerCase()));
+      if (matched) return matched.name;
+    }
+    return it.description || it.productName || 'Material / Produk';
+  };
+
+  const getItemUnit = (it: { productId?: string; unit?: string }) => {
+    if (it.unit && it.unit !== 'Unit') {
+      return it.unit;
+    }
+    if (it.productId) {
+      const matched = products.find(p => p.id === it.productId || (p.id && it.productId && p.id.toLowerCase() === it.productId.toLowerCase()));
+      if (matched?.unit) return matched.unit;
+    }
+    return it.unit || 'Unit';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,6 +192,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
         status: "Dikirim",
         items: formItems.map((it) => ({
           product_id: it.productId,
+          description: it.productName || undefined,
           quantity: it.quantity,
           quoted_unit_price: it.quotedUnitPrice,
           subtotal: it.quantity * it.quotedUnitPrice,
@@ -181,8 +208,10 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
         {
           id: `form-item-${Date.now()}`,
           productId: "",
+          productName: "",
           quantity: 1,
           quotedUnitPrice: 0,
+          unit: "Unit",
         },
       ]);
       setPrId("");
@@ -207,7 +236,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
       const d = new Date();
       const todayStr = d.toISOString().split("T")[0];
       const expectedDate = new Date(d);
-      expectedDate.setDate(d.getDate() + 7); // assume 7 days
+      expectedDate.setDate(d.getDate() + 7);
 
       await purchasingApi.createPurchaseOrder({
         supplier_id: rfq.supplierId,
@@ -220,13 +249,12 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
           product_id: it.productId,
           quantity: it.quantity,
           unit_price: it.quotedUnitPrice,
-          description: it.productName,
+          description: getItemDisplayName(it),
         })),
       });
       onTriggerNotification(
         `Tawaran dari ${rfq.rfqNumber} disetujui, PO berstatus Draft berhasil digenerate!`,
       );
-      // Update RFQ status to Selesai
       await purchasingApi.updateRfqStatus(rfq.id, "Selesai");
       await loadData();
     } catch (err) {
@@ -317,60 +345,64 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
 
   return (
     <>
-      <div className="print:hidden space-y-6 font-sans text-xs">
-        <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
-              <FileText size={20} />
+      <div className="print:hidden space-y-5 font-sans text-xs">
+        {/* Header Banner */}
+        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-sky-50 text-sky-600 border border-sky-100 rounded-xl">
+              <FileText size={22} />
             </div>
             <div>
               <h3 className="font-bold text-sm text-slate-800">
                 Request For Quotation (RFQ)
               </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Penawaran harga dari supplier untuk pengadaan barang
+              <p className="text-xs text-slate-500 mt-0.5">
+                Permintaan penawaran harga dari supplier untuk pengadaan logistik dan material
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold shadow hover:bg-slate-800 flex items-center gap-1.5"
+            className="btn btn-primary btn-md flex items-center gap-2"
           >
             <Plus size={16} />
             <span>Kirim RFQ Baru</span>
           </button>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between gap-4">
+        {/* Filter & Search Bar */}
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search
               size={16}
-              className="absolute left-3 top-2.5 text-slate-400"
+              className="absolute left-3.5 top-2.5 text-slate-400"
             />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari No RFQ atau Supplier..."
-              className="w-full pl-9 pr-4 py-2 border rounded-lg"
+              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
             />
           </div>
-          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border">
-            <Filter size={13} className="text-slate-400" />
+          <div className="flex items-center gap-2 bg-slate-50/80 px-3 py-1.5 rounded-xl border border-slate-200/80">
+            <Filter size={14} className="text-slate-400" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent py-1 outline-none text-slate-600"
+              className="bg-transparent py-0.5 outline-none text-slate-700 text-xs font-medium cursor-pointer"
             >
-              <option value="All">Semua RFQ</option>
+              <option value="All">Semua Status</option>
               <option value="Dikirim">Dikirim</option>
-              <option value="Diterima">Diterima (Ada Balasan)</option>
+              <option value="Diterima">Diterima</option>
+              <option value="Selesai">Selesai</option>
               <option value="Ditolak">Ditolak</option>
             </select>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Table Section */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
           {isLoading ? (
             <div className="text-center py-12 text-slate-400">
               Memuat data RFQ...
@@ -379,7 +411,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
             <div className="overflow-x-auto">
               <table className="w-full text-left font-sans text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-widest font-mono text-[10px]">
+                  <tr className="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 uppercase tracking-wider font-mono text-[10px]">
                     <th className="p-3.5 pl-5">No RFQ</th>
                     <th className="p-3.5">Vendor / Supplier</th>
                     <th className="p-3.5">Referensi PR</th>
@@ -393,7 +425,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                     <tr>
                       <td
                         colSpan={6}
-                        className="text-center py-8 text-slate-400"
+                        className="text-center py-12 text-slate-400 font-medium"
                       >
                         Belum ada data RFQ.
                       </td>
@@ -403,33 +435,35 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                       const isExpanded = expandedRfqId === rfq.id;
                       return (
                         <React.Fragment key={rfq.id}>
-                          <tr className="hover:bg-slate-50/40">
+                          <tr className="hover:bg-sky-50/20 transition-colors">
                             <td className="p-3.5 pl-5 font-mono font-bold text-slate-800">
                               <button
                                 onClick={() =>
                                   setExpandedRfqId(isExpanded ? null : rfq.id)
                                 }
-                                className="flex items-center gap-1.5 focus:outline-none text-left"
+                                className="flex items-center gap-2 focus:outline-none text-left cursor-pointer group"
                               >
                                 {isExpanded ? (
                                   <ChevronDown
                                     size={14}
-                                    className="text-cyan-500"
+                                    className="text-sky-600"
                                   />
                                 ) : (
                                   <ChevronRight
                                     size={14}
-                                    className="text-slate-400"
+                                    className="text-slate-400 group-hover:text-sky-600 transition-colors"
                                   />
                                 )}{" "}
-                                <span>{rfq.rfqNumber}</span>
+                                <span className="group-hover:text-sky-700 transition-colors">{rfq.rfqNumber}</span>
                               </button>
                             </td>
-                            <td className="p-3.5 font-bold flex items-center gap-1.5 text-slate-700">
-                              <Building2 size={14} className="text-slate-400" />{" "}
-                              {rfq.supplierName}
+                            <td className="p-3.5 font-semibold text-slate-700">
+                              <div className="flex items-center gap-1.5">
+                                <Building2 size={14} className="text-slate-400 shrink-0" />{" "}
+                                <span>{rfq.supplierName}</span>
+                              </div>
                             </td>
-                            <td className="p-3.5 font-mono text-cyan-600">
+                            <td className="p-3.5 font-mono text-sky-700 font-medium">
                               {rfq.purchaseRequestId !== "-"
                                 ? rfq.purchaseRequestId
                                 : "-"}
@@ -439,78 +473,94 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                             </td>
                             <td className="p-3.5">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${rfq.status === "Diterima" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : rfq.status === 'cancelled' || rfq.status === 'Dibatalkan' ? 'bg-rose-100 text-rose-800 border-rose-200' : "bg-amber-100 text-amber-700 border-amber-300"}`}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-semibold border ${
+                                  rfq.status === "Diterima" || rfq.status === "Selesai"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                    : rfq.status === 'cancelled' || rfq.status === 'Dibatalkan' 
+                                    ? "bg-rose-50 text-rose-700 border-rose-200" 
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}
                               >
                                 {rfq.status === 'cancelled' ? 'Dibatalkan' : rfq.status}
                               </span>
                             </td>
                             <td className="p-3.5 text-right pr-5 whitespace-nowrap">
-                              {rfq.status === "Dikirim" && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateStatus(rfq.id, "Diterima")
-                                    }
-                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded mr-1.5 text-[10px] font-bold shadow-sm"
-                                  >
-                                    Terima
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateStatus(rfq.id, "Ditolak")
-                                    }
-                                    className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded mr-2 text-[10px] font-bold shadow-sm"
-                                  >
-                                    Tolak
-                                  </button>
-                                </>
-                              )}
+                              <div className="flex items-center justify-end gap-1.5">
+                                {rfq.status === "Dikirim" && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleUpdateStatus(rfq.id, "Diterima")
+                                      }
+                                      className="btn btn-sm btn-success"
+                                    >
+                                      Terima
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleUpdateStatus(rfq.id, "Ditolak")
+                                      }
+                                      className="btn btn-sm btn-danger"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </>
+                                )}
 
-                              <button
-                                onClick={() => {
-                                  if (expandedRfqId !== rfq.id) {
-                                    setExpandedRfqId(rfq.id);
-                                  }
-                                  onTriggerNotification(
-                                    `Menyiapkan dokumen ${rfq.rfqNumber} untuk dicetak...`,
-                                  );
-                                  setTimeout(() => handlePrintAction(), 300);
-                                }}
-                                className="p-1 px-2 border rounded bg-slate-50 hover:bg-slate-100 hover:border-slate-200 text-xs text-slate-650"
-                              >
-                                Cetak
-                              </button>
+                                <button
+                                  onClick={() => {
+                                    if (expandedRfqId !== rfq.id) {
+                                      setExpandedRfqId(rfq.id);
+                                    }
+                                    onTriggerNotification(
+                                      `Menyiapkan dokumen ${rfq.rfqNumber} untuk dicetak...`,
+                                    );
+                                    setTimeout(() => handlePrintAction(), 300);
+                                  }}
+                                  className="btn btn-sm btn-secondary flex items-center gap-1.5"
+                                >
+                                  <Printer size={13} />
+                                  <span>Cetak</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                           {isExpanded && (
                             <tr className="bg-slate-50/50">
-                              <td colSpan={6} className="p-4 pl-12">
-                                <div className="space-y-2 max-w-lg">
-                                  <div className="font-bold text-[10px] text-slate-400 mb-2">
-                                    PENAWARAN HARGA ITEM
+                              <td colSpan={6} className="p-4 pl-12 border-t border-slate-100">
+                                <div className="space-y-3 max-w-xl">
+                                  <div className="font-bold text-[10px] text-slate-400 uppercase tracking-wider">
+                                    Penawaran Harga Item
                                   </div>
-                                  {rfq.items.map((it) => (
-                                    <div
-                                      key={it.id}
-                                      className="p-2.5 border bg-white rounded flex justify-between items-center"
-                                    >
-                                      <div>
-                                        <span className="font-bold block">
-                                          {it.productName}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500">
-                                          {it.quantity} {it.unit || "Unit"} x{" "}
-                                          {formatIDR(it.quotedUnitPrice)}
-                                        </span>
-                                      </div>
-                                      <span className="font-mono text-slate-800 font-bold">
-                                        {formatIDR(it.subtotal)}
-                                      </span>
-                                    </div>
-                                  ))}
-                                  <div className="mt-3 pt-2 border-t flex justify-between font-bold text-sm">
-                                    <span>Total Estimasi</span>
-                                    <span>
+                                  <div className="space-y-1.5">
+                                    {rfq.items.map((it: any) => {
+                                      const displayName = getItemDisplayName(it);
+                                      const displayUnit = getItemUnit(it);
+                                      return (
+                                        <div
+                                          key={it.id}
+                                          className="p-3 border border-slate-200 bg-white rounded-xl flex items-center justify-between shadow-2xs"
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-semibold text-slate-800 text-xs">
+                                              {displayName}
+                                            </span>
+                                            <span className="text-[11px] text-slate-500 font-medium">
+                                              {it.quantity} {displayUnit} x{" "}
+                                              {formatIDR(it.quotedUnitPrice)}
+                                            </span>
+                                          </div>
+                                          <span className="font-mono text-slate-800 font-bold text-xs">
+                                            {formatIDR(it.subtotal)}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <div className="pt-2 border-t border-slate-200/80 flex justify-between font-bold text-xs">
+                                    <span className="text-slate-600">Total Estimasi</span>
+                                    <span className="font-mono text-slate-900 text-sm">
                                       {formatIDR(
                                         rfq.items.reduce(
                                           (acc, curr) => acc + curr.subtotal,
@@ -519,6 +569,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                       )}
                                     </span>
                                   </div>
+
                                   {onNavigate && (rfq.status === 'Disetujui' || rfq.status === 'Diterima') && (
                                     <div className="pt-2">
                                       <button
@@ -526,7 +577,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                           sessionStorage.setItem('action_create_po', rfq.id);
                                           onNavigate('purchase-orders');
                                         }}
-                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow"
+                                        className="btn btn-primary btn-md w-full flex items-center justify-center gap-2"
                                       >
                                         <span>Lanjut Buat Purchase Order (PO)</span>
                                         <ChevronRight size={14} />
@@ -535,12 +586,12 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                   )}
                                   
                                   {rfq.status !== 'cancelled' && rfq.status !== 'Dibatalkan' && (
-                                    <div className="pt-2">
+                                    <div className="pt-1">
                                       <button
                                         onClick={() => handleCancelRfq(rfq.id, rfq.rfqNumber)}
-                                        className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                        className="btn btn-secondary btn-md w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 rounded-xl flex items-center justify-center gap-1.5"
                                       >
-                                        <X size={13} className="text-rose-500" />
+                                        <X size={14} className="text-rose-500" />
                                         <span>Batalkan Request For Quotation</span>
                                       </button>
                                     </div>
@@ -556,25 +607,25 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                 </tbody>
               </table>
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200">
-                  <div className="text-[10px] text-slate-400 font-mono">
+                <div className="flex items-center justify-between px-5 py-3 bg-white border-t border-slate-200/80">
+                  <div className="text-[11px] text-slate-400 font-mono">
                     Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredRfqs.length)} dari {filteredRfqs.length} data
                   </div>
                   <div className="flex items-center gap-2 text-xs font-mono">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                      className="btn btn-secondary btn-sm"
                     >
                       Prev
                     </button>
-                    <span className="text-slate-500 px-2">
+                    <span className="text-slate-500 px-2 font-medium">
                       Page {currentPage} of {totalPages}
                     </span>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold shadow-sm"
+                      className="btn btn-secondary btn-sm"
                     >
                       Next
                     </button>
@@ -585,37 +636,46 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
           )}
         </div>
 
+        {/* Modal RFQ Baru */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-sm">
-                  Kirim Permintaan Kuotasi (RFQ) Baru
-                </h3>
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100">
+              <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-sky-50 text-sky-600 border border-sky-100 rounded-lg">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">
+                      Kirim Permintaan Kuotasi (RFQ) Baru
+                    </h3>
+                    <p className="text-[11px] text-slate-500">Ajukan permohonan harga material ke supplier rekanan</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="p-1.5 hover:bg-slate-200/70 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-5">
+              <div className="overflow-y-auto p-5 flex-1">
                 <form
                   id="rfq-form"
                   onSubmit={handleSubmit}
-                  className="space-y-6"
+                  className="space-y-5"
                 >
-                  <div className="grid grid-cols-2 gap-5">
-                    <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3.5">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                           Pilih Supplier / Vendor *
                         </label>
                         <select
                           value={supplierId}
                           onChange={(e) => setSupplierId(e.target.value)}
-                          className="w-full p-2.5 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all"
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all text-xs font-medium"
                           required
                         >
                           <option value="">Pilih Supplier...</option>
@@ -628,7 +688,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                           Referensi PR *
                         </label>
                         <PurchaseRequestPicker
@@ -638,13 +698,20 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                             setPrNumberDisplay(pr.prNumber);
                             if (pr.items && pr.items.length > 0) {
                               setFormItems(
-                                pr.items.map((item, index) => ({
-                                  id: `form-item-${Date.now()}-${index}`,
-                                  productId: item.productId,
-                                  quantity: item.quantity,
-                                  quotedUnitPrice: 0,
-                                  unit: item.unit,
-                                })),
+                                pr.items.map((item, index) => {
+                                  const matched = products.find(p => p.id === item.productId || (item.productId && p.id.toLowerCase() === item.productId.toLowerCase()));
+                                  const pName = (item.productName && item.productName !== 'Unknown Product' && item.productName !== 'Custom Item')
+                                    ? item.productName
+                                    : matched?.name || (item as any).description || 'Material / Produk';
+                                  return {
+                                    id: `form-item-${Date.now()}-${index}`,
+                                    productId: item.productId,
+                                    productName: pName,
+                                    quantity: item.quantity,
+                                    quotedUnitPrice: 0,
+                                    unit: item.unit || matched?.unit || "Unit",
+                                  };
+                                }),
                               );
                             }
                           }}
@@ -653,51 +720,52 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                       </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3.5">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                           Tanggal RFQ *
                         </label>
                         <input
                           type="date"
                           value={rfqDate}
                           onChange={(e) => setRfqDate(e.target.value)}
-                          className="w-full p-2.5 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none"
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                           Berlaku Sampai *
                         </label>
                         <input
                           type="date"
                           value={validUntil}
                           onChange={(e) => setValidUntil(e.target.value)}
-                          className="w-full p-2.5 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none"
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none text-xs"
                           required
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="border-t pt-5">
+                  <div className="border-t border-slate-100 pt-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold text-slate-800">
+                      <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
                         Daftar Material (Request Harga)
                       </h4>
                       <button
                         type="button"
                         onClick={handleAddItem}
-                        className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border rounded-lg font-bold flex items-center gap-1 transition-colors"
+                        className="btn btn-secondary btn-sm text-sky-700 hover:text-sky-800 flex items-center gap-1"
                       >
-                        <Plus size={14} /> Tambah Baris
+                        <Plus size={13} />
+                        <span>Tambah Baris</span>
                       </button>
                     </div>
 
-                    <div className="bg-slate-50 border rounded-xl overflow-hidden">
+                    <div className="border border-slate-200/80 rounded-xl overflow-hidden">
                       <table className="w-full text-left">
-                        <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-500 border-b">
+                        <thead className="bg-slate-50/80 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200/80">
                           <tr>
                             <th className="p-3 w-1/2">Material / Produk</th>
                             <th className="p-3 w-1/5">Qty</th>
@@ -705,12 +773,13 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                             <th className="p-3 text-center">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {formItems.map((item, idx) => (
-                            <tr key={item.id} className="bg-white">
-                              <td className="p-2">
+                        <tbody className="divide-y divide-slate-100">
+                          {formItems.map((item) => (
+                            <tr key={item.id} className="bg-white hover:bg-slate-50/30">
+                              <td className="p-2.5">
                                 <ProductPicker
                                   value={item.productId}
+                                  selectedProductName={item.productName}
                                   procurementTypeFilter="purchase"
                                   onChange={(prod) => {
                                     handleItemChange(
@@ -720,18 +789,24 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                     );
                                     handleItemChange(
                                       item.id,
+                                      "productName",
+                                      prod.name,
+                                    );
+                                    handleItemChange(
+                                      item.id,
                                       "unit",
-                                      prod.unit,
+                                      prod.unit || "Unit",
                                     );
                                   }}
+                                  placeholder="Pilih Material / Produk..."
                                 />
                               </td>
-                              <td className="p-2">
-                                <div className="flex items-center gap-2">
+                              <td className="p-2.5">
+                                <div className="flex items-center gap-1.5">
                                   <input
                                     type="number"
                                     min="1"
-                                    className="w-full p-2 border rounded outline-none focus:border-cyan-500"
+                                    className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs"
                                     value={item.quantity}
                                     onChange={(e) =>
                                       handleItemChange(
@@ -742,14 +817,14 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                     }
                                     required
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold uppercase w-8">
-                                    {item.unit || "-"}
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0 w-8">
+                                    {item.unit || "Unit"}
                                   </span>
                                 </div>
                               </td>
-                              <td className="p-2">
+                              <td className="p-2.5">
                                 <CurrencyInput
-                                  className="w-full p-2 border rounded outline-none focus:border-cyan-500"
+                                  className="w-full p-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-xs"
                                   value={item.quotedUnitPrice || ''}
                                   onValueChange={(val) =>
                                     handleItemChange(
@@ -760,14 +835,15 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                                   }
                                 />
                               </td>
-                              <td className="p-2 text-center">
+                              <td className="p-2.5 text-center">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(item.id)}
                                   disabled={formItems.length === 1}
-                                  className="p-2 text-rose-500 hover:bg-rose-50 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                  title="Hapus baris"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={15} />
                                 </button>
                               </td>
                             </tr>
@@ -779,11 +855,11 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                 </form>
               </div>
 
-              <div className="p-4 border-t bg-slate-50 flex justify-end gap-3 mt-auto">
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2.5 mt-auto">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-5 py-2.5 border rounded-lg font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="btn btn-secondary btn-md"
                 >
                   Batal
                 </button>
@@ -791,7 +867,7 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                   type="submit"
                   form="rfq-form"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-slate-900 text-white rounded-lg font-bold shadow-md hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center gap-2"
+                  className="btn btn-primary btn-md flex items-center gap-2"
                 >
                   {isSubmitting ? "Menyimpan..." : "Kirim RFQ"}
                 </button>
@@ -928,10 +1004,10 @@ export default function RfqView({ onTriggerNotification, onNavigate }: RfqViewPr
                           {idx + 1}
                         </td>
                         <td className="p-3 border-r border-black font-medium">
-                          {item.productName}
+                          {getItemDisplayName(item)}
                         </td>
                         <td className="p-3 border-r border-black text-center">
-                          {item.quantity} {item.unit || "Unit"}
+                          {item.quantity} {getItemUnit(item)}
                         </td>
                         <td className="p-3 border-r border-black text-right font-mono text-gray-700">
                           {formatIDR(item.quotedUnitPrice)}

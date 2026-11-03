@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Scan,
   Settings,
+  Sparkles,
   ShieldCheck,
   ShoppingCart,
   Tag,
@@ -121,6 +122,7 @@ export const VIEW_TITLES: Record<ViewType, string> = {
   profile: "Profil Saya",
   users: "Pengguna Sistem",
   "report-center": "Pusat Laporan",
+  changelog: "Pembaruan Sistem (Changelog)",
 };
 
 export const NAVIGATION_SECTIONS: NavigationSection[] = [
@@ -495,6 +497,11 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: "Pengingat Sistem",
         icon: BellRing,
         requiredModule: "reminders",
+      },
+      {
+        view: "changelog",
+        label: "Pembaruan Sistem",
+        icon: Sparkles,
       },
     ],
   },

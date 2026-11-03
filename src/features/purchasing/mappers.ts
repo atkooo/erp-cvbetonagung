@@ -5,6 +5,7 @@ export const mapPurchaseRequestItemFromDto = (dto: PurchaseRequestItemDto): Purc
   id: dto.id,
   productId: dto.product_id,
   productName: dto.product?.name || dto.description || 'Unknown Product',
+  description: dto.description || undefined,
   quantity: Number(dto.quantity),
   status: dto.status,
   unit: (typeof dto.product?.unit === 'object' ? (dto.product.unit as any).code : dto.product?.unit) || 'Unit'
@@ -118,6 +119,7 @@ export const mapRfqItemFromDto = (dto: any): any => ({
   id: dto.id,
   productId: dto.product_id || '',
   productName: dto.product?.name || dto.description || 'Custom Item',
+  description: dto.description || undefined,
   quantity: Number(dto.quantity),
   quotedUnitPrice: Number(dto.quoted_unit_price),
   subtotal: Number(dto.subtotal),
